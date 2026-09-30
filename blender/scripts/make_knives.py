@@ -34,7 +34,7 @@ KNIVES = {
                          colors=((0.60, 0.62, 0.66), (0.20, 0.20, 0.22), (0.50, 0.10, 0.10))),
     "GoldenDagger": dict(length=1.9, height=0.30, guard=0.42, curve=1.0, rarity="Legendary",
                          colors=((1.00, 0.78, 0.20), (0.85, 0.10, 0.10), (0.10, 0.05, 0.02))),
-    "VoidEdge":     dict(length=2.2, height=0.36, guard=0.50, curve=1.2, rarity="Mythic",
+    "VoidEdge":     dict(length=2.2, height=0.36, guard=0.50, curve=1.2, rarity="Godly",
                          colors=((0.45, 0.10, 0.90), (0.05, 0.05, 0.08), (0.20, 0.00, 0.35))),
 }
 

@@ -5,3 +5,5 @@ sourcemap.json
 blender/exports/*.fbx
 blender/*.blend1
 __pycache__/
+StealAKnife.rbxlx
+globalTypes.d.luau
