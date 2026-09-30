@@ -1,0 +1,7 @@
+.env
+*.rbxl.lock
+*.rbxlx.lock
+sourcemap.json
+blender/exports/*.fbx
+blender/*.blend1
+__pycache__/
