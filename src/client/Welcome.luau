@@ -55,8 +55,8 @@ local function show(info: Info)
 	local dim = new("Frame", {
 		Name = "Welcome",
 		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = Color3.new(0, 0, 0),
-		BackgroundTransparency = 0.45,
+		BackgroundColor3 = Color3.fromRGB(30, 26, 23),
+		BackgroundTransparency = 0.78,
 		ZIndex = 50,
 	}, Ui.gui)
 	local card = new("Frame", {

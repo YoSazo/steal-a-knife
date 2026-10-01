@@ -522,6 +522,26 @@ function StealService.IsCarrying(player: Player): boolean
 end
 
 -- Rounds pull everyone out of the arena, knockdowns knock it loose: whatever they carried drops
+-- `owner` caught `thief` running off with `owner`'s knife: it goes straight back on their wall
+-- (or onto the floor for them to grab if the wall is full). Returns the item, or nil.
+function StealService.Recover(thief: Player, owner: Player): string?
+	local carry = carriers[thief]
+	if not carry or carry.Kind ~= "Knife" or carry.StolenFrom ~= owner.UserId then
+		return nil
+	end
+	local profile = DataService.Get(owner)
+	if not profile or #profile.Knives >= profile.Slots then
+		return nil
+	end
+	local item = carry.Item
+	endCarry(thief, true, nil)
+	DataService.Update(owner, function(p)
+		table.insert(p.Knives, item)
+	end)
+	BaseService.RefreshRack(owner)
+	return item
+end
+
 function StealService.ForceDrop(player: Player)
 	local root = rootPart(player)
 	endCarry(player, false, if root then root.Position else nil)

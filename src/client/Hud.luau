@@ -206,7 +206,12 @@ function Hud.Init()
 			if nextWheel then `{nextWheel.Name}\n${Ui.abbreviate(nextWheel.Cost)}` else "Wheel MAX"
 		)
 		local nextWalls = GameConfig.Walls[walls + 1]
-		setButtonText("Walls", if nextWalls then `{nextWalls.Name}\n${Ui.abbreviate(nextWalls.Cost)}` else "Walls MAX")
+		setButtonText(
+			"Walls",
+			if nextWalls
+				then `Upgrade Walls\n{Ui.abbreviate(nextWalls.GateHealth)} HP - ${Ui.abbreviate(nextWalls.Cost)}`
+				else "Walls MAX"
+		)
 		setButtonText(
 			"Slot",
 			if slots >= GameConfig.MaxSlots
@@ -360,33 +365,56 @@ function Hud.Init()
 	end)
 
 	-- Energy (rounds): the charge your Innocent Powers spend; coins fill it -----------------------
+	-- A pill that sizes itself to its contents: "⚡ ENERGY", one cell per point, then "3/8"
+	local ENERGY_ON = Color3.fromRGB(255, 214, 60)
+	local ENERGY_OFF = Color3.fromRGB(58, 52, 70)
 	local energyFrame = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -112),
-		Size = UDim2.fromOffset(330, 34),
-		BackgroundColor3 = Color3.fromRGB(20, 16, 28),
-		BackgroundTransparency = 0.25,
+		Name = "EnergyBar",
+		Position = UDim2.new(0.5, 0, 1, -180), -- leave room above the power buttons and their outlines
+		Size = UDim2.fromOffset(0, 36),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundColor3 = Color3.fromRGB(24, 19, 34),
+		BackgroundTransparency = 0.15,
 		Visible = false,
 	}, gui)
-	Ui.corner(energyFrame, 12)
-	local energyLabel = Ui.label({
-		Size = UDim2.fromOffset(110, 30),
-		Position = UDim2.fromOffset(6, 2),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = Color3.fromRGB(255, 230, 90),
-		Text = "⚡ Energy",
+	Ui.corner(energyFrame, 18)
+	new("UIStroke", { Thickness = 2.5, Color = Color3.fromRGB(14, 10, 20) }, energyFrame)
+	new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, energyFrame)
+	new("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Padding = UDim.new(0, 5),
+		SortOrder = Enum.SortOrder.LayoutOrder,
 	}, energyFrame)
-	Ui.textStroke(energyLabel, 2)
+	local function energyText(text: string, layoutOrder: number, color: Color3): TextLabel
+		local label = Ui.label({
+			Size = UDim2.fromOffset(0, 26),
+			AutomaticSize = Enum.AutomaticSize.X,
+			TextScaled = false,
+			TextSize = 20,
+			LayoutOrder = layoutOrder,
+			TextColor3 = color,
+			Text = text,
+		}, energyFrame)
+		Ui.textStroke(label, 2)
+		return label
+	end
+	energyText("⚡ ENERGY", 0, ENERGY_ON)
+	new("Frame", { Size = UDim2.fromOffset(4, 1), BackgroundTransparency = 1, LayoutOrder = 1 }, energyFrame)
 	local cells: { Frame } = {}
 	for i = 1, GameConfig.MaxEnergy do
 		local cell = new("Frame", {
-			Position = UDim2.fromOffset(112 + (i - 1) * 26, 7),
-			Size = UDim2.fromOffset(21, 20),
-			BackgroundColor3 = Color3.fromRGB(60, 56, 70),
+			Size = UDim2.fromOffset(16, 20),
+			BackgroundColor3 = ENERGY_OFF,
+			LayoutOrder = 1 + i,
 		}, energyFrame)
-		Ui.corner(cell, 5)
+		Ui.corner(cell, 4)
+		new("UIStroke", { Thickness = 1.5, Color = Color3.fromRGB(14, 10, 20) }, cell)
 		table.insert(cells, cell)
 	end
+	new("Frame", { Size = UDim2.fromOffset(4, 1), BackgroundTransparency = 1, LayoutOrder = 98 }, energyFrame)
+	local countLabel = energyText("0/" .. GameConfig.MaxEnergy, 99, Color3.fromRGB(235, 230, 245))
 	local lastEnergy = 0
 	local function refreshEnergy()
 		local energy = player:GetAttribute("Energy")
@@ -395,8 +423,9 @@ function Hud.Init()
 			return
 		end
 		for i, cell in cells do
-			cell.BackgroundColor3 = if i <= energy then Color3.fromRGB(255, 220, 70) else Color3.fromRGB(60, 56, 70)
+			cell.BackgroundColor3 = if i <= energy then ENERGY_ON else ENERGY_OFF
 		end
+		countLabel.Text = `{math.floor(energy)}/{GameConfig.MaxEnergy}`
 		if energy > lastEnergy then
 			local scale = energyFrame:FindFirstChildOfClass("UIScale") or new("UIScale", {}, energyFrame)
 			scale.Scale = 1.12
@@ -492,8 +521,8 @@ function Hud.Init()
 				elseif status:find("Waiting") then string.upper(status)
 				else `MURDER ROUND IN {Ui.clock(left)}`
 			local line2 = if type(raidEnds) == "number"
-				then `RAID! VAULTS OPEN {Ui.clock(raidEnds - now)}`
-				elseif type(nextRaid) == "number" then `RAID IN {Ui.clock(nextRaid - now)}`
+				then `BLOOD MOON {Ui.clock(raidEnds - now)}`
+				elseif type(nextRaid) == "number" then `BLOOD MOON IN {Ui.clock(nextRaid - now)}`
 				else "DEEPER = RARER CASES"
 			local texts = { line1, line2, "SURVIVORS EARN 2X VAULT INCOME" }
 			local colors = { Color3.fromRGB(255, 80, 90), Color3.fromRGB(255, 210, 90), Color3.fromRGB(120, 230, 150) }
@@ -546,12 +575,12 @@ function Hud.Init()
 		elseif type(raidEnds) == "number" then
 			-- The raid takes over the top of the screen, pulsing red
 			local pulse = (math.sin(os.clock() * 6) + 1) / 2
-			timerLabel.Text = `⚔️ RAID  {Ui.clock(raidEnds - now)}`
+			timerLabel.Text = `🌕 BLOOD MOON  {Ui.clock(raidEnds - now)}`
 			timerFrame.BackgroundColor3 = Color3.fromRGB(120, 20, 30):Lerp(Color3.fromRGB(200, 40, 50), pulse)
 			local revengeUntil = player:GetAttribute("RevengeUntil")
 			subLabel.Text = if type(revengeUntil) == "number" and revengeUntil > now
 				then `REVENGE! Their vault is open to you: {Ui.clock(revengeUntil - now)}`
-				else "Burglars are coming · Knock them down before they escape with your knives!"
+				else "Burglars are out · gates are weak · bounties x2!"
 		elseif phase == "Results" or status:find("Waiting") then
 			timerLabel.Text = if phase == "Results" then "Round over!" else status
 			timerFrame.BackgroundColor3 = Ui.PANEL
@@ -577,8 +606,8 @@ function Hud.Init()
 		local nextRaid = ReplicatedStorage:GetAttribute("NextRaidAt")
 		raidPill.Visible = type(raidEnds) == "number" or type(nextRaid) == "number"
 		raidText.Text = if type(raidEnds) == "number"
-			then `RAID! {Ui.clock(raidEnds - now)}`
-			elseif type(nextRaid) == "number" then `Raid in {Ui.clock(nextRaid - now)}`
+			then `BLOOD MOON {Ui.clock(raidEnds - now)}`
+			elseif type(nextRaid) == "number" then `Blood Moon in {Ui.clock(nextRaid - now)}`
 			else ""
 		raidText.TextColor3 = if type(raidEnds) == "number" then Color3.fromRGB(255, 90, 90) else Color3.new(1, 1, 1)
 		roundText.Text = if phase == "Round"
@@ -620,7 +649,7 @@ function Hud.Init()
 	-- Notifications (stack at the bottom middle) -------------------------------------------------
 	local toasts = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -160), -- above the power bar
+		Position = UDim2.new(0.5, 0, 1, -230), -- above the power bar and the Energy bar
 		Size = UDim2.fromOffset(560, 220),
 		BackgroundTransparency = 1,
 	}, gui)
@@ -629,6 +658,10 @@ function Hud.Init()
 		VerticalAlignment = Enum.VerticalAlignment.Bottom,
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
 	}, toasts)
+
+	gui:GetAttributeChangedSignal("RepairVisible"):Connect(function()
+		toasts.Position = UDim2.new(0.5, 0, 1, if gui:GetAttribute("RepairVisible") then -298 else -230)
+	end)
 
 	Remotes.Notify.OnClientEvent:Connect(function(text: string, kind: string)
 		local toast = Ui.label({

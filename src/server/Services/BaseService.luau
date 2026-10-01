@@ -27,6 +27,7 @@ BaseService.OnEquipPrompt = nil :: ((Player, string) -> ())?
 BaseService.OnStealPrompt = nil :: ((Player, Player, number) -> ())?
 -- Set by RaidService: a vault's walls were rebuilt (new tier, or the vault changed hands)
 BaseService.OnWallsBuilt = nil :: ((MapService.BaseSite, Player?) -> ())?
+BaseService.OnUpgradeWalls = nil :: ((Player) -> ())?
 
 -- Rebirths multiply everything a vault earns
 function BaseService.IncomeMultiplier(player: Player): number
@@ -94,6 +95,33 @@ function BaseService.RefreshWalls(base: MapService.BaseSite)
 	base.Blocker = built.Blocker
 	base.Blocker:SetAttribute("Owner", if owner then owner.UserId else nil)
 	base.Blocker:SetAttribute("OwnerName", if owner then owner.DisplayName else nil)
+	local nextTier = GameConfig.Walls[tier + 1]
+	if owner and nextTier then
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "UpgradeWalls"
+		prompt.ActionText = `Upgrade Walls (${nextTier.Cost})`
+		prompt.ObjectText = `{GameConfig.Walls[tier].Name} - {GameConfig.Walls[tier].GateHealth} HP`
+		prompt.KeyboardKeyCode = Enum.KeyCode.G
+		prompt.GamepadKeyCode = Enum.KeyCode.ButtonY
+		prompt.HoldDuration = 0.5
+		prompt.MaxActivationDistance = 12
+		prompt.RequiresLineOfSight = false
+		prompt:SetAttribute("WallUpgrade", true)
+		prompt:SetAttribute("Owner", owner.UserId)
+		prompt.Triggered:Connect(function(player)
+			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if
+				player == owner
+				and root
+				and not player:GetAttribute("InRound")
+				and (root.Position - base.Blocker.Position).Magnitude <= 15
+				and BaseService.OnUpgradeWalls
+			then
+				BaseService.OnUpgradeWalls(player)
+			end
+		end)
+		prompt.Parent = base.Blocker
+	end
 	-- The vault's sign rides on top of its back wall
 	base.SignPart.CFrame = base.Frame * CFrame.new(0, built.BackHeight + 2.4, -22)
 	if BaseService.OnWallsBuilt then

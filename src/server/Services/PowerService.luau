@@ -35,10 +35,19 @@ type PowerConfig = {
 	Cooldown: number,
 }
 
-type Trap = { Model: Model, Owner: Player, Position: Vector3, Round: boolean, Stun: number, Expires: number }
+type Trap = {
+	Model: Model,
+	Owner: Player,
+	Position: Vector3,
+	Round: boolean,
+	Stun: number,
+	Expires: number,
+	Home: boolean, -- set inside the owner's own vault: it waits there for intruders
+}
 type Decoy = { Model: Model, Owner: Player, Pop: () -> () }
 
 local PowerService = {}
+PowerService.CanRaidPlayer = nil :: ((Player, Player) -> boolean)?
 
 local byId: { [string]: PowerConfig } = {}
 for _, power in GameConfig.Powers do
@@ -204,6 +213,19 @@ local function radar(player: Player, duration: number)
 			end
 		end
 	else
+		local canRaidPlayer = PowerService.CanRaidPlayer
+		if canRaidPlayer then
+			for _, other in Players:GetPlayers() do
+				if other.Character and canRaidPlayer(player, other) then
+					table.insert(entries, { Model = other.Character, Color = Color3.fromRGB(255, 100, 70) })
+				end
+			end
+		end
+		if ReplicatedStorage:GetAttribute("Raid") then
+			for _, burglar in CollectionService:GetTagged("Burglar") do
+				table.insert(entries, { Model = burglar, Color = Color3.fromRGB(255, 180, 70) })
+			end
+		end
 		for _, guard in GuardService.All() do
 			local knife = Knives.ByName[guard.KnifeName]
 			table.insert(entries, {
@@ -272,19 +294,37 @@ local function placeTrap(player: Player, stun: number)
 		)
 	end
 	model.Parent = effectsFolder
+	local inRound = player:GetAttribute("InRound") == true
+	local home = not inRound and BaseService.IsInOwnBase(player, at)
+	if home then
+		-- One home trap at a time: the new one replaces the old
+		for i = #traps, 1, -1 do
+			if traps[i].Home and traps[i].Owner == player then
+				traps[i].Model:Destroy()
+				table.remove(traps, i)
+			end
+		end
+		Net.Notify(player, "Trap set in your vault - it waits for intruders", "good")
+	end
 	table.insert(traps, {
 		Model = model,
 		Owner = player,
 		Position = at,
-		Round = player:GetAttribute("InRound") == true,
+		Round = inRound,
 		Stun = stun,
-		Expires = os.clock() + 45,
+		Expires = if home then math.huge else os.clock() + 45,
+		Home = home,
 	})
 end
 
 local function snap(trap: Trap)
 	Net.Remotes.Effect:FireAllClients("TrapSnap", trap.Position)
 	trap.Model:Destroy()
+end
+
+local function nearTrap(trap: Trap, position: Vector3, radius: number): boolean
+	local offset = position - trap.Position
+	return math.abs(offset.Y) <= 6 and (offset * Vector3.new(1, 0, 1)).Magnitude < radius
 end
 
 local function stepTraps()
@@ -297,12 +337,15 @@ local function stepTraps()
 			table.remove(traps, i)
 			continue
 		end
-		if trap.Round then
-			-- Only the Murderer sets these off
+		do
+			local canRaidPlayer = PowerService.CanRaidPlayer
 			for _, other in Players:GetPlayers() do
 				local root = rootOf(other)
-				if root and other:GetAttribute("InRound") and other:GetAttribute("Role") == "Murderer" then
-					if (root.Position - trap.Position).Magnitude < 3 then
+				local eligible = if trap.Round
+					then other:GetAttribute("InRound") and other:GetAttribute("Role") == "Murderer"
+					else canRaidPlayer ~= nil and canRaidPlayer(trap.Owner, other)
+				if root and eligible then
+					if nearTrap(trap, root.Position, 3) then
 						other:SetAttribute("StunnedUntil", workspace:GetServerTimeNow() + trap.Stun)
 						BaseService.RefreshWalkSpeed(other)
 						if other.Character then
@@ -317,9 +360,10 @@ local function stepTraps()
 					end
 				end
 			end
-		else
+		end
+		if not trap.Round and not sprung then
 			for _, guard in GuardService.All() do
-				if (guard.Position - trap.Position).Magnitude < 3.5 then
+				if nearTrap(trap, guard.Position, 3.5) then
 					GuardService.Stun(guard, trap.Stun)
 					sprung = true
 					break
@@ -493,7 +537,19 @@ end
 function PowerService.SpringRoundTrap(position: Vector3): number?
 	for i = #traps, 1, -1 do
 		local trap = traps[i]
-		if trap.Round and (trap.Position - position).Magnitude < 3 then
+		if trap.Round and nearTrap(trap, position, 3) then
+			snap(trap)
+			table.remove(traps, i)
+			return trap.Stun
+		end
+	end
+	return nil
+end
+
+function PowerService.SpringRaidTrap(position: Vector3): number?
+	for i = #traps, 1, -1 do
+		local trap = traps[i]
+		if not trap.Round and os.clock() <= trap.Expires and nearTrap(trap, position, 3.5) then
 			snap(trap)
 			table.remove(traps, i)
 			return trap.Stun

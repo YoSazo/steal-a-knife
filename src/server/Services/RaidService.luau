@@ -5,13 +5,15 @@
 --     (R) and come home to stop them. A broken gate stays open for a bit, then reforges.
 --   * inside a broken vault, anything on the wall except its owner's equipped knife can be
 --     stolen (hold "Steal"); carry it home and it's yours
---   * hub knives knock players down (never hurt them): you drop whatever you were carrying.
---     Carriers and intruders can be knocked down any time; a vault's owner sends a thief home.
+--   * hub knives knock down intruders and anyone carrying loot (never hurt them): they drop it.
+--     A vault's owner who catches their thief gets the knife back, a bounty, and sends them home.
+--   * a vault that just lost a knife is sealed for a while (GameConfig.Raid.RobbedSeal)
 --   * gates can't be touched while their owner is in a round, during a round, or while the owner
 --     still has the new-player shield
--- Raids are an event near the end of every intermission: burglars (NPCs) come for everyone's
--- knives and anyone can be knocked down, so even a quiet server gets some chaos.
--- Getting robbed gives you revenge: for a while the thief's vault is open to you, raid or not.
+-- The Blood Moon (the "raid" in code) rises every few intermissions: burglars (NPCs) come for
+-- everyone's knives, gates take more damage, bounties double and anyone outside their own vault can
+-- be knocked down.
+-- Getting robbed gives you revenge: for a while the thief's vault is open to you.
 -- Knives on walls give off an aura (better knife, bigger aura) that slows anyone who isn't the
 -- owner. State for clients lives in attributes: ReplicatedStorage Raid/RaidEndsAt/NextRaidAt,
 -- gate Blockers (Health, MaxHealth, Open), players (KnockedUntil, RevengeOn, RevengeUntil,
@@ -63,6 +65,7 @@ type Burglar = {
 	State: string, -- "ToGate" | "Bash" | "Enter" | "Steal" | "Escape" | "Taunt"
 	Base: MapService.BaseSite?,
 	Slot: number?,
+	GateLane: number,
 	Carrying: string?, -- item
 	CarryOwner: number?,
 	CarryVisual: Model?,
@@ -76,13 +79,13 @@ type Burglar = {
 }
 
 local gates: { [MapService.BaseSite]: GateState } = {}
--- This raid: burglars heading for each vault, and knives they've taken from it (max 1 each)
-local burglarsAt: { [MapService.BaseSite]: number } = {}
+-- Knives taken from each vault this raid, capped by BurglarStealsPerVault.
 local takenFrom: { [MapService.BaseSite]: number } = {}
 local burglars: { Burglar } = {}
 local burglarFolder: Folder
 local raiding = false
 local raidEndsAt = 0
+local raidGeneration = 0
 local rng = Random.new()
 
 local BURGLAR_NAMES = {
@@ -128,13 +131,43 @@ local function gateOpen(base: MapService.BaseSite): boolean
 	return base.Blocker:GetAttribute("Open") == true
 end
 
--- Whether this vault's gate can be attacked right now
-local function canBreak(base: MapService.BaseSite): boolean
+-- Why this vault's gate can't be attacked right now (nil = it can)
+local function protectedReason(base: MapService.BaseSite, beforeRaid: boolean?): string?
 	local owner = BaseService.OwnerOf(base)
-	if not owner or owner:GetAttribute("InRound") or DataService.IsNewPlayer(owner) then
-		return false
+	if not owner then
+		return "Nobody lives here - nothing to steal"
 	end
-	return ReplicatedStorage:GetAttribute("Phase") == "Intermission"
+	if DataService.IsNewPlayer(owner) then
+		local profile = DataService.Get(owner)
+		local left = if profile then math.ceil((GameConfig.NewPlayerShield - profile.PlayTime) / 60) else 0
+		return `🛡️ {owner.DisplayName} is new - protected for {math.max(1, left)} more min`
+	end
+	if owner:GetAttribute("InRound") then
+		return `{owner.DisplayName} is in a round - come back after it`
+	end
+	if ReplicatedStorage:GetAttribute("Phase") ~= "Intermission" then
+		return "Vaults are sealed during a round"
+	end
+	local sealed = owner:GetAttribute("SealedUntil")
+	if not beforeRaid and type(sealed) == "number" and now() < sealed then
+		return `🔒 {owner.DisplayName} was just robbed - sealed for {math.ceil(sealed - now())}s`
+	end
+	return nil
+end
+
+local function canBreak(base: MapService.BaseSite): boolean
+	return protectedReason(base) == nil
+end
+
+-- Hitting a gate that's protected tells you why (not every swing)
+local toldAt: { [Player]: number } = {}
+local function tellProtected(attacker: Player, base: MapService.BaseSite, reason: string)
+	local t = os.clock()
+	if t - (toldAt[attacker] or 0) > 2.5 then
+		toldAt[attacker] = t
+		Net.Notify(attacker, reason, "info")
+	end
+	Net.Remotes.Effect:FireClient(attacker, "Shield", base.Blocker.Position)
 end
 
 -- Whether `player` may be inside `base` (owned by `owner`) right now
@@ -142,7 +175,31 @@ local function mayEnter(player: Player, base: MapService.BaseSite, owner: Player
 	if not owner or owner == player then
 		return true
 	end
-	return gateOpen(base) or hasRevenge(player, owner)
+	return canBreak(base) and (gateOpen(base) or hasRevenge(player, owner))
+end
+
+-- Who hub knives (and home traps, Flash, Radar) can go after: intruders in someone else's vault
+-- and anyone carrying loot, any time; during the Blood Moon anyone who isn't home
+function RaidService.CanAttackPlayer(attacker: Player, victim: Player): boolean
+	if
+		ReplicatedStorage:GetAttribute("Phase") ~= "Intermission"
+		or attacker == victim
+		or attacker:GetAttribute("InRound")
+		or victim:GetAttribute("InRound")
+		or DataService.IsNewPlayer(victim)
+		or rootOf(attacker) == nil
+	then
+		return false
+	end
+	local root = rootOf(victim)
+	if not root then
+		return false
+	end
+	local _, vaultOwner = BaseService.BaseAt(root.Position)
+	if vaultOwner == victim then
+		return false -- safe at home
+	end
+	return raiding or (vaultOwner ~= nil and vaultOwner ~= victim) or victim:GetAttribute("Carrying") ~= nil
 end
 
 -- Gates ------------------------------------------------------------------------------------
@@ -155,16 +212,18 @@ local function refreshGateBar(base: MapService.BaseSite)
 	end
 	local health = (blocker:GetAttribute("Health") or 0) :: number
 	local max = (blocker:GetAttribute("MaxHealth") or 1) :: number
-	gui.Enabled = BaseService.OwnerOf(base) ~= nil and (raiding or gateOpen(base) or health < max - 0.5)
+	local owner = BaseService.OwnerOf(base)
+	local shielded = owner ~= nil and DataService.IsNewPlayer(owner)
+	gui.Enabled = owner ~= nil and (raiding or shielded or gateOpen(base) or health < max - 0.5)
 	local fill = gui:FindFirstChild("Fill", true) :: Frame?
 	if fill then
 		fill.Size = UDim2.fromScale(math.clamp(health / max, 0, 1), 1)
 	end
 	local title = gui:FindFirstChild("Title") :: TextLabel?
 	if title then
-		local owner = BaseService.OwnerOf(base)
 		title.Text = if gateOpen(base)
 			then "BROKEN!"
+			elseif shielded then `🛡️ {(owner :: Player).DisplayName} (new player)`
 			else `{if owner then owner.DisplayName .. "'s " else ""}{GameConfig.Walls[(blocker:GetAttribute("Tier") or 1) :: number].Name}`
 	end
 end
@@ -184,9 +243,12 @@ local function breakGate(base: MapService.BaseSite, by: string)
 	end
 end
 
-local function damageGate(base: MapService.BaseSite, amount: number, by: string)
+local function damageGate(base: MapService.BaseSite, amount: number, by: string, attacker: Model?)
 	if gateOpen(base) or not canBreak(base) then
 		return
+	end
+	if raiding then
+		amount *= CONFIG.BloodMoonGateDamage
 	end
 	local state = gates[base]
 	local before = (base.Blocker:GetAttribute("Health") or 0) :: number
@@ -199,6 +261,12 @@ local function damageGate(base: MapService.BaseSite, amount: number, by: string)
 		state.LastAlert = now()
 		Net.Notify(owner, `{by} is breaking into your vault! Get back and stop them!`, "bad")
 		Net.Remotes.Effect:FireClient(owner, "Alarm")
+		-- ...and who: outlined through walls for a while, so you can find them on the way home
+		if attacker then
+			Net.Remotes.Effect:FireClient(owner, "Radar", {
+				{ Model = attacker, Color = Color3.fromRGB(255, 70, 60) },
+			}, 8)
+		end
 	end
 	-- Warn the owner as it goes down
 	for _, mark in { 0.75, 0.5, 0.25 } do
@@ -242,17 +310,22 @@ local function trackGate(base: MapService.BaseSite)
 		Solid = true,
 		CanHit = function(attacker: Player)
 			local owner = BaseService.OwnerOf(base)
-			return owner ~= nil
-				and owner ~= attacker
-				and not attacker:GetAttribute("InRound")
-				and not gateOpen(base)
-				and canBreak(base)
+			-- Your own gate only in Studio with DebugSelfRaid (to see break-ins without a second player).
+			-- Empty vaults still take the swing, so the attacker hears why nothing happens.
+			local selfRaid = RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugSelfRaid") == true
+			return (owner ~= attacker or selfRaid) and not attacker:GetAttribute("InRound") and not gateOpen(base)
 		end,
 		Hit = function(attacker: Player, damage: number, kind: string)
+			local reason = protectedReason(base)
+			if reason then
+				tellProtected(attacker, base, reason)
+				return
+			end
 			damageGate(
 				base,
-				if kind == "Throw" then damage * CONFIG.ThrowGateMultiplier else damage,
-				attacker.DisplayName
+				(if kind == "Throw" then damage * CONFIG.ThrowGateMultiplier else damage) * CONFIG.PlayerGateDamage,
+				attacker.DisplayName,
+				attacker.Character
 			)
 		end,
 	})
@@ -283,25 +356,32 @@ end
 
 -- Knockdowns -------------------------------------------------------------------------------
 
-function RaidService.Knockdown(victim: Player, from: Vector3, by: string)
+function RaidService.Knockdown(victim: Player, from: Vector3, by: string): boolean
 	local character = victim.Character
 	local root = rootOf(victim)
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if not character or not root or not humanoid or victim:GetAttribute("InRound") then
-		return
+	if
+		ReplicatedStorage:GetAttribute("Phase") ~= "Intermission"
+		or DataService.IsNewPlayer(victim)
+		or not character
+		or not root
+		or not humanoid
+		or victim:GetAttribute("InRound")
+	then
+		return false
 	end
 	local t = now()
 	local knocked = victim:GetAttribute("KnockedUntil")
 	local immune = victim:GetAttribute("KnockImmuneUntil")
 	if (type(knocked) == "number" and t < knocked) or (type(immune) == "number" and t < immune) then
-		return
+		return false
 	end
 	-- A Shield eats it
 	local shieldUntil = character:GetAttribute("ShieldUntil")
 	if type(shieldUntil) == "number" and t < shieldUntil then
 		character:SetAttribute("ShieldUntil", nil)
 		Net.Remotes.Effect:FireAllClients("Shield", root.Position)
-		return
+		return false
 	end
 	StealService.ForceDrop(victim)
 	local until_ = t + CONFIG.KnockdownTime
@@ -327,9 +407,10 @@ function RaidService.Knockdown(victim: Player, from: Vector3, by: string)
 			end
 		end
 	end)
+	return true
 end
 
--- Players as targets for hub knives: anyone during a raid, carriers any time
+-- Players as targets for hub knives during the raid window.
 local function playerTargets(): { Targets.Target }
 	local list: { Targets.Target } = {}
 	for _, player in Players:GetPlayers() do
@@ -343,26 +424,37 @@ local function playerTargets(): { Targets.Target }
 			Model = character,
 			Solid = false,
 			CanHit = function(attacker: Player)
-				if attacker == player or player:GetAttribute("InRound") then
+				if not RaidService.CanAttackPlayer(attacker, player) then
 					return false
 				end
 				if player:GetAttribute("Invisible") or player:GetAttribute("Mimic") then
 					return false
 				end
-				-- Safe at home (unless you're a raider standing in someone else's vault)
-				if BaseService.IsInOwnBase(player, root.Position) and not raiding then
-					return false
-				end
-				local _, vaultOwner = BaseService.BaseAt(root.Position)
-				local intruder = vaultOwner ~= nil and vaultOwner ~= player
-				return raiding or intruder or player:GetAttribute("Carrying") ~= nil
+				return true
 			end,
 			Hit = function(attacker: Player, _damage: number, _kind: string, from: Vector3)
 				-- Caught by the vault's owner (in their vault, or running off with their knife)?
 				-- Then it's not just a knockdown: the thief gets sent home
 				local _, vaultOwner = BaseService.BaseAt(root.Position)
 				local caught = vaultOwner == attacker or player:GetAttribute("StolenFrom") == attacker.UserId
-				RaidService.Knockdown(player, from, attacker.DisplayName)
+				-- The owner snatches their knife back before it hits the floor
+				local recovered = if caught then StealService.Recover(player, attacker) else nil
+				if not RaidService.Knockdown(player, from, attacker.DisplayName) then
+					return
+				end
+				if caught then
+					local bonus = if raiding then CONFIG.BloodMoonBounty else 1
+					local bounty = if recovered
+						then GameConfig.Pay(CONFIG.CatchBounty, Items.Income(recovered)) * bonus
+						else GameConfig.Pay(CONFIG.IntruderBounty, BaseService.RackIncome(attacker)) * bonus
+					DataService.AddCash(attacker, bounty)
+					Net.Remotes.Effect:FireClient(attacker, "CashBurst", root.Position, bounty)
+					if recovered then
+						Net.Notify(attacker, `Got your {Items.DisplayName(recovered)} back! Bounty +${bounty}`, "good")
+					else
+						Net.Notify(attacker, `Intruder down! Bounty +${bounty}`, "good")
+					end
+				end
 				Net.Remotes.Effect:FireClient(
 					attacker,
 					"Damage",
@@ -398,6 +490,14 @@ local function onStealPrompt(thief: Player, owner: Player, slot: number)
 	if thief:GetAttribute("InRound") or StealService.IsCarrying(thief) or thief:GetAttribute("KnockedUntil") then
 		return
 	end
+	if ReplicatedStorage:GetAttribute("Phase") ~= "Intermission" then
+		return
+	end
+	local sealed = owner:GetAttribute("SealedUntil")
+	if type(sealed) == "number" and now() < sealed then
+		Net.Notify(thief, `{owner.DisplayName} was just robbed - leave them be for a bit`, "info")
+		return
+	end
 	local revenge = hasRevenge(thief, owner)
 	if not (gateOpen(base) or revenge) or DataService.IsNewPlayer(owner) or owner:GetAttribute("InRound") then
 		return
@@ -426,13 +526,20 @@ local function onStealPrompt(thief: Player, owner: Player, slot: number)
 	StealService.StartCarry(thief, "Knife", item, owner.UserId)
 	-- The victim gets revenge on the thief (and it ends the thief's own revenge on them)
 	owner:SetAttribute("RevengeOn", thief.UserId)
-	owner:SetAttribute("RevengeUntil", now() + CONFIG.RevengeTime)
+	local revengeEndsAt = now() + CONFIG.RevengeTime
+	owner:SetAttribute("RevengeUntil", revengeEndsAt)
+	-- Nobody else gets to clean them out: the vault seals for a while
+	owner:SetAttribute("SealedUntil", now() + CONFIG.RobbedSeal)
 	if revenge then
 		thief:SetAttribute("RevengeOn", nil)
 		thief:SetAttribute("RevengeUntil", nil)
 	end
 	Net.Notify(owner, `{thief.DisplayName} is stealing your {Items.DisplayName(item)}! Knock them down!`, "bad")
-	Net.Notify(owner, `REVENGE: {thief.DisplayName}'s vault is open to you for {CONFIG.RevengeTime}s!`, "info")
+	Net.Notify(
+		owner,
+		`REVENGE: {thief.DisplayName}'s vault is open to you for {math.ceil(revengeEndsAt - now())}s!`,
+		"info"
+	)
 	Net.Remotes.Effect:FireClient(owner, "Alarm")
 	Net.Remotes.Effect:FireAllClients("Stolen", root.Position, Items.Color(item))
 end
@@ -693,8 +800,9 @@ killBurglar = function(b: Burglar, killer: Player?)
 	pcall(b.Root.SetNetworkOwner, b.Root, nil)
 	game:GetService("Debris"):AddItem(b.Model, 5)
 	if killer then
-		DataService.AddCash(killer, CONFIG.BurglarReward)
-		Net.Notify(killer, `You stopped {b.Name}! +${CONFIG.BurglarReward}`, "good")
+		local bounty = GameConfig.Pay(CONFIG.BurglarReward, BaseService.RackIncome(killer)) * CONFIG.BloodMoonBounty
+		DataService.AddCash(killer, bounty)
+		Net.Notify(killer, `You stopped {b.Name}! Bounty +${bounty}`, "good")
 	end
 end
 
@@ -714,22 +822,57 @@ local function exitPath(base: MapService.BaseSite?): { Vector3 }
 	return path
 end
 
--- Picks a vault worth robbing: an owned one with a stealable knife, that burglars haven't already
--- robbed this raid and that doesn't already have two of them at its gate
-local function pickTarget(): (MapService.BaseSite?, number?)
-	local options = {}
+-- Count current assignments, so dead and escaping burglars immediately free up a gate.
+local function assignedTo(base: MapService.BaseSite): number
+	local count = 0
+	for _, b in burglars do
+		if not b.Dead and b.Base == base and b.State ~= "Escape" then
+			count += 1
+		end
+	end
+	return count
+end
+
+local function stealableSlot(base: MapService.BaseSite): number?
+	local owner = BaseService.OwnerOf(base)
+	local profile = owner and DataService.Get(owner)
+	if not owner or not profile or not canBreak(base) or (takenFrom[base] or 0) >= CONFIG.BurglarStealsPerVault then
+		return nil
+	end
+	local protected = BaseService.ProtectedItem(owner)
+	for slot, item in profile.Knives do
+		if slot <= profile.Slots and item ~= protected then
+			return slot
+		end
+	end
+	return nil
+end
+
+-- Picks a vault to hit: any owned, breakable one that hasn't got BurglarsPerGate of them at its
+-- gate already. Ones with a stealable knife (and loot left this raid) come with a slot to rob;
+-- the rest still get their gate smashed.
+local function pickTarget(except: MapService.BaseSite?): (MapService.BaseSite?, number?)
+	local options: { { Base: MapService.BaseSite, Slot: number? } } = {}
 	for _, base in MapService.Bases do
 		local owner = BaseService.OwnerOf(base)
 		local profile = owner and DataService.Get(owner)
-		if owner and profile and not owner:GetAttribute("InRound") and not DataService.IsNewPlayer(owner) then
-			if (takenFrom[base] or 0) >= 1 or (burglarsAt[base] or 0) >= 2 then
+		if owner and profile and canBreak(base) and base ~= except then
+			if assignedTo(base) >= CONFIG.BurglarsPerGate then
 				continue
 			end
 			local protected = BaseService.ProtectedItem(owner)
-			for slot, item in profile.Knives do
-				if item ~= protected and slot <= profile.Slots then
-					table.insert(options, { Base = base, Slot = slot })
+			local any = false
+			if (takenFrom[base] or 0) < CONFIG.BurglarStealsPerVault then
+				for slot, item in profile.Knives do
+					if item ~= protected and slot <= profile.Slots then
+						table.insert(options, { Base = base, Slot = slot })
+						any = true
+					end
 				end
+			end
+			-- Nothing worth taking? They'll still smash the gate and rummage around
+			if not any then
+				table.insert(options, { Base = base, Slot = nil })
 			end
 		end
 	end
@@ -737,13 +880,37 @@ local function pickTarget(): (MapService.BaseSite?, number?)
 		return nil, nil
 	end
 	local pick = options[rng:NextInteger(1, #options)]
-	burglarsAt[pick.Base] = (burglarsAt[pick.Base] or 0) + 1
 	return pick.Base, pick.Slot
 end
 
-local function spawnBurglar()
+-- Where a burglar stands to hack at a vault's gate
+local function gateFront(base: MapService.BaseSite, burglar: Burglar): Vector3
+	local occupied: { [number]: boolean } = {}
+	for _, other in burglars do
+		if other ~= burglar and not other.Dead and other.Base == base and other.State ~= "Escape" then
+			occupied[other.GateLane] = true
+		end
+	end
+	for lane = 1, CONFIG.BurglarsPerGate do
+		if not occupied[lane] then
+			burglar.GateLane = lane
+			break
+		end
+	end
+	local offset = if CONFIG.BurglarsPerGate > 1
+		then -9 + 18 * (burglar.GateLane - 1) / (CONFIG.BurglarsPerGate - 1)
+		else 0
+	local front = (base.Frame * CFrame.new(offset, 0, HALF_D + 5)).Position
+	return Vector3.new(front.X, GuardService.RootHeight(), front.Z)
+end
+
+local function spawnBurglar(generation: number)
 	local name = BURGLAR_NAMES[rng:NextInteger(1, #BURGLAR_NAMES)]
 	local model = buildBurglar(name)
+	if not raiding or generation ~= raidGeneration then
+		model:Destroy()
+		return
+	end
 	local height = GuardService.RootHeight()
 	local start = Vector3.new(rng:NextNumber(-25, 25), height, rng:NextNumber(150, 200))
 	model:PivotTo(CFrame.new(start))
@@ -761,6 +928,7 @@ local function spawnBurglar()
 		State = "ToGate",
 		Base = nil,
 		Slot = nil,
+		GateLane = 0,
 		Carrying = nil,
 		CarryOwner = nil,
 		CarryVisual = nil,
@@ -785,8 +953,7 @@ local function spawnBurglar()
 	})
 	b.Base, b.Slot = pickTarget()
 	if b.Base then
-		local front = (b.Base.Frame * CFrame.new(0, 0, HALF_D + 5)).Position
-		b.Waypoints = { Vector3.new(0, height, 20), Vector3.new(front.X, height, front.Z) }
+		b.Waypoints = { Vector3.new(rng:NextNumber(-9, 9), height, 20), gateFront(b.Base, b) }
 	else
 		b.State = "Taunt"
 		b.Waypoints = { Vector3.new(rng:NextNumber(-20, 20), height, rng:NextNumber(-140, -20)) }
@@ -830,6 +997,24 @@ local function stepBurglar(b: Burglar, dt: number)
 		return
 	end
 	local clock = os.clock()
+	if raiding then
+		local stun = PowerService.SpringRaidTrap(b.Position)
+		if stun then
+			b.StunnedUntil = now() + stun
+		end
+	end
+	if not raiding and b.State ~= "Escape" then
+		local inside = b.State == "Enter" or b.State == "Steal"
+		b.Waypoints = exitPath(if inside then b.Base else nil)
+		b.State = "Escape"
+		b.NextAction = 0
+	end
+	if b.Base and b.State ~= "Escape" and not canBreak(b.Base) then
+		local inside = b.State == "Enter" or b.State == "Steal"
+		b.Waypoints = exitPath(if inside then b.Base else nil)
+		b.State = "Escape"
+		b.NextAction = 0
+	end
 	if now() < b.StunnedUntil or clock < b.NextAction then
 		animate(b, "Idle")
 		return
@@ -853,10 +1038,16 @@ local function stepBurglar(b: Burglar, dt: number)
 	if b.State == "ToGate" or b.State == "Taunt" then
 		if walk(b, dt, CONFIG.BurglarSpeed) then
 			if b.State == "Taunt" then
-				-- Nothing to rob: wander and laugh
-				b.Waypoints =
-					{ Vector3.new(rng:NextNumber(-20, 20), GuardService.RootHeight(), rng:NextNumber(-140, -20)) }
-				b.NextAction = clock + rng:NextNumber(1, 3)
+				-- Nothing to rob right now: look again, otherwise dart somewhere else on the plaza
+				local nextBase, nextSlot = pickTarget()
+				if nextBase then
+					b.Base, b.Slot = nextBase, nextSlot
+					b.State = "ToGate"
+					b.Waypoints = { gateFront(nextBase, b) }
+				else
+					b.Waypoints =
+						{ Vector3.new(rng:NextNumber(-20, 20), GuardService.RootHeight(), rng:NextNumber(-140, -20)) }
+				end
 			else
 				b.State = "Bash"
 			end
@@ -867,6 +1058,7 @@ local function stepBurglar(b: Burglar, dt: number)
 			b.Waypoints = exitPath(nil)
 		elseif gateOpen(base) or not BaseService.OwnerOf(base) then
 			b.State = "Enter"
+			b.Slot = stealableSlot(base)
 			local slotCF = b.Slot and base.SlotCFrames[b.Slot]
 			local height = GuardService.RootHeight()
 			local inside = (base.Frame * CFrame.new(0, 0, 10)).Position
@@ -882,13 +1074,14 @@ local function stepBurglar(b: Burglar, dt: number)
 				CFrame.lookAt(b.Position, Vector3.new(blocker.Position.X, b.Position.Y, blocker.Position.Z))
 			)
 			animate(b, "Idle")
-			b.NextAction = clock + 1.1
+			b.NextAction = clock + CONFIG.BurglarSwing
 			Net.Animate(b.Model, "GuardStab")
 			task.delay(AnimLibrary.Clips.GuardStab.Impact or 0.3, function()
-				if not b.Dead then
+				if not b.Dead and raiding and b.State == "Bash" and now() >= b.StunnedUntil then
 					-- Burglars come prepared: tougher gates take bigger crowbars
 					local max = (base.Blocker:GetAttribute("MaxHealth") or 0) :: number
-					damageGate(base, math.max(CONFIG.BurglarGateDamage, max * 0.015), b.Name)
+					local _ = max
+					damageGate(base, CONFIG.BurglarGateDamage, b.Name, b.Model)
 				end
 			end)
 		end
@@ -900,6 +1093,7 @@ local function stepBurglar(b: Burglar, dt: number)
 		end
 	elseif b.State == "Steal" and base then
 		-- Lift the knife (if it's still there)
+		b.Slot = stealableSlot(base)
 		local owner = BaseService.OwnerOf(base)
 		local profile = owner and DataService.Get(owner)
 		local slot = b.Slot
@@ -910,7 +1104,8 @@ local function stepBurglar(b: Burglar, dt: number)
 			and slot
 			and item
 			and item ~= BaseService.ProtectedItem(owner)
-			and (takenFrom[base] or 0) < 1
+			and canBreak(base)
+			and (takenFrom[base] or 0) < CONFIG.BurglarStealsPerVault
 		then
 			takenFrom[base] = (takenFrom[base] or 0) + 1
 			DataService.Update(owner, function(p)
@@ -933,8 +1128,24 @@ local function stepBurglar(b: Burglar, dt: number)
 				1
 			)
 		end
-		b.State = "Escape"
-		b.Waypoints = exitPath(base)
+		if b.Carrying then
+			b.State = "Escape"
+			b.Waypoints = exitPath(base)
+		else
+			-- Came up empty: straight on to the next vault
+			b.Base, b.Slot = nil, nil
+			local nextBase, nextSlot = pickTarget(base)
+			if nextBase then
+				local height = GuardService.RootHeight()
+				local outside = (base.Frame * CFrame.new(0, 0, HALF_D + 6)).Position
+				b.Base, b.Slot = nextBase, nextSlot
+				b.State = "ToGate"
+				b.Waypoints = { Vector3.new(outside.X, height, outside.Z), gateFront(nextBase, b) }
+			else
+				b.State = "Escape"
+				b.Waypoints = exitPath(base)
+			end
+		end
 	elseif b.State == "Escape" then
 		if walk(b, dt, if b.Carrying then CONFIG.BurglarCarrySpeed else CONFIG.BurglarSpeed) then
 			-- Got away
@@ -962,23 +1173,40 @@ function RaidService.Start()
 	if raiding then
 		return
 	end
+	-- Burglars need somewhere to go: if every vault is protected (new players, everyone in a
+	-- round), there's no raid rather than an announcement that nothing follows
+	local any = false
+	for _, base in MapService.Bases do
+		if protectedReason(base, true) == nil then
+			any = true
+		end
+	end
+	if not any then
+		return
+	end
 	raiding = true
+	raidGeneration += 1
+	local generation = raidGeneration
 	raidEndsAt = now() + CONFIG.Duration
 	ReplicatedStorage:SetAttribute("Raid", true)
 	ReplicatedStorage:SetAttribute("RaidEndsAt", raidEndsAt)
 	for base in gates do
 		refreshGateBar(base)
 	end
-	Net.Announce("RAID! Burglars are coming for the vaults - defend yours!", Color3.fromRGB(255, 60, 60), 3)
+	Net.Announce(
+		"BLOOD MOON! Burglars are coming, gates are weak and bounties are doubled!",
+		Color3.fromRGB(255, 60, 60),
+		3
+	)
 	Net.Remotes.Effect:FireAllClients("RaidStart", raidEndsAt)
 	-- Burglars arrive in waves through the raid
-	table.clear(burglarsAt)
 	table.clear(takenFrom)
-	local count = CONFIG.Burglars + math.min(1, math.max(0, 3 - #Players:GetPlayers()))
+	local count = CONFIG.Burglars
 	for i = 1, count do
-		task.delay((i - 1) * (CONFIG.Duration * 0.6 / count), function()
-			if raiding then
-				spawnBurglar()
+		-- Three arrive together, with all waves appearing in the first half of the raid.
+		task.delay(((i - 1) // 3) * (CONFIG.Duration * 0.5 / math.ceil(count / 3)) + ((i - 1) % 3) * 0.4, function()
+			if raiding and generation == raidGeneration then
+				spawnBurglar(generation)
 			end
 		end)
 	end
@@ -989,6 +1217,7 @@ function RaidService.Stop()
 		return
 	end
 	raiding = false
+	raidGeneration += 1
 	ReplicatedStorage:SetAttribute("Raid", nil)
 	ReplicatedStorage:SetAttribute("RaidEndsAt", nil)
 	for base in gates do
@@ -1004,27 +1233,41 @@ function RaidService.Stop()
 			local inside = b.State == "Enter" or b.State == "Steal"
 			b.State = "Escape"
 			b.Waypoints = exitPath(if inside then b.Base else nil)
+			b.NextAction = 0
 		end
 	end
-	Net.Announce("The raid is over. The burglars are fleeing...", Color3.fromRGB(200, 200, 220), 1)
+	Net.Announce("The Blood Moon sets. The burglars are fleeing...", Color3.fromRGB(200, 200, 220), 1)
 	Net.Remotes.Effect:FireAllClients("RaidEnd")
 end
 
 -- Raids happen near the end of each intermission (GameConfig.Raid.StartBefore before the round)
 local function schedule()
 	local raidedThisIntermission = false
+	local intermissions = 0
+	local counted = false
 	while true do
 		task.wait(0.5)
 		local phase = ReplicatedStorage:GetAttribute("Phase")
 		local endsAt = ReplicatedStorage:GetAttribute("PhaseEndsAt")
 		local waiting = ReplicatedStorage:GetAttribute("Status") ~= "Next round in"
 		if phase == "Intermission" and type(endsAt) == "number" and not waiting then
+			if not counted then
+				counted = true
+				intermissions += 1
+			end
+			local bloodMoon = intermissions % CONFIG.Every == 0
 			local left = endsAt - now()
 			ReplicatedStorage:SetAttribute(
 				"NextRaidAt",
-				if raidedThisIntermission then nil else endsAt - CONFIG.StartBefore
+				if raidedThisIntermission or not bloodMoon then nil else endsAt - CONFIG.StartBefore
 			)
-			if not raidedThisIntermission and not raiding and left <= CONFIG.StartBefore and left > 20 then
+			if
+				bloodMoon
+				and not raidedThisIntermission
+				and not raiding
+				and left <= CONFIG.StartBefore
+				and left > 20
+			then
 				if #Players:GetPlayers() >= CONFIG.MinPlayers then
 					raidedThisIntermission = true
 					RaidService.Start()
@@ -1034,6 +1277,7 @@ local function schedule()
 			ReplicatedStorage:SetAttribute("NextRaidAt", nil)
 			if phase ~= "Intermission" then
 				raidedThisIntermission = false
+				counted = false
 			end
 		end
 		if raiding and now() >= raidEndsAt then
@@ -1092,6 +1336,7 @@ function RaidService.Init()
 		refreshGateBar(base)
 	end
 	BaseService.OnStealPrompt = onStealPrompt
+	PowerService.CanRaidPlayer = RaidService.CanAttackPlayer
 	Targets.AddProvider(playerTargets)
 	Net.Remotes.RepairGate.OnServerEvent:Connect(onRepair)
 
@@ -1106,7 +1351,7 @@ function RaidService.Init()
 		if raiding then
 			for _, player in Players:GetPlayers() do
 				local root = rootOf(player)
-				if player ~= flasher and root and not player:GetAttribute("InRound") then
+				if root and RaidService.CanAttackPlayer(flasher, player) then
 					local offset = root.Position - origin
 					if offset.Magnitude < range and look:Dot(offset.Unit) > 0.7 then
 						player:SetAttribute("StunnedUntil", now() + duration)
@@ -1133,10 +1378,18 @@ function RaidService.Init()
 	RunService.Heartbeat:Connect(step)
 	task.spawn(schedule)
 	task.spawn(function()
+		local tick = 0
 		while true do
 			task.wait(0.3)
 			evictIntruders()
 			stepAuras()
+			-- Gate labels (the new-player shield counts down, owners come and go)
+			tick += 1
+			if tick % 10 == 0 then
+				for base in gates do
+					refreshGateBar(base)
+				end
+			end
 		end
 	end)
 end

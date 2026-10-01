@@ -132,12 +132,27 @@ local GameConfig = {
 		KnockImmunity = 3.5, -- after getting up, no knocking you straight back down
 		RevengeTime = 60, -- robbed? their vault is open to you (and only you) for this long
 		ThrowGateMultiplier = 1.25, -- thrown knives hit gates a bit harder than swings
-		Burglars = 3,
+		Burglars = 5, -- per Blood Moon, arriving in waves through the first half of it
 		BurglarHealth = 160,
-		BurglarSpeed = 17,
-		BurglarCarrySpeed = 13,
-		BurglarReward = 60,
-		BurglarGateDamage = 35, -- per bash
+		BurglarSpeed = 20, -- a bit quicker than a fresh player; catchable once you've trained
+		BurglarCarrySpeed = 16,
+		BurglarSwing = 1.2, -- seconds between crowbar hits on a gate
+		BurglarStealsPerVault = 1, -- knives burglars can take from one vault per Blood Moon
+		BurglarsPerGate = 2, -- at most this many at one gate; the rest go for other vaults
+		BurglarReward = { Min = 60, Seconds = 20 }, -- bounty for stopping one (GameConfig.Pay)
+		BurglarGateDamage = 15, -- per bash, flat: strong walls really do keep them out
+
+		-- Break-ins happen any time outside a round. Players' knives do this fraction of their
+		-- damage to gates (a starter knife needs ~15s on a Tier 1 gate; walls scale it up).
+		PlayerGateDamage = 0.5,
+		RobbedSeal = 180, -- after a knife is stolen, that vault can't be broken into for this long
+		CatchBounty = { Min = 100, Seconds = 60 }, -- of the knife's income, for catching your thief
+		IntruderBounty = { Min = 50, Seconds = 10 }, -- of your income, for knocking out an intruder
+		-- Every few intermissions the Blood Moon rises: burglars come, gates take more damage,
+		-- bounties double and anyone outside their own vault can be knocked down
+		Every = 3,
+		BloodMoonGateDamage = 1.5,
+		BloodMoonBounty = 2,
 	},
 
 	-- Rebirth: start over (cash, knives, slots, Speed, wheel, walls) for a permanent multiplier on

@@ -77,11 +77,14 @@ victim's rack (returned if the Murderer is shot); survivors get 2x vault income 
   light beam, aura). Aura = `Items.AuraPower`: sparks/flames/crackle + dashed floor ring; non-owners inside it are
   slowed (RaidService.stepAuras -> player AuraSlow/AuraFrom). Walls per tier (`VaultWalls`, GameConfig.Walls) with a
   gate whose invisible Blocker is solid client-side for non-owners (client/Raid) and evicted server-side.
-- Break-ins (`RaidService`): any time in Intermission, gates have health (Targets registry: hub swings/throws hit
-  gates and knock players down), break, reforge, regen; the owner is alerted on the first hit and can repair (R).
-  Not while the owner is in a round or has the new-player shield. Steal from broken vaults (protected = the item
-  you fight with, `BaseService.ProtectedItem`); revenge window; the owner's hit sends a thief home (player
-  `StolenFrom`). The Raid is now an event: burglar NPCs (max 1 knife per vault per raid) + anyone knockable.
+- Break-ins (`RaidService`): any time in Intermission. Gates have health (Targets registry: hub swings/throws hit
+  gates at `Raid.PlayerGateDamage`, and knock down intruders/carriers), break, reforge, regen; the owner is alerted
+  on the first hit with the attacker outlined, and can repair (R) or upgrade walls (hold G at their gate). Not while
+  the owner is in a round, has the new-player shield, or was just robbed (`SealedUntil`, `Raid.RobbedSeal`). Steal
+  from broken vaults (protected = the item you fight with); revenge window; the owner catching their thief gets the
+  knife back (`StealService.Recover`) plus a bounty and sends them home. A Bear Trap set inside your own vault
+  waits there. The "raid" is the Blood Moon event every `Raid.Every` intermissions: a few burglars, gates take more
+  damage, bounties double, anyone not at home can be knocked down.
 - Retention (`Rewards`): offline earnings (`GameConfig.Offline`, from profile `LastSeen`) and the 7-day login streak
   (`GameConfig.Daily`, `Remotes.ClaimDaily`), shown by `client/Welcome` on join (`Remotes.Welcome`). New-player
   shield: `DataService.IsNewPlayer` (PlayTime < `NewPlayerShield`, no rebirths) blocks break-ins, burglars and loot.

@@ -23,7 +23,7 @@ local IRON = Color3.fromRGB(28, 28, 34)
 local STONE = Color3.fromRGB(96, 92, 108)
 local DARK_STONE = Color3.fromRGB(62, 60, 72)
 local BARK = Color3.fromRGB(52, 42, 38)
-local LAMP = Color3.fromRGB(255, 190, 110)
+local LAMP = Color3.fromRGB(255, 216, 164)
 local WINDOW = Color3.fromRGB(255, 205, 120)
 
 local folder: Folder
@@ -105,7 +105,7 @@ local function sconce(x: number, z: number, facing: number, color: Color3)
 	local glassColor = color:Lerp(Color3.fromRGB(255, 220, 160), 0.35)
 	local lantern = prop("Lantern", at(x - facing * 2, 11.2, z), 1.3, { Glass = glassColor })
 	local glass = (lantern:FindFirstChild("Glass") or lantern.PrimaryPart) :: BasePart
-	glow(glass, glassColor, 24, 1.4)
+	glow(glass, LAMP, 44, 1.2)
 end
 
 local function torch(position: Vector3, color: Color3?)
@@ -153,7 +153,7 @@ local function streetLamp(position: Vector3)
 	)
 	local lantern = prop("Lantern", CFrame.new(position + Vector3.new(2.2, 10.9, 0)), 1.2)
 	local glass = (lantern:FindFirstChild("Glass") or lantern.PrimaryPart) :: BasePart
-	glow(glass, LAMP, 30, 1.5)
+	glow(glass, LAMP, 44, 1.3)
 end
 
 -- Fireflies drifting over a stretch of ground, and a low mist rolling along it
@@ -825,7 +825,7 @@ function ManorDecor.Build(root: Instance, arena: Bounds, hideaways: { Bounds })
 
 	-- The plaza: lamps along both sides, the giant Void Edge at the back, fireflies everywhere
 	fireflies(Vector3.new(0, 6, -95), Vector3.new(width - 6, 10, 170), Color3.fromRGB(255, 230, 140), 10)
-	for z = -30, -150, -40 do
+	for z = -10, -170, -32 do
 		streetLamp(Vector3.new(-half + 4, 0, z))
 		streetLamp(Vector3.new(half - 4, 0, z))
 	end

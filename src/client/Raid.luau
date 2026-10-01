@@ -46,6 +46,9 @@ end
 
 -- Whether a vault is open to me right now
 local function openToMe(ownerId: number?): boolean
+	if ReplicatedStorage:GetAttribute("Phase") ~= "Intermission" or player:GetAttribute("InRound") then
+		return false
+	end
 	if not ownerId or ownerId == player.UserId then
 		return false
 	end
@@ -101,6 +104,10 @@ local function refreshPrompts()
 end
 
 local function trackPrompt(instance: Instance)
+	if instance:IsA("ProximityPrompt") and instance:GetAttribute("WallUpgrade") then
+		instance.Enabled = instance:GetAttribute("Owner") == player.UserId
+		return
+	end
 	if instance:IsA("ProximityPrompt") and instance:GetAttribute("Steal") then
 		instance:AddTag("StealPrompt")
 		instance.Enabled = false
@@ -174,6 +181,10 @@ function Raid.Init()
 		refreshGates()
 		refreshPrompts()
 	end)
+	ReplicatedStorage:GetAttributeChangedSignal("Phase"):Connect(function()
+		refreshGates()
+		refreshPrompts()
+	end)
 	task.spawn(function()
 		while true do
 			task.wait(0.5)
@@ -208,6 +219,9 @@ function Raid.Init()
 			and ((blocker:GetAttribute("Health") or 0) :: number) < ((blocker:GetAttribute("MaxHealth") or 0) :: number)
 			and (root.Position - blocker.Position).Magnitude < 16
 	end
+	repairButton:GetPropertyChangedSignal("Visible"):Connect(function()
+		Ui.gui:SetAttribute("RepairVisible", repairButton.Visible)
+	end)
 	ContextActionService:BindAction("RepairGate", function(_, state)
 		if state == Enum.UserInputState.Begin and nearOwnGate() then
 			Remotes.RepairGate:FireServer()

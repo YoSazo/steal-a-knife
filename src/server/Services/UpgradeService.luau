@@ -123,10 +123,14 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 end
 
 function UpgradeService.Init()
-	Net.Remotes.Purchase.OnServerInvoke = function(player: Player, kind: unknown)
+	local function buy(player: Player, kind: unknown): (boolean, string)
 		local ok, message = purchase(player, kind)
 		Net.Notify(player, message, if ok then "good" else "bad")
 		return ok, message
+	end
+	Net.Remotes.Purchase.OnServerInvoke = buy
+	BaseService.OnUpgradeWalls = function(player: Player)
+		buy(player, "Walls")
 	end
 	game:GetService("Players").PlayerRemoving:Connect(function(player)
 		lastRequest[player] = nil

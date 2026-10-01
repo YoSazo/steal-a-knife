@@ -61,18 +61,34 @@ function Atmosphere.Init()
 		Name = "RaidTint",
 		TintColor = Color3.new(1, 1, 1),
 	}, Lighting)
+	local tintTween: Tween? = nil
+	local skyTween: Tween? = nil
 	local function refreshSky()
 		local raid = ReplicatedStorage:GetAttribute("Raid") == true and not player:GetAttribute("InRound")
-		TweenService:Create(raidTint, TweenInfo.new(2), {
-			TintColor = if raid then Color3.fromRGB(255, 200, 200) else Color3.new(1, 1, 1),
-			Contrast = if raid then 0.12 else 0,
-		}):Play()
+		if tintTween then
+			tintTween:Cancel()
+		end
+		local nextTint = TweenService:Create(raidTint, TweenInfo.new(0.5), {
+			TintColor = if raid then Color3.fromRGB(255, 225, 210) else Color3.new(1, 1, 1),
+			Contrast = if raid then 0.06 else 0,
+		})
+		tintTween = nextTint
+		nextTint:Play()
 		local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
 		if atmosphere then
-			TweenService:Create(atmosphere, TweenInfo.new(2), {
-				Color = if raid then Color3.fromRGB(120, 40, 50) else Color3.fromRGB(72, 62, 104),
-				Decay = if raid then Color3.fromRGB(70, 10, 20) else Color3.fromRGB(34, 26, 52),
-			}):Play()
+			if skyTween then
+				skyTween:Cancel()
+			end
+			local nextSky = TweenService:Create(atmosphere, TweenInfo.new(0.5), {
+				Color = if raid
+					then Color3.fromRGB(215, 145, 125)
+					else atmosphere:GetAttribute("HubColor") or atmosphere.Color,
+				Decay = if raid
+					then Color3.fromRGB(142, 101, 104)
+					else atmosphere:GetAttribute("HubDecay") or atmosphere.Decay,
+			})
+			skyTween = nextSky
+			nextSky:Play()
 		end
 		if raid then
 			Effects.Sound(Sounds.Alarm, nil, 0.35)
@@ -80,6 +96,7 @@ function Atmosphere.Init()
 	end
 	ReplicatedStorage:GetAttributeChangedSignal("Raid"):Connect(refreshSky)
 	player:GetAttributeChangedSignal("InRound"):Connect(refreshSky)
+	refreshSky()
 
 	-- Dread: heartbeat + red vignette as the Murderer closes in ---------------------------------
 	local dreadGui = new("ScreenGui", {
@@ -124,6 +141,14 @@ function Atmosphere.Init()
 	}, dreadGui)
 	Ui.textStroke(finalLabel, 4)
 	local finalGrade = new("ColorCorrectionEffect", { Name = "FinalMoment", Enabled = false }, Lighting)
+	local function resetRoundEffects()
+		if not player:GetAttribute("InRound") then
+			finalGrade.Enabled = false
+			whiteout.BackgroundTransparency = 1
+		end
+	end
+	player:GetAttributeChangedSignal("InRound"):Connect(resetRoundEffects)
+	player.CharacterAdded:Connect(resetRoundEffects)
 
 	Remotes.Effect.OnClientEvent:Connect(function(kind: string, ...)
 		if kind == "Blinded" then
@@ -136,6 +161,9 @@ function Atmosphere.Init()
 				{ BackgroundTransparency = 1 }
 			):Play()
 		elseif kind == "FinalKill" then
+			if not player:GetAttribute("InRound") then
+				return
+			end
 			local position, why = ...
 			local camera = workspace.CurrentCamera
 			finalLabel.Text = if why == "Hero" then "THE MURDERER IS DOWN!" else "FINAL KILL"

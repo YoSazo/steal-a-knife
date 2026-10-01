@@ -122,14 +122,14 @@ function MapService.IsInHideaway(pos: Vector3): boolean
 	return false
 end
 
--- Moonlit night with a purple haze. Ambient is kept fairly high so it's spooky, not pitch black;
--- bloom makes the neon rarity colours and lamps pop.
+-- Warm ambient fill keeps the estate readable even between lamps and during teleports.
 local function buildLighting()
 	Lighting.ClockTime = 0
-	Lighting.Brightness = 1.3
-	Lighting.Ambient = Color3.fromRGB(78, 72, 100)
-	Lighting.OutdoorAmbient = Color3.fromRGB(112, 104, 145)
-	Lighting.EnvironmentDiffuseScale = 0.3
+	Lighting.Brightness = 2.4
+	Lighting.ExposureCompensation = 0.15
+	Lighting.Ambient = Color3.fromRGB(128, 123, 117)
+	Lighting.OutdoorAmbient = Color3.fromRGB(151, 146, 138)
+	Lighting.EnvironmentDiffuseScale = 0.65
 	Lighting.EnvironmentSpecularScale = 0.6
 	Lighting.GlobalShadows = true
 	for _, child in Lighting:GetChildren() do
@@ -138,12 +138,14 @@ local function buildLighting()
 		end
 	end
 	local atmosphere = Instance.new("Atmosphere")
-	atmosphere.Density = 0.36
+	atmosphere.Density = 0.22
 	atmosphere.Offset = 0.1
-	atmosphere.Color = Color3.fromRGB(72, 62, 104)
-	atmosphere.Decay = Color3.fromRGB(34, 26, 52)
+	atmosphere.Color = Color3.fromRGB(175, 160, 143)
+	atmosphere.Decay = Color3.fromRGB(95, 88, 101)
+	atmosphere:SetAttribute("HubColor", atmosphere.Color)
+	atmosphere:SetAttribute("HubDecay", atmosphere.Decay)
 	atmosphere.Glare = 0
-	atmosphere.Haze = 1.4
+	atmosphere.Haze = 0.8
 	atmosphere.Parent = Lighting
 	-- A huge full moon and plenty of stars
 	for _, child in Lighting:GetChildren() do
@@ -158,14 +160,14 @@ local function buildLighting()
 	sky.Parent = Lighting
 	Lighting.GeographicLatitude = 30
 	local bloom = Instance.new("BloomEffect")
-	bloom.Intensity = 0.7
+	bloom.Intensity = 0.5
 	bloom.Size = 28
 	bloom.Threshold = 1.4
 	bloom.Parent = Lighting
 	local grade = Instance.new("ColorCorrectionEffect")
-	grade.Contrast = 0.12
-	grade.Saturation = 0.15 -- moonlit but vivid
-	grade.TintColor = Color3.fromRGB(232, 226, 255)
+	grade.Contrast = 0.04
+	grade.Saturation = 0.08
+	grade.TintColor = Color3.fromRGB(255, 251, 241)
 	grade.Parent = Lighting
 end
 
@@ -358,10 +360,10 @@ local function buildBases()
 		chandelier.Parent = folder
 		local flames = (chandelier:FindFirstChild("Flames") or chandelier.PrimaryPart) :: BasePart
 		local candleLight = Instance.new("PointLight")
-		candleLight.Color = Color3.fromRGB(255, 190, 120)
-		candleLight.Range = 30
-		candleLight.Brightness = 1.6
-		candleLight.Shadows = true
+		candleLight.Color = Color3.fromRGB(255, 224, 184)
+		candleLight.Range = 44
+		candleLight.Brightness = 1.3
+		candleLight.Shadows = false
 		candleLight.Parent = flames
 		for _, x in { -16, -8, 8, 16 } do
 			local sconce = Props.Build("Sconce", true)
@@ -370,9 +372,9 @@ local function buildBases()
 			sconce.Parent = folder
 			local flame = (sconce:FindFirstChild("Flame") or sconce.PrimaryPart) :: BasePart
 			local light = Instance.new("PointLight")
-			light.Color = Color3.fromRGB(255, 170, 90)
-			light.Range = 14
-			light.Brightness = 1.2
+			light.Color = Color3.fromRGB(255, 213, 165)
+			light.Range = 24
+			light.Brightness = 1
 			light.Parent = flame
 		end
 		local rug = block("Rug", Vector3.new(14, 0.08, 22), at(0, 0.64, 6), color:Lerp(NIGHT, 0.45), folder)

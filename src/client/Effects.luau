@@ -662,17 +662,15 @@ function Effects.Init()
 		end
 	end)
 
-	-- Inside a round map: darker, moodier exposure (the hub keeps its moonlit glow)
+	-- Keep exposure steady across joins and round teleports; room lamps supply the mood.
 	local Lighting = game:GetService("Lighting")
 	local function roundLighting()
 		local inRound = player:GetAttribute("InRound") == true
 		local info = TweenInfo.new(1.2, Enum.EasingStyle.Quad)
-		TweenService:Create(Lighting, info, {
-			ExposureCompensation = if inRound then -0.7 else 0,
-		}):Play()
+		Lighting.ExposureCompensation = 0.15
 		local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
 		if bloom then
-			TweenService:Create(bloom, info, { Intensity = if inRound then 0.35 else 0.7 }):Play()
+			TweenService:Create(bloom, info, { Intensity = if inRound then 0.35 else 0.5 }):Play()
 		end
 	end
 	player:GetAttributeChangedSignal("InRound"):Connect(roundLighting)

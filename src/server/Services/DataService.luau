@@ -160,9 +160,13 @@ local function key(player: Player): string
 end
 
 local function isStudioApiError(err: any): boolean
-	local message = tostring(err)
+	local message = string.lower(tostring(err))
 	return RunService:IsStudio()
-		and (message:find("StudioAccessToApisNotAllowed") ~= nil or message:find("publish") ~= nil)
+		and (
+			message:find("studioaccesstoapisnotallowed", 1, true) ~= nil
+			or message:find("api access is not enabled", 1, true) ~= nil
+			or message:find("publish", 1, true) ~= nil
+		)
 end
 
 local function loadAsync(player: Player): Profile?
@@ -315,8 +319,12 @@ local function onPlayerRemoving(player: Player)
 end
 
 -- New players' knives can't be taken (break-ins, burglars, Murderer loot) for their first
--- GameConfig.NewPlayerShield seconds of play
+-- GameConfig.NewPlayerShield seconds of play. In Studio everyone is new every session, so the
+-- shield is off there unless ReplicatedStorage has DebugShield = true.
 function DataService.IsNewPlayer(player: Player, profile: Profile?): boolean
+	if RunService:IsStudio() and not ReplicatedStorage:GetAttribute("DebugShield") then
+		return false
+	end
 	local p = profile or profiles[player]
 	return p ~= nil and p.Rebirths == 0 and p.PlayTime < GameConfig.NewPlayerShield
 end

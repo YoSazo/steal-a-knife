@@ -40,13 +40,15 @@ RaidService.Init()
 Rewards.Init()
 RoundService.Init()
 DebugService.Init()
-DataService.Init()
 
-for _, player in Players:GetPlayers() do
-	task.spawn(player.LoadCharacterAsync, player)
-end
-Players.PlayerAdded:Connect(function(player)
-	player:LoadCharacterAsync()
+-- BaseService claims the vault on PlayerLoaded before this deferred initial spawn.
+DataService.PlayerLoaded:Connect(function(player: Player)
+	task.defer(function()
+		if player.Parent and not player.Character then
+			player:LoadCharacterAsync()
+		end
+	end)
 end)
+DataService.Init()
 
 print("[Steal a Knife] server ready")

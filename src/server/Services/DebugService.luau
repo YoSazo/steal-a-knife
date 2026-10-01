@@ -64,14 +64,16 @@ local commands: { [string]: (Player, ...any) -> any } = {
 		end
 		return root ~= nil
 	end,
-	Raid = function(player: Player)
-		if RaidService.IsRaiding() then
+	Raid = function(player: Player, enabled: boolean?)
+		local start = if enabled == nil then not RaidService.IsRaiding() else enabled
+		if not start then
 			RaidService.Stop()
 		else
 			RaidService.Start()
 		end
-		Net.Notify(player, "Studio debug: raid toggled", "info")
-		return true
+		local active = RaidService.IsRaiding()
+		Net.Notify(player, if active then "Studio debug: raid active" else "Studio debug: raid inactive", "info")
+		return active
 	end,
 	Walls = function(player: Player, level: number)
 		DataService.Update(player, function(p)
