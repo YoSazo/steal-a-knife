@@ -9,16 +9,37 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local Items = require(ReplicatedStorage.Shared.Items)
+local Knives = require(ReplicatedStorage.Shared.Config.Knives)
+local Net = require(script.Parent.Parent.Remotes)
 
 export type Profile = {
 	Cash: number,
-	Knives: { string },
+	Knives: { string }, -- item strings (Items): "Katana", "Katana|Gold|Huge"
 	Slots: number,
-	SpeedLevel: number,
 	Luck: number,
 	Tickets: number,
 	TotalKills: number,
 	RoundsWon: number,
+	Equipped: string, -- item you fight with / bring into rounds as the Murderer; "" = best owned
+	Discovered: { string }, -- every catalog knife ever owned (plain names), for the collection book
+	Powers: { [string]: number }, -- Innocent Power id -> level (1..3)
+	Loadout: { string }, -- equipped power ids, at most PowerSlots
+	PowerSlots: number,
+	Speed: number, -- trained on the vault treadmill; turned into walk speed by GameConfig.WalkSpeedFor
+	TreadmillLevel: number,
+	WallLevel: number, -- GameConfig.Walls tier: wall height and gate health
+	Rebirths: number,
+	TutorialDone: boolean,
+	CasesOpened: number,
+	KnivesStolen: number, -- from other players' vaults in raids
+	BestPull: string, -- the most hyped item ever unboxed (for bragging rights)
+	IndexClaimed: { string }, -- knives whose Index reward was collected
+	NextFreeChest: number, -- os.time() when the plaza's free chest is ready for them again
+	LastSeen: number, -- os.time() of the last save (offline earnings count from here)
+	PlayTime: number, -- seconds played in total (the new-player shield runs out on this)
+	DailyStreak: number, -- day of the 7-day login streak last claimed (0 = none yet)
+	LastDaily: number, -- the UTC day number it was claimed on
 }
 
 local STORE_NAME = "PlayerData_v1"
@@ -29,25 +50,50 @@ local MAX_ATTEMPTS = 5
 local DataService = {}
 
 local profiles: { [Player]: Profile } = {}
+-- When each player was last seen before this visit (os.time(), 0 = never), for offline earnings
+DataService.AwaySince = {} :: { [Player]: number }
 local loadedEvent = Instance.new("BindableEvent")
 local changedEvent = Instance.new("BindableEvent")
 DataService.PlayerLoaded = loadedEvent.Event -- (player, profile)
 DataService.Changed = changedEvent.Event -- (player, profile)
 
-local store = DataStoreService:GetDataStore(STORE_NAME)
--- In Studio without "Enable Studio Access to API Services" we play with throwaway data
-local offline = false
+-- In Studio without API access (or in an unpublished place) we play with throwaway data.
+-- GetDataStore itself throws in an unpublished place, so it has to be guarded too.
+local storeOk, storeOrErr = pcall(DataStoreService.GetDataStore, DataStoreService, STORE_NAME)
+local store: DataStore = if storeOk then storeOrErr else nil :: any
+local offline = not storeOk
+if offline then
+	warn(`[DataService] no DataStore ({storeOrErr}) - using temporary data`)
+end
 
 local function defaultProfile(): Profile
 	return {
 		Cash = GameConfig.StartingCash,
 		Knives = {},
 		Slots = GameConfig.StartingSlots,
-		SpeedLevel = 0,
 		Luck = 0,
 		Tickets = 0,
 		TotalKills = 0,
 		RoundsWon = 0,
+		Equipped = "",
+		Discovered = {},
+		Powers = {},
+		Loadout = {},
+		PowerSlots = GameConfig.PowerSlots,
+		Speed = 0,
+		TreadmillLevel = 1,
+		WallLevel = 1,
+		Rebirths = 0,
+		TutorialDone = false,
+		CasesOpened = 0,
+		KnivesStolen = 0,
+		BestPull = "",
+		IndexClaimed = {},
+		NextFreeChest = 0,
+		LastSeen = 0,
+		PlayTime = 0,
+		DailyStreak = 0,
+		LastDaily = 0,
 	}
 end
 
@@ -62,8 +108,50 @@ local function reconcile(data: any): Profile
 		end
 	end
 	profile.Slots = math.clamp(profile.Slots, GameConfig.StartingSlots, GameConfig.MaxSlots)
-	profile.SpeedLevel = math.clamp(profile.SpeedLevel, 0, GameConfig.MaxSpeedLevel)
+	profile.Speed = math.max(0, profile.Speed)
+	profile.TreadmillLevel = math.clamp(math.floor(profile.TreadmillLevel), 1, #GameConfig.Treadmills)
 	profile.Cash = math.max(0, profile.Cash)
+	profile.WallLevel = math.clamp(math.floor(profile.WallLevel), 1, #GameConfig.Walls)
+	profile.Rebirths = math.clamp(math.floor(profile.Rebirths), 0, GameConfig.Rebirth.Max)
+	-- Drop knives that were removed from the catalog so nothing downstream sees an unknown name
+	local items = {}
+	for _, item in profile.Knives do
+		if Items.Valid(item) then
+			table.insert(items, item)
+		end
+	end
+	profile.Knives = items
+	local discovered = {}
+	for _, name in profile.Discovered do
+		local base = if type(name) == "string" then Items.Name(name) else ""
+		if Knives.ByName[base] and not table.find(discovered, base) then
+			table.insert(discovered, base)
+		end
+	end
+	profile.Discovered = discovered
+	if not Items.Valid(profile.BestPull) then
+		profile.BestPull = ""
+	end
+	if profile.Equipped ~= "" and not table.find(profile.Knives, profile.Equipped) then
+		profile.Equipped = ""
+	end
+	-- Powers: known ids, sane levels; loadout only holds owned powers, once each, within the slots
+	local powers: { [string]: number } = {}
+	for _, power in GameConfig.Powers do
+		local level = profile.Powers[power.Id]
+		if type(level) == "number" and level >= 1 then
+			powers[power.Id] = math.clamp(math.floor(level), 1, GameConfig.PowerMaxLevel)
+		end
+	end
+	profile.Powers = powers
+	profile.PowerSlots = math.clamp(profile.PowerSlots, GameConfig.PowerSlots, GameConfig.MaxPowerSlots)
+	local loadout = {}
+	for _, id in profile.Loadout do
+		if type(id) == "string" and powers[id] and not table.find(loadout, id) and #loadout < profile.PowerSlots then
+			table.insert(loadout, id)
+		end
+	end
+	profile.Loadout = loadout
 	return profile
 end
 
@@ -72,10 +160,15 @@ local function key(player: Player): string
 end
 
 local function isStudioApiError(err: any): boolean
-	return RunService:IsStudio() and tostring(err):find("StudioAccessToApisNotAllowed") ~= nil
+	local message = tostring(err)
+	return RunService:IsStudio()
+		and (message:find("StudioAccessToApisNotAllowed") ~= nil or message:find("publish") ~= nil)
 end
 
 local function loadAsync(player: Player): Profile?
+	if offline then
+		return defaultProfile()
+	end
 	for attempt = 1, MAX_ATTEMPTS do
 		local lockedElsewhere = false
 		local forceLock = attempt == MAX_ATTEMPTS -- the other server is probably dead, take over
@@ -123,6 +216,7 @@ local function saveAsync(player: Player, profile: Profile, release: boolean): bo
 					lostLock = true -- someone else owns this save now; writing would roll them back
 					return nil
 				end
+				profile.LastSeen = os.time()
 				old.Data = profile
 				old.Lock = if release then nil else { JobId = game.JobId, Time = os.time() }
 				return old
@@ -144,23 +238,53 @@ end
 local function publish(player: Player, profile: Profile)
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if leaderstats then
-		(leaderstats:FindFirstChild("Cash") :: IntValue).Value = math.floor(profile.Cash)
+		(leaderstats:FindFirstChild("Cash") :: IntValue).Value = math.floor(profile.Cash);
+		(leaderstats:FindFirstChild("Rebirths") :: IntValue).Value = profile.Rebirths;
+		(leaderstats:FindFirstChild("Stolen") :: IntValue).Value = profile.KnivesStolen
 	end
 	player:SetAttribute("Cash", math.floor(profile.Cash))
 	player:SetAttribute("Slots", profile.Slots)
 	player:SetAttribute("KnifeCount", #profile.Knives)
-	player:SetAttribute("SpeedLevel", profile.SpeedLevel)
+	player:SetAttribute("Speed", math.floor(profile.Speed))
+	player:SetAttribute("TreadmillLevel", profile.TreadmillLevel)
 	player:SetAttribute("Luck", profile.Luck)
 	player:SetAttribute("Tickets", profile.Tickets)
+	player:SetAttribute("Knives", table.concat(profile.Knives, ","))
+	player:SetAttribute("Equipped", profile.Equipped)
+	player:SetAttribute("Discovered", table.concat(profile.Discovered, ","))
+	player:SetAttribute("Kills", profile.TotalKills)
+	local powers = {}
+	for id, level in profile.Powers do
+		table.insert(powers, `{id}:{level}`)
+	end
+	table.sort(powers)
+	player:SetAttribute("Powers", table.concat(powers, ","))
+	player:SetAttribute("Loadout", table.concat(profile.Loadout, ","))
+	player:SetAttribute("PowerSlots", profile.PowerSlots)
+	player:SetAttribute("Wins", profile.RoundsWon)
+	player:SetAttribute("WallLevel", profile.WallLevel)
+	player:SetAttribute("Rebirths", profile.Rebirths)
+	player:SetAttribute("Title", GameConfig.RebirthTitle(profile.Rebirths))
+	player:SetAttribute("TutorialDone", profile.TutorialDone)
+	player:SetAttribute("CasesOpened", profile.CasesOpened)
+	player:SetAttribute("KnivesStolen", profile.KnivesStolen)
+	player:SetAttribute("BestPull", profile.BestPull)
+	player:SetAttribute("IndexClaimed", table.concat(profile.IndexClaimed, ","))
+	player:SetAttribute("NextFreeChest", profile.NextFreeChest)
+	player:SetAttribute("DailyStreak", profile.DailyStreak)
+	player:SetAttribute("LastDaily", profile.LastDaily)
+	player:SetAttribute("Shielded", DataService.IsNewPlayer(player, profile) or nil)
 	changedEvent:Fire(player, profile)
 end
 
 local function onPlayerAdded(player: Player)
 	local leaderstats = Instance.new("Folder")
 	leaderstats.Name = "leaderstats"
-	local cash = Instance.new("IntValue")
-	cash.Name = "Cash"
-	cash.Parent = leaderstats
+	for _, stat in { "Cash", "Rebirths", "Stolen" } do
+		local value = Instance.new("IntValue")
+		value.Name = stat
+		value.Parent = leaderstats
+	end
 	leaderstats.Parent = player
 
 	local profile = loadAsync(player)
@@ -175,6 +299,7 @@ local function onPlayerAdded(player: Player)
 		return
 	end
 	profiles[player] = profile
+	DataService.AwaySince[player] = profile.LastSeen
 	publish(player, profile)
 	player:SetAttribute("DataLoaded", true)
 	loadedEvent:Fire(player, profile)
@@ -186,6 +311,14 @@ local function onPlayerRemoving(player: Player)
 		saveAsync(player, profile, true)
 		profiles[player] = nil
 	end
+	DataService.AwaySince[player] = nil
+end
+
+-- New players' knives can't be taken (break-ins, burglars, Murderer loot) for their first
+-- GameConfig.NewPlayerShield seconds of play
+function DataService.IsNewPlayer(player: Player, profile: Profile?): boolean
+	local p = profile or profiles[player]
+	return p ~= nil and p.Rebirths == 0 and p.PlayTime < GameConfig.NewPlayerShield
 end
 
 function DataService.Get(player: Player): Profile?
@@ -231,6 +364,21 @@ function DataService.Init()
 			task.wait(AUTOSAVE_INTERVAL)
 			for player, profile in profiles do
 				task.spawn(saveAsync, player, profile, false)
+			end
+		end
+	end)
+
+	-- Play time (and with it the new-player shield running out)
+	task.spawn(function()
+		while true do
+			task.wait(30)
+			for player, profile in profiles do
+				local wasNew = DataService.IsNewPlayer(player, profile)
+				profile.PlayTime += 30
+				if wasNew and not DataService.IsNewPlayer(player, profile) then
+					player:SetAttribute("Shielded", nil)
+					Net.Notify(player, "Your new-player shield is gone - guard your vault!", "info")
+				end
 			end
 		end
 	end)

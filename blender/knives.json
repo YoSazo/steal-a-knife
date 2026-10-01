@@ -2,155 +2,327 @@
   "RustyShank": {
     "rarity": "Common",
     "fbx": "blender/exports/RustyShank.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel"
+    ],
     "colors": {
       "Blade": [
-        0.45,
-        0.3,
+        0.52,
+        0.33,
         0.2
       ],
       "Guard": [
-        0.3,
-        0.25,
-        0.22
+        0.34,
+        0.27,
+        0.23
       ],
       "Handle": [
-        0.35,
+        0.36,
         0.22,
         0.12
       ],
       "Pommel": [
-        0.3,
-        0.25,
-        0.22
+        0.34,
+        0.27,
+        0.23
       ]
     }
   },
   "KitchenKnife": {
     "rarity": "Common",
     "fbx": "blender/exports/KitchenKnife.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
     "colors": {
       "Blade": [
-        0.8,
-        0.82,
-        0.85
+        0.85,
+        0.87,
+        0.9
       ],
       "Guard": [
-        0.15,
-        0.15,
-        0.15
+        0.6,
+        0.62,
+        0.65
       ],
       "Handle": [
         0.12,
         0.12,
-        0.12
+        0.14
       ],
       "Pommel": [
-        0.15,
-        0.15,
-        0.15
+        0.6,
+        0.62,
+        0.65
       ]
     }
   },
   "HunterBlade": {
     "rarity": "Rare",
     "fbx": "blender/exports/HunterBlade.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
     "colors": {
       "Blade": [
-        0.7,
-        0.74,
-        0.78
+        0.72,
+        0.76,
+        0.8
       ],
       "Guard": [
+        0.75,
         0.55,
-        0.4,
-        0.18
+        0.23
       ],
       "Handle": [
-        0.38,
-        0.2,
-        0.08
+        0.43,
+        0.24,
+        0.1
       ],
       "Pommel": [
+        0.75,
         0.55,
-        0.4,
-        0.18
+        0.23
+      ]
+    }
+  },
+  "Switchblade": {
+    "rarity": "Rare",
+    "fbx": "blender/exports/Switchblade.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        0.47,
+        0.78,
+        1.0
+      ],
+      "Guard": [
+        0.12,
+        0.24,
+        0.47
+      ],
+      "Handle": [
+        0.16,
+        0.35,
+        0.67
+      ],
+      "Pommel": [
+        0.12,
+        0.24,
+        0.47
       ]
     }
   },
   "Cleaver": {
     "rarity": "Epic",
     "fbx": "blender/exports/Cleaver.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
     "colors": {
       "Blade": [
-        0.6,
-        0.62,
-        0.66
+        0.82,
+        0.84,
+        0.88
       ],
       "Guard": [
-        0.2,
-        0.2,
-        0.22
+        0.24,
+        0.24,
+        0.27
       ],
       "Handle": [
-        0.5,
-        0.1,
-        0.1
+        0.59,
+        0.16,
+        0.16
       ],
       "Pommel": [
-        0.2,
-        0.2,
-        0.22
+        0.24,
+        0.24,
+        0.27
+      ]
+    }
+  },
+  "Machete": {
+    "rarity": "Epic",
+    "fbx": "blender/exports/Machete.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel"
+    ],
+    "colors": {
+      "Blade": [
+        0.75,
+        0.47,
+        1.0
+      ],
+      "Guard": [
+        0.24,
+        0.12,
+        0.35
+      ],
+      "Handle": [
+        0.31,
+        0.63,
+        0.27
+      ],
+      "Pommel": [
+        0.24,
+        0.12,
+        0.35
       ]
     }
   },
   "GoldenDagger": {
     "rarity": "Legendary",
     "fbx": "blender/exports/GoldenDagger.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
     "colors": {
       "Blade": [
         1.0,
-        0.78,
+        0.8,
         0.2
       ],
       "Guard": [
-        0.85,
-        0.1,
-        0.1
+        0.9,
+        0.16,
+        0.24
       ],
       "Handle": [
-        0.1,
-        0.05,
-        0.02
+        0.24,
+        0.12,
+        0.06
       ],
       "Pommel": [
-        0.85,
-        0.1,
-        0.1
+        0.9,
+        0.16,
+        0.24
+      ]
+    }
+  },
+  "Katana": {
+    "rarity": "Legendary",
+    "fbx": "blender/exports/Katana.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        1.0,
+        0.7,
+        0.82
+      ],
+      "Guard": [
+        1.0,
+        0.8,
+        0.2
+      ],
+      "Handle": [
+        0.16,
+        0.08,
+        0.16
+      ],
+      "Pommel": [
+        1.0,
+        0.8,
+        0.2
       ]
     }
   },
   "VoidEdge": {
-    "rarity": "Mythic",
+    "rarity": "Godly",
     "fbx": "blender/exports/VoidEdge.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
     "colors": {
       "Blade": [
-        0.45,
-        0.1,
-        0.9
+        0.59,
+        0.24,
+        1.0
       ],
       "Guard": [
-        0.05,
-        0.05,
+        0.08,
+        0.08,
+        0.12
+      ],
+      "Handle": [
+        0.24,
+        0.0,
+        0.43
+      ],
+      "Pommel": [
+        0.08,
+        0.08,
+        0.12
+      ]
+    }
+  },
+  "InfernoFang": {
+    "rarity": "Godly",
+    "fbx": "blender/exports/InfernoFang.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        1.0,
+        0.43,
+        0.12
+      ],
+      "Guard": [
+        0.16,
+        0.08,
         0.08
       ],
       "Handle": [
-        0.2,
-        0.0,
-        0.35
+        0.47,
+        0.08,
+        0.08
       ],
       "Pommel": [
-        0.05,
-        0.05,
+        0.16,
+        0.08,
         0.08
       ]
     }

@@ -1,7 +1,187 @@
 {
   "KitchenKnife": {
-    "assetId": "124046798483535",
+    "assetId": "72174543342129",
     "file": "blender/exports/KitchenKnife.fbx",
-    "uploaded": "2026-09-30 16:36"
+    "uploaded": "2026-09-30 17:11"
+  },
+  "RustyShank": {
+    "assetId": "111791292613129",
+    "file": "blender/exports/RustyShank.fbx",
+    "uploaded": "2026-09-30 17:10"
+  },
+  "HunterBlade": {
+    "assetId": "119508827488201",
+    "file": "blender/exports/HunterBlade.fbx",
+    "uploaded": "2026-09-30 17:11"
+  },
+  "Cleaver": {
+    "assetId": "132984349760699",
+    "file": "blender/exports/Cleaver.fbx",
+    "uploaded": "2026-09-30 17:11"
+  },
+  "Machete": {
+    "assetId": "84113198391087",
+    "file": "blender/exports/Machete.fbx",
+    "uploaded": "2026-09-30 17:11"
+  },
+  "GoldenDagger": {
+    "assetId": "129875342252029",
+    "file": "blender/exports/GoldenDagger.fbx",
+    "uploaded": "2026-09-30 17:11"
+  },
+  "Katana": {
+    "assetId": "78977337559519",
+    "file": "blender/exports/Katana.fbx",
+    "uploaded": "2026-09-30 17:12"
+  },
+  "VoidEdge": {
+    "assetId": "101822642497806",
+    "file": "blender/exports/VoidEdge.fbx",
+    "uploaded": "2026-09-30 17:12"
+  },
+  "InfernoFang": {
+    "assetId": "123484474658969",
+    "file": "blender/exports/InfernoFang.fbx",
+    "uploaded": "2026-09-30 17:12"
+  },
+  "Switchblade": {
+    "assetId": "104351841190986",
+    "file": "blender/exports/Switchblade.fbx",
+    "uploaded": "2026-09-30 17:12"
+  },
+  "Prop_Chest": {
+    "assetId": "108034016480221",
+    "file": "blender/exports/props/Chest.fbx",
+    "uploaded": "2026-10-01"
+  },
+  "Prop_LootSack": {
+    "assetId": "83818751916454",
+    "file": "blender/exports/props/LootSack.fbx",
+    "uploaded": "2026-10-01"
+  },
+  "Prop_BurglarMask": {
+    "assetId": "126366522366970",
+    "file": "blender/exports/props/BurglarMask.fbx",
+    "uploaded": "2026-10-01"
+  },
+  "Prop_Skull": {
+    "assetId": "71410919152357",
+    "file": "blender/exports/props/Skull.fbx",
+    "uploaded": "2026-10-01"
+  },
+  "Prop_BoneSpike": {
+    "assetId": "132057748842401",
+    "file": "blender/exports/props/BoneSpike.fbx",
+    "uploaded": "2026-10-01"
+  },
+  "Prop_Crystal": {
+    "assetId": "99490901130039",
+    "file": "blender/exports/props/Crystal.fbx",
+    "uploaded": "2026-10-01"
+  },
+  "Prop_Chandelier": {
+    "assetId": "94273451383655",
+    "file": "blender/exports/props/Chandelier.fbx",
+    "uploaded": "2026-10-01"
+  },
+  "Prop_Sconce": {
+    "assetId": "81414656458150",
+    "file": "blender/exports/props/Sconce.fbx",
+    "uploaded": "2026-10-01"
+  },
+  "Prop_Lantern": {
+    "assetId": "104175215598822",
+    "file": "blender/exports/props/Lantern.fbx",
+    "uploaded": "2026-10-01"
+  },
+  "Prop_Camera": {
+    "assetId": "116340359405170",
+    "file": "blender/exports/props/Camera.fbx",
+    "uploaded": "2026-10-01"
+  },
+  "Prop_Throne": {
+    "assetId": "94279562635186",
+    "file": "blender/exports/props/Throne.fbx",
+    "uploaded": "2026-10-01"
+  },
+  "KnifeTrail": {
+    "assetId": "117526652935782",
+    "file": "blender/textures/knife_trail.png",
+    "uploaded": "2026-10-01 12:41"
+  },
+  "SlashArc": {
+    "assetId": "73347477849128",
+    "file": "blender/textures/slash.png",
+    "uploaded": "2026-10-01 12:41"
+  },
+  "Prop_Pedestal": {
+    "assetId": "73165774947698",
+    "file": "blender/exports/props/Pedestal.fbx",
+    "uploaded": "2026-10-01"
+  },
+  "Prop_HairLong": {
+    "assetId": "136567144406005",
+    "file": "blender/exports/props/HairLong.fbx",
+    "uploaded": "2026-10-01 13:27"
+  },
+  "Prop_HairBob": {
+    "assetId": "91546743809972",
+    "file": "blender/exports/props/HairBob.fbx",
+    "uploaded": "2026-10-01 13:27"
+  },
+  "Prop_HairSpiky": {
+    "assetId": "98535037835669",
+    "file": "blender/exports/props/HairSpiky.fbx",
+    "uploaded": "2026-10-01 13:27"
+  },
+  "Prop_HairPonytail": {
+    "assetId": "126805141130289",
+    "file": "blender/exports/props/HairPonytail.fbx",
+    "uploaded": "2026-10-01 13:27"
+  },
+  "Prop_HairSwoop": {
+    "assetId": "126028224865295",
+    "file": "blender/exports/props/HairSwoop.fbx",
+    "uploaded": "2026-10-01 13:28"
+  },
+  "Prop_Beanie": {
+    "assetId": "73867157958772",
+    "file": "blender/exports/props/Beanie.fbx",
+    "uploaded": "2026-10-01 13:28"
+  },
+  "Prop_Cap": {
+    "assetId": "126941975501694",
+    "file": "blender/exports/props/Cap.fbx",
+    "uploaded": "2026-10-01 13:28"
+  },
+  "Prop_ShutterShades": {
+    "assetId": "88165892201647",
+    "file": "blender/exports/props/ShutterShades.fbx",
+    "uploaded": "2026-10-01 13:28"
+  },
+  "Prop_RoundGlasses": {
+    "assetId": "81372632643065",
+    "file": "blender/exports/props/RoundGlasses.fbx",
+    "uploaded": "2026-10-01 13:28"
+  },
+  "Prop_Headphones": {
+    "assetId": "135913818186426",
+    "file": "blender/exports/props/Headphones.fbx",
+    "uploaded": "2026-10-01 13:29"
+  },
+  "Prop_TopHat": {
+    "assetId": "109998029788499",
+    "file": "blender/exports/props/TopHat.fbx",
+    "uploaded": "2026-10-01 13:28"
+  },
+  "Prop_CowboyHat": {
+    "assetId": "130081172947895",
+    "file": "blender/exports/props/CowboyHat.fbx",
+    "uploaded": "2026-10-01 13:28"
+  },
+  "Coin": {
+    "assetId": "117863373500093",
+    "file": "blender/exports/props/Coin.fbx",
+    "uploaded": "2026-10-01 14:07"
   }
 }

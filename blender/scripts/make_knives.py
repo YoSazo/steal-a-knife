@@ -1,13 +1,17 @@
-﻿"""Procedurally build the Steal a Knife knife lineup and export one FBX per knife.
+"""Procedurally build the whole Steal a Knife lineup (all 10 knives) and export one FBX per knife.
 
 Run headless:
   "C:\\Program Files\\Blender Foundation\\Blender 4.5\\blender.exe" -b --factory-startup \
       --python blender/scripts/make_knives.py
 
-Each knife is exported as separate meshes (Blade, Guard, Handle, Pommel) so every
-part becomes its own MeshPart in Roblox and can be colored/materialed there.
-Origin sits at the grip so it works directly as a Tool Handle.
-Low poly on purpose (a few hundred tris) - Roblox likes that.
+Every knife has its own silhouette (serrated shank, chef's knife, clip-point hunter, cleaver,
+flared machete, double-edged dagger, curved katana, jagged Void Edge, fang-shaped Inferno Fang).
+Blades are lofted from a profile: a list of cross-section rings along +X, so the shape is just a
+few numbers per knife.
+
+Each knife exports as separate meshes (Blade, Guard, Handle, Pommel, Extra) so every part becomes
+its own MeshPart in Roblox and gets its colour/material there (FBX colours don't carry over).
+Origin sits in the middle of the grip; the blade points along +X. Low poly on purpose.
 """
 
 import json
@@ -16,44 +20,223 @@ from pathlib import Path
 
 import bmesh
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 ROOT = Path(__file__).resolve().parents[2]
 EXPORT_DIR = ROOT / "blender" / "exports"
 PREVIEW_DIR = ROOT / "blender" / "previews"
+ONLY = None  # set to a knife name to rebuild just that one while iterating
 
-# name: blade length, blade height, guard width, colors (blade, guard, handle), rarity
+
+def clamp01(v):
+    return max(0.0, min(1.0, v))
+
+
+# --- Blade profiles ----------------------------------------------------------------------
+# A profile returns (top, bottom, bend) for s in [0, 1] along the blade: the height of the spine,
+# the height of the edge, and a vertical offset that curves the whole blade (katana, fang).
+# All heights are fractions of the knife's blade height.
+
+def chef(s):
+    top = 1.0 if s < 0.6 else 1.0 - ((s - 0.6) / 0.4) ** 1.6 * 0.55
+    bot = 0.0 if s < 0.35 else ((s - 0.35) / 0.65) ** 2.2 * 0.45
+    return top, bot, 0.0
+
+
+def shank(s):
+    top, bot, bend = chef(s)
+    # crude sawtooth spine
+    teeth = 7
+    if 0.1 < s < 0.8:
+        top -= 0.18 * ((s * teeth) % 1.0)
+    return top, bot * 1.2, bend
+
+
+def clip_point(s):
+    top = 1.0 if s < 0.55 else 1.0 - (s - 0.55) / 0.45 * 0.75
+    bot = 0.0 if s < 0.5 else ((s - 0.5) / 0.5) ** 1.8 * 0.3
+    return top, bot, 0.0
+
+
+def slim(s):
+    top = 1.0 if s < 0.7 else 1.0 - (s - 0.7) / 0.3 * 0.6
+    bot = 0.05 if s < 0.6 else 0.05 + ((s - 0.6) / 0.4) ** 1.5 * 0.35
+    return top, bot, 0.0
+
+
+def cleaver(s):
+    top = 1.0
+    bot = 0.0 if s < 0.9 else (s - 0.9) / 0.1 * 0.08
+    return top, bot, 0.0
+
+
+def machete(s):
+    # widens towards the tip, then an angled cut
+    top = 0.75 + 0.35 * s if s < 0.85 else 1.05 - (s - 0.85) / 0.15 * 0.9
+    bot = 0.0 if s < 0.8 else ((s - 0.8) / 0.2) ** 2 * 0.15
+    return top, bot, 0.0
+
+
+def dagger(s):
+    # symmetric leaf shape, double edged
+    w = 1.0 - s ** 1.4 * 0.95
+    w *= 1.0 + 0.15 * math.sin(s * math.pi)
+    return 0.5 + w * 0.5, 0.5 - w * 0.5, 0.0
+
+
+def katana(s):
+    top = 1.0 if s < 0.88 else 1.0 - (s - 0.88) / 0.12 * 0.5
+    bot = 0.0 if s < 0.85 else ((s - 0.85) / 0.15) ** 1.5 * 0.7
+    bend = s * s * 0.9  # upward sweep towards the tip
+    return top, bot, bend
+
+
+def void(s):
+    # jagged double-edged blade: zig-zag teeth on both sides
+    w = 1.0 - s ** 1.6 * 0.95
+    zig = 0.22 * abs(((s * 6) % 1.0) - 0.5) * 2 if s < 0.85 else 0.0
+    return 0.5 + (w * 0.5) + zig * 0.5, 0.5 - (w * 0.5) - zig * 0.35, 0.0
+
+
+def fang(s):
+    top = 1.0 - s ** 1.2 * 0.6
+    bot = 0.0 + s ** 2 * 0.35
+    bend = s ** 2.2 * 1.6  # hooks hard upwards like a fang
+    return top, bot, bend
+
+
+def build_blade(length, height, profile, thickness=0.05, stations=24, double_edged=False):
+    """Loft rings along +X. Single-edged rings are a 5-sided wedge (flat spine, sharp edge);
+    double-edged rings are a diamond."""
+    bm = bmesh.new()
+    rings = []
+    for i in range(stations):
+        s = i / stations
+        top, bot, bend = profile(s)
+        x = length * s
+        z_top, z_bot = top * height + bend * height, bot * height + bend * height
+        mid = (z_top + z_bot) / 2
+        t = thickness * (1.0 - 0.55 * s * s)
+        if double_edged:
+            ring = [
+                bm.verts.new((x, 0.0, z_top)),
+                bm.verts.new((x, t, mid)),
+                bm.verts.new((x, 0.0, z_bot)),
+                bm.verts.new((x, -t, mid)),
+            ]
+        else:
+            upper = z_top - (z_top - z_bot) * 0.25
+            ring = [
+                bm.verts.new((x, -t, z_top)),
+                bm.verts.new((x, t, z_top)),
+                bm.verts.new((x, t * 0.9, upper)),
+                bm.verts.new((x, 0.0, z_bot)),
+                bm.verts.new((x, -t * 0.9, upper)),
+            ]
+        rings.append(ring)
+    top, bot, bend = profile(1.0)
+    tip = bm.verts.new((length, 0.0, ((top + bot) / 2 + bend) * height))
+    n = len(rings[0])
+    for a, b in zip(rings, rings[1:]):
+        for k in range(n):
+            bm.faces.new((a[k], a[(k + 1) % n], b[(k + 1) % n], b[k]))
+    last = rings[-1]
+    for k in range(n):
+        bm.faces.new((last[k], last[(k + 1) % n], tip))
+    bm.faces.new(list(reversed(rings[0])))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return bm
+
+
+# --- Simple solids -------------------------------------------------------------------------
+
+def box(bm, size, center, bevel=0.2):
+    geom = bmesh.ops.create_cube(bm, size=1.0)
+    verts = geom["verts"]
+    bmesh.ops.scale(bm, vec=Vector(size), verts=verts)
+    bmesh.ops.translate(bm, vec=Vector(center), verts=verts)
+    if bevel:
+        edges = list({e for v in verts for e in v.link_edges})
+        bmesh.ops.bevel(bm, geom=edges, offset=min(size) * bevel, segments=1, affect="EDGES")
+
+
+def cylinder_x(bm, length, r1, r2, x_center, z, segments=10):
+    """A cylinder/cone lying along X."""
+    geom = bmesh.ops.create_cone(bm, cap_ends=True, segments=segments, radius1=r1, radius2=r2, depth=length)
+    verts = geom["verts"]
+    bmesh.ops.rotate(bm, verts=verts, cent=(0, 0, 0), matrix=Matrix.Rotation(math.radians(90), 3, "Y"))
+    bmesh.ops.translate(bm, vec=Vector((x_center, 0, z)), verts=verts)
+
+
+def sphere(bm, radius, center, segs=10):
+    geom = bmesh.ops.create_uvsphere(bm, u_segments=segs, v_segments=max(4, segs // 2 + 1), radius=radius)
+    bmesh.ops.translate(bm, vec=Vector(center), verts=geom["verts"])
+
+
+def cone_up(bm, radius, height, base, tilt=0.0):
+    geom = bmesh.ops.create_cone(bm, cap_ends=True, segments=6, radius1=radius, radius2=0.0, depth=height)
+    verts = geom["verts"]
+    bmesh.ops.translate(bm, vec=Vector((0, 0, height / 2)), verts=verts)
+    bmesh.ops.rotate(bm, verts=verts, cent=(0, 0, 0), matrix=Matrix.Rotation(tilt, 3, "Y"))
+    bmesh.ops.translate(bm, vec=Vector(base), verts=verts)
+
+
+# --- Knife specs ---------------------------------------------------------------------------
+# length/height: blade size. guard: "box" | "disc" | "cross" | "none". handle_len in Blender units.
+# extras: list of decoration names built on the Extra mesh.
+
 KNIVES = {
-    "RustyShank":   dict(length=1.2, height=0.28, guard=0.18, curve=0.3, rarity="Common",
-                         colors=((0.45, 0.30, 0.20), (0.30, 0.25, 0.22), (0.35, 0.22, 0.12))),
-    "KitchenKnife": dict(length=1.5, height=0.38, guard=0.10, curve=0.5, rarity="Common",
-                         colors=((0.80, 0.82, 0.85), (0.15, 0.15, 0.15), (0.12, 0.12, 0.12))),
-    "HunterBlade":  dict(length=1.7, height=0.34, guard=0.30, curve=0.7, rarity="Rare",
-                         colors=((0.70, 0.74, 0.78), (0.55, 0.40, 0.18), (0.38, 0.20, 0.08))),
-    "Cleaver":      dict(length=1.4, height=0.70, guard=0.08, curve=0.15, rarity="Epic",
-                         colors=((0.60, 0.62, 0.66), (0.20, 0.20, 0.22), (0.50, 0.10, 0.10))),
-    "GoldenDagger": dict(length=1.9, height=0.30, guard=0.42, curve=1.0, rarity="Legendary",
-                         colors=((1.00, 0.78, 0.20), (0.85, 0.10, 0.10), (0.10, 0.05, 0.02))),
-    "VoidEdge":     dict(length=2.2, height=0.36, guard=0.50, curve=1.2, rarity="Godly",
-                         colors=((0.45, 0.10, 0.90), (0.05, 0.05, 0.08), (0.20, 0.00, 0.35))),
+    "RustyShank": dict(rarity="Common", profile=shank, length=1.2, height=0.3, guard="none",
+                       handle_len=0.7, handle_r=0.075, wrap=True, extras=[],
+                       colors=dict(Blade=(0.52, 0.33, 0.2), Guard=(0.34, 0.27, 0.23), Handle=(0.36, 0.22, 0.12))),
+    "KitchenKnife": dict(rarity="Common", profile=chef, length=1.5, height=0.4, guard="bolster",
+                         handle_len=0.8, handle_r=0.08, extras=["rivets"],
+                         colors=dict(Blade=(0.85, 0.87, 0.9), Guard=(0.6, 0.62, 0.65), Handle=(0.12, 0.12, 0.14))),
+    "HunterBlade": dict(rarity="Rare", profile=clip_point, length=1.7, height=0.36, guard="cross",
+                        handle_len=0.8, handle_r=0.085, extras=["grooves"],
+                        colors=dict(Blade=(0.72, 0.76, 0.8), Guard=(0.75, 0.55, 0.23), Handle=(0.43, 0.24, 0.1))),
+    "Switchblade": dict(rarity="Rare", profile=slim, length=1.4, height=0.24, guard="none",
+                        handle_len=1.0, handle_r=0.08, flat_handle=True, extras=["button"],
+                        colors=dict(Blade=(0.47, 0.78, 1.0), Guard=(0.12, 0.24, 0.47), Handle=(0.16, 0.35, 0.67))),
+    "Cleaver": dict(rarity="Epic", profile=cleaver, length=1.35, height=0.8, guard="none",
+                    handle_len=0.8, handle_r=0.085, extras=["hole", "rivets"],
+                    colors=dict(Blade=(0.82, 0.84, 0.88), Guard=(0.24, 0.24, 0.27), Handle=(0.59, 0.16, 0.16))),
+    "Machete": dict(rarity="Epic", profile=machete, length=2.3, height=0.42, guard="box",
+                    handle_len=0.85, handle_r=0.085, wrap=True, extras=[],
+                    colors=dict(Blade=(0.75, 0.47, 1.0), Guard=(0.24, 0.12, 0.35), Handle=(0.31, 0.63, 0.27))),
+    "GoldenDagger": dict(rarity="Legendary", profile=dagger, length=1.8, height=0.42, guard="cross",
+                         handle_len=0.7, handle_r=0.08, double=True, extras=["gem", "fuller"],
+                         colors=dict(Blade=(1.0, 0.8, 0.2), Guard=(0.9, 0.16, 0.24), Handle=(0.24, 0.12, 0.06))),
+    "Katana": dict(rarity="Legendary", profile=katana, length=2.8, height=0.22, guard="disc",
+                   handle_len=1.2, handle_r=0.08, wrap=True, extras=["habaki"],
+                   colors=dict(Blade=(1.0, 0.7, 0.82), Guard=(1.0, 0.8, 0.2), Handle=(0.16, 0.08, 0.16))),
+    "VoidEdge": dict(rarity="Godly", profile=void, length=2.3, height=0.5, guard="spikes",
+                     handle_len=0.85, handle_r=0.085, double=True, extras=["crystals"],
+                     colors=dict(Blade=(0.59, 0.24, 1.0), Guard=(0.08, 0.08, 0.12), Handle=(0.24, 0.0, 0.43))),
+    "InfernoFang": dict(rarity="Godly", profile=fang, length=2.0, height=0.5, guard="spikes",
+                        handle_len=0.85, handle_r=0.09, extras=["flames"],
+                        colors=dict(Blade=(1.0, 0.43, 0.12), Guard=(0.16, 0.08, 0.08), Handle=(0.47, 0.08, 0.08))),
 }
 
 
 def clear_scene():
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete()
-    for block in (bpy.data.meshes, bpy.data.materials):
+    for block in (bpy.data.meshes, bpy.data.materials, bpy.data.objects, bpy.data.cameras):
         for item in list(block):
             block.remove(item)
 
 
-def material(name, rgb, metallic=0.0, roughness=0.5):
+def material(name, rgb, metallic=0.0, roughness=0.5, emission=0.0):
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
-    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf = next(n for n in mat.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
     bsdf.inputs["Base Color"].default_value = (*rgb, 1.0)
     bsdf.inputs["Metallic"].default_value = metallic
     bsdf.inputs["Roughness"].default_value = roughness
+    if emission:
+        bsdf.inputs["Emission Color"].default_value = (*rgb, 1.0)
+        bsdf.inputs["Emission Strength"].default_value = emission
     mat.diffuse_color = (*rgb, 1.0)  # used by the Workbench preview render
     return mat
 
@@ -69,83 +252,139 @@ def mesh_object(name, bm, mat, parent):
     return obj
 
 
-def build_blade(length, height, curve, thickness=0.045, stations=12):
-    """Triangular cross-section blade: thick spine on top, sharp edge on bottom, along +X."""
+def build_guard(spec, z):
+    h, kind = spec["height"], spec["guard"]
     bm = bmesh.new()
-    rows = []
-    for i in range(stations):
-        s = i / stations
-        x = length * s
-        top = height if s < 0.7 else height - (s - 0.7) / 0.3 * height * 0.45
-        bot = 0.0 if s < 0.55 else ((s - 0.55) / 0.45) ** (1.0 + curve) * height * 0.55
-        t = thickness * (1 - 0.6 * s * s)
-        rows.append((
-            bm.verts.new((x, -t, top)),   # spine left
-            bm.verts.new((x, t, top)),    # spine right
-            bm.verts.new((x, 0.0, bot)),  # edge
-        ))
-    tip = bm.verts.new((length, 0.0, height * 0.55))
-    for a, b in zip(rows, rows[1:]):
-        bm.faces.new((a[0], b[0], b[2], a[2]))  # left flat
-        bm.faces.new((a[2], b[2], b[1], a[1]))  # right flat
-        bm.faces.new((a[1], b[1], b[0], a[0]))  # spine
-    last = rows[-1]
-    bm.faces.new((last[0], tip, last[2]))
-    bm.faces.new((last[2], tip, last[1]))
-    bm.faces.new((last[1], tip, last[0]))
-    bm.faces.new((rows[0][0], rows[0][2], rows[0][1]))  # base cap
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    if kind == "box":
+        box(bm, (0.1, 0.22, h * 1.3), (-0.05, 0, z))
+    elif kind == "bolster":
+        box(bm, (0.14, 0.16, h * 0.55), (-0.06, 0, z - h * 0.15), bevel=0.35)
+    elif kind == "cross":
+        box(bm, (0.1, 0.16, h * 2.2), (-0.05, 0, z))
+        sphere(bm, 0.07, (-0.05, 0, z + h * 1.1), 8)
+        sphere(bm, 0.07, (-0.05, 0, z - h * 1.1), 8)
+    elif kind == "disc":
+        cylinder_x(bm, 0.05, 0.22, 0.22, -0.03, z, segments=14)
+    elif kind == "spikes":
+        box(bm, (0.12, 0.18, h * 1.4), (-0.06, 0, z))
+        # two horns sweeping out and slightly forward from the ends of the guard
+        for side in (1, -1):
+            depth = 0.32
+            direction = Vector((0.4, 0, side)).normalized()
+            angle = math.atan2(direction.x, direction.z)
+            geom = bmesh.ops.create_cone(bm, cap_ends=True, segments=6, radius1=0.08, radius2=0.0, depth=depth)
+            verts = geom["verts"]
+            bmesh.ops.rotate(bm, verts=verts, cent=(0, 0, 0), matrix=Matrix.Rotation(angle, 3, "Y"))
+            base = Vector((-0.06, 0, z + side * h * 0.65))
+            bmesh.ops.translate(bm, vec=base + direction * depth / 2, verts=verts)
+    else:  # "none": a thin collar so the blade doesn't float
+        box(bm, (0.06, 0.13, h * 0.5), (-0.03, 0, z - h * 0.1))
     return bm
 
 
-def build_box(size, center):
+def build_handle(spec, z):
     bm = bmesh.new()
-    bmesh.ops.create_cube(bm, size=1.0)
-    bmesh.ops.scale(bm, vec=Vector(size), verts=bm.verts)
-    bmesh.ops.translate(bm, vec=Vector(center), verts=bm.verts)
-    bmesh.ops.bevel(bm, geom=list(bm.edges), offset=min(size) * 0.2, segments=1, affect="EDGES")
+    length, r = spec["handle_len"], spec["handle_r"]
+    if spec.get("flat_handle"):
+        box(bm, (length, r * 1.6, r * 2.6), (-length / 2 - 0.05, 0, z), bevel=0.3)
+    else:
+        cylinder_x(bm, length, r * 0.9, r, -length / 2 - 0.05, z, segments=10)
+        if spec.get("wrap"):
+            rings = int(length / 0.14)
+            for i in range(rings):
+                x = -0.12 - i * (length - 0.1) / rings
+                cylinder_x(bm, 0.035, r * 1.12, r * 1.12, x, z, segments=10)
     return bm
 
 
-def build_handle(length, radius, x_start, z):
+def build_pommel(spec, z):
     bm = bmesh.new()
-    bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=radius, radius2=radius * 0.85, depth=length)
-    # cone is built along Z; lay it along -X
-    bmesh.ops.rotate(bm, verts=bm.verts, cent=(0, 0, 0),
-                     matrix=__import__("mathutils").Matrix.Rotation(math.radians(-90), 3, "Y"))
-    bmesh.ops.translate(bm, vec=Vector((x_start - length / 2, 0, z)), verts=bm.verts)
+    x = -spec["handle_len"] - 0.1
+    if spec["guard"] == "disc":
+        cylinder_x(bm, 0.09, spec["handle_r"] * 1.15, spec["handle_r"] * 1.15, x + 0.02, z, segments=10)
+    elif spec["guard"] == "spikes":
+        geom = bmesh.ops.create_cone(bm, cap_ends=True, segments=6, radius1=0.1, radius2=0.0, depth=0.28)
+        verts = geom["verts"]
+        bmesh.ops.rotate(bm, verts=verts, cent=(0, 0, 0), matrix=Matrix.Rotation(math.radians(-90), 3, "Y"))
+        bmesh.ops.translate(bm, vec=Vector((x - 0.08, 0, z)), verts=verts)
+    else:
+        sphere(bm, 0.1, (x, 0, z), 10)
     return bm
 
 
-def build_pommel(radius, center):
+def build_extra(name, spec, z):
+    """Decorations. Returns None when a knife has none."""
+    extras = spec["extras"]
+    if not extras:
+        return None
     bm = bmesh.new()
-    bmesh.ops.create_uvsphere(bm, u_segments=10, v_segments=6, radius=radius)
-    bmesh.ops.translate(bm, vec=Vector(center), verts=bm.verts)
+    h, length = spec["height"], spec["length"]
+    for extra in extras:
+        if extra == "rivets":
+            for i in range(3):
+                x = -0.2 - i * (spec["handle_len"] - 0.3) / 2
+                for side in (1, -1):
+                    sphere(bm, 0.03, (x, side * spec["handle_r"] * 1.05, z), 6)
+        elif extra == "grooves":
+            for i in range(3):
+                cylinder_x(bm, 0.05, spec["handle_r"] * 1.1, spec["handle_r"] * 1.1, -0.2 - i * 0.2, z, 10)
+        elif extra == "button":
+            box(bm, (0.12, 0.05, 0.08), (-0.25, 0, z + spec["handle_r"] * 1.3), bevel=0.3)
+        elif extra == "hole":
+            # the classic cleaver hanging hole: a dark disc pushed through the blade
+            geom = bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=0.08, radius2=0.08, depth=0.14)
+            bmesh.ops.rotate(bm, verts=geom["verts"], cent=(0, 0, 0), matrix=Matrix.Rotation(math.radians(90), 3, "X"))
+            bmesh.ops.translate(bm, vec=Vector((length * 0.82, 0, h * 0.78)), verts=geom["verts"])
+        elif extra == "gem":
+            sphere(bm, 0.075, (-0.02, 0, z), 8)
+            sphere(bm, 0.06, (-spec["handle_len"] - 0.1, 0, z), 8)
+        elif extra == "fuller":
+            # a raised ridge down the middle of the dagger
+            box(bm, (length * 0.55, 0.075, 0.04), (length * 0.3, 0, h * 0.5), bevel=0.4)
+        elif extra == "habaki":
+            box(bm, (0.12, 0.08, h * 1.15), (0.06, 0, h * 0.55), bevel=0.3)
+        elif extra == "crystals":
+            for i, (x, tilt) in enumerate([(0.3, -0.3), (0.8, 0.2), (1.35, -0.15)]):
+                cone_up(bm, 0.07, 0.3 - i * 0.05, (x, 0, h * 0.95), tilt)
+                cone_up(bm, 0.06, 0.25 - i * 0.04, (x + 0.1, 0, h * 0.05), math.pi + tilt)
+        elif extra == "flames":
+            for i in range(4):
+                s = 0.15 + i * 0.2
+                top, _, bend = fang(s)
+                cone_up(bm, 0.06, 0.22 + 0.06 * (i % 2), (length * s, 0, (top + bend) * h - 0.02), -0.5)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0001)
     return bm
 
 
 def build_knife(name, spec):
     root = bpy.data.objects.new(name, None)
     bpy.context.collection.objects.link(root)
-    blade_rgb, guard_rgb, handle_rgb = spec["colors"]
+    c = spec["colors"]
+    godly = spec["rarity"] == "Godly"
     h = spec["height"]
-    handle_len = 0.75
     grip_z = h * 0.5
 
-    blade = mesh_object("Blade", build_blade(spec["length"], h, spec["curve"]),
-                        material(f"{name}_Blade", blade_rgb, metallic=1.0, roughness=0.25), root)
-    guard = mesh_object("Guard", build_box((0.10, spec["guard"] * 2 + 0.12, h * 1.25), (-0.05, 0, grip_z)),
-                        material(f"{name}_Guard", guard_rgb, metallic=0.6), root)
-    handle = mesh_object("Handle", build_handle(handle_len, 0.075, -0.10, grip_z),
-                         material(f"{name}_Handle", handle_rgb, roughness=0.8), root)
-    pommel = mesh_object("Pommel", build_pommel(0.1, (-0.10 - handle_len - 0.05, 0, grip_z)),
-                         material(f"{name}_Pommel", guard_rgb, metallic=0.6), root)
+    blade = mesh_object(
+        "Blade",
+        build_blade(spec["length"], h, spec["profile"], double_edged=spec.get("double", False)),
+        material(f"{name}_Blade", c["Blade"], metallic=0.9, roughness=0.25, emission=2.0 if godly else 0.0),
+        root,
+    )
+    guard = mesh_object("Guard", build_guard(spec, grip_z), material(f"{name}_Guard", c["Guard"], metallic=0.6), root)
+    handle = mesh_object("Handle", build_handle(spec, grip_z), material(f"{name}_Handle", c["Handle"], roughness=0.8), root)
+    pommel = mesh_object("Pommel", build_pommel(spec, grip_z), material(f"{name}_Pommel", c["Guard"], metallic=0.6), root)
+    parts = [blade, guard, handle, pommel]
+    extra_bm = build_extra(name, spec, grip_z)
+    if extra_bm is not None:
+        extra_color = c["Blade"] if spec["extras"][0] in ("crystals", "flames", "gem") else c["Guard"]
+        parts.append(mesh_object("Extra", extra_bm, material(f"{name}_Extra", extra_color, metallic=0.5,
+                                                             emission=3.0 if godly else 0.0), root))
 
-    # Put the origin in the middle of the grip so the whole thing works as a Tool handle
-    offset = Vector((0.10 + handle_len / 2, 0, -grip_z))
-    for obj in (blade, guard, handle, pommel):
-        obj.data.transform(__import__("mathutils").Matrix.Translation(offset))
-    return root, (blade, guard, handle, pommel)
+    # Origin in the middle of the grip, so it works directly as a Tool handle
+    offset = Vector((0.05 + spec["handle_len"] / 2, 0, -grip_z))
+    for obj in parts:
+        obj.data.transform(Matrix.Translation(offset))
+    return root, parts
 
 
 def export_fbx(root, parts, path):
@@ -166,28 +405,34 @@ def export_fbx(root, parts, path):
     )
 
 
-def render_lineup(path):
+def render_lineup(path, count):
+    """Two columns of knives on a dark background (the knives are laid out by main())."""
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_WORKBENCH"
     scene.display.shading.light = "STUDIO"
     scene.display.shading.color_type = "MATERIAL"
     scene.display.shading.show_cavity = True
-    scene.render.resolution_x, scene.render.resolution_y = 1000, 1300
+    rows = (count + 1) // 2
+    scene.render.resolution_x, scene.render.resolution_y = 1600, max(400, rows * 200)
     scene.render.film_transparent = False
-    world = bpy.data.worlds.new("W") if not scene.world else scene.world
+    world = scene.world or bpy.data.worlds.new("W")
     scene.world = world
     world.color = (0.08, 0.08, 0.1)
 
     cam_data = bpy.data.cameras.new("Cam")
     cam_data.type = "ORTHO"
-    cam_data.ortho_scale = 6.6
+    cam_data.ortho_scale = 9.6
     cam = bpy.data.objects.new("Cam", cam_data)
     bpy.context.collection.objects.link(cam)
-    cam.location = (0.3, -10, -2.35)
+    cam.location = (COLUMN_GAP / 2 + 0.6, -10, -(rows - 1) * ROW_GAP / 2)
     cam.rotation_euler = (math.radians(90), 0, 0)
     scene.camera = cam
     scene.render.filepath = str(path)
     bpy.ops.render.render(write_still=True)
+
+
+COLUMN_GAP = 4.6
+ROW_GAP = 1.2
 
 
 def main():
@@ -195,20 +440,23 @@ def main():
     PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
     clear_scene()
     manifest = {}
-    for row, (name, spec) in enumerate(KNIVES.items()):
+    items = [(n, s) for n, s in KNIVES.items() if ONLY in (None, n)]
+    for row, (name, spec) in enumerate(items):
         root, parts = build_knife(name, spec)
         path = EXPORT_DIR / f"{name}.fbx"
         export_fbx(root, parts, path)
-        root.location = (0, 0, -row * 1.0)  # stack them for the preview render
+        # lay them out in two columns for the preview render
+        root.location = ((row % 2) * COLUMN_GAP, 0, -(row // 2) * ROW_GAP)
         manifest[name] = {
             "rarity": spec["rarity"],
             "fbx": f"blender/exports/{name}.fbx",
-            "colors": {"Blade": spec["colors"][0], "Guard": spec["colors"][1],
-                       "Handle": spec["colors"][2], "Pommel": spec["colors"][1]},
+            "parts": [p.name.split(".")[0] for p in parts],
+            "colors": {**spec["colors"], "Pommel": spec["colors"]["Guard"]},
         }
         print(f"exported {path}")
-    (ROOT / "blender" / "knives.json").write_text(json.dumps(manifest, indent=2))
-    render_lineup(PREVIEW_DIR / "lineup.png")
+    if ONLY is None:
+        (ROOT / "blender" / "knives.json").write_text(json.dumps(manifest, indent=2))
+    render_lineup(PREVIEW_DIR / "lineup.png", len(items))
     bpy.ops.wm.save_as_mainfile(filepath=str(ROOT / "blender" / "knives.blend"))
 
 

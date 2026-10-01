@@ -1,12 +1,14 @@
 --!strict
--- Knife catalog. Knives are stolen from the arena (never bought); each earns cash per second
--- while it sits on the owner's rack. Perk is used in rounds (not implemented yet - core loop first).
+-- Knife catalog. Knives are won in the arena (kill the guard holding one, carry it home); each
+-- earns cash per second while it hangs on the owner's vault wall. Damage is what it does to
+-- guards when you wield it; Perk is the Murderer's ability when it's their equipped knife.
 
 export type Knife = {
 	Name: string,
 	DisplayName: string,
 	Rarity: string,
 	Income: number, -- cash per second on the rack
+	Damage: number, -- per hit on a guard in the arena (throws do a bit more)
 	Perk: string,
 	BladeLength: number,
 	BladeWidth: number,
@@ -31,10 +33,11 @@ local list: { Knife } = {
 	-- Common
 	{
 		Name = "RustyShank",
+		Damage = 25,
 		DisplayName = "Rusty Shank",
 		Rarity = "Common",
 		Income = 1,
-		Perk = "SpeedBurst",
+		Perk = "Fury",
 		BladeLength = 1.6,
 		BladeWidth = 0.45,
 		BladeColor = Color3.fromRGB(170, 110, 70),
@@ -43,10 +46,11 @@ local list: { Knife } = {
 	},
 	{
 		Name = "KitchenKnife",
+		Damage = 30,
 		DisplayName = "Kitchen Knife",
 		Rarity = "Common",
 		Income = 2,
-		Perk = "SpeedBurst",
+		Perk = "Identifier",
 		BladeLength = 2.0,
 		BladeWidth = 0.6,
 		BladeColor = Color3.fromRGB(225, 230, 235),
@@ -56,10 +60,11 @@ local list: { Knife } = {
 	-- Rare
 	{
 		Name = "HunterBlade",
+		Damage = 45,
 		DisplayName = "Hunter Blade",
 		Rarity = "Rare",
 		Income = 8,
-		Perk = "Dash",
+		Perk = "Bulletproof",
 		BladeLength = 2.2,
 		BladeWidth = 0.55,
 		BladeColor = Color3.fromRGB(200, 210, 220),
@@ -68,10 +73,11 @@ local list: { Knife } = {
 	},
 	{
 		Name = "Switchblade",
+		Damage = 50,
 		DisplayName = "Switchblade",
 		Rarity = "Rare",
 		Income = 10,
-		Perk = "Dash",
+		Perk = "ShapeShifter",
 		BladeLength = 1.9,
 		BladeWidth = 0.4,
 		BladeColor = Color3.fromRGB(120, 200, 255),
@@ -81,10 +87,11 @@ local list: { Knife } = {
 	-- Epic
 	{
 		Name = "Cleaver",
+		Damage = 80,
 		DisplayName = "Cleaver",
 		Rarity = "Epic",
 		Income = 40,
-		Perk = "Throw",
+		Perk = "SpamKnife",
 		BladeLength = 1.8,
 		BladeWidth = 1.2,
 		BladeColor = Color3.fromRGB(210, 215, 225),
@@ -93,10 +100,11 @@ local list: { Knife } = {
 	},
 	{
 		Name = "Machete",
+		Damage = 90,
 		DisplayName = "Jungle Machete",
 		Rarity = "Epic",
 		Income = 50,
-		Perk = "Throw",
+		Perk = "GhostKnife",
 		BladeLength = 2.8,
 		BladeWidth = 0.7,
 		BladeColor = Color3.fromRGB(190, 120, 255),
@@ -106,10 +114,11 @@ local list: { Knife } = {
 	-- Legendary
 	{
 		Name = "GoldenDagger",
+		Damage = 140,
 		DisplayName = "Golden Dagger",
 		Rarity = "Legendary",
 		Income = 200,
-		Perk = "Invisibility",
+		Perk = "Invisiknife",
 		BladeLength = 2.4,
 		BladeWidth = 0.5,
 		BladeColor = Color3.fromRGB(255, 205, 50),
@@ -118,10 +127,11 @@ local list: { Knife } = {
 	},
 	{
 		Name = "Katana",
+		Damage = 160,
 		DisplayName = "Sakura Katana",
 		Rarity = "Legendary",
 		Income = 250,
-		Perk = "Invisibility",
+		Perk = "LaserKnife",
 		BladeLength = 3.2,
 		BladeWidth = 0.45,
 		BladeColor = Color3.fromRGB(255, 180, 210),
@@ -131,10 +141,11 @@ local list: { Knife } = {
 	-- Godly
 	{
 		Name = "VoidEdge",
+		Damage = 250,
 		DisplayName = "Void Edge",
 		Rarity = "Godly",
 		Income = 1000,
-		Perk = "Blink",
+		Perk = "ExplodingKnife",
 		BladeLength = 3.0,
 		BladeWidth = 0.6,
 		BladeColor = Color3.fromRGB(150, 60, 255),
@@ -144,10 +155,11 @@ local list: { Knife } = {
 	},
 	{
 		Name = "InfernoFang",
+		Damage = 280,
 		DisplayName = "Inferno Fang",
 		Rarity = "Godly",
 		Income = 1200,
-		Perk = "Blink",
+		Perk = "Hellfire",
 		BladeLength = 2.8,
 		BladeWidth = 0.75,
 		BladeColor = Color3.fromRGB(255, 110, 30),

@@ -1,0 +1,180 @@
+{
+  "Coin": {
+    "fbx": "blender/exports/props/Coin.fbx",
+    "parts": [
+      "Emblem",
+      "Eyes",
+      "Gold",
+      "Rim"
+    ]
+  },
+  "Pedestal": {
+    "fbx": "blender/exports/props/Pedestal.fbx",
+    "parts": [
+      "Glow",
+      "Stone",
+      "Trim"
+    ]
+  },
+  "Chest": {
+    "fbx": "blender/exports/props/Chest.fbx",
+    "parts": [
+      "Iron",
+      "Lock",
+      "Seam",
+      "Wood"
+    ]
+  },
+  "LootSack": {
+    "fbx": "blender/exports/props/LootSack.fbx",
+    "parts": [
+      "Emblem",
+      "Sack",
+      "Tie"
+    ]
+  },
+  "BurglarMask": {
+    "fbx": "blender/exports/props/BurglarMask.fbx",
+    "parts": [
+      "Mask"
+    ]
+  },
+  "Skull": {
+    "fbx": "blender/exports/props/Skull.fbx",
+    "parts": [
+      "Bone",
+      "Eyes"
+    ]
+  },
+  "BoneSpike": {
+    "fbx": "blender/exports/props/BoneSpike.fbx",
+    "parts": [
+      "Bone"
+    ]
+  },
+  "Crystal": {
+    "fbx": "blender/exports/props/Crystal.fbx",
+    "parts": [
+      "Crystal"
+    ]
+  },
+  "Chandelier": {
+    "fbx": "blender/exports/props/Chandelier.fbx",
+    "parts": [
+      "Candles",
+      "Flames",
+      "Iron"
+    ]
+  },
+  "Sconce": {
+    "fbx": "blender/exports/props/Sconce.fbx",
+    "parts": [
+      "Candle",
+      "Flame",
+      "Iron"
+    ]
+  },
+  "Lantern": {
+    "fbx": "blender/exports/props/Lantern.fbx",
+    "parts": [
+      "Glass",
+      "Iron"
+    ]
+  },
+  "Camera": {
+    "fbx": "blender/exports/props/Camera.fbx",
+    "parts": [
+      "Body",
+      "Bulb",
+      "Dish",
+      "Lens"
+    ]
+  },
+  "Throne": {
+    "fbx": "blender/exports/props/Throne.fbx",
+    "parts": [
+      "Gem",
+      "Stone"
+    ]
+  },
+  "HairLong": {
+    "fbx": "blender/exports/props/HairLong.fbx",
+    "parts": [
+      "Hair"
+    ]
+  },
+  "HairBob": {
+    "fbx": "blender/exports/props/HairBob.fbx",
+    "parts": [
+      "Hair"
+    ]
+  },
+  "HairSpiky": {
+    "fbx": "blender/exports/props/HairSpiky.fbx",
+    "parts": [
+      "Hair"
+    ]
+  },
+  "HairPonytail": {
+    "fbx": "blender/exports/props/HairPonytail.fbx",
+    "parts": [
+      "Hair",
+      "Tie"
+    ]
+  },
+  "HairSwoop": {
+    "fbx": "blender/exports/props/HairSwoop.fbx",
+    "parts": [
+      "Hair"
+    ]
+  },
+  "Beanie": {
+    "fbx": "blender/exports/props/Beanie.fbx",
+    "parts": [
+      "Hat",
+      "Pompom",
+      "Trim"
+    ]
+  },
+  "Cap": {
+    "fbx": "blender/exports/props/Cap.fbx",
+    "parts": [
+      "Hat",
+      "Trim"
+    ]
+  },
+  "ShutterShades": {
+    "fbx": "blender/exports/props/ShutterShades.fbx",
+    "parts": [
+      "Frame"
+    ]
+  },
+  "RoundGlasses": {
+    "fbx": "blender/exports/props/RoundGlasses.fbx",
+    "parts": [
+      "Frame",
+      "Lens"
+    ]
+  },
+  "Headphones": {
+    "fbx": "blender/exports/props/Headphones.fbx",
+    "parts": [
+      "Hat",
+      "Trim"
+    ]
+  },
+  "TopHat": {
+    "fbx": "blender/exports/props/TopHat.fbx",
+    "parts": [
+      "Hat",
+      "Trim"
+    ]
+  },
+  "CowboyHat": {
+    "fbx": "blender/exports/props/CowboyHat.fbx",
+    "parts": [
+      "Hat",
+      "Trim"
+    ]
+  }
+}

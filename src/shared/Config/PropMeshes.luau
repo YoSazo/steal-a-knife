@@ -1,0 +1,501 @@
+--!strict
+-- Uploaded Blender prop meshes (blender/scripts/make_props.py -> tools/upload_model.py).
+-- Each prop is a list of mesh parts placed relative to the prop's origin; colours and materials
+-- are set here because FBX colours don't carry over. Read out of the uploaded models in Studio
+-- (MeshId, Size, and offset from the model's pivot). Props falls back to part-built stand-ins for
+-- anything missing. Asset ids: blender/uploaded_assets.json (Prop_*).
+
+export type Spec = {
+	Name: string,
+	MeshId: string,
+	Size: Vector3,
+	Offset: Vector3,
+	Color: Color3,
+	Material: string,
+}
+
+local function rgb(r: number, g: number, b: number): Color3
+	return Color3.fromRGB(r, g, b)
+end
+
+local PropMeshes: { [string]: { Spec } } = {
+	Pedestal = {
+		{
+			Name = "Stone",
+			MeshId = "rbxassetid://131415935399624",
+			Size = Vector3.new(3.5, 1.17, 3.5),
+			Offset = Vector3.new(0, 0.585, 0),
+			Color = rgb(70, 64, 82),
+			Material = "Slate",
+		},
+		{
+			Name = "Trim",
+			MeshId = "rbxassetid://92619399369408",
+			Size = Vector3.new(3.34, 0.92, 3.34),
+			Offset = Vector3.new(0, 0.76, 0),
+			Color = rgb(200, 160, 70),
+			Material = "Metal",
+		},
+		{
+			Name = "Glow",
+			MeshId = "rbxassetid://110421311831968",
+			Size = Vector3.new(2.86, 0.69, 2.86),
+			Offset = Vector3.new(0, 0.885, 0),
+			Color = rgb(90, 220, 255),
+			Material = "Neon",
+		},
+	},
+	Chest = {
+		{
+			Name = "Wood",
+			MeshId = "rbxassetid://121770882312365",
+			Size = Vector3.new(2.86, 2.134, 2.1),
+			Offset = Vector3.new(0, 0.217, 0),
+			Color = rgb(110, 70, 40),
+			Material = "WoodPlanks",
+		},
+		{
+			Name = "Iron",
+			MeshId = "rbxassetid://119352274998886",
+			Size = Vector3.new(3.1, 2.15, 2.14),
+			Offset = Vector3.new(0, 0.18, 0),
+			Color = rgb(70, 66, 78),
+			Material = "Metal",
+		},
+		{
+			Name = "Lock",
+			MeshId = "rbxassetid://108549912980713",
+			Size = Vector3.new(0.55, 0.93, 0.19),
+			Offset = Vector3.new(0, 0.505, -1.035),
+			Color = rgb(255, 200, 60),
+			Material = "Neon",
+		},
+		{
+			Name = "Seam",
+			MeshId = "rbxassetid://108658070393886",
+			Size = Vector3.new(2.84, 0.08, 1.94),
+			Offset = Vector3.new(0, 0.6, 0),
+			Color = rgb(255, 200, 60),
+			Material = "Neon",
+		},
+	},
+	LootSack = {
+		{
+			Name = "Sack",
+			MeshId = "rbxassetid://72790131390351",
+			Size = Vector3.new(2.167, 2.408, 1.929),
+			Offset = Vector3.new(-0.011, 1.246, -0.026),
+			Color = rgb(160, 120, 75),
+			Material = "Fabric",
+		},
+		{
+			Name = "Tie",
+			MeshId = "rbxassetid://124336442640909",
+			Size = Vector3.new(0.783, 0.516, 0.78),
+			Offset = Vector3.new(-0.001, 1.877, 0),
+			Color = rgb(90, 60, 35),
+			Material = "Fabric",
+		},
+		{
+			Name = "Emblem",
+			MeshId = "rbxassetid://73560161190480",
+			Size = Vector3.new(0.451, 0.809, 0.12),
+			Offset = Vector3.new(-0.006, 0.987, -1.02),
+			Color = rgb(255, 215, 60),
+			Material = "Metal",
+		},
+	},
+	BurglarMask = {
+		{
+			Name = "Mask",
+			MeshId = "rbxassetid://102923102298282",
+			Size = Vector3.new(1.476, 0.42, 0.743),
+			Offset = Vector3.new(0, 0, 0.319),
+			Color = rgb(18, 18, 22),
+			Material = "Fabric",
+		},
+	},
+	Skull = {
+		{
+			Name = "Bone",
+			MeshId = "rbxassetid://105044809458432",
+			Size = Vector3.new(1.28, 1.497, 1.362),
+			Offset = Vector3.new(0, -0.031, 0.041),
+			Color = rgb(236, 228, 205),
+			Material = "SmoothPlastic",
+		},
+		{
+			Name = "Eyes",
+			MeshId = "rbxassetid://133202052708182",
+			Size = Vector3.new(0.803, 0.513, 0.257),
+			Offset = Vector3.new(0, -0.07, -0.532),
+			Color = rgb(255, 40, 40),
+			Material = "Neon",
+		},
+	},
+	BoneSpike = {
+		{
+			Name = "Bone",
+			MeshId = "rbxassetid://106758786757854",
+			Size = Vector3.new(0.92, 2.6, 0.52),
+			Offset = Vector3.new(-0.16, 1.3, 0),
+			Color = rgb(232, 224, 200),
+			Material = "SmoothPlastic",
+		},
+	},
+	Crystal = {
+		{
+			Name = "Crystal",
+			MeshId = "rbxassetid://99585719662625",
+			Size = Vector3.new(1.722, 2.71, 1.718),
+			Offset = Vector3.new(0.077, 1.245, 0.03),
+			Color = rgb(170, 70, 255),
+			Material = "Neon",
+		},
+	},
+	Chandelier = {
+		{
+			Name = "Iron",
+			MeshId = "rbxassetid://101793883109757",
+			Size = Vector3.new(5.12, 3.819, 5.12),
+			Offset = Vector3.new(0, -1.691, 0),
+			Color = rgb(40, 36, 46),
+			Material = "Metal",
+		},
+		{
+			Name = "Candles",
+			MeshId = "rbxassetid://112430775284982",
+			Size = Vector3.new(4.98, 0.55, 4.98),
+			Offset = Vector3.new(0, -2.8, 0),
+			Color = rgb(240, 230, 210),
+			Material = "SmoothPlastic",
+		},
+		{
+			Name = "Flames",
+			MeshId = "rbxassetid://81815436615433",
+			Size = Vector3.new(4.956, 0.342, 4.98),
+			Offset = Vector3.new(0, -2.42, 0),
+			Color = rgb(255, 180, 70),
+			Material = "Neon",
+		},
+	},
+	Sconce = {
+		{
+			Name = "Iron",
+			MeshId = "rbxassetid://117562914781719",
+			Size = Vector3.new(0.707, 1.654, 1.39),
+			Offset = Vector3.new(0, 0.227, -0.635),
+			Color = rgb(45, 40, 50),
+			Material = "Metal",
+		},
+		{
+			Name = "Candle",
+			MeshId = "rbxassetid://76194876610580",
+			Size = Vector3.new(0.2, 0.5, 0.2),
+			Offset = Vector3.new(0, 0.3, -1.05),
+			Color = rgb(240, 230, 210),
+			Material = "SmoothPlastic",
+		},
+		{
+			Name = "Flame",
+			MeshId = "rbxassetid://115107336478259",
+			Size = Vector3.new(0.173, 0.4, 0.2),
+			Offset = Vector3.new(0, 0.68, -1.05),
+			Color = rgb(255, 170, 70),
+			Material = "Neon",
+		},
+	},
+	Lantern = {
+		{
+			Name = "Iron",
+			MeshId = "rbxassetid://93408826925374",
+			Size = Vector3.new(1.143, 2.15, 1.32),
+			Offset = Vector3.new(0, 0.265, 0),
+			Color = rgb(40, 36, 46),
+			Material = "Metal",
+		},
+		{
+			Name = "Glass",
+			MeshId = "rbxassetid://109766561269683",
+			Size = Vector3.new(0.866, 1.3, 1),
+			Offset = Vector3.new(0, -0.05, 0),
+			Color = rgb(255, 200, 120),
+			Material = "Neon",
+		},
+	},
+	Camera = {
+		{
+			Name = "Body",
+			MeshId = "rbxassetid://127006227465997",
+			Size = Vector3.new(1.1, 0.86, 0.55),
+			Offset = Vector3.new(0, 0.08, 0),
+			Color = rgb(35, 32, 36),
+			Material = "SmoothPlastic",
+		},
+		{
+			Name = "Lens",
+			MeshId = "rbxassetid://121846136025056",
+			Size = Vector3.new(0.44, 0.44, 0.405),
+			Offset = Vector3.new(-0.1, -0.02, -0.448),
+			Color = rgb(150, 150, 165),
+			Material = "Metal",
+		},
+		{
+			Name = "Dish",
+			MeshId = "rbxassetid://102323517354855",
+			Size = Vector3.new(0.76, 0.88, 0.295),
+			Offset = Vector3.new(-0.35, 0.79, -0.098),
+			Color = rgb(200, 200, 210),
+			Material = "Metal",
+		},
+		{
+			Name = "Bulb",
+			MeshId = "rbxassetid://125177421462105",
+			Size = Vector3.new(0.19, 0.2, 0.19),
+			Offset = Vector3.new(-0.35, 0.85, -0.12),
+			Color = rgb(255, 255, 220),
+			Material = "Neon",
+		},
+	},
+	Throne = {
+		{
+			Name = "Stone",
+			MeshId = "rbxassetid://117493679743043",
+			Size = Vector3.new(1.706, 0.64, 0.633),
+			Offset = Vector3.new(0, -0.13, -0.017),
+			Color = rgb(90, 70, 50),
+			Material = "Slate",
+		},
+		{
+			Name = "Gem",
+			MeshId = "rbxassetid://78534218598336",
+			Size = Vector3.new(0.208, 0.24, 0.12),
+			Offset = Vector3.new(0, -0.2, -0.31),
+			Color = rgb(255, 255, 255),
+			Material = "Neon",
+		},
+	},
+	-- Round coin: stands up, faces -Z, origin at the centre
+	Coin = {
+		{
+			Name = "Gold",
+			MeshId = "rbxassetid://120186867786488",
+			Size = Vector3.new(2, 2, 0.24),
+			Offset = Vector3.new(0, 0, 0),
+			Color = rgb(255, 190, 40),
+			Material = "Metal",
+		},
+		{
+			Name = "Rim",
+			MeshId = "rbxassetid://75704950045153",
+			Size = Vector3.new(2.21, 2.21, 0.399),
+			Offset = Vector3.new(0, 0, 0),
+			Color = rgb(230, 150, 25),
+			Material = "Metal",
+		},
+		{
+			Name = "Emblem",
+			MeshId = "rbxassetid://86588285165592",
+			Size = Vector3.new(0.8, 0.93, 0.32),
+			Offset = Vector3.new(0, 0.035, 0),
+			Color = rgb(255, 225, 120),
+			Material = "Metal",
+		},
+		{
+			Name = "Eyes",
+			MeshId = "rbxassetid://129983858402176",
+			Size = Vector3.new(0.509, 0.587, 0.404),
+			Offset = Vector3.new(0, -0.087, 0),
+			Color = rgb(110, 60, 10),
+			Material = "SmoothPlastic",
+		},
+	},
+	-- Disguise accessories (blender/scripts/accessories.py). Origin = head centre, face toward -Z.
+	-- Disguises recolours Hair / Hat / Trim per outfit.
+	HairLong = {
+		{
+			Name = "Hair",
+			MeshId = "rbxassetid://132727393405287",
+			Size = Vector3.new(1.502, 2.060, 1.464),
+			Offset = Vector3.new(0, -0.320, 0.008),
+			Color = rgb(110, 60, 30),
+			Material = "SmoothPlastic",
+		},
+	},
+	HairBob = {
+		{
+			Name = "Hair",
+			MeshId = "rbxassetid://95762093256512",
+			Size = Vector3.new(1.510, 1.335, 1.486),
+			Offset = Vector3.new(0, 0.042, 0.007),
+			Color = rgb(30, 25, 20),
+			Material = "SmoothPlastic",
+		},
+	},
+	HairSpiky = {
+		{
+			Name = "Hair",
+			MeshId = "rbxassetid://113139099773622",
+			Size = Vector3.new(1.740, 1.540, 1.400),
+			Offset = Vector3.new(0, 0.320, 0),
+			Color = rgb(240, 200, 80),
+			Material = "SmoothPlastic",
+		},
+	},
+	HairPonytail = {
+		{
+			Name = "Hair",
+			MeshId = "rbxassetid://80881843177532",
+			Size = Vector3.new(1.445, 1.342, 2.194),
+			Offset = Vector3.new(0, 0.039, 0.367),
+			Color = rgb(200, 70, 30),
+			Material = "SmoothPlastic",
+		},
+		{
+			Name = "Tie",
+			MeshId = "rbxassetid://129132081768967",
+			Size = Vector3.new(0.460, 0.437, 0.120),
+			Offset = Vector3.new(0, 0.300, 0.760),
+			Color = rgb(255, 80, 150),
+			Material = "SmoothPlastic",
+		},
+	},
+	HairSwoop = {
+		{
+			Name = "Hair",
+			MeshId = "rbxassetid://107865717812583",
+			Size = Vector3.new(1.457, 1.160, 1.490),
+			Offset = Vector3.new(0, 0.130, 0.005),
+			Color = rgb(20, 20, 24),
+			Material = "SmoothPlastic",
+		},
+	},
+	Beanie = {
+		{
+			Name = "Hat",
+			MeshId = "rbxassetid://114203289292017",
+			Size = Vector3.new(1.280, 0.500, 1.280),
+			Offset = Vector3.new(0, 0.550, 0.020),
+			Color = rgb(200, 30, 40),
+			Material = "Fabric",
+		},
+		{
+			Name = "Pompom",
+			MeshId = "rbxassetid://109954152358789",
+			Size = Vector3.new(0.400, 0.400, 0.400),
+			Offset = Vector3.new(0, 0.900, 0.020),
+			Color = rgb(240, 240, 240),
+			Material = "Fabric",
+		},
+		{
+			Name = "Trim",
+			MeshId = "rbxassetid://125583217599131",
+			Size = Vector3.new(1.340, 0.240, 1.340),
+			Offset = Vector3.new(0, 0.340, 0.020),
+			Color = rgb(240, 240, 240),
+			Material = "Fabric",
+		},
+	},
+	Cap = {
+		{
+			Name = "Hat",
+			MeshId = "rbxassetid://121110274105176",
+			Size = Vector3.new(1.260, 0.490, 1.260),
+			Offset = Vector3.new(0, 0.565, 0.020),
+			Color = rgb(30, 60, 160),
+			Material = "SmoothPlastic",
+		},
+		{
+			Name = "Trim",
+			MeshId = "rbxassetid://106446061490551",
+			Size = Vector3.new(1.000, 0.060, 0.620),
+			Offset = Vector3.new(0, 0.307, -0.880),
+			Color = rgb(30, 60, 160),
+			Material = "SmoothPlastic",
+		},
+	},
+	ShutterShades = {
+		{
+			Name = "Frame",
+			MeshId = "rbxassetid://119950418418260",
+			Size = Vector3.new(1.240, 0.310, 0.625),
+			Offset = Vector3.new(0, 0.070, -0.333),
+			Color = rgb(240, 240, 240),
+			Material = "SmoothPlastic",
+		},
+	},
+	RoundGlasses = {
+		{
+			Name = "Frame",
+			MeshId = "rbxassetid://78105018898253",
+			Size = Vector3.new(1.200, 0.448, 0.630),
+			Offset = Vector3.new(0, 0.100, -0.335),
+			Color = rgb(25, 25, 28),
+			Material = "Metal",
+		},
+		{
+			Name = "Lens",
+			MeshId = "rbxassetid://88327471116704",
+			Size = Vector3.new(0.890, 0.380, 0.020),
+			Offset = Vector3.new(0, 0.100, -0.620),
+			Color = rgb(180, 220, 255),
+			Material = "Glass",
+		},
+	},
+	Headphones = {
+		{
+			Name = "Hat",
+			MeshId = "rbxassetid://132565040918659",
+			Size = Vector3.new(1.740, 0.870, 0.133),
+			Offset = Vector3.new(0, 0.485, 0.020),
+			Color = rgb(30, 30, 34),
+			Material = "SmoothPlastic",
+		},
+		{
+			Name = "Trim",
+			MeshId = "rbxassetid://133616627337444",
+			Size = Vector3.new(1.599, 0.546, 0.560),
+			Offset = Vector3.new(0, -0.050, 0.020),
+			Color = rgb(230, 40, 60),
+			Material = "SmoothPlastic",
+		},
+	},
+	TopHat = {
+		{
+			Name = "Hat",
+			MeshId = "rbxassetid://118412988203525",
+			Size = Vector3.new(1.871, 1.050, 1.900),
+			Offset = Vector3.new(0, 1.095, 0),
+			Color = rgb(25, 25, 28),
+			Material = "SmoothPlastic",
+		},
+		{
+			Name = "Trim",
+			MeshId = "rbxassetid://125448422877470",
+			Size = Vector3.new(1.142, 0.180, 1.160),
+			Offset = Vector3.new(0, 0.720, 0),
+			Color = rgb(170, 30, 40),
+			Material = "SmoothPlastic",
+		},
+	},
+	CowboyHat = {
+		{
+			Name = "Hat",
+			MeshId = "rbxassetid://81914879650873",
+			Size = Vector3.new(2.300, 0.740, 2.300),
+			Offset = Vector3.new(0, 0.840, 0),
+			Color = rgb(130, 85, 45),
+			Material = "Fabric",
+		},
+		{
+			Name = "Trim",
+			MeshId = "rbxassetid://79886831057365",
+			Size = Vector3.new(1.280, 0.140, 1.280),
+			Offset = Vector3.new(0, 0.600, 0),
+			Color = rgb(60, 35, 20),
+			Material = "Fabric",
+		},
+	},
+}
+
+return PropMeshes

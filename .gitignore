@@ -2,7 +2,7 @@
 *.rbxl.lock
 *.rbxlx.lock
 sourcemap.json
-blender/exports/*.fbx
+blender/exports/
 blender/*.blend1
 __pycache__/
 StealAKnife.rbxlx
