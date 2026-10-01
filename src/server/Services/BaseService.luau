@@ -32,7 +32,15 @@ BaseService.OnUpgradeWalls = nil :: ((Player) -> ())?
 -- Rebirths multiply everything a vault earns
 function BaseService.IncomeMultiplier(player: Player): number
 	local profile = DataService.Get(player)
-	return 1 + (if profile then profile.Rebirths * GameConfig.Rebirth.IncomeBonus else 0)
+	local multiplier = 1 + (if profile then profile.Rebirths * GameConfig.Rebirth.IncomeBonus else 0)
+	-- Game passes (MonetizationService sets these attributes)
+	if player:GetAttribute("Pass_DoubleCash") then
+		multiplier *= 2
+	end
+	if player:GetAttribute("Pass_VIP") then
+		multiplier *= 1.1
+	end
+	return multiplier
 end
 
 function BaseService.RackIncome(player: Player): number
@@ -93,6 +101,12 @@ function BaseService.RefreshWalls(base: MapService.BaseSite)
 	local built = VaultWalls.Build(base.WallFolder, base.Frame, base.Color, tier)
 	base.Gate = built.Gate
 	base.Blocker = built.Blocker
+	-- Fortified Vault pass: +50% gate health on every tier
+	if owner and owner:GetAttribute("Pass_Fortified") then
+		local max = (built.Blocker:GetAttribute("MaxHealth") or 0) :: number
+		built.Blocker:SetAttribute("MaxHealth", max * 1.5)
+		built.Blocker:SetAttribute("Health", max * 1.5)
+	end
 	base.Blocker:SetAttribute("Owner", if owner then owner.UserId else nil)
 	base.Blocker:SetAttribute("OwnerName", if owner then owner.DisplayName else nil)
 	local nextTier = GameConfig.Walls[tier + 1]
@@ -156,83 +170,7 @@ function BaseService.TeleportHome(player: Player)
 	character:PivotTo(if base then base.Spawn else MapService.LobbySpawn)
 end
 
--- Speed trails: once you've trained past the starter speed, a streak of flying knives follows you,
--- longer, wider and flashier the faster you are (Steal An Egg style)
-local TRAIL_TIERS = {
-	{ Speed = 22, Width = 1.6, Life = 0.22, Colors = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(170, 210, 255) } },
-	{ Speed = 30, Width = 2.0, Life = 0.3, Colors = { Color3.fromRGB(120, 255, 200), Color3.fromRGB(60, 200, 255) } },
-	{ Speed = 38, Width = 2.4, Life = 0.38, Colors = { Color3.fromRGB(200, 120, 255), Color3.fromRGB(120, 60, 255) } },
-	{ Speed = 48, Width = 2.8, Life = 0.46, Colors = { Color3.fromRGB(255, 230, 120), Color3.fromRGB(255, 140, 40) } },
-	{
-		Speed = 60,
-		Width = 3.2,
-		Life = 0.55,
-		Colors = {
-			Color3.fromRGB(255, 80, 80),
-			Color3.fromRGB(255, 220, 80),
-			Color3.fromRGB(80, 255, 140),
-			Color3.fromRGB(80, 170, 255),
-			Color3.fromRGB(220, 90, 255),
-		},
-	},
-}
-
-local function updateTrail(player: Player, speed: number)
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not root then
-		return
-	end
-	local tier = nil
-	for _, t in TRAIL_TIERS do
-		if speed >= t.Speed then
-			tier = t
-		end
-	end
-	local trail = root:FindFirstChild("SpeedTrail") :: Trail?
-	if not trail then
-		local top = Instance.new("Attachment")
-		top.Name = "TrailTop"
-		top.Position = Vector3.new(0, 1.1, 0.4)
-		top.Parent = root
-		local bottom = Instance.new("Attachment")
-		bottom.Name = "TrailBottom"
-		bottom.Position = Vector3.new(0, -1.5, 0.4)
-		bottom.Parent = root
-		local created = Instance.new("Trail")
-		created.Name = "SpeedTrail"
-		created.Attachment0 = top
-		created.Attachment1 = bottom
-		created.Texture = Textures.KnifeTrail
-		created.TextureMode = Enum.TextureMode.Wrap
-		created.TextureLength = 7
-		created.LightEmission = 0.9
-		created.LightInfluence = 0
-		created.FaceCamera = true
-		created.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.05),
-			NumberSequenceKeypoint.new(0.7, 0.4),
-			NumberSequenceKeypoint.new(1, 1),
-		})
-		created.Parent = root
-		trail = created
-	end
-	local t = trail :: Trail
-	-- Hidden in rounds: disguises shouldn't give you away
-	t.Enabled = tier ~= nil and not player:GetAttribute("InRound")
-	if tier then
-		local keys = {}
-		for i, color in tier.Colors do
-			table.insert(keys, ColorSequenceKeypoint.new((i - 1) / math.max(1, #tier.Colors - 1), color))
-		end
-		t.Color = ColorSequence.new(keys)
-		t.Lifetime = tier.Life
-		t.WidthScale = NumberSequence.new(1, 0.3)
-		local top = root:FindFirstChild("TrailTop") :: Attachment
-		top.Position = Vector3.new(0, 0.6 + tier.Width / 2, 0.4)
-	end
-	player:SetAttribute("TrailTier", if tier then table.find(TRAIL_TIERS, tier) else nil)
-end
+-- (Knife trails are bought - GameConfig.Trails, profile.TrailLevel - and drawn by client/KnifeTrails)
 
 -- Single source of truth for walk speed: round > carrying > upgrades
 function BaseService.RefreshWalkSpeed(player: Player)
@@ -265,7 +203,6 @@ function BaseService.RefreshWalkSpeed(player: Player)
 		speed = 0
 	end
 	humanoid.WalkSpeed = speed
-	updateTrail(player, GameConfig.WalkSpeedFor(if profile then profile.Speed else 0))
 end
 
 -- The label floating over a knife on its pedestal (Steal a Brainrot style): its name in its
@@ -684,6 +621,11 @@ function BaseService.Init()
 				if on and profile then
 					local rate = GameConfig.Treadmills[profile.TreadmillLevel].Rate
 						* (1 + profile.Rebirths * GameConfig.Rebirth.SpeedBonus)
+						* (if player:GetAttribute("Pass_FastWheel") then 2 else 1)
+						* GameConfig.TrailMultiplier(
+							profile.TrailLevel,
+							player:GetAttribute("Pass_PhantomTrail") == true
+						)
 					DataService.Update(player, function(p)
 						p.Speed += rate * dt
 					end)

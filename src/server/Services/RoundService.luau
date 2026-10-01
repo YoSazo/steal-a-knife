@@ -44,6 +44,7 @@ local Obstacles = require(script.Parent.Obstacles)
 local Revolver = require(script.Parent.Revolver)
 local StealService = require(script.Parent.StealService)
 local RoundBots = require(script.Parent.RoundBots)
+local Offers = require(script.Parent.Offers)
 
 local RoundService = {}
 
@@ -150,6 +151,9 @@ local function pickMurderer(participants: { Player }): Player
 	for _, player in participants do
 		local profile = DataService.Get(player) :: DataService.Profile
 		local weight = 1 + profile.Luck
+		if player:GetAttribute("Pass_MurdererLuck") then
+			weight *= 2
+		end
 		if profile.Tickets > 0 then
 			weight += GameConfig.TicketWeight
 			DataService.Update(player, function(p)
@@ -872,7 +876,7 @@ local function basicThrow(round: Round, murderer: Player, direction: Vector3)
 		CombatService.TakeCharge(murderer)
 		return
 	end
-	round.ThrowReadyAt = now + GameConfig.MurdererThrowCooldown
+	round.ThrowReadyAt = now + math.max(GameConfig.MurdererThrowCooldown, GameConfig.ThrowMinInterval)
 	local charge = CombatService.TakeCharge(murderer)
 	throwFromHand(round, murderer, direction, charge)
 end
@@ -1409,8 +1413,8 @@ local function startRound(participants: { Player })
 		murderer = if plan.Role == "Murderer" then plan.Player else nil
 	elseif #participants == 1 and botCount > 0 then
 		local profile = DataService.Get(participants[1])
-		local weight = 1
-			+ (if profile then profile.Luck else 0)
+		local weight = (1 + (if profile then profile.Luck else 0))
+				* (if participants[1]:GetAttribute("Pass_MurdererLuck") then 2 else 1)
 			+ (if profile and profile.Tickets > 0 then GameConfig.TicketWeight else 0)
 		murderer = if rng:NextNumber() * (weight + botCount) < weight then pickMurderer(participants) else nil
 	else
@@ -1665,6 +1669,20 @@ local function endRound(round: Round)
 			end
 		else
 			Net.Notify(murderer, `Time's up! {round.Kills} eliminated.`, "info")
+		end
+	end
+
+	-- Five rounds and still never the Murderer? That's when Murderer Luck is worth mentioning
+	for _, player in round.Innocents do
+		local profile = DataService.Get(player)
+		if player.Parent and profile and profile.Luck >= 5 then
+			task.delay(8, function()
+				Offers.Show(
+					player,
+					"MurdererLuck",
+					`{profile.Luck} rounds without the knife... double your chances for good.`
+				)
+			end)
 		end
 	end
 

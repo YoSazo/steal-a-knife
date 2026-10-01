@@ -221,7 +221,7 @@ local function throw(player: Player, aim: unknown)
 	end
 	local charge = CombatService.TakeCharge(player)
 	local config = GameConfig.HubThrow
-	throwReadyAt[player] = now + config.Cooldown
+	throwReadyAt[player] = now + math.max(config.Cooldown, GameConfig.ThrowMinInterval)
 	Net.Remotes.AbilityState:FireClient(player, "Throw Knife", throwReadyAt[player])
 	Net.Animate(character, "Throw", player)
 

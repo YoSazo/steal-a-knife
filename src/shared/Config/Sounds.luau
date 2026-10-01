@@ -24,6 +24,7 @@ return {
 	GateBreak = "rbxassetid://9116635188", -- metal grate crash (PSE)
 	WoodBreak = "rbxassetid://9120801590", -- wood snap (PSE): barricades
 	Knockdown = "rbxasset://sounds/action_falling.mp3",
+	Wind = "rbxassetid://9125742262", -- airy whooshing (PSE), louder the faster you run
 
 	-- Cases and rewards
 	DrumRoll = "rbxassetid://1842251033", -- snare roll (APM) while the reel spins

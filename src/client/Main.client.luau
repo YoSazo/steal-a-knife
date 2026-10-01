@@ -13,6 +13,8 @@ local Raid = require(script.Parent.Raid)
 local Atmosphere = require(script.Parent.Atmosphere)
 local Tutorial = require(script.Parent.Tutorial)
 local Welcome = require(script.Parent.Welcome)
+local Store = require(script.Parent.Store)
+local KnifeTrails = require(script.Parent.KnifeTrails)
 
 Moves.Init()
 Effects.Init()
@@ -24,6 +26,8 @@ Unbox.Init()
 Raid.Init()
 Atmosphere.Init()
 Welcome.Init()
+Store.Init()
+KnifeTrails.Init()
 task.spawn(Tutorial.Init)
 
 -- No tumbling: Roblox's FallingDown / Ragdoll states knock you over after hard landings, bumps and

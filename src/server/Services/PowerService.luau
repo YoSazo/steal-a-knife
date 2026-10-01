@@ -20,6 +20,7 @@ local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local GuardService = require(script.Parent.GuardService)
 local Obstacles = require(script.Parent.Obstacles)
+local Offers = require(script.Parent.Offers)
 local Stealth = require(script.Parent.Stealth)
 local Targets = require(script.Parent.Targets)
 
@@ -153,8 +154,10 @@ local function handlePower(player: Player, action: unknown, id: unknown): boolea
 			Net.Notify(player, `{power.DisplayName} is maxed!`, "bad")
 			return false
 		end
-		if not DataService.TrySpend(player, GameConfig.PowerCost(power.Cost, level)) then
+		local cost = GameConfig.PowerCost(power.Cost, level)
+		if not DataService.TrySpend(player, cost) then
 			Net.Notify(player, "Not enough cash", "bad")
+			Offers.Cash(player, cost - profile.Cash, BaseService.RackIncome(player))
 			return false
 		end
 		DataService.Update(player, function(p)

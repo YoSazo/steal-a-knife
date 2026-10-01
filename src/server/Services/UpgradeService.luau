@@ -9,11 +9,21 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Net = require(script.Parent.Parent.Remotes)
 local DataService = require(script.Parent.DataService)
 local BaseService = require(script.Parent.BaseService)
+local Offers = require(script.Parent.Offers)
 local Rewards = require(script.Parent.Rewards)
 
 local UpgradeService = {}
 
 local lastRequest: { [Player]: number } = {}
+-- Not enough cash for something: offer the cash pack that would cover it
+local function short(player: Player, cost: number): (boolean, string)
+	local profile = DataService.Get(player)
+	if profile then
+		Offers.Cash(player, cost - profile.Cash, BaseService.RackIncome(player))
+	end
+	return false, "Not enough cash"
+end
+
 local function purchase(player: Player, kind: unknown): (boolean, string)
 	local now = os.clock()
 	if now - (lastRequest[player] or 0) < 0.25 then
@@ -37,20 +47,36 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			return false, "Your Haunted Wheel is maxed!"
 		end
 		if not DataService.TrySpend(player, nextTier.Cost) then
-			return false, "Not enough cash"
+			return short(player, nextTier.Cost)
 		end
 		DataService.Update(player, function(p)
 			p.TreadmillLevel += 1
 		end)
 		BaseService.RefreshRack(player) -- updates the wheel's sign
 		return true, `{nextTier.Name}! +{nextTier.Rate} Speed per second`
+	elseif kind == "Trail" then
+		local nextTrail = GameConfig.Trails[profile.TrailLevel + 1]
+		if not nextTrail then
+			return false, "You have the best knife trail!"
+		end
+		if not DataService.TrySpend(player, nextTrail.Cost) then
+			return short(player, nextTrail.Cost)
+		end
+		DataService.Update(player, function(p)
+			p.TrailLevel += 1
+		end)
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root then
+			Net.Remotes.Effect:FireAllClients("Deposit", player, "Epic")
+		end
+		return true, `{nextTrail.Name}! Your wheel now trains Speed x{nextTrail.Multiplier}`
 	elseif kind == "Walls" then
 		local nextTier = GameConfig.Walls[profile.WallLevel + 1]
 		if not nextTier then
 			return false, "Your walls are as good as they get!"
 		end
 		if not DataService.TrySpend(player, nextTier.Cost) then
-			return false, "Not enough cash"
+			return short(player, nextTier.Cost)
 		end
 		DataService.Update(player, function(p)
 			p.WallLevel += 1
@@ -100,6 +126,7 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			return false, "Your rack is maxed!"
 		end
 		if not DataService.TrySpend(player, GameConfig.SlotCost(profile.Slots)) then
+			Offers.Show(player, "Mount", "Want it now? Add another mount instantly.")
 			return false, "Not enough cash"
 		end
 		DataService.Update(player, function(p)
@@ -112,6 +139,7 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			return false, `You can hold {GameConfig.MaxTickets} tickets at most`
 		end
 		if not DataService.TrySpend(player, GameConfig.TicketPrice(BaseService.RackIncome(player))) then
+			Offers.Show(player, "Tickets", "Get 3 Murderer Tickets right now.")
 			return false, "Not enough cash"
 		end
 		DataService.Update(player, function(p)

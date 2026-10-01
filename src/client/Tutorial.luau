@@ -78,6 +78,16 @@ local function vaultDoor(): Vector3?
 	return floor and floor.Position
 end
 
+-- Your vault's gate (the barrier rivals break)
+local function gate(): Vector3?
+	for _, blocker in game:GetService("CollectionService"):GetTagged("VaultGate") do
+		if blocker:GetAttribute("Owner") == player.UserId then
+			return (blocker :: BasePart).Position
+		end
+	end
+	return nil
+end
+
 local function wheel(): Vector3?
 	local vault = myVault()
 	local plate = vault and vault:FindFirstChild("WheelFloor") :: BasePart?
@@ -108,7 +118,9 @@ function Tutorial.Init()
 	end)
 	local steps: { Step } = {
 		{
-			Text = "Take down a watchman in the Courtyard! (click to stab, hold to throw)",
+			Text = if Ui.Phone
+				then "Take down a watchman in the Courtyard! (tap to stab, hold the red button to throw)"
+				else "Take down a watchman in the Courtyard! (click to stab, hold to throw)",
 			Target = nearestGuard,
 			Done = function()
 				return nearestDrop() ~= nil or carriedOnce
@@ -135,13 +147,22 @@ function Tutorial.Init()
 				return player:GetAttribute("Training") == true
 			end,
 		},
+		{
+			Text = "Rivals can break your gate and steal knives! Go to it: R repairs it, G upgrades your walls.",
+			Target = gate,
+			Done = function()
+				local at = gate()
+				local me = root()
+				return at ~= nil and me ~= nil and (me.Position - at).Magnitude < 12
+			end,
+		},
 	}
 
 	-- The banner
 	local banner = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 104),
-		Size = UDim2.fromOffset(640, 64),
+		Size = UDim2.fromOffset(if Ui.Phone then 540 else 640, 64),
 		BackgroundColor3 = Color3.fromRGB(255, 200, 60),
 	}, Ui.gui)
 	Ui.corner(banner, 16)
@@ -211,7 +232,7 @@ function Tutorial.Init()
 			banner:Destroy()
 			return
 		end
-		stepLabel.Text = "You've got it! Steal, train, raid, survive. Good luck!"
+		stepLabel.Text = "You've got it! Steal, train, defend your vault, survive. Good luck!"
 		Effects.Sound(Sounds.Reveal, nil, 0.7)
 		task.delay(4, function()
 			TweenService:Create(banner, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()

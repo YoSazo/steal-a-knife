@@ -88,15 +88,23 @@ victim's rack (returned if the Murderer is shot); survivors get 2x vault income 
 - Retention (`Rewards`): offline earnings (`GameConfig.Offline`, from profile `LastSeen`) and the 7-day login streak
   (`GameConfig.Daily`, `Remotes.ClaimDaily`), shown by `client/Welcome` on join (`Remotes.Welcome`). New-player
   shield: `DataService.IsNewPlayer` (PlayTime < `NewPlayerShield`, no rebirths) blocks break-ins, burglars and loot.
+- Robux (`Config/Monetization.luau`, `MonetizationService`, client `Store`): 5 passes + products (cash packs scaled to
+  income, Robux cases with odds shown, Starter Pack once, Mount, Tickets, Instant Repair, Server Luck, Chest Refill,
+  Summon Blood Moon). Passes become player attributes `Pass_<Key>` that other services read; ProcessReceipt is
+  idempotent (profile `Receipts`) and saves before granting. Ids are 0 until created on the dashboard; Studio fakes
+  those purchases (`Remotes.StoreTest`). Contextual offers via `Offers.Show` (rate limited, never in rounds).
 - `tools/pacing_sim.py`: rough simulation of a player's first hours (milestones and long gaps) from the config numbers.
 - Powers in rounds cost Energy (coins refill it, PowerService.AddEnergy). New: Flash (blind, hooks via
   PowerService.OnFlash) and Barricade (`Obstacles` registry: guards/burglars/Murderer smash it).
 - Rebirth (UpgradeService "Rebirth"), Index rewards + free plaza chest + leaderboards (`Rewards`), tutorial
-  (client/Tutorial), speed trails (BaseService.updateTrail), music/heartbeat/raid sky/final kill (client/Atmosphere).
+  (client/Tutorial), knife trails (GameConfig.Trails bought via Purchase "Trail", profile.TrailLevel, Phantom Trail pass; drawn by client/KnifeTrails with the speed FOV/lines/wind/dust), music/heartbeat/raid sky/final kill (client/Atmosphere).
 - Blender props: `blender/scripts/make_props.py` -> upload -> `Config/PropMeshes.luau`, built by `Props.Build(name)`
   (part fallbacks if missing). Textures: `blender/scripts/make_textures.py` -> Studio upload_image -> `Config/Textures`.
 - Studio test buttons (left column): Bot rounds, Raid toggle, Epic case drop. Debug hook also has "Case", "Raid",
   "Walls", "Drop".
+- Phones: `Ui.Phone` (touch, no keyboard) switches every HUD piece to a compact layout clear of Roblox's thumbstick
+  (bottom left) and jump button (bottom right); `Ui.iconOnly` for menu buttons. Landscape is forced
+  (PlayerGui.ScreenOrientation). Studio preview: ReplicatedStorage `DebugPhone = true` (draws touch-control ghosts).
 - Lighting.Technology can't be set from scripts: set it to Future in Studio's Properties.
 - Studio testing: `ReplicatedStorage:SetAttribute("DebugMinPlayers", 1)` + `SetAttribute("DebugSkip", true)` starts a
   solo round; `game.ServerStorage.Debug:Invoke("Give", player, {"Katana"})` / `("Cash", player, n)`. Command-bar code

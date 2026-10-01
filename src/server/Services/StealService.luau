@@ -20,6 +20,7 @@ local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local MapService = require(script.Parent.MapService)
+local Offers = require(script.Parent.Offers)
 
 type Carry = {
 	Kind: string, -- "Case" | "Knife"
@@ -172,6 +173,7 @@ local function canPickUp(player: Player, anchor: BasePart, prompt: ProximityProm
 	end
 	if #profile.Knives >= profile.Slots then
 		Net.Notify(player, "Your vault wall is full! Sell a knife or buy another mount.", "bad")
+		Offers.Show(player, "Mount", "Your wall is full! Add another mount instantly.")
 		return false
 	end
 	return true
@@ -388,15 +390,22 @@ end
 
 -- Rebirths bring better luck in cases
 local function caseLuck(profile: DataService.Profile): number
-	return 1 + profile.Rebirths * GameConfig.Rebirth.LuckBonus
+	local luck = 1 + profile.Rebirths * GameConfig.Rebirth.LuckBonus
+	-- Someone bought Server Luck: everyone's cases roll better for a while
+	local until_ = ReplicatedStorage:GetAttribute("ServerLuckUntil")
+	if type(until_) == "number" and workspace:GetServerTimeNow() < until_ then
+		luck *= (ReplicatedStorage:GetAttribute("ServerLuckMultiplier") or 2) :: number
+	end
+	return luck
 end
 
 -- Opens a sealed case straight onto a player's wall: the knife, mutation and size are rolled here,
 -- the reveal plays on their screen (Effects "Unbox") and the wall updates when it lands. Used for
--- cases carried home, bought in the Case Shop and won from the free chest. nil if the wall is full.
-function StealService.OpenCase(player: Player, rarity: string): string?
+-- cases carried home, bought in the Case Shop and won from the free chest. nil if the wall is full,
+-- unless `force` (a case paid for with Robux always opens; the knife waits in storage).
+function StealService.OpenCase(player: Player, rarity: string, force: boolean?): string?
 	local profile = DataService.Get(player)
-	if not profile or #profile.Knives >= profile.Slots then
+	if not profile or (#profile.Knives >= profile.Slots and not force) then
 		return nil
 	end
 	local item, upgraded = Items.OpenCase(rng, rarity, caseLuck(profile))
@@ -439,6 +448,7 @@ local function deposit(player: Player)
 	local profile = DataService.Get(player)
 	if not profile or #profile.Knives >= profile.Slots then
 		Net.Notify(player, "Your vault wall is full! Sell a knife to make room.", "bad")
+		Offers.Show(player, "Mount", "Your wall is full! Add another mount instantly.")
 		endCarry(player, false)
 		return
 	end

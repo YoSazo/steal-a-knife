@@ -44,6 +44,15 @@ local commands: { [string]: (Player, ...any) -> any } = {
 	Data = function(player: Player)
 		return DataService.Get(player)
 	end,
+	-- Speed stat; nil = enough for max walk speed (GameConfig.MaxWalkSpeed)
+	Speed = function(player: Player, amount: number?)
+		local target = amount or 7e8
+		DataService.Update(player, function(p)
+			p.Speed = target
+		end)
+		BaseService.RefreshWalkSpeed(player)
+		return GameConfig.WalkSpeedFor(target)
+	end,
 	StartRound = function(player: Player)
 		ReplicatedStorage:SetAttribute("DebugMinPlayers", 1)
 		ReplicatedStorage:SetAttribute("DebugSkip", true)

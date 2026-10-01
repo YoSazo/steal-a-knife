@@ -38,7 +38,7 @@ local GameConfig = {
 	-- into running speed on a curve (WalkSpeedFor). Each zone needs a certain Speed: there's no
 	-- barrier, but below it that zone's guards will run you down on the way home.
 	BaseWalkSpeed = 16,
-	MaxWalkSpeed = 80,
+	MaxWalkSpeed = 110,
 	CarrySpeedMultiplier = 0.9,
 	-- Haunted Wheel tiers (the code calls it the treadmill): Rate = Speed per second while running
 	-- in it; Cost to buy that tier
@@ -54,6 +54,62 @@ local GameConfig = {
 		{ Name = "Infernal Wheel", Rate = 20000, Cost = 2500000 },
 		{ Name = "Void Wheel", Rate = 50000, Cost = 8000000 },
 	},
+	-- Knife Trails (Steal An Egg style): bought with cash, each one multiplies the Speed your wheel
+	-- trains and sends a stream of that knife spinning off behind you when you run
+	Trails = {
+		{
+			Name = "Rusty Trail",
+			Knife = "RustyShank",
+			Multiplier = 1.5,
+			Cost = 250,
+			Color = Color3.fromRGB(190, 150, 120),
+		},
+		{
+			Name = "Kitchen Trail",
+			Knife = "KitchenKnife",
+			Multiplier = 2,
+			Cost = 3000,
+			Color = Color3.fromRGB(200, 225, 255),
+		},
+		{
+			Name = "Hunter Trail",
+			Knife = "HunterBlade",
+			Multiplier = 3,
+			Cost = 30000,
+			Color = Color3.fromRGB(110, 230, 140),
+		},
+		{
+			Name = "Switchblade Trail",
+			Knife = "Switchblade",
+			Multiplier = 4,
+			Cost = 300000,
+			Color = Color3.fromRGB(90, 200, 255),
+		},
+		{
+			Name = "Cleaver Trail",
+			Knife = "Cleaver",
+			Multiplier = 6,
+			Cost = 2500000,
+			Color = Color3.fromRGB(190, 110, 255),
+		},
+		{
+			Name = "Golden Trail",
+			Knife = "GoldenDagger",
+			Multiplier = 8,
+			Cost = 20000000,
+			Color = Color3.fromRGB(255, 205, 60),
+		},
+		{
+			Name = "Katana Trail",
+			Knife = "Katana",
+			Multiplier = 12,
+			Cost = 150000000,
+			Color = Color3.fromRGB(255, 80, 80),
+		},
+	},
+	-- The Robux trail (Monetization pass "PhantomTrail"): void knives and a x10 multiplier
+	PhantomTrail = { Name = "Phantom Trail", Knife = "VoidEdge", Multiplier = 10, Color = Color3.fromRGB(170, 70, 255) },
+
 	-- Vault walls: the better your walls, the taller and scarier your vault (everyone walks past
 	-- them on the plaza) and the longer its gate holds out in a raid. Raiders chip the gate with
 	-- knife hits and throws; it can always be broken, it just takes better knives or more friends.
@@ -237,7 +293,7 @@ local GameConfig = {
 			Rarity = "Rare",
 			Title = "The Gardens",
 			Guards = 5,
-			GuardSpeed = 19,
+			GuardSpeed = 21,
 			SpeedNeeded = 1000,
 			Detect = 20,
 			Health = 200,
@@ -250,7 +306,7 @@ local GameConfig = {
 			Rarity = "Epic",
 			Title = "The Crypts",
 			Guards = 5,
-			GuardSpeed = 28,
+			GuardSpeed = 38,
 			SpeedNeeded = 15000,
 			Detect = 32,
 			Health = 450,
@@ -264,7 +320,7 @@ local GameConfig = {
 			Rarity = "Legendary",
 			Title = "The Catacombs",
 			Guards = 5,
-			GuardSpeed = 37,
+			GuardSpeed = 56,
 			SpeedNeeded = 200000,
 			Detect = 36,
 			Health = 1000,
@@ -278,7 +334,7 @@ local GameConfig = {
 			Rarity = "Godly",
 			Title = "The Manor Steps",
 			Guards = 4,
-			GuardSpeed = 47,
+			GuardSpeed = 75,
 			SpeedNeeded = 3000000,
 			Detect = 40,
 			Health = 2200,
@@ -356,6 +412,9 @@ local GameConfig = {
 	-- Hold to crank back; a full charge (AnimLibrary.ChargeTime) flies faster and hits this much harder
 	-- No cooldown: throw as fast as you can hold-and-release.
 	HubThrow = { Cooldown = 0, Range = 400, DamageMultiplier = 1.6 }, -- flies until it hits something
+	-- Server-side floor between any two throws (hub or Murderer). Hold-to-throw already keeps real
+	-- players slower than this; it stops exploit scripts firing hundreds a second.
+	ThrowMinInterval = 0.3,
 	DroppedKnifeLifetime = 30, -- a knife on the floor (from a dead guard or a dead carrier)
 	-- Guards in zones with Throws = true stop, wind up (knife glows red) and throw a knife in a
 	-- straight line at where you were. Never homing, so sidestepping dodges it.
@@ -562,9 +621,21 @@ function GameConfig.PowerCost(cost: number, currentLevel: number): number
 end
 
 -- Trained Speed -> walk speed: 16 at 0, ~23 at 1K, ~34 at 15K, ~45 at 200K, ~57 at 3M
+-- Speed stat -> walk speed. Every doubling of Speed is worth +6 walk speed, so each zone's
+-- SpeedNeeded is a clearly faster runner (Rare ~25, Epic ~46, Legendary ~68, Godly ~91), up to 110.
 function GameConfig.WalkSpeedFor(speed: number): number
-	local walk = GameConfig.BaseWalkSpeed + 3 * math.log(1 + math.max(speed, 0) / 250, 2)
+	local walk = GameConfig.BaseWalkSpeed + 6 * math.log(1 + math.max(speed, 0) / 500, 2)
 	return math.min(walk, GameConfig.MaxWalkSpeed)
+end
+
+-- Speed training multiplier from your knife trail (and the Phantom Trail pass)
+function GameConfig.TrailMultiplier(level: number, phantom: boolean?): number
+	local trail = GameConfig.Trails[level]
+	local multiplier = if trail then trail.Multiplier else 1
+	if phantom then
+		multiplier = math.max(multiplier, GameConfig.PhantomTrail.Multiplier)
+	end
+	return multiplier
 end
 
 return GameConfig

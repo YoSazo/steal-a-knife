@@ -107,8 +107,9 @@ function Abilities.Init()
 	local button = Ui.button({
 		-- Bottom right, above where the touch jump button sits and clear of the tool hotbar
 		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(1, -20, 1, -186),
-		Size = UDim2.fromOffset(230, 64),
+		-- (phones: just left of the jump button, under the right thumb)
+		Position = if Ui.Phone then UDim2.new(1, -160, 1, -22) else UDim2.new(1, -20, 1, -186),
+		Size = if Ui.Phone then UDim2.fromOffset(180, 70) else UDim2.fromOffset(230, 64),
 		BackgroundColor3 = Color3.fromRGB(200, 40, 60),
 		Text = "",
 		Visible = false,

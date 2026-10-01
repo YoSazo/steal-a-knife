@@ -64,8 +64,38 @@ local function pill(parent: Instance, order: number): (Frame, TextLabel, TextLab
 	return frame, icon, text
 end
 
+-- Studio phone preview (DebugPhone): ghosts of Roblox's touch thumbstick and jump button, using
+-- the same sizes and positions Roblox's TouchGui does, so the layout can be checked on desktop
+local function touchGhosts()
+	local camera = workspace.CurrentCamera
+	local minAxis = math.min(camera.ViewportSize.X, camera.ViewportSize.Y)
+	local small = minAxis <= 500
+	local ghosts = new("ScreenGui", { Name = "TouchGhosts", DisplayOrder = 50, ResetOnSpawn = false }, player.PlayerGui)
+	local function ghost(position: UDim2, size: number, text: string)
+		local frame = new("Frame", {
+			Position = position,
+			Size = UDim2.fromOffset(size, size),
+			BackgroundColor3 = Color3.fromRGB(255, 60, 60),
+			BackgroundTransparency = 0.6,
+		}, ghosts)
+		Ui.corner(frame, size)
+		Ui.label({ Size = UDim2.fromScale(1, 1), Text = text }, frame)
+	end
+	local jump = if small then 70 else 120
+	ghost(UDim2.new(1, -(jump * 1.5 - 10), 1, -jump - 20), jump, "JUMP")
+	local stick = if small then 70 else 120
+	ghost(
+		if small then UDim2.new(0, stick / 2 - 10, 1, -stick - 20) else UDim2.new(0, stick / 2, 1, -stick * 1.75),
+		stick,
+		"STICK"
+	)
+end
+
 function Hud.Init()
 	local gui = Ui.gui
+	if Ui.Phone and RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugPhone") then
+		touchGhosts()
+	end
 
 	-- Top centre: phase + timer, with a smaller line under it for round info -------------------
 	local timerFrame = new("Frame", {
@@ -89,12 +119,16 @@ function Hud.Init()
 	Ui.textStroke(subLabel, 2)
 
 	-- Bottom left: Speed and Cash -----------------------------------------------------------------
+	-- (phones: top left beside the icon strip, away from the thumbstick)
 	local stats = new("Frame", {
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 14, 1, -14),
+		AnchorPoint = if Ui.Phone then Vector2.zero else Vector2.new(0, 1),
+		Position = if Ui.Phone then UDim2.fromOffset(80, 58) else UDim2.new(0, 14, 1, -14),
 		Size = UDim2.fromOffset(330, 176),
 		BackgroundTransparency = 1,
 	}, gui)
+	if Ui.Phone then
+		new("UIScale", { Scale = 0.72 }, stats)
+	end
 	Ui.label({ Size = UDim2.fromOffset(50, 50), Position = UDim2.fromOffset(0, 4), Text = "👟" }, stats)
 	local speedLabel = bigNumber(stats, SPEED_COLOR, UDim2.fromOffset(56, 0), UDim2.fromOffset(270, 58))
 	local trainLabel = Ui.label({
@@ -125,15 +159,16 @@ function Hud.Init()
 	Hud.CashLabel = cashLabel
 
 	-- Right side: upgrades ---------------------------------------------------------------------
+	-- (phones: narrower, starting under the timers and ending above the jump button)
 	local shop = new("Frame", {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -12, 0.42, 0),
-		Size = UDim2.fromOffset(230, 300),
+		AnchorPoint = if Ui.Phone then Vector2.new(1, 0) else Vector2.new(1, 0.5),
+		Position = if Ui.Phone then UDim2.new(1, -10, 0, 168) else UDim2.new(1, -12, 0.39, 0),
+		Size = if Ui.Phone then UDim2.fromOffset(170, 250) else UDim2.fromOffset(230, 300),
 		BackgroundTransparency = 1,
 	}, gui)
 	new("UIListLayout", {
-		Padding = UDim.new(0, 10),
-		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Padding = UDim.new(0, if Ui.Phone then 5 else 7),
+		VerticalAlignment = if Ui.Phone then Enum.VerticalAlignment.Top else Enum.VerticalAlignment.Center,
 		SortOrder = Enum.SortOrder.LayoutOrder,
 	}, shop)
 	local buttons: { [string]: TextButton } = {}
@@ -141,7 +176,13 @@ function Hud.Init()
 	local function shopButton(kind: string, color: Color3, icon: string)
 		order += 1
 		local button = Ui.chunky(
-			{ Name = kind, LayoutOrder = order, Size = UDim2.new(1, 0, 0, 62), BackgroundColor3 = color, Text = kind },
+			{
+				Name = kind,
+				LayoutOrder = order,
+				Size = UDim2.new(1, 0, 0, if Ui.Phone then 46 else 54),
+				BackgroundColor3 = color,
+				Text = kind,
+			},
 			shop,
 			icon,
 			function()
@@ -151,6 +192,7 @@ function Hud.Init()
 		buttons[kind] = button
 	end
 	shopButton("Treadmill", Color3.fromRGB(70, 160, 255), "🎡")
+	shopButton("Trail", Color3.fromRGB(190, 90, 255), "🔪")
 	shopButton("Walls", Color3.fromRGB(150, 110, 80), "🏰")
 	shopButton("Slot", Color3.fromRGB(255, 165, 50), "➕")
 	shopButton("Ticket", Color3.fromRGB(225, 60, 80), "🎟️")
@@ -162,18 +204,37 @@ function Hud.Init()
 	end
 
 	-- Bottom right: event timers ----------------------------------------------------------------
+	-- (phones: top right, out from under the jump button)
 	local timers = new("Frame", {
-		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(1, -14, 1, -14),
+		AnchorPoint = if Ui.Phone then Vector2.new(1, 0) else Vector2.new(1, 1),
+		Position = if Ui.Phone then UDim2.new(1, -10, 0, 6) else UDim2.new(1, -14, 1, -14),
 		Size = UDim2.fromOffset(250, 160),
 		BackgroundTransparency = 1,
 	}, gui)
+	if Ui.Phone then
+		new("UIScale", { Scale = 0.72 }, timers)
+	end
 	new("UIListLayout", {
-		Padding = UDim.new(0, 8),
-		VerticalAlignment = Enum.VerticalAlignment.Bottom,
+		Padding = UDim.new(0, if Ui.Phone then 4 else 8),
+		VerticalAlignment = if Ui.Phone then Enum.VerticalAlignment.Top else Enum.VerticalAlignment.Bottom,
 		HorizontalAlignment = Enum.HorizontalAlignment.Right,
 		SortOrder = Enum.SortOrder.LayoutOrder,
 	}, timers)
+	-- New-player shield: how long nobody can rob you
+	local shieldPill, shieldIcon, shieldText = pill(timers, 0)
+	shieldIcon.Text = "🛡️"
+	local function refreshShield()
+		local left = player:GetAttribute("ShieldLeft")
+		local on = player:GetAttribute("Shielded") == true and type(left) == "number" and left > 0
+		shieldPill.Visible = on
+		if on then
+			shieldText.Text = `Protected {math.ceil((left :: number) / 60)}m`
+			shieldText.TextColor3 = Color3.fromRGB(150, 210, 255)
+		end
+	end
+	player:GetAttributeChangedSignal("ShieldLeft"):Connect(refreshShield)
+	player:GetAttributeChangedSignal("Shielded"):Connect(refreshShield)
+	refreshShield()
 	local raidPill, raidIcon, raidText = pill(timers, 1)
 	raidIcon.Text = "⚔️"
 	local _roundPill, roundIcon, roundText = pill(timers, 2)
@@ -205,6 +266,14 @@ function Hud.Init()
 			"Treadmill",
 			if nextWheel then `{nextWheel.Name}\n${Ui.abbreviate(nextWheel.Cost)}` else "Wheel MAX"
 		)
+		local trailLevel = (player:GetAttribute("TrailLevel") or 0) :: number
+		local nextTrail = GameConfig.Trails[trailLevel + 1]
+		setButtonText(
+			"Trail",
+			if nextTrail
+				then `{nextTrail.Name} x{nextTrail.Multiplier}\n${Ui.abbreviate(nextTrail.Cost)}`
+				else "Trail MAX"
+		)
 		local nextWalls = GameConfig.Walls[walls + 1]
 		setButtonText(
 			"Walls",
@@ -231,6 +300,7 @@ function Hud.Init()
 			"Slots",
 			"Speed",
 			"TreadmillLevel",
+			"TrailLevel",
 			"WallLevel",
 			"Training",
 			"Tickets",

@@ -40,6 +40,9 @@ export type Profile = {
 	PlayTime: number, -- seconds played in total (the new-player shield runs out on this)
 	DailyStreak: number, -- day of the 7-day login streak last claimed (0 = none yet)
 	LastDaily: number, -- the UTC day number it was claimed on
+	TrailLevel: number, -- highest knife trail bought (GameConfig.Trails), 0 = none
+	Receipts: { string }, -- recent Robux PurchaseIds already granted (ProcessReceipt is idempotent)
+	Bought: { string }, -- one-time Robux products already bought (Starter Pack)
 }
 
 local STORE_NAME = "PlayerData_v1"
@@ -94,6 +97,9 @@ local function defaultProfile(): Profile
 		PlayTime = 0,
 		DailyStreak = 0,
 		LastDaily = 0,
+		Receipts = {},
+		Bought = {},
+		TrailLevel = 0,
 	}
 end
 
@@ -113,6 +119,7 @@ local function reconcile(data: any): Profile
 	profile.Cash = math.max(0, profile.Cash)
 	profile.WallLevel = math.clamp(math.floor(profile.WallLevel), 1, #GameConfig.Walls)
 	profile.Rebirths = math.clamp(math.floor(profile.Rebirths), 0, GameConfig.Rebirth.Max)
+	profile.TrailLevel = math.clamp(math.floor(profile.TrailLevel), 0, #GameConfig.Trails)
 	-- Drop knives that were removed from the catalog so nothing downstream sees an unknown name
 	local items = {}
 	for _, item in profile.Knives do
@@ -276,8 +283,14 @@ local function publish(player: Player, profile: Profile)
 	player:SetAttribute("IndexClaimed", table.concat(profile.IndexClaimed, ","))
 	player:SetAttribute("NextFreeChest", profile.NextFreeChest)
 	player:SetAttribute("DailyStreak", profile.DailyStreak)
+	player:SetAttribute("TrailLevel", profile.TrailLevel)
+	for _, bought in profile.Bought do
+		player:SetAttribute("Bought_" .. bought, true)
+	end
 	player:SetAttribute("LastDaily", profile.LastDaily)
-	player:SetAttribute("Shielded", DataService.IsNewPlayer(player, profile) or nil)
+	local shielded = DataService.IsNewPlayer(player, profile)
+	player:SetAttribute("Shielded", shielded or nil)
+	player:SetAttribute("ShieldLeft", if shielded then GameConfig.NewPlayerShield - profile.PlayTime else nil)
 	changedEvent:Fire(player, profile)
 end
 
@@ -343,6 +356,12 @@ function DataService.Update(player: Player, fn: (Profile) -> ())
 	publish(player, profile)
 end
 
+-- Write this player's save right now (after a Robux purchase); true if it stuck
+function DataService.SaveNow(player: Player): boolean
+	local profile = profiles[player]
+	return profile ~= nil and saveAsync(player, profile, false)
+end
+
 function DataService.AddCash(player: Player, amount: number)
 	DataService.Update(player, function(profile)
 		profile.Cash += amount
@@ -383,8 +402,11 @@ function DataService.Init()
 			for player, profile in profiles do
 				local wasNew = DataService.IsNewPlayer(player, profile)
 				profile.PlayTime += 30
-				if wasNew and not DataService.IsNewPlayer(player, profile) then
+				if DataService.IsNewPlayer(player, profile) then
+					player:SetAttribute("ShieldLeft", GameConfig.NewPlayerShield - profile.PlayTime)
+				elseif wasNew then
 					player:SetAttribute("Shielded", nil)
+					player:SetAttribute("ShieldLeft", nil)
 					Net.Notify(player, "Your new-player shield is gone - guard your vault!", "info")
 				end
 			end

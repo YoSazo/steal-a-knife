@@ -18,6 +18,7 @@ local Props = require(ReplicatedStorage.Shared.Props)
 local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
+local Offers = require(script.Parent.Offers)
 local StealService = require(script.Parent.StealService)
 
 local Rewards = {}
@@ -42,9 +43,11 @@ function Rewards.BuyCase(player: Player, rarity: string): (boolean, string)
 		return false, "Not during a round!"
 	end
 	if #profile.Knives >= profile.Slots then
+		Offers.Show(player, "Mount", "Your wall is full! Add another mount instantly.")
 		return false, "Your wall is full! Sell a knife or buy a mount first."
 	end
 	if not DataService.TrySpend(player, entry.Cost) then
+		Offers.Cash(player, entry.Cost - profile.Cash, BaseService.RackIncome(player))
 		return false, "Not enough cash"
 	end
 	StealService.OpenCase(player, rarity)
@@ -158,11 +161,13 @@ local function claimFreeChest(player: Player)
 	local now = os.time()
 	if now < profile.NextFreeChest then
 		Net.Notify(player, `The chest refills in {math.ceil((profile.NextFreeChest - now) / 60)} min`, "bad")
+		Offers.Show(player, "ChestRefill", "Can't wait? Refill your chest right now.")
 		return
 	end
 	local config = GameConfig.FreeChest
 	DataService.Update(player, function(p)
-		p.NextFreeChest = now + config.Cooldown
+		-- VIP: the chest refills twice as fast
+		p.NextFreeChest = now + (if player:GetAttribute("Pass_VIP") then config.Cooldown / 2 else config.Cooldown)
 	end)
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?

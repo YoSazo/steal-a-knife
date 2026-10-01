@@ -33,6 +33,7 @@ local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local Disguises = require(script.Parent.Disguises)
 local GuardService = require(script.Parent.GuardService)
+local Offers = require(script.Parent.Offers)
 local MapService = require(script.Parent.MapService)
 local Obstacles = require(script.Parent.Obstacles)
 local PowerService = require(script.Parent.PowerService)
@@ -273,6 +274,9 @@ local function damageGate(base: MapService.BaseSite, amount: number, by: string,
 		if owner and before > max * mark and health <= max * mark and health > 0 then
 			Net.Notify(owner, `Your gate is at {math.floor(mark * 100)}%! {by} is breaking in!`, "bad")
 			Net.Remotes.Effect:FireClient(owner, "Alarm")
+			if mark == 0.5 then
+				Offers.Show(owner, "Repair", `{by} is breaking in! Fix your gate instantly, wherever you are.`)
+			end
 		end
 	end
 	base.Blocker:SetAttribute("Health", math.max(0, health))
@@ -351,6 +355,21 @@ local function onRepair(player: Player)
 	local health = (base.Blocker:GetAttribute("Health") or 0) :: number
 	base.Blocker:SetAttribute("Health", math.min(max, health + max * CONFIG.RepairAmount))
 	refreshGateBar(base)
+	Net.Remotes.Effect:FireAllClients("GateRepair", base.Blocker.Position, base.Color)
+end
+
+-- Instant Repair (Robux): the gate back to full, or rebuilt at full if it was broken
+function RaidService.RepairFull(player: Player)
+	local base = BaseService.GetBase(player)
+	if not base then
+		return
+	end
+	if gateOpen(base) then
+		reforge(base, 1)
+	else
+		base.Blocker:SetAttribute("Health", base.Blocker:GetAttribute("MaxHealth"))
+		refreshGateBar(base)
+	end
 	Net.Remotes.Effect:FireAllClients("GateRepair", base.Blocker.Position, base.Color)
 end
 
@@ -530,6 +549,9 @@ local function onStealPrompt(thief: Player, owner: Player, slot: number)
 	owner:SetAttribute("RevengeUntil", revengeEndsAt)
 	-- Nobody else gets to clean them out: the vault seals for a while
 	owner:SetAttribute("SealedUntil", now() + CONFIG.RobbedSeal)
+	task.delay(4, function()
+		Offers.Show(owner, "Fortified", "Robbed! A Fortified Vault gives your gate +50% health for good.")
+	end)
 	if revenge then
 		thief:SetAttribute("RevengeOn", nil)
 		thief:SetAttribute("RevengeUntil", nil)
@@ -1241,6 +1263,20 @@ function RaidService.Stop()
 end
 
 -- Raids happen near the end of each intermission (GameConfig.Raid.StartBefore before the round)
+-- Summon the Blood Moon (Robux): now if we can, otherwise as soon as the next intermission
+-- allows; during one already it lasts a minute longer
+local pendingSummon: string? = nil
+function RaidService.Summon(player: Player)
+	if raiding then
+		raidEndsAt += 60
+		ReplicatedStorage:SetAttribute("RaidEndsAt", raidEndsAt)
+		Net.Announce(`🌕 {player.DisplayName} made the Blood Moon last longer!`, Color3.fromRGB(255, 70, 70), 2)
+		return
+	end
+	pendingSummon = player.DisplayName
+	Net.Notify(player, "The Blood Moon will rise as soon as the next intermission allows", "info")
+end
+
 local function schedule()
 	local raidedThisIntermission = false
 	local intermissions = 0
@@ -1254,6 +1290,15 @@ local function schedule()
 			if not counted then
 				counted = true
 				intermissions += 1
+			end
+			if pendingSummon and not raiding and endsAt - now() > 45 then
+				local who = pendingSummon
+				pendingSummon = nil
+				RaidService.Start()
+				if raiding then
+					raidedThisIntermission = true
+					Net.Announce(`🌕 {who} summoned the BLOOD MOON!`, Color3.fromRGB(255, 60, 60), 3)
+				end
 			end
 			local bloodMoon = intermissions % CONFIG.Every == 0
 			local left = endsAt - now()

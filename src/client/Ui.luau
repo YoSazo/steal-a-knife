@@ -3,8 +3,32 @@
 -- style (FredokaOne, rounded corners, thick dark outlines).
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
 local Ui = {}
+
+-- Phones (and tablets): touch with no keyboard. They get a compact layout that keeps clear of the
+-- thumbstick (bottom left) and jump button (bottom right). In Studio, ReplicatedStorage attribute
+-- DebugPhone = true previews it on desktop (with ghosts of where the touch controls would be).
+Ui.Phone = (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
+	or (RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugPhone") == true)
+
+-- Turn a Ui.chunky button into a square icon-only one (phones: no room for the words)
+function Ui.iconOnly(button: GuiObject)
+	local label = button:FindFirstChild("Label")
+	if label and label:IsA("GuiObject") then
+		label.Visible = false
+	end
+	for _, child in button:GetChildren() do
+		if child:IsA("TextLabel") and child.Name ~= "Label" and child.Name ~= "Badge" then
+			-- the icon: centre it
+			child.AnchorPoint = Vector2.new(0.5, 0.5)
+			child.Position = UDim2.fromScale(0.5, 0.5)
+		end
+	end
+end
 
 Ui.FONT = Enum.Font.FredokaOne
 Ui.WHITE = Color3.new(1, 1, 1)
@@ -226,8 +250,11 @@ local uiScale = Ui.new("UIScale", {}, Ui.gui)
 local function updateScale()
 	local camera = workspace.CurrentCamera
 	local shortSide = math.min(camera.ViewportSize.X, camera.ViewportSize.Y)
-	uiScale.Scale = math.clamp(shortSide / 800, 0.6, 1.2)
+	-- Phones lay out for ~560 units of height so buttons stay thumb-sized (~36pt and up)
+	uiScale.Scale = if Ui.Phone then math.clamp(shortSide / 560, 0.55, 1) else math.clamp(shortSide / 800, 0.6, 1.2)
 end
+-- Roblox games are played sideways: never let a phone turn this into portrait
+player:WaitForChild("PlayerGui").ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
 updateScale()
 

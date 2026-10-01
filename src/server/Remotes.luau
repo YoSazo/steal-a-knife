@@ -42,6 +42,8 @@ local Remotes = {
 	ClaimIndex = func("ClaimIndex"), -- client -> server: (knifeName | "All") -> ok
 	Welcome = event("Welcome"), -- server -> client: ({ Offline, Away, Streak, DailyReady }) on join
 	ClaimDaily = func("ClaimDaily"), -- client -> server: () -> (ok, message) today's login-streak reward
+	Offer = event("Offer"), -- server -> client: (storeKey, reason) a contextual store offer
+	StoreTest = func("StoreTest"), -- client -> server: (kind, key) Studio-only fake purchase for unset ids
 }
 
 return {

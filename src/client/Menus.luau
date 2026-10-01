@@ -191,13 +191,18 @@ end
 
 function Menus.Init()
 	-- Left column of big buttons
+	-- (phones: a strip of square icon buttons down the left edge, under the Store button)
 	local column = new("Frame", {
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 14, 0.4, 0),
-		Size = UDim2.fromOffset(190, 330),
+		AnchorPoint = if Ui.Phone then Vector2.zero else Vector2.new(0, 0.5),
+		Position = if Ui.Phone then UDim2.fromOffset(10, 118) else UDim2.new(0, 14, 0.4, 0),
+		Size = if Ui.Phone then UDim2.fromOffset(60, 300) else UDim2.fromOffset(190, 330),
 		BackgroundTransparency = 1,
 	}, Ui.gui)
-	new("UIListLayout", { Padding = UDim.new(0, 9), SortOrder = Enum.SortOrder.LayoutOrder }, column)
+	new(
+		"UIListLayout",
+		{ Padding = UDim.new(0, if Ui.Phone then 6 else 9), SortOrder = Enum.SortOrder.LayoutOrder },
+		column
+	)
 
 	local panels: { Frame } = {}
 	local function toggle(frame: Frame)
@@ -688,7 +693,7 @@ function Menus.Init()
 		local button = Ui.chunky(
 			{
 				LayoutOrder = order,
-				Size = UDim2.new(1, 0, 0, 56),
+				Size = UDim2.new(1, 0, 0, if Ui.Phone then 52 else 56),
 				BackgroundColor3 = color,
 				Text = text,
 			},
@@ -699,6 +704,9 @@ function Menus.Init()
 				toggle(frame)
 			end
 		)
+		if Ui.Phone then
+			Ui.iconOnly(button)
+		end
 		return button
 	end
 	menuButton(1, "Shop", Color3.fromRGB(70, 200, 90), "🛒", shopFrame, function() end)
@@ -707,7 +715,7 @@ function Menus.Init()
 	menuButton(3, "Knives [K]", Color3.fromRGB(130, 80, 230), "🔪", knivesFrame, refreshRack)
 	menuButton(4, "Powers [B]", Color3.fromRGB(240, 130, 40), "⚡", powersFrame, refreshPowers)
 	menuButton(5, "Rebirth", Color3.fromRGB(240, 190, 50), "♻️", rebirthFrame, refreshRebirth)
-	if RunService:IsStudio() then
+	if RunService:IsStudio() and not Ui.Phone then
 		-- Studio: test buttons
 		local tests = new("Frame", {
 			LayoutOrder = 6,
