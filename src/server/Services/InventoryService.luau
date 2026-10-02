@@ -62,7 +62,7 @@ local function equip(player: Player, name: unknown): boolean
 	)
 	-- ...and what it gives you when you're the Murderer
 	local parsed = if name ~= "" then Items.Parse(name) else nil
-	local perk = parsed and parsed.Knife.Perk and GameConfig.Perks[parsed.Knife.Perk]
+	local perk = parsed and parsed.Perk and GameConfig.Perks[parsed.Perk]
 	if perk then
 		Net.Notify(player, `🔪 As the Murderer: {perk.DisplayName} - {perk.Description}`, "info")
 	end

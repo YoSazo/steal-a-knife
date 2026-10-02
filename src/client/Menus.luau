@@ -561,7 +561,9 @@ function Menus.Init()
 			cardText(c, 88, 20, Items.DisplayName(item), Items.Color(item))
 			cardText(c, 108, 16, `{knife.Rarity} · Dmg {Items.Damage(item)}`, Knives.RarityColors[knife.Rarity])
 			cardText(c, 124, 18, `+${Ui.abbreviate(Items.Income(item))}/s`, Color3.fromRGB(120, 255, 140))
-			perkBadge(c, knife.Perk)
+			if parsed.Perk then
+				perkBadge(c, parsed.Perk)
+			end
 			local isEquipped = item == equipped
 			smallButton(
 				c,
@@ -607,9 +609,7 @@ function Menus.Init()
 			end, not known, UDim2.fromScale(1, 0.5))
 			cardText(c, 94, 22, if known then knife.DisplayName else "???", color)
 			cardText(c, 116, 16, knife.Rarity, Color3.fromRGB(210, 210, 220))
-			if known then
-				perkBadge(c, knife.Perk)
-			end
+			-- (powers are rare rolls on any knife now, not part of the knife type)
 			local reward = GameConfig.IndexRewards[knife.Rarity]
 			if known and not claimed[knife.Name] then
 				claimable += 1
@@ -803,6 +803,319 @@ function Menus.Init()
 	indexBadge = Ui.badge(indexButton)
 	menuButton(3, "Knives [K]", Color3.fromRGB(130, 80, 230), "🔪", knivesFrame, refreshRack)
 	menuButton(5, "Rebirth", Color3.fromRGB(240, 190, 50), "♻️", rebirthFrame, refreshRebirth)
+
+	-- PLAYERS: everyone here, with a Team Up and a Trade button each (+ invite friends) -------------
+	local playersFrame, playersBody = panel("Players", Color3.fromRGB(90, 200, 255), "👥")
+	table.insert(panels, playersFrame)
+	local playersHint = Ui.label({
+		Size = UDim2.new(1, 0, 0, 44),
+		Text = "🤝 Team up: you're picked together in Double Trouble rounds (both Murderers or both Sheriffs) and share steals. 👥 Friends here = +10% cash each!",
+		TextColor3 = Color3.fromRGB(220, 230, 255),
+		TextWrapped = true,
+		ZIndex = 6,
+	}, playersBody)
+	playersHint.TextScaled = true
+	local playersList = new("ScrollingFrame", {
+		Position = UDim2.fromOffset(0, 52),
+		Size = UDim2.new(1, 0, 1, -52),
+		BackgroundTransparency = 1,
+		ScrollBarThickness = 8,
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		CanvasSize = UDim2.new(),
+		ZIndex = 5,
+	}, playersBody)
+	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, playersList)
+	local function refreshPlayers()
+		for _, child in playersList:GetChildren() do
+			if child:IsA("Frame") or child:IsA("TextButton") then
+				child:Destroy()
+			end
+		end
+		Ui.button(
+			{
+				LayoutOrder = 0,
+				Size = UDim2.new(1, -10, 0, 44),
+				Text = "📨 Invite friends (+10% cash each!)",
+				BackgroundColor3 = Color3.fromRGB(90, 200, 110),
+				ZIndex = 6,
+			},
+			playersList,
+			function()
+				pcall(function()
+					game:GetService("SocialService"):PromptGameInvite(player)
+				end)
+			end
+		)
+		local partnerId = player:GetAttribute("Partner")
+		for i, other in Players:GetPlayers() do
+			if other == player then
+				continue
+			end
+			local row = new("Frame", {
+				LayoutOrder = i,
+				Size = UDim2.new(1, -10, 0, 50),
+				BackgroundColor3 = Color3.fromRGB(44, 38, 58),
+				ZIndex = 6,
+			}, playersList)
+			Ui.corner(row, 10)
+			local teammate = partnerId == other.UserId
+			Ui.label({
+				Position = UDim2.fromOffset(10, 0),
+				Size = UDim2.new(1, -300, 1, 0),
+				Text = (if teammate then "🤝 " else "") .. other.DisplayName,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextColor3 = if teammate then Color3.fromRGB(120, 255, 140) else Color3.new(1, 1, 1),
+				ZIndex = 7,
+			}, row)
+			Ui.button(
+				{
+					AnchorPoint = Vector2.new(1, 0.5),
+					Position = UDim2.new(1, -148, 0.5, 0),
+					Size = UDim2.fromOffset(136, 38),
+					Text = if teammate then "Leave team" else "🤝 Team up",
+					BackgroundColor3 = if teammate then Color3.fromRGB(200, 80, 80) else Color3.fromRGB(80, 170, 255),
+					ZIndex = 7,
+				},
+				row,
+				function()
+					if teammate then
+						Remotes.TeamUp:FireServer("Leave")
+					else
+						Remotes.TeamUp:FireServer("Invite", other.UserId)
+					end
+				end
+			)
+			Ui.button(
+				{
+					AnchorPoint = Vector2.new(1, 0.5),
+					Position = UDim2.new(1, -6, 0.5, 0),
+					Size = UDim2.fromOffset(136, 38),
+					Text = "🔁 Trade",
+					BackgroundColor3 = Color3.fromRGB(240, 170, 60),
+					ZIndex = 7,
+				},
+				row,
+				function()
+					Remotes.Trade:InvokeServer("Request", other.UserId)
+				end
+			)
+		end
+	end
+	menuButton(6, "Players", Color3.fromRGB(90, 200, 255), "👥", playersFrame, refreshPlayers)
+	player:GetAttributeChangedSignal("Partner"):Connect(function()
+		if playersFrame.Visible then
+			refreshPlayers()
+		end
+	end)
+
+	-- Yes / No popups for team-up and trade requests -------------------------------------------------
+	local function ask(text: string, onYes: () -> (), onNo: () -> ())
+		local box = new("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, 140),
+			Size = UDim2.fromOffset(420, 110),
+			BackgroundColor3 = DARK,
+			ZIndex = 40,
+		}, Ui.gui)
+		Ui.corner(box, 14)
+		Ui.stroke(box)
+		Ui.label({
+			Position = UDim2.fromOffset(10, 8),
+			Size = UDim2.new(1, -20, 0, 44),
+			Text = text,
+			TextWrapped = true,
+			ZIndex = 41,
+		}, box)
+		local function finish(yes: boolean)
+			box:Destroy()
+			if yes then
+				onYes()
+			else
+				onNo()
+			end
+		end
+		Ui.button(
+			{
+				Position = UDim2.new(0, 10, 1, -50),
+				Size = UDim2.new(0.5, -15, 0, 40),
+				Text = "✅ Yes",
+				BackgroundColor3 = Color3.fromRGB(80, 200, 100),
+				ZIndex = 41,
+			},
+			box,
+			function()
+				finish(true)
+			end
+		)
+		Ui.button(
+			{
+				Position = UDim2.new(0.5, 5, 1, -50),
+				Size = UDim2.new(0.5, -15, 0, 40),
+				Text = "No",
+				BackgroundColor3 = Color3.fromRGB(200, 80, 80),
+				ZIndex = 41,
+			},
+			box,
+			function()
+				finish(false)
+			end
+		)
+		task.delay(20, function()
+			if box.Parent then
+				finish(false)
+			end
+		end)
+	end
+
+	-- TRADE window ------------------------------------------------------------------------------------
+	local tradeFrame, tradeBody = panel("Trade", Color3.fromRGB(240, 170, 60), "🔁")
+	local tradeOffer: { string } = {}
+	local tradeState: { [string]: any } = {}
+	local function tradeColumn(x: number, title: string): ScrollingFrame
+		Ui.label({
+			Position = UDim2.new(x, 4, 0, 0),
+			Size = UDim2.new(0.5, -8, 0, 28),
+			Text = title,
+			ZIndex = 6,
+		}, tradeBody)
+		local list = new("ScrollingFrame", {
+			Position = UDim2.new(x, 4, 0, 32),
+			Size = UDim2.new(0.5, -8, 1, -100),
+			BackgroundColor3 = Color3.fromRGB(40, 34, 52),
+			ScrollBarThickness = 6,
+			AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			CanvasSize = UDim2.new(),
+			ZIndex = 6,
+		}, tradeBody)
+		Ui.corner(list, 10)
+		new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, list)
+		return list
+	end
+	local myList = tradeColumn(0, "Your knives (tap to offer, max 6)")
+	local theirList = tradeColumn(0.5, "They offer")
+	local tradeStatus = Ui.label({
+		Position = UDim2.new(0, 4, 1, -64),
+		Size = UDim2.new(0.5, -8, 0, 28),
+		Text = "",
+		TextColor3 = Color3.fromRGB(255, 230, 140),
+		ZIndex = 6,
+	}, tradeBody)
+	local readyButton = Ui.button(
+		{
+			Position = UDim2.new(0.5, 4, 1, -64),
+			Size = UDim2.new(0.25, -6, 0, 56),
+			Text = "Ready",
+			BackgroundColor3 = Color3.fromRGB(80, 200, 100),
+			ZIndex = 6,
+		},
+		tradeBody,
+		function()
+			Remotes.Trade:InvokeServer("Ready")
+		end
+	)
+	Ui.button(
+		{
+			Position = UDim2.new(0.75, 2, 1, -64),
+			Size = UDim2.new(0.25, -6, 0, 56),
+			Text = "Cancel",
+			BackgroundColor3 = Color3.fromRGB(200, 80, 80),
+			ZIndex = 6,
+		},
+		tradeBody,
+		function()
+			Remotes.Trade:InvokeServer("Cancel")
+			tradeFrame.Visible = false
+		end
+	)
+	local function itemRow(list: ScrollingFrame, item: string, order: number, picked: boolean, onTap: (() -> ())?)
+		local row = Ui.button({
+			LayoutOrder = order,
+			Size = UDim2.new(1, -8, 0, 34),
+			Text = Items.DisplayName(item),
+			TextColor3 = Items.Color(item),
+			BackgroundColor3 = if picked then Color3.fromRGB(80, 160, 90) else Color3.fromRGB(60, 54, 74),
+			ZIndex = 7,
+		}, list, onTap)
+		local parsed = Items.Parse(item)
+		if parsed and parsed.Perk and GameConfig.Perks[parsed.Perk] then
+			row.Text ..= ` · {GameConfig.Perks[parsed.Perk].DisplayName}`
+		end
+	end
+	local function drawTrade()
+		for _, list in { myList, theirList } do
+			for _, child in list:GetChildren() do
+				if child:IsA("GuiButton") then
+					child:Destroy()
+				end
+			end
+		end
+		local counted: { [string]: number } = {}
+		for _, item in tradeOffer do
+			counted[item] = (counted[item] or 0) + 1
+		end
+		for i, item in Ui.list(player:GetAttribute("Knives")) do
+			local picked = (counted[item] or 0) > 0
+			if picked then
+				counted[item] -= 1
+			end
+			itemRow(myList, item, i, picked, function()
+				local index = table.find(tradeOffer, item)
+				if picked and index then
+					table.remove(tradeOffer, index)
+				elseif #tradeOffer < 6 then
+					table.insert(tradeOffer, item)
+				end
+				Remotes.Trade:InvokeServer("Offer", tradeOffer)
+			end)
+		end
+		for i, item in tradeState.Theirs or {} do
+			itemRow(theirList, item, i, true, nil)
+		end
+		local countdown = tradeState.CountdownEnds
+		tradeStatus.Text = if type(countdown) == "number"
+			then `Swapping in {math.max(0, math.ceil(countdown - workspace:GetServerTimeNow()))}...`
+			elseif tradeState.TheirReady then `{tradeState.OtherName or "They"} is ready!`
+			else `Trading with {tradeState.OtherName or "?"}`
+		readyButton.Text = if tradeState.MyReady then "Not ready" else "Ready"
+	end
+	Remotes.Effect.OnClientEvent:Connect(function(kind: string, a: any, b: any)
+		if kind == "TeamInvite" and type(a) == "number" then
+			ask(`🤝 {b} wants to team up with you!`, function()
+				Remotes.TeamUp:FireServer("Accept", a)
+			end, function()
+				Remotes.TeamUp:FireServer("Decline", a)
+			end)
+		elseif kind == "TradeRequest" and type(a) == "number" then
+			ask(`🔁 {b} wants to trade knives with you!`, function()
+				Remotes.Trade:InvokeServer("Accept", a)
+			end, function()
+				Remotes.Trade:InvokeServer("Decline", a)
+			end)
+		elseif kind == "TradeState" and type(a) == "table" then
+			tradeState = a
+			tradeOffer = table.clone(a.Mine or {})
+			if not tradeFrame.Visible then
+				for _, p in panels do
+					p.Visible = false
+				end
+				tradeFrame.Visible = true
+			end
+			drawTrade()
+		elseif kind == "TradeClosed" then
+			tradeFrame.Visible = false
+			tradeState = {}
+			tradeOffer = {}
+		end
+	end)
+	-- Keep the countdown ticking
+	task.spawn(function()
+		while true do
+			task.wait(0.25)
+			if tradeFrame.Visible and type(tradeState.CountdownEnds) == "number" then
+				drawTrade()
+			end
+		end
+	end)
 	-- Slow mode (T): walk at normal speed instead of your trained speed
 	local slowButton: TextButton
 	local function setSlow(on: boolean)

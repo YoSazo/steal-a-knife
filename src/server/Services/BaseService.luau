@@ -13,6 +13,9 @@ local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local Textures = require(ReplicatedStorage.Shared.Config.Textures)
 local Net = require(script.Parent.Parent.Remotes)
 local DataService = require(script.Parent.DataService)
+local Fuel = require(script.Parent.Fuel)
+local ServerEvents = require(script.Parent.ServerEvents)
+local Social = require(script.Parent.Social)
 local MapService = require(script.Parent.MapService)
 local VaultWalls = require(script.Parent.VaultWalls)
 
@@ -46,6 +49,11 @@ function BaseService.IncomeMultiplier(player: Player): number
 	end
 	if player:GetAttribute("Pass_VIP") then
 		multiplier *= 1.1
+	end
+	-- 🔥 Heat from playing both games, friends playing with you, and the server's Cash Rush
+	multiplier *= Fuel.IncomeMultiplier(player) * Social.FriendsMultiplier(player)
+	if ServerEvents.Active("CashRush") then
+		multiplier *= 2
 	end
 	return multiplier
 end
@@ -290,7 +298,7 @@ local function nameplate(parent: Instance, adornee: BasePart, item: string, perS
 		},
 	}
 	-- Its Murderer power, so you know what it does in a round
-	local perk = parsed.Knife.Perk and GameConfig.Perks[parsed.Knife.Perk]
+	local perk = parsed.Perk and GameConfig.Perks[parsed.Perk]
 	if perk then
 		table.insert(lines, 1, {
 			Text = `🔪 {perk.DisplayName} · Murderer power`,
@@ -577,8 +585,8 @@ function BaseService.RefreshRack(player: Player)
 			local name = Items.DisplayName(item)
 			local equip = makePrompt(pad, {
 				ActionText = if item == equipped then "Equipped" else "Equip",
-				ObjectText = if knife.Perk and GameConfig.Perks[knife.Perk]
-					then `{name} · Murderer power: {GameConfig.Perks[knife.Perk].DisplayName}`
+				ObjectText = if parsed.Perk and GameConfig.Perks[parsed.Perk]
+					then `{name} · Murderer power: {GameConfig.Perks[parsed.Perk].DisplayName}`
 					else `{name} · Damage {Items.Damage(item)} · +{Format.Cash(Items.Income(item) * multiplier)}/s`,
 			})
 			equip:SetAttribute("Owner", player.UserId)

@@ -42,7 +42,7 @@ local function awayText(seconds: number): string
 end
 
 local function show(info: Info)
-	local nothingNew = info.Offline <= 0 and not info.DailyReady and not info.Shielded
+	local nothingNew = info.Offline <= 0 and not info.DailyReady and not info.Shielded and info.Away > 0
 	if nothingNew then
 		return
 	end
@@ -78,6 +78,54 @@ local function show(info: Info)
 	Ui.textStroke(title, 3)
 
 	local y = 78
+	-- First visit: the game in one glance, the same promise as the thumbnail
+	if info.Away <= 0 then
+		local halves = new("Frame", {
+			Size = UDim2.new(1, -40, 0, 64),
+			Position = UDim2.fromOffset(20, y),
+			BackgroundTransparency = 1,
+			ZIndex = 52,
+		}, card)
+		local function half(x: number, text: string, top: Color3, bottom: Color3)
+			local pill = new("Frame", {
+				Position = UDim2.fromScale(x, 0),
+				Size = UDim2.fromScale(0.44, 1),
+				BackgroundColor3 = Color3.new(1, 1, 1),
+				ZIndex = 52,
+			}, halves)
+			Ui.corner(pill, 14)
+			Ui.gradient(pill, top, bottom)
+			new("UIStroke", { Thickness = 3, Color = Color3.fromRGB(20, 16, 28) }, pill)
+			local label = Ui.label({
+				Size = UDim2.new(1, -16, 1, -10),
+				Position = UDim2.fromOffset(8, 5),
+				Text = text,
+				ZIndex = 53,
+			}, pill)
+			Ui.textStroke(label, 3)
+		end
+		half(0, "🔪 STEAL KNIVES", Color3.fromRGB(255, 220, 80), Color3.fromRGB(235, 150, 30))
+		half(0.56, "😈 BECOME THE MURDERER", Color3.fromRGB(255, 80, 80), Color3.fromRGB(180, 20, 30))
+		local arrow = Ui.label({
+			Position = UDim2.fromScale(0.44, 0),
+			Size = UDim2.fromScale(0.12, 1),
+			Text = "➜",
+			ZIndex = 53,
+		}, halves)
+		Ui.textStroke(arrow, 3)
+		y += 72
+		local how = Ui.label({
+			Size = UDim2.new(1, -40, 0, 46),
+			Position = UDim2.fromOffset(20, y),
+			Text = "Every few minutes the WHOLE SERVER plays Murder Mystery: one Murderer, everyone else survives. "
+				.. "The knives you steal give you Murderer powers!",
+			TextColor3 = Color3.fromRGB(255, 225, 225),
+			TextWrapped = true,
+			ZIndex = 52,
+		}, card)
+		Ui.textStroke(how, 2)
+		y += 54
+	end
 	if info.Offline > 0 then
 		local earned = Ui.label({
 			Size = UDim2.new(1, -40, 0, 34),

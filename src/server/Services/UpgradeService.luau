@@ -161,7 +161,6 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			return false, `You can hold {GameConfig.MaxTickets} tickets at most`
 		end
 		if not DataService.TrySpend(player, GameConfig.TicketPrice(BaseService.RackIncome(player))) then
-			Offers.Show(player, "Tickets", "Get 3 Murderer Tickets right now.")
 			return false, "Not enough cash"
 		end
 		DataService.Update(player, function(p)

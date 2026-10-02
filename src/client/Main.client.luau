@@ -19,6 +19,7 @@ local Store = require(script.Parent.Store)
 local KnifeTrails = require(script.Parent.KnifeTrails)
 local Transitions = require(script.Parent.Transitions)
 local Overheads = require(script.Parent.Overheads)
+local RoundIntro = require(script.Parent.RoundIntro)
 
 -- Timed, so slow starts show up in the output (the summary prints once everything is up)
 local clientTimings: { string } = {}
@@ -42,6 +43,7 @@ timed("Store", Store.Init)
 timed("KnifeTrails", KnifeTrails.Init)
 timed("Transitions", Transitions.Init)
 timed("Overheads", Overheads.Init)
+timed("RoundIntro", RoundIntro.Init)
 task.spawn(Tutorial.Init)
 print(
 	string.format(

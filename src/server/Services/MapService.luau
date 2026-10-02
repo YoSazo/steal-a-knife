@@ -133,23 +133,26 @@ end
 -- throws a clear shadow, blue sky all the way round (also below: the map floats), soft clouds.
 -- Set Lighting.Technology to Future (or ShadowMap) in Studio for crisp shadows.
 local function buildLighting()
-	-- Noon with the sun almost straight overhead (like Steal An Egg): its glint only shows looking
-	-- down from above, never as a white sheen along the floor ahead of you
-	Lighting.ClockTime = 14.5
-	Lighting.GeographicLatitude = 25
+	-- Noon with the sun straight overhead (like Steal An Egg): at latitude 23.5 the noon sun is
+	-- exactly vertical, so the tall runway walls throw no shadow across the boss lairs beside them
+	Lighting.ClockTime = 12
+	Lighting.GeographicLatitude = 23.5
 	-- Flat and bright: a gentle sun (a strong one glares off the floors in bright patches) and
 	-- strong, even fill light so nothing looks dim
 	Lighting.Brightness = 4
 	Lighting.ExposureCompensation = 0.1
-	-- Warm and even: no blue light from the sky (that read as icy), a warm sun
-	-- Lots of fill light: everything bright and sunny, nothing in gloom
-	Lighting.Ambient = Color3.fromRGB(165, 165, 170)
-	Lighting.OutdoorAmbient = Color3.fromRGB(175, 175, 180)
+	-- Warm and even, like Steal An Egg: the sun is overhead, so walls get no direct light - strong
+	-- warm fill keeps them bright tan instead of murky. No sky-light bounce (it tinted everything blue).
+	Lighting.Ambient = Color3.fromRGB(190, 188, 184)
+	Lighting.OutdoorAmbient = Color3.fromRGB(222, 218, 210)
 	Lighting.ColorShift_Top = Color3.fromRGB(255, 252, 245)
 	Lighting.ColorShift_Bottom = Color3.fromRGB(0, 0, 0)
 	Lighting.EnvironmentDiffuseScale = 0
 	Lighting.EnvironmentSpecularScale = 0
-	-- Natural daylight: a strong afternoon sun throwing real shadows
+	-- Clients restore these after a round (client/Effects)
+	Lighting:SetAttribute("HubAmbient", Lighting.Ambient)
+	Lighting:SetAttribute("HubOutdoor", Lighting.OutdoorAmbient)
+	-- Real shadows (with the sun overhead, just a small one under each character)
 	Lighting.GlobalShadows = true
 	Lighting.ShadowSoftness = 0.2
 	for _, child in Lighting:GetChildren() do
@@ -157,17 +160,16 @@ local function buildLighting()
 			child:Destroy()
 		end
 	end
-	-- Almost no haze: the far end of the map stays crisp
-	local atmosphere = Instance.new("Atmosphere")
 	-- A soft, pale haze with distance (things far below or far away go lighter, close up stays crisp)
-	atmosphere.Density = 0.18
+	local atmosphere = Instance.new("Atmosphere")
+	atmosphere.Density = 0.28
 	atmosphere.Offset = 0.05
-	atmosphere.Color = Color3.fromRGB(215, 232, 245)
-	atmosphere.Decay = Color3.fromRGB(170, 200, 230)
+	atmosphere.Color = Color3.fromRGB(225, 232, 240)
+	atmosphere.Decay = Color3.fromRGB(190, 210, 230)
 	atmosphere:SetAttribute("HubColor", atmosphere.Color)
 	atmosphere:SetAttribute("HubDecay", atmosphere.Decay)
 	atmosphere.Glare = 0
-	atmosphere.Haze = 0
+	atmosphere.Haze = 1 -- the soft, sunny white haze down the runway (Steal An Egg)
 	atmosphere.Parent = Lighting
 	local sky = Instance.new("Sky")
 	sky.SkyboxFt = Textures.Day.Ft
@@ -187,10 +189,12 @@ local function buildLighting()
 	bloom.Threshold = 2
 	bloom.Parent = Lighting
 	local grade = Instance.new("ColorCorrectionEffect")
-	-- Neutral: the colours come from the parts, not a filter (a saturation boost made it neon)
-	grade.Contrast = 0.04
-	grade.Saturation = 0.08
-	grade.TintColor = Color3.new(1, 1, 1)
+	-- Softer and a touch brighter, like Steal An Egg: slightly less saturation (the parts alone read
+	-- neon) and a gentle lift
+	grade.Contrast = -0.02
+	grade.Saturation = -0.08
+	grade.TintColor = Color3.fromRGB(255, 253, 248)
+	grade.Brightness = 0.04
 	grade.Parent = Lighting
 	-- A clear sky (the few clouds are painted into the skybox)
 	local clouds = workspace.Terrain:FindFirstChildOfClass("Clouds")
@@ -212,8 +216,8 @@ local ZONE_FLOORS: { [string]: Color3 } = {
 }
 -- Walls change with the biome too, so going deeper looks deeper
 local ZONE_WALLS: { [string]: Color3 } = {
-	Common = Color3.fromRGB(150, 104, 62), -- dirt
-	Rare = Color3.fromRGB(122, 84, 52), -- dark dirt
+	Common = Color3.fromRGB(214, 146, 78), -- dirt
+	Rare = Color3.fromRGB(174, 119, 72), -- dark dirt
 	Epic = Color3.fromRGB(110, 110, 118), -- stone
 	Legendary = Color3.fromRGB(176, 140, 80), -- sandstone
 	Mythic = Color3.fromRGB(90, 40, 34), -- dark basalt
@@ -307,6 +311,7 @@ local function buildArena()
 	surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	surface.PixelsPerStud = 20
 	surface.LightInfluence = 0
+	surface.Brightness = 0.85 -- full-bright signs, a touch softer than pure white
 	surface.Parent = paint
 	local safeText = Instance.new("TextLabel")
 	safeText.Size = UDim2.fromScale(1, 1)
@@ -574,6 +579,7 @@ local function buildBases()
 				padGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 				padGui.PixelsPerStud = 40
 				padGui.LightInfluence = 0
+				padGui.Brightness = 0.85 -- full-bright signs, a touch softer than pure white
 				padGui.MaxDistance = 70
 				padGui.Parent = cashPad
 				local panel = Instance.new("Frame")
@@ -647,6 +653,7 @@ local function buildBases()
 		signGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 		signGui.PixelsPerStud = 40
 		signGui.LightInfluence = 0
+		signGui.Brightness = 0.85 -- full-bright signs, a touch softer than pure white
 		signGui.MaxDistance = 80
 		signGui.Parent = signBoard
 		upgradeSign.Parent = folder

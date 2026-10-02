@@ -92,15 +92,6 @@ Monetization.Passes = {
 		Icon = "❤️",
 		Color = rgb(235, 60, 80),
 	},
-	{
-		Key = "MurdererLuck",
-		Id = 0,
-		Price = 199,
-		Name = "Murderer Luck",
-		Description = "Twice the chance to be picked as the Murderer each round.",
-		Icon = "🔪",
-		Color = rgb(225, 50, 70),
-	},
 } :: { Pass }
 
 Monetization.Products = {
@@ -109,12 +100,11 @@ Monetization.Products = {
 		Id = 0,
 		Price = 79,
 		Name = "Starter Pack",
-		Description = "A head start: a pile of cash, a Rare Case and 3 Murderer Tickets. Once per player.",
+		Description = "A head start: a pile of cash and a Rare Case. Once per player.",
 		Icon = "🎁",
 		Color = rgb(255, 130, 60),
 		Cash = { Min = 225000, Seconds = 300 },
 		Case = "Rare",
-		Tickets = 3,
 		OneTime = true,
 	},
 	{
@@ -194,16 +184,6 @@ Monetization.Products = {
 		Description = "Your vault grows a floor: 10 more knife plates, instantly.",
 		Icon = "➕",
 		Color = rgb(255, 165, 50),
-	},
-	{
-		Key = "Tickets",
-		Id = 0,
-		Price = 39,
-		Name = "3 Murderer Tickets",
-		Description = "Each one adds to your chance of being the Murderer in a round.",
-		Icon = "🎟️",
-		Color = rgb(225, 60, 80),
-		Tickets = 3,
 	},
 	{
 		Key = "Repair",

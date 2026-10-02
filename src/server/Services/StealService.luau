@@ -20,6 +20,9 @@ local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
+local Fuel = require(script.Parent.Fuel)
+local ServerEvents = require(script.Parent.ServerEvents)
+local Social = require(script.Parent.Social)
 local MapService = require(script.Parent.MapService)
 local Offers = require(script.Parent.Offers)
 
@@ -27,7 +30,8 @@ type Carry = {
 	Kind: string, -- "Case" | "Knife"
 	Item: string, -- the case's rarity, or the knife item
 	StolenFrom: number?, -- UserId of the vault it was stolen from
-	Boss: { Zone: number, Slot: number }?, -- taken off a biome boss's wall (GuardService)
+	Boss: { Zone: number, Slot: number }?,
+	Helpers: { Player }, -- players who helped with a boss steal (team steal) -- taken off a biome boss's wall (GuardService)
 	Visual: Model,
 	LastPos: Vector3,
 	LastCheck: number,
@@ -101,6 +105,7 @@ local function ownerName(userId: number?): string?
 	return if owner then owner.DisplayName else nil
 end
 
+local revealPower: (Player, string) -> ()
 local startCarry: (Player, string, string, number?, { Zone: number, Slot: number }?) -> ()
 
 -- Somewhere on the floor under `position`, ignoring bodies, players and other drops
@@ -380,7 +385,22 @@ startCarry = function(
 	weld.Parent = visual
 	visual.Parent = character
 
+	-- Team steal: anyone close by when you grab a boss's knife (and your teammate, wherever they are)
+	local helpers: { Player } = {}
+	if boss then
+		for _, other in Players:GetPlayers() do
+			local otherRoot = if other ~= player then rootPart(other) else nil
+			if
+				otherRoot
+				and not other:GetAttribute("InRound")
+				and ((otherRoot.Position - root.Position).Magnitude < 35 or Social.PartnerOf(player) == other)
+			then
+				table.insert(helpers, other)
+			end
+		end
+	end
 	carriers[player] = {
+		Helpers = helpers,
 		Kind = kind,
 		Item = item,
 		StolenFrom = stolenFrom,
@@ -425,6 +445,8 @@ function StealService.ReturnToBoss(player: Player): string?
 	end
 	local item = carry.Item
 	endCarry(player, false, nil)
+	Fuel.AddHeat(player, -1, "Caught by the boss!")
+	Fuel.AddMeter(player, -1)
 	return item
 end
 
@@ -454,8 +476,16 @@ function StealService.OpenCase(player: Player, rarity: string, force: boolean?):
 	if not profile or (#profile.Knives >= profile.Slots and not force) then
 		return nil
 	end
-	local item, upgraded = Items.OpenCase(rng, rarity, caseLuck(profile))
+	local rolled, upgraded = Items.OpenCase(rng, rarity, caseLuck(profile))
+	local item = Fuel.RollPower(player, rolled)
 	local parsed = Items.Parse(item) :: Items.Item
+	if parsed.Perk then
+		task.delay(3.6, function()
+			if player.Parent then
+				revealPower(player, item)
+			end
+		end)
+	end
 	local isNew = not table.find(profile.Discovered, parsed.Name)
 	local hype = Items.Hype(item)
 	DataService.Update(player, function(p)
@@ -486,6 +516,25 @@ function StealService.OpenCase(player: Player, rarity: string, force: boolean?):
 	return item
 end
 
+-- A knife came home with a Murderer power: a big reveal for you, and the whole server hears about
+-- the rare ones
+revealPower = function(player: Player, item: string)
+	local parsed = Items.Parse(item)
+	if not parsed or not parsed.Perk then
+		return
+	end
+	local oneIn = Items.PowerOneIn(parsed.Perk)
+	Net.Remotes.Effect:FireClient(player, "PowerRoll", item, parsed.Perk, oneIn)
+	if oneIn >= 300 then
+		local perk = GameConfig.Perks[parsed.Perk]
+		Net.Announce(
+			`{player.DisplayName} rolled {if perk then perk.DisplayName else parsed.Perk} (1 in {oneIn})!`,
+			Color3.fromRGB(255, 90, 140),
+			if oneIn >= 1000 then 4 else 3
+		)
+	end
+end
+
 local function deposit(player: Player)
 	local carry = carriers[player]
 	if not carry then
@@ -504,9 +553,29 @@ local function deposit(player: Player)
 		StealService.OpenCase(player, rarity)
 		return
 	end
-	local item = carry.Item
+	-- Its Murderer power is rolled now, with your luck (Heat, deeper zones, bad-luck protection)
+	local item = Fuel.RollPower(player, carry.Item)
 	local parsed = Items.Parse(item) :: Items.Item
 	local isNew = not table.find(profile.Discovered, parsed.Name)
+	if carry.Boss then
+		Fuel.AddHeat(player, 1, "Stole from a boss!")
+		Fuel.AddMeter(player, 1)
+		ServerEvents.Progress("Steals")
+		-- 🤝 Whoever helped (near you when you grabbed it, or your teammate) shares the glory
+		for _, helper in carry.Helpers do
+			if helper.Parent and helper ~= player then
+				Fuel.AddHeat(helper, 1, `Team steal with {player.DisplayName}!`)
+				Fuel.AddMeter(helper, 1)
+			end
+		end
+		-- The last boss's knife: the deep bosses restock fast for everyone for a while
+		if carry.Boss.Zone >= #GameConfig.Zones and not ServerEvents.Active("CosmicRush") then
+			ServerEvents.Start("CosmicRush", player.DisplayName)
+		end
+	end
+	if parsed.Perk then
+		revealPower(player, item)
+	end
 	DataService.Update(player, function(p)
 		table.insert(p.Knives, item)
 		if isNew then

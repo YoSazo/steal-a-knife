@@ -45,6 +45,9 @@ export type Profile = {
 	Receipts: { string }, -- recent Robux PurchaseIds already granted (ProcessReceipt is idempotent)
 	Bought: { string }, -- one-time Robux products already bought (Starter Pack)
 	Pending: { number }, -- money waiting on each slot's cash pad (BaseService), collected by walking over it
+	Heat: number, -- 0-10, boosts income and power luck (server Fuel)
+	PowerPity: number, -- knives in a row without a Murderer power (bad-luck protection)
+	RevengeUntil: number, -- os.time() until which a robbed Murderer gets revenge luck
 }
 
 local STORE_NAME = "PlayerData_v1"
@@ -104,6 +107,9 @@ local function defaultProfile(): Profile
 		TrailLevel = 0,
 		HealthLevel = 0,
 		Pending = {},
+		Heat = 0,
+		PowerPity = 0,
+		RevengeUntil = 0,
 	}
 end
 
@@ -135,6 +141,8 @@ local function reconcile(data: any): Profile
 			else 0
 	end
 	profile.Pending = pending
+	profile.Heat = math.clamp(math.floor(profile.Heat), 0, GameConfig.Fuel.MaxHeat)
+	profile.PowerPity = math.max(0, math.floor(profile.PowerPity))
 	profile.Speed = math.max(0, profile.Speed)
 	profile.TreadmillLevel = math.clamp(math.floor(profile.TreadmillLevel), 1, #GameConfig.Treadmills)
 	profile.Cash = math.max(0, profile.Cash)
@@ -283,6 +291,7 @@ local function publish(player: Player, profile: Profile)
 	player:SetAttribute("Speed", math.floor(profile.Speed))
 	player:SetAttribute("TreadmillLevel", profile.TreadmillLevel)
 	player:SetAttribute("Luck", profile.Luck)
+	player:SetAttribute("Heat", profile.Heat)
 	player:SetAttribute("Tickets", profile.Tickets)
 	player:SetAttribute("Knives", table.concat(profile.Knives, ","))
 	player:SetAttribute("Equipped", profile.Equipped)

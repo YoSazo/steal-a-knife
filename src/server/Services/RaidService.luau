@@ -40,6 +40,7 @@ local Obstacles = require(script.Parent.Obstacles)
 local PowerService = require(script.Parent.PowerService)
 local Ragdoll = require(script.Parent.Ragdoll)
 local StealService = require(script.Parent.StealService)
+local ServerEvents = require(script.Parent.ServerEvents)
 local Targets = require(script.Parent.Targets)
 local VaultWalls = require(script.Parent.VaultWalls)
 
@@ -1327,7 +1328,7 @@ local function schedule()
 		task.wait(0.5)
 		local phase = ReplicatedStorage:GetAttribute("Phase")
 		local endsAt = ReplicatedStorage:GetAttribute("PhaseEndsAt")
-		local waiting = ReplicatedStorage:GetAttribute("Status") ~= "Next round in"
+		local waiting = ReplicatedStorage:GetAttribute("Status") ~= "🔪 MURDER ROUND in"
 		if phase == "Intermission" and type(endsAt) == "number" and not waiting then
 			if not counted then
 				counted = true
@@ -1407,6 +1408,16 @@ local function step(dt: number)
 end
 
 function RaidService.Init()
+	-- A Murderer wipe calls the Thief Moon (now, or as soon as the intermission allows)
+	ServerEvents.OnWipe = function(name: string)
+		Net.Announce(`🔪 {name}'s massacre is calling the Thief Moon!`, Color3.fromRGB(255, 70, 70), 3)
+		if raiding then
+			raidEndsAt += 60
+			ReplicatedStorage:SetAttribute("RaidEndsAt", raidEndsAt)
+		else
+			pendingSummon = name
+		end
+	end
 	burglarFolder = Instance.new("Folder")
 	burglarFolder.Name = "Burglars"
 	burglarFolder.Parent = workspace:FindFirstChild("Map")

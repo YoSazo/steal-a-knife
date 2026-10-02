@@ -43,6 +43,8 @@ local Remotes = {
 	Welcome = event("Welcome"), -- server -> client: ({ Offline, Away, Streak, DailyReady }) on join
 	ClaimDaily = func("ClaimDaily"), -- client -> server: () -> (ok, message) today's login-streak reward
 	Offer = event("Offer"), -- server -> client: (storeKey, reason) a contextual store offer
+	TeamUp = event("TeamUp"), -- client -> server: ("Invite" | "Accept" | "Decline", userId) / ("Leave")
+	Trade = func("Trade"), -- client -> server: (action, ...) -> ok, see TradeService
 	SlowMode = event("SlowMode"), -- client -> server: (on: boolean) walk at normal speed in the hub
 	StoreTest = func("StoreTest"), -- client -> server: (kind, key) Studio-only fake purchase for unset ids
 }

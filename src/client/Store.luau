@@ -298,8 +298,7 @@ function Store.Init()
 		CellPadding = UDim2.fromOffset(10, 10),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 	}, boostGrid)
-	local boosts =
-		{ "ServerLuck", "CashSmall", "CashMedium", "CashBig", "Mount", "Tickets", "ChestRefill", "BloodMoon" }
+	local boosts = { "ServerLuck", "CashSmall", "CashMedium", "CashBig", "Mount", "ChestRefill", "BloodMoon" }
 	for i, key in boosts do
 		local product = Monetization.ProductByKey[key]
 		local card = cardFrame(boostGrid, i, UDim2.new(), product.Color)

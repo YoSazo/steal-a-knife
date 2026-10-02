@@ -176,6 +176,51 @@ function Hud.Init()
 		end
 	end)
 
+	-- 🤝 The server goal and any live events (ServerEvents), under the timer
+	local goalLabel = Ui.label({
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 122),
+		Size = UDim2.fromOffset(460, 22),
+		Text = "",
+		TextColor3 = Color3.fromRGB(150, 230, 255),
+	}, gui)
+	Ui.textStroke(goalLabel, 1.5)
+	local eventLabel = Ui.label({
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 146),
+		Size = UDim2.fromOffset(520, 26),
+		Text = "",
+		TextColor3 = Color3.fromRGB(255, 230, 120),
+	}, gui)
+	Ui.textStroke(eventLabel, 2)
+	local EVENT_TEXT: { { Name: string, Text: string } } = {
+		{ Name = "LuckyRush", Text = "🍀 LUCKY RUSH · 2x power luck" },
+		{ Name = "CashRush", Text = "💸 CASH RUSH · 2x cash" },
+		{ Name = "HeatWave", Text = "🔥 HEAT WAVE · 2x Heat" },
+		{ Name = "CosmicRush", Text = "🪐 COSMIC RUSH · deep bosses restock fast" },
+	}
+	task.spawn(function()
+		while true do
+			task.wait(0.5)
+			local inRound = player:GetAttribute("InRound") == true
+			local text = ReplicatedStorage:GetAttribute("GoalText")
+			local progress = ReplicatedStorage:GetAttribute("GoalProgress") or 0
+			local need = ReplicatedStorage:GetAttribute("GoalNeed") or 1
+			goalLabel.Visible = not inRound and type(text) == "string"
+			goalLabel.Text = `🤝 Server goal: {text} ({progress}/{need})`
+			local now = workspace:GetServerTimeNow()
+			local live = {}
+			for _, event in EVENT_TEXT do
+				local ends = ReplicatedStorage:GetAttribute(`Event_{event.Name}`)
+				if type(ends) == "number" and ends > now then
+					table.insert(live, `{event.Text} {Ui.clock(ends - now)}`)
+				end
+			end
+			eventLabel.Visible = #live > 0
+			eventLabel.Text = table.concat(live, "   ")
+		end
+	end)
+
 	-- "Your chance to be the Murderer: 6%" (MM2 style), between rounds
 	local chanceLabel = Ui.label({
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -188,7 +233,7 @@ function Hud.Init()
 	local function refreshChance()
 		local chance = player:GetAttribute("MurdererChance")
 		chanceLabel.Visible = type(chance) == "number" and not player:GetAttribute("InRound")
-		chanceLabel.Text = `🔪 Your chance to be the Murderer: {chance or 0}%`
+		chanceLabel.Text = `🔪 Your chance to be the Murderer: {chance or 0}% (play to raise it!)`
 	end
 	player:GetAttributeChangedSignal("MurdererChance"):Connect(refreshChance)
 	player:GetAttributeChangedSignal("InRound"):Connect(refreshChance)
@@ -303,6 +348,57 @@ function Hud.Init()
 	}, stats)
 	Ui.textStroke(rackLabel, 1.5)
 	Hud.CashLabel = cashLabel
+
+	-- 🔥 Heat, right above Speed: one number that both games fill, boosting cash and power luck
+	local heatLabel = Ui.label({
+		Position = UDim2.fromOffset(0, -44),
+		Size = UDim2.fromOffset(320, 34),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = Color3.fromRGB(255, 150, 60),
+		Text = "",
+	}, stats)
+	Ui.textStroke(heatLabel, 2.5)
+	local heatHint = Ui.label({
+		Position = UDim2.fromOffset(4, -14),
+		Size = UDim2.fromOffset(320, 16),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = Color3.fromRGB(255, 220, 170),
+		Text = "",
+	}, stats)
+	Ui.textStroke(heatHint, 1.5)
+	local function refreshHeat()
+		local heat = (player:GetAttribute("Heat") or 0) :: number
+		local fuel = GameConfig.Fuel
+		heatLabel.Text = `🔥 HEAT {heat}/{fuel.MaxHeat}`
+		heatLabel.TextColor3 = Color3.fromRGB(255, 200, 90):Lerp(Color3.fromRGB(255, 60, 40), heat / fuel.MaxHeat)
+		local friends = (player:GetAttribute("FriendsHere") or 0) :: number
+		heatHint.Text = (
+			if heat > 0
+				then `x{math.floor((1 + heat * fuel.HeatIncome) * 10) / 10} cash · x{math.floor(
+					(1 + heat * fuel.HeatLuck) * 10
+				) / 10} power luck`
+				else "Steal & survive rounds to heat up!"
+		) .. (if friends > 0 then `  · 👥 +{friends * 10}%` else "")
+	end
+	player:GetAttributeChangedSignal("Heat"):Connect(refreshHeat)
+	player:GetAttributeChangedSignal("FriendsHere"):Connect(refreshHeat)
+	refreshHeat()
+	Remotes.Effect.OnClientEvent:Connect(function(kind: string, _heat: any, delta: any, reason: any)
+		if kind ~= "Heat" or type(delta) ~= "number" then
+			return
+		end
+		local scale = heatLabel:FindFirstChildOfClass("UIScale") or new("UIScale", {}, heatLabel)
+		scale.Scale = 1.35
+		TweenService:Create(scale, TweenInfo.new(0.4, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root then
+			Effects.FloatText(
+				root.Position + Vector3.new(0, 4, 0),
+				`{if delta > 0 then "+" else ""}{delta} 🔥 {reason or ""}`,
+				if delta > 0 then Color3.fromRGB(255, 160, 60) else Color3.fromRGB(150, 160, 190)
+			)
+		end
+	end)
 
 	-- Right side: upgrades, folded behind one "Upgrades" button (a badge counts what you can afford)
 	-- so the screen stays clear; the list drops down under it when opened
@@ -741,7 +837,11 @@ function Hud.Init()
 				line1,
 				line2,
 				line("#FFE14B", "SURVIVORS", "EARN 2X CASH"),
-				line("#5AF08C", "DEEPER ZONES", "= RARER KNIVES"),
+				line(
+					"#5AF08C",
+					"SERVER GOAL",
+					`{ReplicatedStorage:GetAttribute("GoalProgress") or 0}/{ReplicatedStorage:GetAttribute("GoalNeed") or "?"}`
+				),
 			}
 			for _, face in (board :: Instance):GetChildren() do
 				for i = 1, #texts do

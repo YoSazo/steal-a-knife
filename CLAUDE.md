@@ -61,6 +61,15 @@ victim's rack (returned if the Murderer is shot); survivors get 2x vault income 
   Knife" prompt (BaseService placePrompts, enabled while Carrying) -> StealService.Place (flying-knife "PlaceKnife"
   effect, then deposit). Cases still open on arrival. Equipping fires Effect "Equipped" (knife flies to your hand +
   banner) and the Draw clip. Each vault has an Upgrade Base sign by the gate (client/Hud fills it; prompt -> "Slot").
+- Fuel (`Fuel` service, GameConfig.Fuel): 🔥 Heat 0-10 (profile.Heat) fills from boss steals, surviving rounds,
+  Murderer wins; halves when you die in a round, -1 when a boss catches you; boosts vault income and power-roll luck.
+  Murderer meter = profile.Luck (+2 per round not picked, +1 steal/survive, -1 death/caught, 0 when picked),
+  capped at 3x the server average; no Robux way to raise it (MurdererLuck pass + Tickets product removed).
+- Murderer powers are rare rolls on the ITEM, not the knife type: items are "Name|Mut|Size|Power" (Power "" none,
+  "?" unrolled; 3-field old saves keep their knife type's power). Items.Powers odds (Spam Knife 1 in 1000);
+  rolled in Fuel.RollPower when a knife reaches a vault (deposit / case open) with Heat, rarity, pity and revenge
+  luck; "PowerRoll" reveal + server announce for rare ones. A Sheriff who shoots the Murderer steals the power onto
+  their own fighting knife (RoundService.stealPower); the robbed Murderer gets RevengeUntil luck.
 - Hotbar knives show an icon (Tool.TextureId from Config/KnifeIcons, rendered by blender/scripts/render_knife_icons.py).
 - Rounds: one innocent power per round (Loadout[1], GameConfig.RoundPowerLevel for everyone); Spam Knife is a Q burst;
   ~20% CLASSIC rounds (no powers/perks, ClassicPay); Radar only finds a Murderer whose knife is out (KnifeOut), the
@@ -91,6 +100,11 @@ victim's rack (returned if the Murderer is shot); survivors get 2x vault income 
   aim), other bots grab a dropped Revolver, the Murderer bot goes for the Sheriff first. Each innocent is shown the
   knife they'd lose (round.AtRisk, Effect "AtRisk" -> client/Transitions reel); lootKnife takes that one.
   Thrown knives start at CombatService.HandPosition (led by speed x ping).
+- New players are told about both halves: top timer status "🔪 MURDER ROUND in" (RoundService.IntermissionStatus;
+  RaidService compares it), first-visit welcome card "STEAL KNIVES ➜ BECOME THE MURDERER", a tutorial step on rounds,
+  client/RoundIntro (10 s countdown card before your first round of the session), and a first-time player (attribute
+  FirstVisit) pulls the next round in to GameConfig.NewcomerRoundIn (not during a Thief Moon). `src/first/LoadingScreen`
+  covers the screen until character + HUD exist.
 - `RoundService` phase loop; state is attributes on ReplicatedStorage (Phase, PhaseEndsAt, Status, Alive, MapName,
   Revolver, Loot). Melee from `Tool.Activated`; perks via `Remotes.Ability`, gun via `Remotes.Shoot` - all validated server-side.
 - Client modules (`src/client`): Ui, Hud, Menus (Knives/Shop panels), Abilities (knife input: click combo,

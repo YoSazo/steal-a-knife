@@ -960,6 +960,7 @@ local function eventBoard(z: number, width: number)
 		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 		gui.PixelsPerStud = 20
 		gui.LightInfluence = 0
+		gui.Brightness = 0.85 -- full-bright signs, a touch softer than pure white
 		gui.Parent = board
 		local layout = Instance.new("UIListLayout")
 		layout.VerticalAlignment = Enum.VerticalAlignment.Center

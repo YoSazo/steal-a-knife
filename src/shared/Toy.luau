@@ -11,7 +11,7 @@ local Toy = {}
 
 -- Matched to how Steal An Egg renders (their grass ~(78,203,47), dirt ~(196,139,87) on screen)
 Toy.Grass = Color3.fromRGB(48, 146, 30)
-Toy.Dirt = Color3.fromRGB(150, 104, 62)
+Toy.Dirt = Color3.fromRGB(214, 146, 78)
 
 local function texture(part: BasePart, face: Enum.NormalId, id: string, tile: number, name: string): Texture
 	local t = Instance.new("Texture")

@@ -3,6 +3,9 @@
 -- is opened. Stored as one string so profiles, attributes and round loot stay simple:
 --   "Katana"              plain, normal size (every save from before cases still works)
 --   "Katana|Gold|Big"     Gold mutation, Big size ("Katana||Huge" = no mutation, Huge)
+--   "Katana|Gold|Big|SpamKnife"  ...with a rolled Murderer power ("" = none, "?" = not rolled yet:
+--                         rolled when it reaches your vault). Saves from before power rolls (3
+--                         fields) keep the power their knife type used to give.
 -- Mutations and sizes multiply income; they also make the knife hit a little harder.
 
 local Knives = require(script.Parent.Config.Knives)
@@ -33,6 +36,8 @@ export type Item = {
 	Knife: Knives.Knife,
 	Mutation: Mutation,
 	Size: Size,
+	Perk: string?, -- the Murderer power this one carries (GameConfig.Perks id), nil = none
+	Unrolled: boolean, -- "?" : the power roll still has to happen
 }
 
 local Items = {}
@@ -102,6 +107,42 @@ Items.Sizes = {
 	},
 } :: { Size }
 
+-- Murderer powers are rare rolls on top of a knife (not tied to its type): "1 in OneIn" each, with
+-- luck (Heat, deeper zones, bad-luck protection) multiplying every chance. Rarest first.
+Items.Powers = {
+	{ Id = "Hellfire", OneIn = 3000 },
+	{ Id = "SpamKnife", OneIn = 1000 },
+	{ Id = "ExplodingKnife", OneIn = 700 },
+	{ Id = "LaserKnife", OneIn = 450 },
+	{ Id = "Invisiknife", OneIn = 300 },
+	{ Id = "GhostKnife", OneIn = 200 },
+	{ Id = "Bulletproof", OneIn = 120 },
+	{ Id = "ShapeShifter", OneIn = 60 },
+	{ Id = "Identifier", OneIn = 40 },
+	{ Id = "Fury", OneIn = 25 },
+} :: { { Id: string, OneIn: number } }
+local powerById: { [string]: { Id: string, OneIn: number } } = {}
+for _, power in Items.Powers do
+	powerById[power.Id] = power
+end
+
+-- "1 in N" for a power (0 if unknown)
+function Items.PowerOneIn(power: string?): number
+	local entry = power and powerById[power]
+	return if entry then entry.OneIn else 0
+end
+
+-- Rolls a power ("" = none). luck multiplies every chance.
+function Items.RollPower(rng: Random, luck: number?): string
+	local boost = math.max(1, luck or 1)
+	for _, power in Items.Powers do
+		if rng:NextNumber() < boost / power.OneIn then
+			return power.Id
+		end
+	end
+	return ""
+end
+
 local mutationById: { [string]: Mutation } = {}
 for _, m in Items.Mutations do
 	mutationById[m.Id] = m
@@ -122,25 +163,51 @@ function Items.Parse(item: string): Item?
 	if cached or invalid[item] then
 		return cached
 	end
-	local name, mutation, size = item:match("^([^|]*)|?([^|]*)|?([^|]*)$")
-	local knife = name and Knives.ByName[name]
-	local m = mutation and mutationById[mutation]
-	local s = size and sizeById[size]
-	if not knife or not m or not s then
+	local fields = string.split(item, "|")
+	local name, mutation, size, power = fields[1], fields[2] or "", fields[3] or "", fields[4]
+	local knife = Knives.ByName[name]
+	local m = mutationById[mutation]
+	local s = sizeById[size]
+	-- No 4th field: an old save, which keeps its knife type's power
+	local perk: string? = if power == nil
+		then knife and knife.Perk
+		elseif power == "" or power == "?" then nil
+		else power
+	if not knife or not m or not s or #fields > 4 or (perk ~= nil and not powerById[perk]) then
 		invalid[item] = true
 		return nil
 	end
-	local parsed: Item = { Item = item, Name = name :: string, Knife = knife, Mutation = m, Size = s }
+	local parsed: Item = {
+		Item = item,
+		Name = name,
+		Knife = knife,
+		Mutation = m,
+		Size = s,
+		Perk = perk,
+		Unrolled = power == "?",
+	}
 	cache[item] = parsed
 	return parsed
 end
 
-function Items.Make(name: string, mutation: string?, size: string?): string
+function Items.Make(name: string, mutation: string?, size: string?, power: string?): string
 	local m, s = mutation or "", size or ""
+	if power then
+		return `{name}|{m}|{s}|{power}`
+	end
 	if m == "" and s == "" then
 		return name
 	end
 	return `{name}|{m}|{s}`
+end
+
+-- The same knife with a different power ("" = none)
+function Items.WithPower(item: string, power: string): string
+	local p = Items.Parse(item)
+	if not p then
+		return item
+	end
+	return Items.Make(p.Name, p.Mutation.Id, p.Size.Id, power)
 end
 
 function Items.Valid(item: unknown): boolean
@@ -193,7 +260,9 @@ function Items.Hype(item: string): number
 		return 0
 	end
 	local rarityRank = (table.find(Knives.Rarities, p.Knife.Rarity) or 1) - 1
-	return math.max(rarityRank - 1, p.Mutation.Rank + (if p.Mutation.Rank > 0 then 1 else 0), p.Size.Rank)
+	local oneIn = Items.PowerOneIn(p.Perk)
+	local powerRank = if oneIn >= 1000 then 4 elseif oneIn >= 300 then 3 elseif oneIn >= 100 then 2 else 0
+	return math.max(rarityRank - 1, p.Mutation.Rank + (if p.Mutation.Rank > 0 then 1 else 0), p.Size.Rank, powerRank)
 end
 
 -- The colour that best describes it: its mutation if it has one, else its rarity
@@ -259,7 +328,8 @@ function Items.OpenCase(rng: Random, rarity: string, luck: number?): (string, bo
 	local pool = Knives.ByRarity[Knives.Rarities[rarityIndex]]
 	local knife = pool[rng:NextInteger(1, #pool)]
 	local mutation, size = Items.Roll(rng, luck)
-	return Items.Make(knife.Name, mutation.Id, size.Id), upgraded
+	-- The power is rolled when it reaches someone's vault (their luck counts), so it starts as "?"
+	return Items.Make(knife.Name, mutation.Id, size.Id, "?"), upgraded
 end
 
 return Items

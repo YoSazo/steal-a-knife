@@ -33,6 +33,7 @@ local Disguises = require(script.Parent.Disguises)
 local MapService = require(script.Parent.MapService)
 local Obstacles = require(script.Parent.Obstacles)
 local StealService = require(script.Parent.StealService)
+local ServerEvents = require(script.Parent.ServerEvents)
 local StuckKnives = require(script.Parent.StuckKnives)
 
 type ZoneConfig = {
@@ -473,6 +474,7 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 	surface.Face = Enum.NormalId.Front -- the frame looks at the plaza, so Front faces the runway
 	surface.CanvasSize = Vector2.new(800, 100)
 	surface.LightInfluence = 0
+	surface.Brightness = 0.85 -- full-bright signs, a touch softer than pure white
 	surface.Parent = sign
 	text(
 		surface,
@@ -1016,7 +1018,8 @@ local function onBossCarryEnded(zone: number, slotIndex: number, item: string, d
 	end
 	if delivered then
 		slot.Out = false
-		slot.RestockAt = now() + boss.Config.Restock
+		local rush = ServerEvents.Active("CosmicRush") and boss.Index > #GameConfig.Zones / 2
+		slot.RestockAt = now() + boss.Config.Restock * (if rush then 0.1 else 1)
 	else
 		setSlot(boss, slot, item)
 	end

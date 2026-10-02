@@ -3,6 +3,7 @@
 -- arrow over it, and one short instruction at a time. Steps advance on their own as you do them:
 --   1. take down a watchman in the Courtyard   2. grab the case it drops
 --   3. carry it home, place it on a plate             4. run in your Haunted Wheel
+--   5. the Murder Mystery rounds (just read it)       6. your vault gate
 -- Finishing (or skipping) tells the server, which pays a small reward once (Rewards).
 
 local CollectionService = game:GetService("CollectionService")
@@ -102,6 +103,7 @@ function Tutorial.Init()
 			banked = true
 		end
 	end)
+	local stepShownAt = os.clock()
 	local steps: { Step } = {
 		{
 			Text = "Frank guards a wall of knives in the Courtyard. Walk up and hold E on one to steal it!",
@@ -124,6 +126,16 @@ function Tutorial.Init()
 			Target = wheel,
 			Done = function()
 				return player:GetAttribute("Training") == true
+			end,
+		},
+		{
+			-- The other half of the game: no target, it just has to be read (or a round starts)
+			Text = "Every few minutes EVERYONE plays Murder Mystery! 🔪 1 Murderer vs everyone. Watch the top timer!",
+			Target = function(): Vector3?
+				return nil
+			end,
+			Done = function()
+				return os.clock() - stepShownAt > 9 or player:GetAttribute("InRound") == true
 			end,
 		},
 		{
@@ -213,7 +225,7 @@ function Tutorial.Init()
 			banner:Destroy()
 			return
 		end
-		stepLabel.Text = "You've got it! Steal, train, defend your vault, survive. Good luck!"
+		stepLabel.Text = "You've got it! Steal knives, defend your vault, survive the Murderer. Good luck!"
 		Effects.Sound(Sounds.Reveal, nil, 0.7)
 		task.delay(4, function()
 			TweenService:Create(banner, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
@@ -226,6 +238,7 @@ function Tutorial.Init()
 	end)
 
 	local function showStep()
+		stepShownAt = os.clock()
 		stepLabel.Text = `{current}/{#steps}  {steps[current].Text}`
 		local scale = banner:FindFirstChildOfClass("UIScale") or new("UIScale", {}, banner)
 		scale.Scale = 1.1

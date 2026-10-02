@@ -344,8 +344,15 @@ function Transitions.Init()
 	local mPhoto, mName, mDetail = side(14, "MURDERER", Color3.fromRGB(255, 70, 80))
 	local hPhoto, hName, hDetail = side(326, "SHERIFF", Color3.fromRGB(90, 170, 255))
 	local cardToken = 0
-	local function setPhoto(image: ImageLabel, userId: number)
+	local function setPhoto(image: ImageLabel, userId: number, face: any?)
 		image.Image = ""
+		image.BackgroundColor3 = Color3.fromRGB(60, 50, 70)
+		-- A bot: its disguise's face drawn on its skin colour
+		if userId <= 0 and type(face) == "table" then
+			image.BackgroundColor3 = if typeof(face.Skin) == "Color3" then face.Skin else Color3.fromRGB(230, 190, 150)
+			image.Image = if type(face.Face) == "string" then face.Face else ""
+			return
+		end
 		if userId > 0 then
 			task.spawn(function()
 				local ok, url = pcall(
@@ -372,7 +379,7 @@ function Transitions.Init()
 		local knife = if type(info.Knife) == "string" then info.Knife else ""
 		mDetail.Text = `{if knife ~= "" then Items.DisplayName(knife) else "Knife"} · {info.Kills or 0} kills`
 		mDetail.TextColor3 = if knife ~= "" then Items.Color(knife) else Color3.new(1, 1, 1)
-		setPhoto(mPhoto, tonumber(info.MurdererId) or 0)
+		setPhoto(mPhoto, tonumber(info.MurdererId) or 0, info.MurdererFace)
 		if info.HeroName then
 			hName.Text = tostring(info.HeroName)
 			hDetail.Text = "Revolver · shot the Murderer!"
@@ -380,7 +387,7 @@ function Transitions.Init()
 			hName.Text = if murdererWon then "Nobody stopped them" else "Survived!"
 			hDetail.Text = if murdererWon then "" else "The innocents made it"
 		end
-		setPhoto(hPhoto, tonumber(info.HeroId) or 0)
+		setPhoto(hPhoto, tonumber(info.HeroId) or 0, info.HeroFace)
 		card.Visible = true
 		local scale = card:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
 		scale.Parent = card

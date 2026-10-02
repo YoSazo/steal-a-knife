@@ -354,6 +354,91 @@ local function flyKnife(item: string, from: Vector3, to: Vector3, duration: numb
 end
 
 local handlers: { [string]: (...any) -> () } = {
+	-- Double Trouble: your fellow Murderer, outlined red for you only, for the round
+	Partner = function(character: Model?, name: string)
+		if not character then
+			return
+		end
+		local highlight = Instance.new("Highlight")
+		highlight.Name = "PartnerOutline"
+		highlight.FillTransparency = 1
+		highlight.OutlineColor = Color3.fromRGB(255, 40, 60)
+		highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		highlight.Adornee = character
+		highlight.Parent = character
+		Effects.FloatText(
+			(character:GetPivot()).Position + Vector3.new(0, 5, 0),
+			`🔪 Partner: {name}`,
+			Color3.fromRGB(255, 80, 90)
+		)
+		local connection: RBXScriptConnection
+		connection = player:GetAttributeChangedSignal("InRound"):Connect(function()
+			if not player:GetAttribute("InRound") then
+				connection:Disconnect()
+				highlight:Destroy()
+			end
+		end)
+	end,
+	-- A Murderer power rolled on a knife you just got (or stole from the Sheriff-shot Murderer)
+	PowerRoll = function(item: string, power: string, oneIn: number)
+		local perk = GameConfig.Perks[power]
+		local gui = Instance.new("ScreenGui")
+		gui.Name = "PowerRoll"
+		gui.ResetOnSpawn = false
+		gui.DisplayOrder = 45
+		gui.Parent = player:WaitForChild("PlayerGui")
+		local rare = oneIn >= 300
+		local color = if oneIn >= 1000
+			then Color3.fromRGB(255, 80, 200)
+			elseif rare then Color3.fromRGB(255, 120, 60)
+			else Color3.fromRGB(255, 220, 90)
+		local function line(text: string, y: number, height: number, c: Color3): TextLabel
+			local label = Instance.new("TextLabel")
+			label.AnchorPoint = Vector2.new(0.5, 0.5)
+			label.Position = UDim2.fromScale(0.5, y)
+			label.Size = UDim2.fromOffset(760, height)
+			label.BackgroundTransparency = 1
+			label.Font = Enum.Font.FredokaOne
+			label.TextScaled = true
+			label.TextColor3 = c
+			label.Text = text
+			label.Parent = gui
+			local stroke = Instance.new("UIStroke")
+			stroke.Thickness = 3
+			stroke.Color = Color3.fromRGB(20, 16, 26)
+			stroke.Parent = label
+			return label
+		end
+		local labels = {
+			line("✨ MURDERER POWER! ✨", 0.24, 36, Color3.new(1, 1, 1)),
+			line(if perk then perk.DisplayName else power, 0.31, 70, color),
+			line(`on your {Items.DisplayName(item)} · 1 in {oneIn}`, 0.38, 28, Color3.fromRGB(230, 230, 240)),
+		}
+		if perk then
+			table.insert(labels, line(perk.Description, 0.43, 24, Color3.fromRGB(255, 200, 210)))
+		end
+		for _, label in labels do
+			local scale = Instance.new("UIScale")
+			scale.Scale = 0.3
+			scale.Parent = label
+			TweenService:Create(scale, TweenInfo.new(0.45, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+		end
+		Effects.Sound(Sounds.Reveal, nil, 1)
+		if rare then
+			Effects.Sound(Sounds.Cheer, nil, 0.8)
+		end
+		task.delay(if rare then 4 else 2.6, function()
+			for _, label in labels do
+				TweenService:Create(label, TweenInfo.new(0.5), { TextTransparency = 1 }):Play()
+				local stroke = label:FindFirstChildOfClass("UIStroke")
+				if stroke then
+					TweenService:Create(stroke, TweenInfo.new(0.5), { Transparency = 1 }):Play()
+				end
+			end
+			task.wait(0.55)
+			gui:Destroy()
+		end)
+	end,
 	-- Putting a stolen knife on your plate: it flies from your hands and lands with a burst
 	PlaceKnife = function(from: Vector3, to: Vector3, item: string)
 		if not Lod.Near(to) then
@@ -409,7 +494,7 @@ local handlers: { [string]: (...any) -> () } = {
 			return label
 		end
 		local parsed = Items.Parse(item)
-		local perk = parsed and parsed.Knife.Perk and GameConfig.Perks[parsed.Knife.Perk]
+		local perk = parsed and parsed.Perk and GameConfig.Perks[parsed.Perk]
 		local labels = {
 			line("EQUIPPED", 0.3, 34, Color3.fromRGB(255, 230, 120)),
 			line(Items.DisplayName(item), 0.36, 56, Items.Color(item)),
@@ -679,7 +764,40 @@ local handlers: { [string]: (...any) -> () } = {
 	end,
 }
 
+-- 🤝 Your teammate is outlined green in the hub (so you can find each other)
+local function trackTeammate()
+	local current: Highlight? = nil
+	local function refresh()
+		if current then
+			current:Destroy()
+			current = nil
+		end
+		local id = player:GetAttribute("Partner")
+		local mate = if type(id) == "number" then Players:GetPlayerByUserId(id) else nil
+		local character = mate and mate.Character
+		if character and not player:GetAttribute("InRound") then
+			local highlight = Instance.new("Highlight")
+			highlight.Name = "TeammateOutline"
+			highlight.FillTransparency = 1
+			highlight.OutlineColor = Color3.fromRGB(90, 255, 120)
+			highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+			highlight.Adornee = character
+			highlight.Parent = character
+			current = highlight
+		end
+	end
+	player:GetAttributeChangedSignal("Partner"):Connect(refresh)
+	player:GetAttributeChangedSignal("InRound"):Connect(refresh)
+	task.spawn(function()
+		while true do
+			task.wait(3) -- they respawn / stream in
+			refresh()
+		end
+	end)
+end
+
 function Effects.Init()
+	trackTeammate()
 	Remotes:WaitForChild("Effect").OnClientEvent:Connect(function(kind: string, ...)
 		local handler = handlers[kind]
 		if handler then
@@ -823,6 +941,19 @@ function Effects.Init()
 		local inRound = player:GetAttribute("InRound") == true
 		local info = TweenInfo.new(1.2, Enum.EasingStyle.Quad)
 		Lighting.ExposureCompensation = 0
+		-- Round maps are indoors with no lamps: rounds get warm, neutral room light, and the hub's
+		-- own values (published by the server as Lighting attributes, MapService) come back after.
+		-- Never cache Lighting here: the client can start before the server has set it up.
+		local hubAmbient = Lighting:GetAttribute("HubAmbient")
+		local hubOutdoor = Lighting:GetAttribute("HubOutdoor")
+		if inRound then
+			TweenService:Create(Lighting, info, {
+				Ambient = Color3.fromRGB(165, 160, 150),
+				OutdoorAmbient = Color3.fromRGB(170, 165, 155),
+			}):Play()
+		elseif typeof(hubAmbient) == "Color3" and typeof(hubOutdoor) == "Color3" then
+			TweenService:Create(Lighting, info, { Ambient = hubAmbient, OutdoorAmbient = hubOutdoor }):Play()
+		end
 		local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
 		if bloom then
 			TweenService:Create(bloom, info, { Intensity = if inRound then 0.25 else 0.3 }):Play()

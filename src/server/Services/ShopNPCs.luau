@@ -150,6 +150,7 @@ local function buildStall(folder: Instance, spec: Spec, frame: CFrame)
 	gui.Size = UDim2.fromOffset(280, 54)
 	gui.MaxDistance = 140
 	gui.LightInfluence = 0
+	gui.Brightness = 0.85 -- full-bright signs, a touch softer than pure white
 	gui.Adornee = anchor
 	gui.Parent = anchor
 	local text = Instance.new("TextLabel")

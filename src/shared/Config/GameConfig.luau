@@ -453,6 +453,7 @@ local GameConfig = {
 
 	-- Rounds
 	IntermissionTime = 180,
+	NewcomerRoundIn = 100, -- a first-time player joining pulls the next round in to at most this (s)
 	RoundTime = 150,
 	ResultsTime = 8,
 	MurdererGrace = 10, -- seconds before the Murderer gets their knife (same as the classic)
@@ -635,11 +636,26 @@ local GameConfig = {
 		},
 	} :: { any },
 	PowerMaxLevel = 3,
+	-- The fuel between the two games (server Fuel): Heat and the Murderer meter
+	Fuel = {
+		MaxHeat = 10,
+		HeatIncome = 0.2, -- +20% vault income per Heat (10 Heat = 3x)
+		HeatLuck = 0.5, -- +50% power-roll luck per Heat (10 Heat = 6x)
+		RarityLuck = 0.15, -- deeper-zone knives roll powers more often (+15% per rarity step)
+		PityPer = 50, -- bad-luck protection: every 50 knives without a power = +1x luck
+		RevengeLuck = 3, -- after a Sheriff steals your power: 3x luck...
+		RevengeTime = 1800, -- ...for 30 minutes
+		MeterPerRound = 2, -- Murderer meter for each round you weren't the Murderer
+		MeterCap = 3, -- nobody's chance can be more than 3x the server average
+	},
+
 	-- Rounds stay fair (MM2 style): an innocent brings ONE power - the first in their loadout - and
 	-- it works at level 1 for everyone. Levels only matter in the hub, against bosses.
 	RoundPowerLevel = 1,
 	-- Every so often a CLASSIC round: no powers, no knife perks, just a knife and a Revolver - and
 	-- everyone earns extra for it
+	-- DOUBLE TROUBLE: two Murderers, two Sheriffs (always with this many players, else a chance)
+	DoubleTrouble = { Always = 10, Chance = 0.2 },
 	ClassicChance = 0.2,
 	ClassicPay = 1.5,
 
