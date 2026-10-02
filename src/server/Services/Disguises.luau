@@ -14,7 +14,7 @@ local Disguises = {}
 
 -- One accessory: a PropMeshes key, recoloured. Color paints the Hair / Hat / Frame parts, Trim the
 -- Trim / Tie parts (hat bands, brims, ponytail ties, headphone cups).
-type Wear = { Prop: string, Color: Color3?, Trim: Color3? }
+type Wear = { Prop: string, Color: Color3?, Trim: Color3?, On: string? } -- On: body part (default Head)
 
 type Outfit = {
 	Name: string,
@@ -32,15 +32,20 @@ end
 -- Same order as SKIN in tools/make_clothing.py (that list is 0-based)
 local SKIN = { rgb(255, 204, 153), rgb(234, 184, 146), rgb(204, 142, 105), rgb(124, 92, 70), rgb(245, 205, 48) }
 
+-- Drawn by tools/make_faces.py (512px, 4x supersampled), uploaded as images
 local FACES = {
-	Angry = "rbxassetid://72774561041184",
-	Chill = "rbxassetid://128912092070171",
-	Freckles = "rbxassetid://96256413685272",
-	Grin = "rbxassetid://131647879421473",
-	Happy = "rbxassetid://126198856889552",
-	Lashes = "rbxassetid://89338266505569",
-	Smile = "rbxassetid://78744292639305",
-	Smirk = "rbxassetid://104691547599554",
+	Angry = "rbxassetid://84558222936421",
+	Cheeky = "rbxassetid://94635670686306",
+	Chill = "rbxassetid://77301303588999",
+	Determined = "rbxassetid://132969218020669",
+	Freckles = "rbxassetid://108002712515013",
+	Grin = "rbxassetid://83376711920116",
+	Happy = "rbxassetid://80477324382185",
+	Lashes = "rbxassetid://120029999967726",
+	Smile = "rbxassetid://137483136763270",
+	Smirk = "rbxassetid://93391310013128",
+	Surprised = "rbxassetid://75573684402533",
+	Wink = "rbxassetid://138211541316773",
 }
 
 local OUTFITS: { Outfit } = {
@@ -49,7 +54,7 @@ local OUTFITS: { Outfit } = {
 		Skin = SKIN[5],
 		Shirt = "rbxassetid://95677480024122",
 		Pants = "rbxassetid://138894592345744",
-		Face = FACES.Grin,
+		Face = FACES.Determined,
 		Wear = {
 			{ Prop = "HairSwoop", Color = rgb(105, 40, 30) },
 			{ Prop = "ShutterShades", Color = rgb(245, 245, 245) },
@@ -76,7 +81,7 @@ local OUTFITS: { Outfit } = {
 		Skin = SKIN[1],
 		Shirt = "rbxassetid://74568680751515",
 		Pants = "rbxassetid://127963485526269",
-		Face = FACES.Lashes,
+		Face = FACES.Wink,
 		Wear = {
 			{ Prop = "HairBob", Color = rgb(80, 45, 25) },
 			{ Prop = "Beanie", Color = rgb(230, 40, 40), Trim = rgb(245, 245, 245) },
@@ -88,7 +93,7 @@ local OUTFITS: { Outfit } = {
 		Shirt = "rbxassetid://102089062714861",
 		Pants = "rbxassetid://93715269903522",
 		Face = FACES.Happy,
-		Wear = { { Prop = "Cap", Color = rgb(30, 60, 160), Trim = rgb(200, 40, 40) } },
+		Wear = { { Prop = "HairMessy", Color = rgb(120, 80, 45) } },
 	},
 	{
 		Name = "Emma",
@@ -108,8 +113,7 @@ local OUTFITS: { Outfit } = {
 		Pants = "rbxassetid://95926429468333",
 		Face = FACES.Chill,
 		Wear = {
-			{ Prop = "HairSpiky", Color = rgb(25, 22, 20) },
-			{ Prop = "Headphones", Color = rgb(35, 35, 40), Trim = rgb(255, 150, 40) },
+			{ Prop = "HairAfro", Color = rgb(30, 20, 14) },
 		},
 	},
 	{
@@ -118,7 +122,7 @@ local OUTFITS: { Outfit } = {
 		Shirt = "rbxassetid://129412155369857",
 		Pants = "rbxassetid://86579477798846",
 		Face = FACES.Lashes,
-		Wear = { { Prop = "HairPonytail", Color = rgb(30, 25, 20), Trim = rgb(255, 120, 180) } },
+		Wear = { { Prop = "HairBuns", Color = rgb(255, 150, 200), Trim = rgb(255, 255, 255) } },
 	},
 	{
 		Name = "Leo",
@@ -152,7 +156,7 @@ local OUTFITS: { Outfit } = {
 		Skin = SKIN[2],
 		Shirt = "rbxassetid://131782825573769",
 		Pants = "rbxassetid://83645273066066",
-		Face = FACES.Lashes,
+		Face = FACES.Determined,
 		Wear = { { Prop = "HairLong", Color = rgb(200, 60, 30) } },
 	},
 	{
@@ -160,7 +164,7 @@ local OUTFITS: { Outfit } = {
 		Skin = SKIN[1],
 		Shirt = "rbxassetid://94783315712898",
 		Pants = "rbxassetid://133849304341480",
-		Face = FACES.Chill,
+		Face = FACES.Surprised,
 		Wear = {
 			{ Prop = "Beanie", Color = rgb(40, 140, 60), Trim = rgb(30, 30, 30) },
 			{ Prop = "ShutterShades", Color = rgb(20, 20, 22) },
@@ -182,15 +186,15 @@ local OUTFITS: { Outfit } = {
 		Skin = SKIN[5],
 		Shirt = "rbxassetid://92608771511347",
 		Pants = "rbxassetid://92208132645825",
-		Face = FACES.Smile,
-		Wear = { { Prop = "Cap", Color = rgb(250, 250, 250), Trim = rgb(168, 34, 42) } },
+		Face = FACES.Cheeky,
+		Wear = { { Prop = "HairSpiky", Color = rgb(250, 215, 90) } },
 	},
 	{
 		Name = "Kate",
 		Skin = SKIN[2],
 		Shirt = "rbxassetid://111093050431184",
 		Pants = "rbxassetid://109086968383414",
-		Face = FACES.Lashes,
+		Face = FACES.Smirk,
 		Wear = {
 			{ Prop = "HairLong", Color = rgb(150, 20, 30) },
 			{ Prop = "ShutterShades", Color = rgb(20, 20, 22) },
@@ -370,12 +374,25 @@ end
 
 -- Accessories ---------------------------------------------------------------------------------
 
-local function wearOn(head: BasePart, model: Model, wear: Wear)
+-- Hats sit on top of the sculpted hair, so over hair they're worn a size up
+local HATS: { [string]: boolean } =
+	{ Beanie = true, Cap = true, TopHat = true, CowboyHat = true, Crown = true, Headphones = true }
+local OVER_HAIR = 1.12
+
+local function wearOn(head: BasePart, model: Model, wear: Wear, overHair: boolean?)
 	if not Props.Has(wear.Prop) then
 		fallbackWear(head, model, wear)
 		return
 	end
 	local prop = Props.Build(wear.Prop)
+	-- Some pieces sit on the body rather than the head (angel wings on the UpperTorso)
+	local anchor: BasePart = head
+	if wear.On then
+		local part = head.Parent and head.Parent:FindFirstChild(wear.On)
+		if part and part:IsA("BasePart") then
+			anchor = part
+		end
+	end
 	for _, d in prop:GetDescendants() do
 		if d:IsA("BasePart") then
 			if (d.Name == "Hair" or d.Name == "Hat" or d.Name == "Frame") and wear.Color then
@@ -383,17 +400,26 @@ local function wearOn(head: BasePart, model: Model, wear: Wear)
 			elseif (d.Name == "Trim" or d.Name == "Tie") and wear.Trim then
 				d.Color = wear.Trim
 			end
+			-- Glasses lenses and the space helmet's bubble are see-through
+			if d.Name == "Lens" then
+				d.Transparency = if wear.Prop == "SpaceHelmet" then 0.7 else 0.45
+				d.Reflectance = 0.2
+				d.CastShadow = false
+			end
 		end
 	end
 	-- Made for the default head; guards / odd rigs get it scaled to fit
 	local scale = head.Size.Y / HEAD_HEIGHT
-	if math.abs(scale - 1) > 0.08 then
+	if overHair and HATS[wear.Prop] then
+		scale *= OVER_HAIR
+	end
+	if math.abs(scale - 1) > 0.02 then
 		prop:ScaleTo(scale)
 	end
-	prop:PivotTo(head.CFrame)
+	prop:PivotTo(anchor.CFrame)
 	local root = prop.PrimaryPart :: BasePart
 	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = head
+	weld.Part0 = anchor
 	weld.Part1 = root
 	weld.Parent = root
 	prop.Parent = model
@@ -406,8 +432,14 @@ local function buildWear(head: BasePart, wears: { Wear }): Model
 	end
 	local model = Instance.new("Model")
 	model.Name = "DisguiseHat"
+	local hasHair = false
 	for _, wear in wears do
-		wearOn(head, model, wear)
+		if string.sub(wear.Prop, 1, 4) == "Hair" then
+			hasHair = true
+		end
+	end
+	for _, wear in wears do
+		wearOn(head, model, wear, hasHair)
 	end
 	model.Parent = head.Parent
 	return model
@@ -586,6 +618,32 @@ function Disguises.BuildBot(taken: { [string]: boolean }): (Model, string)
 	local rig = Players:CreateHumanoidModelFromDescription(describe(outfit), Enum.HumanoidRigType.R15)
 	dress(rig, outfit)
 	return rig, outfit.Name
+end
+
+-- A dressed R15 rig of one named character (the biome bosses are round characters), with extra
+-- Blender pieces on top of their usual outfit (crown, halo, horns, wings...)
+local BODY_PIECES: { [string]: string } = { AngelWings = "UpperTorso" }
+function Disguises.BuildCharacter(name: string, extra: { string }?): Model
+	local outfit = OUTFITS[1]
+	for _, candidate in OUTFITS do
+		if candidate.Name == name then
+			outfit = candidate
+		end
+	end
+	local rig = Players:CreateHumanoidModelFromDescription(describe(outfit), Enum.HumanoidRigType.R15)
+	dress(rig, outfit)
+	if extra and #extra > 0 then
+		local wears = table.clone(outfit.Wear)
+		for _, prop in extra do
+			table.insert(wears, { Prop = prop, On = BODY_PIECES[prop] })
+		end
+		local head = rig:FindFirstChild("Head") :: BasePart?
+		if head then
+			buildWear(head, wears)
+		end
+	end
+	rig.Name = outfit.Name
+	return rig
 end
 
 function Disguises.Forget(player: Player)

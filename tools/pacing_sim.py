@@ -9,24 +9,30 @@ Run:  python tools/pacing_sim.py
 Numbers here mirror src/shared/Config (update both together).
 """
 
-INCOME = {"Common": 1.5, "Rare": 9, "Epic": 45, "Legendary": 225, "Godly": 1100}  # avg of each pool
+INCOME = {  # avg of each rarity's pool
+    "Common": 115, "Rare": 1367, "Epic": 18000, "Legendary": 260000, "Mythic": 3.73e6,
+    "Godly": 59.7e6, "Celestial": 1.05e9, "Cosmic": 18.7e9,
+}
 ZONES = [  # rarity, SpeedNeeded
-    ("Common", 0), ("Rare", 1000), ("Epic", 15000), ("Legendary", 200000), ("Godly", 3000000),
+    ("Common", 0), ("Rare", 4000), ("Epic", 180000), ("Legendary", 10e6), ("Mythic", 80e6),
+    ("Godly", 650e6), ("Celestial", 4e9), ("Cosmic", 31e9),
 ]
-WHEELS = [(10, 0), (30, 200), (80, 1500), (200, 6000), (500, 25000), (1200, 80000),
-          (3000, 250000), (8000, 800000), (20000, 2500000), (50000, 8000000)]
-STARTING_SLOTS, MAX_SLOTS = 3, 12
-REBIRTH_COST = 75000
+WHEELS = [(10, 0), (30, 15000), (80, 100000), (250, 600000), (800, 4e6), (2500, 30e6), (8000, 250e6),
+          (25000, 2e9), (80000, 15e9), (250000, 120e9), (800000, 1e12), (2.5e6, 8e12), (8e6, 70e12)]
+TRAILS = [(1.5, 20000), (2, 250000), (3, 3e6), (4, 40e6), (6, 500e6), (8, 7e9), (12, 100e9), (16, 1.5e12),
+          (22, 25e12), (30, 400e12)]  # multiplier, cost
+STARTING_SLOTS, MAX_SLOTS = 3, 24
+REBIRTH_COST = 2e9
 INTERMISSION, ROUND = 180, 150
-SURVIVE = (100, 45)  # Min, Seconds of income
+SURVIVE = (7500, 45)  # Min, Seconds of income
 COINS_PER_ROUND = 6
-COIN = (5, 2)
+COIN = (300, 2)
 SURVIVE_CHANCE = 0.5
 MUTATION_BONUS = 1.15  # average income lift from mutations/sizes
 
 
 def slot_cost(slots):
-    return 150 * 2 ** (slots - STARTING_SLOTS)
+    return 2000 * 2.6 ** (slots - STARTING_SLOTS)
 
 
 def pay(entry, income):
@@ -39,7 +45,7 @@ def run_time(zone_index):
 
 def simulate(hours=4.0):
     t, cash, speed = 0.0, 0.0, 0.0
-    wheel, slots = 0, STARTING_SLOTS
+    wheel, slots, trail = 0, STARTING_SLOTS, 0
     wall = []  # incomes
     milestones = []
     seen = set()
@@ -72,6 +78,11 @@ def simulate(hours=4.0):
                 wheel += 1
                 bought = True
                 note(f"wheel tier {wheel + 1}")
+            elif trail < len(TRAILS) and cash >= TRAILS[trail][1] and cash >= 3 * TRAILS[trail][1] / 2:
+                cash -= TRAILS[trail][1]
+                trail += 1
+                bought = True
+                note(f"trail x{TRAILS[trail - 1][0]}")
             elif slots < MAX_SLOTS and len(wall) >= slots and cash >= slot_cost(slots):
                 cash -= slot_cost(slots)
                 slots += 1
@@ -94,7 +105,7 @@ def simulate(hours=4.0):
         else:
             dt = 60
             cash += income() * dt
-            speed += WHEELS[wheel][0] * dt
+            speed += WHEELS[wheel][0] * (TRAILS[trail - 1][0] if trail else 1) * dt
         t += dt
         if cash >= REBIRTH_COST:
             note("could rebirth")

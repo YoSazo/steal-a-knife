@@ -33,6 +33,9 @@ export type Bot = {
 	IdleUntil: number,
 	StunnedUntil: number,
 	Knife: Model?,
+	Gun: Tool?, -- the Revolver, when this bot is the Sheriff
+	NextShot: number,
+	AimUntil: number, -- 0 = not aiming
 }
 
 -- Roblox's own R15 idle / run (the same ones the guards use)
@@ -73,6 +76,7 @@ function RoundBots.Spawn(at: CFrame, role: string, taken: { [string]: boolean },
 	local rig, name = Disguises.BuildBot(taken)
 	taken[name] = true
 	rig.Name = name
+	rig.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- streams in whole, never half a body
 	rig:SetAttribute("Role", role) -- Radar finds a Murderer bot by this
 	rig:AddTag("RoundBot") -- clients animate these like players (Moves)
 	local humanoid = rig:FindFirstChildOfClass("Humanoid") :: Humanoid
@@ -112,11 +116,15 @@ function RoundBots.Spawn(at: CFrame, role: string, taken: { [string]: boolean },
 		IdleUntil = 0,
 		StunnedUntil = 0,
 		Knife = nil,
+		Gun = nil,
+		NextShot = 0,
+		AimUntil = 0,
 	}
 end
 
 -- The Murderer bot's knife, welded into its right hand blade-up (same grip as a held Tool)
 function RoundBots.GiveKnife(bot: Bot, knifeName: string)
+	bot.Model:SetAttribute("KnifeOut", true)
 	local hand = bot.Model:FindFirstChild("RightHand") :: BasePart?
 	if not hand or bot.Knife then
 		return

@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Items = require(script.Parent.Items)
+local KnifeIcons = require(script.Parent.Config.KnifeIcons)
 local Props = require(script.Parent.Props)
 local Knives = require(script.Parent.Config.Knives)
 local KnifeMeshes = require(script.Parent.Config.KnifeMeshes)
@@ -93,7 +94,7 @@ local function colorFor(knife: Knives.Knife, partName: string): Color3
 		return knife.HandleColor
 	elseif partName == "Extra" then
 		-- gems, crystals and flames glow in the blade colour; rivets/rings match the guard
-		return if knife.Rarity == "Godly" or knife.Name == "GoldenDagger" then knife.BladeColor else knife.GuardColor
+		return if knife.Neon or knife.Name == "GoldenDagger" then knife.BladeColor else knife.GuardColor
 	end
 	return knife.GuardColor
 end
@@ -107,9 +108,12 @@ function KnifeModel.Preload()
 	local folder = Instance.new("Folder")
 	folder.Name = TEMPLATE_FOLDER
 	local pending = 0
-	for name, specs in KnifeMeshes do
-		local knife = Knives.ByName[name]
-		if not knife then
+	-- Every catalog knife gets a template: its own Blender mesh, or (Knife.Mesh) another knife's
+	-- mesh worn in its own colours
+	for _, knife in Knives.List do
+		local name = knife.Name
+		local specs = KnifeMeshes[knife.Mesh or name]
+		if not specs then
 			continue
 		end
 		pending += 1
@@ -344,7 +348,7 @@ end
 function KnifeModel.BuildCase(rarity: string, anchored: boolean?): Model
 	local color = Knives.RarityColors[rarity] or Color3.new(1, 1, 1)
 	local rank = table.find(Knives.Rarities, rarity) or 1
-	local wood = Color3.fromRGB(110, 70, 40):Lerp(Color3.fromRGB(50, 28, 48), (rank - 1) / 4)
+	local wood = Color3.fromRGB(110, 70, 40):Lerp(Color3.fromRGB(50, 28, 48), math.min((rank - 1) / 4, 1))
 	local trim = if rank >= 4 then Color3.fromRGB(230, 180, 60) else Color3.fromRGB(70, 66, 78)
 	if Props.Has("Chest") then
 		-- The Blender chest, recoloured for its rarity
@@ -461,6 +465,9 @@ function KnifeModel.BuildTool(name: string): Tool
 	assert(parsed, `unknown knife {name}`)
 	local tool = Instance.new("Tool")
 	tool.Name = Items.DisplayName(name)
+	tool.ToolTip = Items.DisplayName(name)
+	-- The knife's picture in the hotbar, not its name
+	tool.TextureId = KnifeIcons[parsed.Knife.Name] or ""
 	tool.CanBeDropped = false
 	-- Clicks are handled by the client (tap = stab, hold = throw), which calls Activate() on a tap
 	tool.ManualActivationOnly = true

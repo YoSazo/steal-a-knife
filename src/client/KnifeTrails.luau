@@ -13,6 +13,7 @@ local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 
 local Ui = require(script.Parent.Ui)
+local Lod = require(script.Parent.Lod)
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("Config"):WaitForChild("GameConfig"))
 local KnifeModel = require(Shared:WaitForChild("KnifeModel"))
@@ -141,6 +142,14 @@ local function stepTrails(now: number)
 			if speed > 14 then
 				-- Faster = more knives (one every ~0.1s at a jog, every ~0.025s flat out)
 				local interval = math.clamp(2.2 / speed, 0.025, 0.1)
+				-- Weaker devices (LOD profile) get a thinner stream, and other people's trails thinner still
+				local fewest = if Lod.Profile == "Low" then 0.09 elseif Lod.Profile == "Medium" then 0.05 else 0.025
+				interval = math.max(interval, if other == Players.LocalPlayer then fewest else fewest * 1.6)
+				local live = flying[other]
+				local cap = if Lod.Profile == "Low" then 8 elseif Lod.Profile == "Medium" then 14 else 30
+				if live and #live >= cap then
+					continue
+				end
 				if now - (lastSpawn[other] or 0) >= interval then
 					lastSpawn[other] = now
 					spawnKnife(other, root, velocity, trail)
@@ -236,6 +245,7 @@ function KnifeTrails.Init()
 	player.CharacterAdded:Connect(attachDust)
 
 	local fovNow = BASE_FOV
+	local linesHidden = false
 	RunService.RenderStepped:Connect(function(dt: number)
 		local now = os.clock()
 		stepTrails(now)
@@ -262,7 +272,13 @@ function KnifeTrails.Init()
 			fovNow = camera.FieldOfView
 		end
 
-		-- Speed lines from the edges
+		-- Speed lines from the edges (nothing to move while they're all hidden)
+		if rush <= 0.25 and linesHidden then
+			wind.Volume = 0
+			dust.Rate = 0
+			return
+		end
+		linesHidden = rush <= 0.25
 		local size = gui.AbsoluteSize
 		local radius = math.max(size.X, size.Y) * 0.5
 		for _, l in lines do

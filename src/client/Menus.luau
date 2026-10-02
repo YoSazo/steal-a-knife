@@ -1,14 +1,16 @@
 --!strict
 -- The left-side menu buttons (chunky, Steal An Egg style) and their panels:
---   Shop     sealed cases for cash, with the odds of everything inside
 --   Index    every knife in the game: silhouettes until you own one, and a reward to claim for each
 --   Knives   your wall (equip the one you fight / murder with, sell the rest)
---   Powers   buy, upgrade and equip Innocent Powers
 --   Rebirth  start over for a permanent multiplier
+-- and the shopkeepers' panels, opened by standing on the ring at their stall (server ShopNPCs):
+--   Mortimer the Knife Merchant  Health upgrades and sealed cases, with the odds of everything inside
+--   Madame Vesper the Mystic     buy, upgrade and equip Innocent Powers
 -- Knife cards show a live 3D model in a ViewportFrame built from the same KnifeModel as the game.
 
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -19,6 +21,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("Config"):WaitForChild("GameConfig"))
 local Items = require(Shared:WaitForChild("Items"))
 local Knives = require(Shared.Config:WaitForChild("Knives"))
+local Textures = require(Shared.Config:WaitForChild("Textures"))
 local KnifeModel = require(Shared:WaitForChild("KnifeModel"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
@@ -122,8 +125,9 @@ local function panel(title: string, color: Color3, icon: string): (Frame, Frame)
 	frame:GetPropertyChangedSignal("Visible"):Connect(function()
 		if frame.Visible then
 			local scale = frame:FindFirstChildOfClass("UIScale") or new("UIScale", {}, frame)
-			scale.Scale = 0.85
-			TweenService:Create(scale, TweenInfo.new(0.22, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+			local target = if Ui.Phone then 1 else 1.25 -- a bit bigger on desktop: easier to read
+			scale.Scale = target * 0.85
+			TweenService:Create(scale, TweenInfo.new(0.22, Enum.EasingStyle.Back), { Scale = target }):Play()
 		end
 	end)
 	return frame, body
@@ -172,6 +176,32 @@ local function cardText(parent: Instance, y: number, height: number, text: strin
 	return label
 end
 
+-- The knife's Murderer perk: its Blender badge in the card's top corner
+local function perkBadge(parent: Instance, perkId: string)
+	local icon = Textures.PerkIcons[perkId]
+	local perk = GameConfig.Perks[perkId]
+	if not icon or not perk then
+		return
+	end
+	new("ImageLabel", {
+		Name = "Perk",
+		Position = UDim2.fromOffset(4, 4),
+		Size = UDim2.fromOffset(34, 34),
+		BackgroundTransparency = 1,
+		Image = icon,
+		ZIndex = 8,
+	}, parent)
+	local name = Ui.label({
+		Position = UDim2.fromOffset(40, 10),
+		Size = UDim2.new(1, -44, 0, 20),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = Color3.fromRGB(255, 120, 120),
+		Text = perk.DisplayName,
+		ZIndex = 8,
+	}, parent)
+	Ui.textStroke(name, 1.5)
+end
+
 local function smallButton(
 	parent: Instance,
 	y: UDim,
@@ -217,7 +247,7 @@ function Menus.Init()
 	end
 
 	-- SHOP: sealed cases ---------------------------------------------------------------------------
-	local shopFrame, shopBody = panel("Case Shop", Color3.fromRGB(70, 200, 90), "🛒")
+	local shopFrame, shopBody = panel("Mortimer's Knife Cases", Color3.fromRGB(70, 200, 90), "🛒")
 	table.insert(panels, shopFrame)
 	local shopList = new("ScrollingFrame", {
 		Size = UDim2.fromScale(1, 1),
@@ -241,6 +271,61 @@ function Menus.Init()
 			return `{math.floor(n + 0.5)}%`
 		end
 		return string.format("%.1f%%", n)
+	end
+	-- Health upgrades, at the top of the merchant's list
+	do
+		local color = Color3.fromRGB(235, 70, 90)
+		local row = new("Frame", {
+			LayoutOrder = 0,
+			Size = UDim2.new(1, -12, 0, 86),
+			BackgroundColor3 = Color3.new(1, 1, 1),
+			ZIndex = 5,
+		}, shopList)
+		Ui.corner(row, 14)
+		Ui.gradient(row, color:Lerp(DARK, 0.3), color:Lerp(DARK, 0.8))
+		new("UIStroke", { Thickness = 3, Color = color }, row)
+		local label = Ui.label({
+			Position = UDim2.fromOffset(16, 8),
+			Size = UDim2.new(1, -190, 1, -16),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Text = "",
+			ZIndex = 6,
+		}, row)
+		Ui.textStroke(label, 2)
+		local buy = Ui.chunky(
+			{
+				AnchorPoint = Vector2.new(1, 0.5),
+				Position = UDim2.new(1, -12, 0.5, 0),
+				Size = UDim2.fromOffset(150, 60),
+				BackgroundColor3 = color,
+				Text = "",
+				ZIndex = 7,
+			},
+			row,
+			"❤️",
+			function()
+				Remotes.Purchase:InvokeServer("Health")
+			end
+		)
+		local function refreshHealth()
+			local level = (player:GetAttribute("HealthLevel") or 0) :: number
+			local titan = if player:GetAttribute("Pass_Titan") then 2 else 1
+			local now = GameConfig.MaxHealthFor(level, titan)
+			if level >= GameConfig.Health.MaxLevel then
+				label.Text = `❤️ MAX HEALTH {now} (maxed!)`
+				buy.Visible = false
+			else
+				label.Text =
+					`❤️ MAX HEALTH {now} → {GameConfig.MaxHealthFor(level + 1, titan)}\nBosses and vault owners need more hits to take you down`
+				local text = buy:FindFirstChild("Label") :: TextLabel?
+				if text then
+					text.Text = `${Ui.abbreviate(GameConfig.HealthCost(level))}`
+				end
+			end
+		end
+		player:GetAttributeChangedSignal("HealthLevel"):Connect(refreshHealth)
+		player:GetAttributeChangedSignal("Pass_Titan"):Connect(refreshHealth)
+		refreshHealth()
 	end
 	for order, entry in GameConfig.CaseShop do
 		local color = Knives.RarityColors[entry.Rarity]
@@ -376,7 +461,8 @@ function Menus.Init()
 	local indexGrid = scrollGrid(indexHolder, Vector2.new(150, 186))
 
 	-- KNIVES: your wall ----------------------------------------------------------------------------
-	local knivesFrame, knivesBody = panel("My Knives", Color3.fromRGB(130, 80, 230), "🔪")
+	local knivesFrame, knivesBody =
+		panel("My Knives · equipped = your Murderer perk", Color3.fromRGB(130, 80, 230), "🔪")
 	table.insert(panels, knivesFrame)
 	local rackGrid = scrollGrid(knivesBody, Vector2.new(150, 214))
 
@@ -459,7 +545,7 @@ function Menus.Init()
 		local equipped = player:GetAttribute("Equipped") or ""
 		if #owned == 0 then
 			local empty = card(rackGrid, 1)
-			cardText(empty, 20, 120, "Kill watchmen in the arena and carry their cases home!")
+			cardText(empty, 20, 120, "Steal knives off the bosses' walls on the runway and carry them home!")
 			return
 		end
 		for index, item in owned do
@@ -475,6 +561,7 @@ function Menus.Init()
 			cardText(c, 88, 20, Items.DisplayName(item), Items.Color(item))
 			cardText(c, 108, 16, `{knife.Rarity} · Dmg {Items.Damage(item)}`, Knives.RarityColors[knife.Rarity])
 			cardText(c, 124, 18, `+${Ui.abbreviate(Items.Income(item))}/s`, Color3.fromRGB(120, 255, 140))
+			perkBadge(c, knife.Perk)
 			local isEquipped = item == equipped
 			smallButton(
 				c,
@@ -520,6 +607,9 @@ function Menus.Init()
 			end, not known, UDim2.fromScale(1, 0.5))
 			cardText(c, 94, 22, if known then knife.DisplayName else "???", color)
 			cardText(c, 116, 16, knife.Rarity, Color3.fromRGB(210, 210, 220))
+			if known then
+				perkBadge(c, knife.Perk)
+			end
 			local reward = GameConfig.IndexRewards[knife.Rarity]
 			if known and not claimed[knife.Name] then
 				claimable += 1
@@ -709,12 +799,37 @@ function Menus.Init()
 		end
 		return button
 	end
-	menuButton(1, "Shop", Color3.fromRGB(70, 200, 90), "🛒", shopFrame, function() end)
 	local indexButton = menuButton(2, "Index", Color3.fromRGB(60, 150, 255), "📖", indexFrame, refreshIndex)
 	indexBadge = Ui.badge(indexButton)
 	menuButton(3, "Knives [K]", Color3.fromRGB(130, 80, 230), "🔪", knivesFrame, refreshRack)
-	menuButton(4, "Powers [B]", Color3.fromRGB(240, 130, 40), "⚡", powersFrame, refreshPowers)
 	menuButton(5, "Rebirth", Color3.fromRGB(240, 190, 50), "♻️", rebirthFrame, refreshRebirth)
+	-- Slow mode (T): walk at normal speed instead of your trained speed
+	local slowButton: TextButton
+	local function setSlow(on: boolean)
+		Remotes.SlowMode:FireServer(on)
+		slowButton.Text = if on then "[T] Slow: ON" else "[T] Slow: OFF"
+		slowButton.BackgroundColor3 = if on then Color3.fromRGB(90, 200, 110) else Color3.fromRGB(150, 150, 160)
+	end
+	slowButton = Ui.button(
+		{
+			LayoutOrder = 5,
+			Size = UDim2.new(1, 0, 0, if Ui.Phone then 34 else 40),
+			Text = "[T] Slow: OFF",
+			BackgroundColor3 = Color3.fromRGB(150, 150, 160),
+		},
+		column,
+		function()
+			setSlow(not player:GetAttribute("SlowMode"))
+		end
+	)
+	if Ui.Phone then
+		slowButton.Text = "Slow"
+	end
+	game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
+		if not processed and input.KeyCode == Enum.KeyCode.T then
+			setSlow(not player:GetAttribute("SlowMode"))
+		end
+	end)
 	if RunService:IsStudio() and not Ui.Phone then
 		-- Studio: test buttons
 		local tests = new("Frame", {
@@ -760,13 +875,54 @@ function Menus.Init()
 		end
 		return Enum.ContextActionResult.Pass
 	end, false, Enum.KeyCode.K, Enum.KeyCode.ButtonL1)
-	ContextActionService:BindAction("ToggleShop", function(_, state)
-		if state == Enum.UserInputState.Begin and column.Visible then
-			refreshPowers()
-			toggle(powersFrame)
+
+	-- Shopkeepers (server ShopNPCs): stand on the glowing ring in front of a stall and its shop
+	-- opens; step off and it closes. Close it yourself and it stays shut until you step off.
+	local onRing: BasePart? = nil
+	local openedFrame: Frame? = nil
+	local nextCheck = 0
+	RunService.Heartbeat:Connect(function()
+		local now = os.clock()
+		if now < nextCheck then
+			return
 		end
-		return Enum.ContextActionResult.Pass
-	end, false, Enum.KeyCode.B, Enum.KeyCode.ButtonR1)
+		nextCheck = now + 0.15
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local standing: BasePart? = nil
+		if root and not player:GetAttribute("InRound") then
+			for _, instance in CollectionService:GetTagged("ShopRing") do
+				local ring = instance :: BasePart
+				local offset = root.Position - ring.Position
+				local radius = ring.Size.Y / 2 + 1.5
+				if Vector3.new(offset.X, 0, offset.Z).Magnitude < radius and math.abs(offset.Y) < 6 then
+					standing = ring
+					break
+				end
+			end
+		end
+		if standing == onRing then
+			return
+		end
+		-- Stepped off (or onto a different ring): close what this ring opened
+		if openedFrame and openedFrame.Visible then
+			openedFrame.Visible = false
+		end
+		openedFrame = nil
+		onRing = standing
+		if standing then
+			local which = standing:GetAttribute("ShopPanel")
+			local frame = if which == "Shop" then shopFrame elseif which == "Powers" then powersFrame else nil
+			if frame then
+				if which == "Powers" then
+					refreshPowers()
+				end
+				if not frame.Visible then
+					toggle(frame)
+				end
+				openedFrame = frame
+			end
+		end
+	end)
 end
 
 return Menus

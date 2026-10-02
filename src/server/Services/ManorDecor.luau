@@ -5,7 +5,10 @@
 --   The Gardens   (blue)   glowing flowers, a pond, a gazebo, topiary
 --   The Crypts    (purple) gravestones, mausoleums, dead trees
 --   The Catacombs (gold)   pillars, candelabras, torches, urns
---   The Manor Steps (red)  red carpet, braziers, statues, and the Manor's grand door
+--   The Inferno   (orange) lava pools, obsidian spires, fire vents
+--   Mount Olympus (pink)   a marble temple, gold god statues, columns, braziers
+--   The Heavens   (cyan)   clouds, angel statues, light shafts, the pearly gates
+--   Outer Space   (violet) planets in the sky, asteroids, crystals, stars
 -- Plus wall sconces all the way down, a stone arch and title at every zone, the events board
 -- over the entrance, the plaza and its giant Void Edge. Purely cosmetic: MapService owns gameplay.
 
@@ -13,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Props = require(ReplicatedStorage.Shared.Props)
+local Toy = require(ReplicatedStorage.Shared.Toy)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 
 local ManorDecor = {}
@@ -20,10 +24,8 @@ local ManorDecor = {}
 export type Bounds = { MinX: number, MaxX: number, MinZ: number, MaxZ: number }
 
 local IRON = Color3.fromRGB(28, 28, 34)
-local STONE = Color3.fromRGB(96, 92, 108)
 local DARK_STONE = Color3.fromRGB(62, 60, 72)
 local BARK = Color3.fromRGB(52, 42, 38)
-local LAMP = Color3.fromRGB(255, 216, 164)
 local WINDOW = Color3.fromRGB(255, 205, 120)
 
 local folder: Folder
@@ -100,12 +102,27 @@ local function prop(name: string, cframe: CFrame, scale: number?, recolor: { [st
 	return model
 end
 
-local function sconce(x: number, z: number, facing: number, color: Color3)
-	block("SconceBracket", Vector3.new(2.2, 0.3, 0.3), at(x - facing * 1, 12.6, z), IRON, Enum.Material.Metal)
-	local glassColor = color:Lerp(Color3.fromRGB(255, 220, 160), 0.35)
-	local lantern = prop("Lantern", at(x - facing * 2, 11.2, z), 1.3, { Glass = glassColor })
-	local glass = (lantern:FindFirstChild("Glass") or lantern.PrimaryPart) :: BasePart
-	glow(glass, LAMP, 44, 1.2)
+-- A blocky cartoon bush (Steal An Egg style): a couple of stacked stud-covered green blocks
+local function bush(position: Vector3, scale: number?)
+	local k = scale or 1
+	local green = Toy.Grass:Lerp(Color3.new(0, 0, 0), 0.12 + rng:NextNumber(0, 0.08))
+	local w = rng:NextNumber(5, 8) * k
+	local d = rng:NextNumber(4, 6) * k
+	local h = rng:NextNumber(3, 4) * k
+	local turn = CFrame.Angles(0, math.rad(rng:NextInteger(0, 3) * 90), 0)
+	local base = block("Bush", Vector3.new(w, h, d), CFrame.new(position + Vector3.new(0, h / 2, 0)) * turn, green)
+	Toy.Dress(base, Toy.Sides, 1, 0)
+	local top = block(
+		"Bush",
+		Vector3.new(w * 0.6, h * 0.8, d * 0.7),
+		CFrame.new(position + Vector3.new(rng:NextNumber(-1, 1) * k, h + h * 0.4, 0)) * turn,
+		green:Lerp(Color3.new(1, 1, 1), 0.05)
+	)
+	Toy.Dress(top, Toy.Sides, 1, 0)
+end
+
+local function sconce(_x: number, _z: number, _facing: number, _color: Color3)
+	-- (daytime: no wall lanterns)
 end
 
 local function torch(position: Vector3, color: Color3?)
@@ -129,170 +146,32 @@ local function torch(position: Vector3, color: Color3?)
 end
 
 local function streetLamp(position: Vector3)
-	block(
-		"LampPost",
-		Vector3.new(0.6, 11, 0.6),
-		CFrame.new(position + Vector3.new(0, 5.5, 0)),
-		IRON,
-		Enum.Material.Metal
-	)
-	block(
-		"LampCap",
-		Vector3.new(1.8, 0.4, 1.8),
-		CFrame.new(position + Vector3.new(0, 12.6, 0)),
-		IRON,
-		Enum.Material.Metal
-	)
-	-- An arm reaching out, with a Blender lantern hanging from it
-	block(
-		"LampArm",
-		Vector3.new(2.6, 0.3, 0.3),
-		CFrame.new(position + Vector3.new(1.1, 12.2, 0)),
-		IRON,
-		Enum.Material.Metal
-	)
-	local lantern = prop("Lantern", CFrame.new(position + Vector3.new(2.2, 10.9, 0)), 1.2)
-	local glass = (lantern:FindFirstChild("Glass") or lantern.PrimaryPart) :: BasePart
-	glow(glass, LAMP, 44, 1.3)
+	bush(position)
 end
 
 -- Fireflies drifting over a stretch of ground, and a low mist rolling along it
-local function fireflies(center: Vector3, size: Vector3, color: Color3, rate: number)
-	local field = ghost(block("Fireflies", size, CFrame.new(center), Color3.new(), Enum.Material.SmoothPlastic))
-	field.Transparency = 1
-	local flies = Instance.new("ParticleEmitter")
-	flies.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	flies.Color = ColorSequence.new(color)
-	flies.LightEmission = 1
-	flies.Rate = rate
-	flies.Lifetime = NumberRange.new(4, 7)
-	flies.Speed = NumberRange.new(0.3, 1)
-	flies.SpreadAngle = Vector2.new(180, 180)
-	flies.RotSpeed = NumberRange.new(-30, 30)
-	flies.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0),
-		NumberSequenceKeypoint.new(0.2, 0.35),
-		NumberSequenceKeypoint.new(0.8, 0.35),
-		NumberSequenceKeypoint.new(1, 0),
-	})
-	flies.Parent = field
+local function fireflies(_center: Vector3, _size: Vector3, _color: Color3, _rate: number)
+	-- (daytime: no fireflies)
 end
 
-local function mist(center: Vector3, size: Vector3, color: Color3)
-	local field = ghost(block("Mist", size, CFrame.new(center), Color3.new(), Enum.Material.SmoothPlastic))
-	field.Transparency = 1
-	local fog = Instance.new("ParticleEmitter")
-	fog.Texture = "rbxasset://textures/particles/smoke_main.dds"
-	fog.Color = ColorSequence.new(color)
-	fog.LightEmission = 0.2
-	fog.Rate = 3
-	fog.Lifetime = NumberRange.new(10, 14)
-	fog.Speed = NumberRange.new(0.5, 1.5)
-	fog.SpreadAngle = Vector2.new(180, 10)
-	fog.Size = NumberSequence.new(10, 16)
-	fog.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.3, 0.88),
-		NumberSequenceKeypoint.new(0.7, 0.88),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	fog.Parent = field
-end
-
--- The stone arch over the runway where each zone starts, with its title and colour
-local function zoneArch(z: number, width: number, title: string, color: Color3)
-	for _, x in { -width / 2 + 2, width / 2 - 2 } do
-		block("ArchPillar", Vector3.new(4, 24, 4), at(x, 12, z), STONE, Enum.Material.Cobblestone)
-		local cap = ghost(block("ArchLantern", Vector3.new(1.6, 2, 1.6), at(x, 25, z), color, Enum.Material.Neon))
-		glow(cap, color, 30, 1.6)
-	end
-	local beam = block("ArchBeam", Vector3.new(width, 4, 4), at(0, 26, z), DARK_STONE, Enum.Material.Slate)
-	ghost(block("ArchStrip", Vector3.new(width - 6, 1, 4.2), at(0, 25.4, z), color, Enum.Material.Neon))
-	ghost(block("ZoneLine", Vector3.new(width, 0.25, 1.4), at(0, 0.3, z), color, Enum.Material.Neon))
-	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = face
-		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		gui.PixelsPerStud = 25
-		gui.LightInfluence = 0
-		gui.Parent = beam
-		local text = Instance.new("TextLabel")
-		text.Size = UDim2.fromScale(1, 1)
-		text.BackgroundTransparency = 1
-		text.Font = Enum.Font.Creepster
-		text.TextScaled = true
-		text.TextColor3 = color
-		text.TextStrokeTransparency = 0
-		text.Text = title:upper()
-		text.Parent = gui
-	end
+local function mist(_center: Vector3, _size: Vector3, _color: Color3)
+	-- (daytime: no mist)
 end
 
 -- Biome props ---------------------------------------------------------------------------------
 
 local function hedge(position: Vector3, length: number)
-	block(
-		"Hedge",
-		Vector3.new(length, 3.6, 2.6),
-		CFrame.new(position + Vector3.new(0, 1.8, 0)),
-		Color3.fromRGB(46, 120, 60),
-		Enum.Material.Grass
-	)
+	for x = -length / 2 + 3, length / 2 - 3, 7 do
+		bush(position + Vector3.new(x, 0, 0), 0.9)
+	end
 end
 
 local function fountain(position: Vector3)
-	cylinderUp(
-		block(
-			"Basin",
-			Vector3.new(1.6, 12, 12),
-			CFrame.new(position + Vector3.new(0, 0.8, 0)),
-			STONE,
-			Enum.Material.Marble
-		)
-	)
-	local water = cylinderUp(
-		ghost(
-			block(
-				"Water",
-				Vector3.new(0.2, 10.6, 10.6),
-				CFrame.new(position + Vector3.new(0, 1.55, 0)),
-				Color3.fromRGB(70, 150, 230),
-				Enum.Material.Glass
-			)
-		)
-	)
-	water.Transparency = 0.3
-	cylinderUp(
-		block(
-			"Column",
-			Vector3.new(4, 1.4, 1.4),
-			CFrame.new(position + Vector3.new(0, 3, 0)),
-			STONE,
-			Enum.Material.Marble
-		)
-	)
-	local top = ball(
-		ghost(
-			block(
-				"Spout",
-				Vector3.one * 1.8,
-				CFrame.new(position + Vector3.new(0, 5.2, 0)),
-				Color3.fromRGB(150, 210, 255),
-				Enum.Material.Neon
-			)
-		)
-	)
-	glow(top, Color3.fromRGB(130, 200, 255), 18, 1.4)
+	bush(position, 1.4)
 end
 
-local function bench(position: Vector3, rotation: number)
-	local cf = CFrame.new(position) * CFrame.Angles(0, rotation, 0)
-	local wood = Color3.fromRGB(110, 70, 40)
-	block("BenchSeat", Vector3.new(6, 0.4, 1.8), cf * CFrame.new(0, 1.6, 0), wood, Enum.Material.Wood)
-	block("BenchBack", Vector3.new(6, 1.6, 0.3), cf * CFrame.new(0, 2.6, 0.8), wood, Enum.Material.Wood)
-	for _, x in { -2.6, 2.6 } do
-		block("BenchLeg", Vector3.new(0.3, 1.6, 1.6), cf * CFrame.new(x, 0.8, 0), IRON, Enum.Material.Metal)
-	end
+local function bench(position: Vector3, _rotation: number)
+	bush(position)
 end
 
 local function glowFlower(position: Vector3, color: Color3)
@@ -556,21 +435,416 @@ local function brazier(position: Vector3)
 	glow(bowl, Color3.fromRGB(255, 70, 60), 30, 2)
 end
 
-local function statue(position: Vector3, facing: number)
-	local cf = CFrame.new(position) * CFrame.Angles(0, facing, 0)
-	local marble = Color3.fromRGB(200, 195, 205)
-	block("StatuePlinth", Vector3.new(5, 3, 5), cf * CFrame.new(0, 1.5, 0), DARK_STONE, Enum.Material.Slate)
-	block("StatueBody", Vector3.new(2.6, 5, 1.6), cf * CFrame.new(0, 5.5, 0), marble, Enum.Material.Marble)
-	block("StatueHead", Vector3.new(1.8, 1.8, 1.8), cf * CFrame.new(0, 8.9, 0), marble, Enum.Material.Marble)
-	-- holding a glowing knife up high
-	block("StatueArm", Vector3.new(0.8, 3, 0.8), cf * CFrame.new(1.7, 8, 0), marble, Enum.Material.Marble)
-	block(
-		"StatueKnife",
-		Vector3.new(0.3, 4, 1),
-		cf * CFrame.new(1.7, 11.4, 0),
-		Color3.fromRGB(255, 80, 90),
-		Enum.Material.Neon
+-- The Inferno ---------------------------------------------------------------------------------
+
+local LAVA = Color3.fromRGB(255, 90, 20)
+local OBSIDIAN = Color3.fromRGB(28, 18, 22)
+
+-- A glowing lava pool sunk into the floor (walk over it: it's only scenery)
+local function lavaPool(position: Vector3, sizeX: number, sizeZ: number)
+	local rim = block(
+		"LavaRim",
+		Vector3.new(sizeX + 3, 0.6, sizeZ + 3),
+		CFrame.new(position + Vector3.new(0, 0.3, 0)),
+		OBSIDIAN,
+		Enum.Material.Basalt
 	)
+	rim.CanCollide = false
+	local lava = ghost(
+		block(
+			"Lava",
+			Vector3.new(sizeX, 0.3, sizeZ),
+			CFrame.new(position + Vector3.new(0, 0.55, 0)),
+			LAVA,
+			Enum.Material.Neon
+		)
+	)
+	glow(lava, Color3.fromRGB(255, 110, 40), math.max(sizeX, sizeZ) + 14, 2.2)
+	local embers = Instance.new("ParticleEmitter")
+	embers.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	embers.Color = ColorSequence.new(Color3.fromRGB(255, 200, 80), Color3.fromRGB(255, 60, 20))
+	embers.LightEmission = 1
+	embers.Size = NumberSequence.new(0.35, 0)
+	embers.Lifetime = NumberRange.new(1.5, 3)
+	embers.Rate = sizeX * sizeZ / 30
+	embers.Speed = NumberRange.new(3, 7)
+	embers.SpreadAngle = Vector2.new(20, 20)
+	embers.EmissionDirection = Enum.NormalId.Top
+	embers.Parent = lava
+end
+
+-- A jagged obsidian spire with glowing cracks
+local function obsidianSpire(position: Vector3)
+	local height = rng:NextNumber(8, 18)
+	local cf = CFrame.new(position) * CFrame.Angles(0, rng:NextNumber(0, math.pi), math.rad(rng:NextNumber(-8, 8)))
+	block("Spire", Vector3.new(4, height, 4), cf * CFrame.new(0, height / 2, 0), OBSIDIAN, Enum.Material.Basalt)
+	block(
+		"SpireTip",
+		Vector3.new(2.4, height * 0.4, 2.4),
+		cf * CFrame.new(0.4, height + height * 0.15, 0),
+		OBSIDIAN,
+		Enum.Material.Basalt
+	)
+	ghost(
+		block(
+			"SpireCrack",
+			Vector3.new(0.3, height * 0.8, 4.1),
+			cf * CFrame.new(0.6, height * 0.5, 0),
+			LAVA,
+			Enum.Material.Neon
+		)
+	)
+end
+
+-- A vent that coughs flames up out of the floor
+local function fireVent(position: Vector3)
+	local grate = block(
+		"FireVent",
+		Vector3.new(4, 0.5, 4),
+		CFrame.new(position + Vector3.new(0, 0.25, 0)),
+		IRON,
+		Enum.Material.DiamondPlate
+	)
+	grate.CanCollide = false
+	local fire = Instance.new("Fire")
+	fire.Size = 8
+	fire.Heat = 18
+	fire.Color = Color3.fromRGB(255, 120, 30)
+	fire.SecondaryColor = Color3.fromRGB(255, 40, 10)
+	fire.Parent = grate
+	glow(grate, Color3.fromRGB(255, 100, 40), 26, 2)
+end
+
+-- Mount Olympus ---------------------------------------------------------------------------------
+
+local MARBLE = Color3.fromRGB(240, 236, 226)
+local GOLD = Color3.fromRGB(255, 205, 70)
+
+-- A tall white temple column with gold bands
+local function olympusColumn(position: Vector3, height: number)
+	cylinderUp(
+		block(
+			"Column",
+			Vector3.new(height, 4, 4),
+			CFrame.new(position + Vector3.new(0, height / 2, 0)),
+			MARBLE,
+			Enum.Material.Marble
+		)
+	)
+	block(
+		"ColumnBase",
+		Vector3.new(5.5, 1.4, 5.5),
+		CFrame.new(position + Vector3.new(0, 0.7, 0)),
+		MARBLE,
+		Enum.Material.Marble
+	)
+	block(
+		"ColumnCap",
+		Vector3.new(5.5, 1.4, 5.5),
+		CFrame.new(position + Vector3.new(0, height, 0)),
+		MARBLE,
+		Enum.Material.Marble
+	)
+	ghost(
+		block(
+			"ColumnBand",
+			Vector3.new(5.6, 0.4, 5.6),
+			CFrame.new(position + Vector3.new(0, height - 1, 0)),
+			GOLD,
+			Enum.Material.Metal
+		)
+	)
+	ghost(
+		block(
+			"ColumnBand",
+			Vector3.new(5.6, 0.4, 5.6),
+			CFrame.new(position + Vector3.new(0, 1.6, 0)),
+			GOLD,
+			Enum.Material.Metal
+		)
+	)
+end
+
+-- A ruined temple: a stepped plinth, a ring of columns, a gold roof edge
+local function temple(position: Vector3)
+	for i = 0, 2 do
+		block(
+			"TempleStep",
+			Vector3.new(30 - i * 3, 1, 22 - i * 3),
+			CFrame.new(position + Vector3.new(0, 0.5 + i, 0)),
+			MARBLE,
+			Enum.Material.Marble
+		)
+	end
+	for _, x in { -11, -5.5, 0, 5.5, 11 } do
+		for _, z in { -7, 7 } do
+			olympusColumn(position + Vector3.new(x, 3, z), 16)
+		end
+	end
+	block(
+		"TempleRoof",
+		Vector3.new(30, 2, 20),
+		CFrame.new(position + Vector3.new(0, 20, 0)),
+		MARBLE,
+		Enum.Material.Marble
+	)
+	block(
+		"TempleTrim",
+		Vector3.new(30.4, 0.8, 20.4),
+		CFrame.new(position + Vector3.new(0, 19, 0)),
+		GOLD,
+		Enum.Material.Metal
+	)
+	local wedge = Instance.new("WedgePart")
+	wedge.Name = "Pediment"
+	wedge.Anchored = true
+	wedge.Size = Vector3.new(30, 5, 10)
+	wedge.Color = MARBLE
+	wedge.Material = Enum.Material.Marble
+	wedge.CFrame = CFrame.new(position + Vector3.new(0, 23.5, -5))
+	wedge.Parent = folder
+	local back = wedge:Clone()
+	back.CFrame = CFrame.new(position + Vector3.new(0, 23.5, 5)) * CFrame.Angles(0, math.pi, 0)
+	back.Parent = folder
+	-- A golden thunderbolt over the door
+	local bolt = ghost(
+		block(
+			"Thunderbolt",
+			Vector3.new(1, 6, 0.4),
+			CFrame.new(position + Vector3.new(0, 15, -10.5)) * CFrame.Angles(0, 0, math.rad(20)),
+			GOLD,
+			Enum.Material.Neon
+		)
+	)
+	glow(bolt, Color3.fromRGB(255, 230, 120), 30, 2)
+end
+
+-- A golden god statue on a marble plinth
+local function godStatue(position: Vector3, facing: number)
+	local cf = CFrame.new(position) * CFrame.Angles(0, facing, 0)
+	block("GodPlinth", Vector3.new(6, 4, 6), cf * CFrame.new(0, 2, 0), MARBLE, Enum.Material.Marble)
+	block("GodLegs", Vector3.new(2.6, 4, 1.6), cf * CFrame.new(0, 6, 0), GOLD, Enum.Material.Metal)
+	block("GodBody", Vector3.new(3.4, 4, 2), cf * CFrame.new(0, 10, 0), GOLD, Enum.Material.Metal)
+	block("GodHead", Vector3.new(2, 2, 2), cf * CFrame.new(0, 13, 0), GOLD, Enum.Material.Metal)
+	block("GodArm", Vector3.new(0.9, 4, 0.9), cf * CFrame.new(2.2, 13, 0), GOLD, Enum.Material.Metal)
+	local bolt = ghost(
+		block(
+			"GodBolt",
+			Vector3.new(0.5, 5, 0.5),
+			cf * CFrame.new(2.2, 17, 0) * CFrame.Angles(0, 0, math.rad(15)),
+			Color3.fromRGB(255, 250, 150),
+			Enum.Material.Neon
+		)
+	)
+	glow(bolt, Color3.fromRGB(255, 240, 150), 22, 1.6)
+end
+
+-- The Heavens ----------------------------------------------------------------------------------
+
+local CLOUD = Color3.fromRGB(250, 250, 255)
+
+-- A puffy cloud: a few overlapping white balls
+local function cloud(position: Vector3, scale: number)
+	for _ = 1, 5 do
+		local size = rng:NextNumber(5, 9) * scale
+		local p = ghost(
+			ball(
+				block(
+					"Cloud",
+					Vector3.one * size,
+					CFrame.new(
+						position
+							+ Vector3.new(
+								rng:NextNumber(-6, 6) * scale,
+								rng:NextNumber(-1, 2) * scale,
+								rng:NextNumber(-4, 4) * scale
+							)
+					),
+					CLOUD,
+					Enum.Material.SmoothPlastic
+				)
+			)
+		)
+		p.Transparency = 0.15
+		p.CastShadow = false
+	end
+end
+
+-- An angel statue: white body, gold halo, two big wings
+local function angelStatue(position: Vector3, facing: number)
+	local cf = CFrame.new(position) * CFrame.Angles(0, facing, 0)
+	block("AngelPlinth", Vector3.new(5, 3, 5), cf * CFrame.new(0, 1.5, 0), MARBLE, Enum.Material.Marble)
+	block("AngelRobe", Vector3.new(2.8, 6, 1.8), cf * CFrame.new(0, 6, 0), MARBLE, Enum.Material.Marble)
+	block("AngelHead", Vector3.new(1.8, 1.8, 1.8), cf * CFrame.new(0, 10, 0), MARBLE, Enum.Material.Marble)
+	local halo = ghost(
+		block(
+			"Halo",
+			Vector3.new(0.3, 2.4, 2.4),
+			cf * CFrame.new(0, 11.6, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			GOLD,
+			Enum.Material.Neon
+		)
+	)
+	halo.Shape = Enum.PartType.Cylinder
+	glow(halo, Color3.fromRGB(255, 230, 140), 18, 1.5)
+	for _, side in { -1, 1 } do
+		for i = 0, 2 do
+			block(
+				"Wing",
+				Vector3.new(0.4, 5 - i, 2.2),
+				cf
+					* CFrame.new(side * (2 + i * 1.3), 8 + i * 0.6, 1)
+					* CFrame.Angles(0, 0, math.rad(side * (-25 - i * 15))),
+				Color3.fromRGB(255, 255, 255),
+				Enum.Material.SmoothPlastic
+			)
+		end
+	end
+end
+
+-- A shaft of light falling from the sky
+local function lightPillar(position: Vector3)
+	local shaft = ghost(
+		block(
+			"LightShaft",
+			Vector3.new(8, 60, 8),
+			CFrame.new(position + Vector3.new(0, 30, 0)),
+			Color3.fromRGB(255, 245, 200),
+			Enum.Material.Neon
+		)
+	)
+	shaft.Transparency = 0.85
+	shaft.CastShadow = false
+	glow(shaft, Color3.fromRGB(255, 240, 190), 30, 1.2)
+end
+
+-- Pearly gates: two gold-trimmed white pillars and an arch of bars
+local function pearlyGates(position: Vector3)
+	for _, x in { -14, 14 } do
+		block(
+			"GatePillar",
+			Vector3.new(4, 20, 4),
+			CFrame.new(position + Vector3.new(x, 10, 0)),
+			MARBLE,
+			Enum.Material.Marble
+		)
+		ghost(
+			block("GateOrb", Vector3.one * 3, CFrame.new(position + Vector3.new(x, 21.5, 0)), GOLD, Enum.Material.Neon)
+		).Shape =
+			Enum.PartType.Ball
+	end
+	for x = -11, 11, 2.75 do
+		local h = 16 + math.cos(x / 11 * math.pi / 2) * 4
+		ghost(
+			block(
+				"GateBar",
+				Vector3.new(0.5, h, 0.5),
+				CFrame.new(position + Vector3.new(x, h / 2, 0)),
+				GOLD,
+				Enum.Material.Metal
+			)
+		)
+	end
+end
+
+-- Outer Space ----------------------------------------------------------------------------------
+
+-- A planet hanging in the sky over the runway (optionally ringed)
+local function planet(position: Vector3, size: number, color: Color3, ringed: boolean)
+	local body =
+		ghost(ball(block("Planet", Vector3.one * size, CFrame.new(position), color, Enum.Material.SmoothPlastic)))
+	body.CastShadow = false
+	glow(body, color, size * 1.2, 0.8)
+	if ringed then
+		local ring = ghost(
+			block(
+				"PlanetRing",
+				Vector3.new(0.4, size * 1.9, size * 1.9),
+				CFrame.new(position) * CFrame.Angles(math.rad(20), 0, math.rad(90 - 15)),
+				color:Lerp(Color3.new(1, 1, 1), 0.4),
+				Enum.Material.Neon
+			)
+		)
+		ring.Shape = Enum.PartType.Cylinder
+		ring.Transparency = 0.5
+		ring.CastShadow = false
+	end
+end
+
+-- A lumpy asteroid sitting on the floor (solid: something to dodge around)
+local function asteroid(position: Vector3)
+	local size = rng:NextNumber(4, 9)
+	local rock = Color3.fromRGB(70, 62, 80)
+	ball(
+		block(
+			"Asteroid",
+			Vector3.new(size, size * 0.8, size * 1.1),
+			CFrame.new(position + Vector3.new(0, size * 0.35, 0)),
+			rock,
+			Enum.Material.Slate
+		)
+	)
+	for _ = 1, 3 do
+		ghost(
+			ball(
+				block(
+					"AsteroidLump",
+					Vector3.one * size * 0.45,
+					CFrame.new(
+						position
+							+ Vector3.new(
+								rng:NextNumber(-1, 1) * size * 0.4,
+								size * 0.5,
+								rng:NextNumber(-1, 1) * size * 0.4
+							)
+					),
+					rock,
+					Enum.Material.Slate
+				)
+			)
+		)
+	end
+end
+
+-- A twinkling field of stars low over the floor
+local function starfield(center: Vector3, size: Vector3)
+	local anchor = ghost(block("Stars", size, CFrame.new(center), Color3.new(), Enum.Material.SmoothPlastic))
+	anchor.Transparency = 1
+	local stars = Instance.new("ParticleEmitter")
+	stars.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	stars.Color = ColorSequence.new(Color3.fromRGB(200, 220, 255), Color3.fromRGB(255, 160, 255))
+	stars.LightEmission = 1
+	stars.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.5, 0.5),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	stars.Lifetime = NumberRange.new(3, 6)
+	stars.Rate = 40
+	stars.Speed = NumberRange.new(0, 0.5)
+	stars.Shape = Enum.ParticleEmitterShape.Box
+	stars.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	stars.Parent = anchor
+end
+
+-- A cluster of glowing space crystals (Blender Crystal prop)
+local function spaceCrystals(position: Vector3, color: Color3)
+	for _ = 1, 3 do
+		prop(
+			"Crystal",
+			CFrame.new(position + Vector3.new(rng:NextNumber(-2.5, 2.5), 0, rng:NextNumber(-2.5, 2.5)))
+				* CFrame.Angles(
+					math.rad(rng:NextNumber(-15, 15)),
+					rng:NextNumber(0, math.pi * 2),
+					math.rad(rng:NextNumber(-15, 15))
+				),
+			rng:NextNumber(1.2, 2.4),
+			{ Crystal = color }
+		)
+	end
+	local light = ghost(block("CrystalLight", Vector3.one * 0.2, CFrame.new(position + Vector3.new(0, 3, 0)), color))
+	light.Transparency = 1
+	glow(light, color, 24, 1.8)
 end
 
 -- The Manor at the end of the runway: a big dark house with lit windows and two towers
@@ -658,18 +932,27 @@ end
 
 -- The board over the runway entrance; the client fills in the countdowns (Hud)
 local function eventBoard(z: number, width: number)
-	for _, x in { -width / 2 + 3, width / 2 - 3 } do
-		block("BoardChain", Vector3.new(0.4, 6, 0.4), at(x, 31, z), IRON, Enum.Material.Metal)
+	local woodColor = Color3.fromRGB(104, 66, 38)
+	-- A beam from wall to wall, the board hanging off it on two ropes
+	local beam = block("BoardBeam", Vector3.new(width + 12, 2, 2), at(0, 36, z), woodColor)
+	Toy.Dress(beam, Toy.Sides, 1, 0)
+	local boardWidth, boardHeight = 52, 15
+	for _, x in { -boardWidth / 2 + 3, boardWidth / 2 - 3 } do
+		block("BoardRope", Vector3.new(0.4, 6, 0.4), at(x, 32, z), Color3.fromRGB(70, 46, 28))
 	end
-	block(
+	local frameBlock = block(
 		"EventBoardFrame",
-		Vector3.new(width - 6, 11, 0.8),
-		at(0, 25, z + 0.3),
-		Color3.fromRGB(90, 60, 35),
-		Enum.Material.Wood
+		Vector3.new(boardWidth + 1.6, boardHeight + 1.6, 1.2),
+		at(0, 29 - boardHeight / 2 + 0.8, z + 0.2),
+		woodColor
 	)
-	local board =
-		block("EventBoard", Vector3.new(width - 8, 10, 1), at(0, 25, z), Color3.fromRGB(25, 22, 32), Enum.Material.Wood)
+	Toy.Dress(frameBlock, Toy.Sides, 1, 0)
+	local board = block(
+		"EventBoard",
+		Vector3.new(boardWidth, boardHeight, 1.4),
+		at(0, 29 - boardHeight / 2 + 0.8, z),
+		Color3.fromRGB(34, 22, 16)
+	)
 	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
 		local gui = Instance.new("SurfaceGui")
 		gui.Name = `Lines{face.Name}`
@@ -681,27 +964,52 @@ local function eventBoard(z: number, width: number)
 		local layout = Instance.new("UIListLayout")
 		layout.VerticalAlignment = Enum.VerticalAlignment.Center
 		layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-		layout.Padding = UDim.new(0, 6)
+		layout.Padding = UDim.new(0, 4)
 		layout.Parent = gui
-		for i = 1, 3 do
+		for i = 1, 4 do
 			local line = Instance.new("TextLabel")
 			line.Name = `Line{i}`
 			line.LayoutOrder = i
-			line.Size = UDim2.fromScale(0.95, 0.26)
+			line.Size = UDim2.fromScale(0.94, 0.21)
 			line.BackgroundTransparency = 1
 			line.Font = Enum.Font.FredokaOne
 			line.TextScaled = true
+			line.RichText = true
 			line.TextColor3 = Color3.new(1, 1, 1)
-			line.TextStrokeTransparency = 0.3
 			line.Text = ""
 			line.Parent = gui
+			local stroke = Instance.new("UIStroke")
+			stroke.Thickness = 3
+			stroke.Color = Color3.fromRGB(20, 12, 8)
+			stroke.Parent = line
 		end
 	end
 end
 
 -- Build -----------------------------------------------------------------------------------------
 
-function ManorDecor.Build(root: Instance, arena: Bounds, hideaways: { Bounds })
+-- Clears decoration out of a rectangle (the boss lairs, built after the decor)
+function ManorDecor.ClearArea(center: Vector3, halfX: number, halfZ: number)
+	if not folder then
+		return
+	end
+	for _, child in folder:GetChildren() do
+		local position = if child:IsA("BasePart")
+			then child.Position
+			elseif child:IsA("Model") then child:GetPivot().Position
+			else nil
+		if
+			position
+			and math.abs(position.X - center.X) < halfX
+			and math.abs(position.Z - center.Z) < halfZ
+			and position.Y < 60
+		then
+			child:Destroy()
+		end
+	end
+end
+
+function ManorDecor.Build(root: Instance, arena: Bounds, _hideaways: { Bounds })
 	folder = Instance.new("Folder")
 	folder.Name = "Decor"
 	folder.Parent = root
@@ -709,16 +1017,10 @@ function ManorDecor.Build(root: Instance, arena: Bounds, hideaways: { Bounds })
 	local depth = GameConfig.ZoneDepth
 	local half = width / 2
 
-	-- Every zone: arch + title at its start, sconces down both walls, its own biome inside
+	-- Every zone (its name pops up on screen as you walk in: client/Transitions): sconces down both walls, its own biome inside
 	for i, zone in GameConfig.Zones do
 		local z0 = (i - 1) * depth
 		local color: Color3 = zone.Color
-		local need = (zone :: any).SpeedNeeded or 0
-		local needText = if need <= 0
-			then ""
-			elseif need >= 1e6 then ` · {need / 1e6}M SPEED`
-			else ` · {need // 1000}K SPEED`
-		zoneArch(z0 + 3, width, ((zone :: any).Title or zone.Rarity) .. needText, color)
 		-- Fireflies in the zone's colour, and mist creeping along the ground
 		fireflies(
 			Vector3.new(0, 5, z0 + depth / 2),
@@ -732,9 +1034,18 @@ function ManorDecor.Build(root: Instance, arena: Bounds, hideaways: { Bounds })
 			sconce(half, z, 1, color)
 		end
 		-- Somewhere off the middle of the runway, so the run home stays fairly clear
+		-- (never on the boss's stage: GameConfig.BossLair, plus a margin to walk around it)
+		local lair = GameConfig.BossLair
+		local lairAt = GameConfig.BossLairCenter(i)
 		local function spot(): Vector3
-			local x = (if rng:NextNumber() < 0.5 then -1 else 1) * rng:NextNumber(10, half - 5)
-			return Vector3.new(x, 0, z0 + rng:NextNumber(20, depth - 15))
+			for _ = 1, 12 do
+				local x = (if rng:NextNumber() < 0.5 then -1 else 1) * rng:NextNumber(10, half - 5)
+				local z = z0 + rng:NextNumber(20, depth - 15)
+				if math.abs(x - lairAt.X) > lair.Depth / 2 + 6 or math.abs(z - lairAt.Z) > lair.Width / 2 + 6 then
+					return Vector3.new(x, 0, z)
+				end
+			end
+			return Vector3.new(half - 8, 0, z0 + 20)
 		end
 		if zone.Rarity == "Common" then
 			for z = z0 + 30, z0 + depth - 30, 45 do
@@ -782,42 +1093,73 @@ function ManorDecor.Build(root: Instance, arena: Bounds, hideaways: { Bounds })
 			for _ = 1, 6 do
 				torch(spot(), Color3.fromRGB(255, 190, 60))
 			end
+		elseif zone.Rarity == "Mythic" then
+			for _ = 1, 7 do
+				lavaPool(spot(), rng:NextNumber(10, 20), rng:NextNumber(10, 24))
+			end
+			for _ = 1, 12 do
+				obsidianSpire(spot())
+			end
+			for _ = 1, 8 do
+				fireVent(spot())
+			end
+			for z = z0 + 25, z0 + depth - 15, 40 do
+				brazier(Vector3.new(-half + 6, 0, z))
+				brazier(Vector3.new(half - 6, 0, z))
+			end
 		elseif zone.Rarity == "Godly" then
-			ghost(
-				block(
-					"RedCarpet",
-					Vector3.new(12, 0.1, depth - 10),
-					at(0, 0.25, z0 + depth / 2 + 5),
-					Color3.fromRGB(150, 20, 35),
-					Enum.Material.Fabric
+			temple(Vector3.new(-half + 24, 0, z0 + depth * 0.45))
+			temple(Vector3.new(half - 24, 0, z0 + depth * 0.75))
+			for z = z0 + 20, z0 + depth - 10, 30 do
+				olympusColumn(Vector3.new(-half + 4, 0, z), 26)
+				olympusColumn(Vector3.new(half - 4, 0, z), 26)
+			end
+			for z = z0 + 40, z0 + depth * 0.5, 55 do
+				godStatue(Vector3.new(-14, 0, z), math.rad(90))
+				godStatue(Vector3.new(14, 0, z), math.rad(-90))
+			end
+			for _ = 1, 6 do
+				brazier(spot())
+			end
+			for _ = 1, 8 do
+				cloud(
+					Vector3.new(rng:NextNumber(-half, half), rng:NextNumber(36, 50), z0 + rng:NextNumber(0, depth)),
+					2
 				)
-			)
-			for z = z0 + 25, z0 + depth - 15, 32 do
-				brazier(Vector3.new(-11, 0, z))
-				brazier(Vector3.new(11, 0, z))
 			end
-			for z = z0 + 40, z0 + depth - 30, 60 do
-				statue(Vector3.new(-half + 6, 0, z), math.rad(90))
-				statue(Vector3.new(half - 6, 0, z), math.rad(-90))
+		elseif zone.Rarity == "Celestial" then
+			pearlyGates(Vector3.new(0, 0, z0 + 12))
+			for _ = 1, 26 do
+				local p = spot()
+				cloud(p + Vector3.new(0, rng:NextNumber(1, 3), 0), rng:NextNumber(0.6, 1.1))
 			end
+			for _ = 1, 10 do
+				cloud(
+					Vector3.new(rng:NextNumber(-half, half), rng:NextNumber(30, 45), z0 + rng:NextNumber(0, depth)),
+					2.5
+				)
+			end
+			for z = z0 + 40, z0 + depth - 25, 45 do
+				angelStatue(Vector3.new(-half + 8, 0, z), math.rad(90))
+				angelStatue(Vector3.new(half - 8, 0, z + 20), math.rad(-90))
+			end
+			for _ = 1, 6 do
+				lightPillar(spot())
+			end
+		elseif zone.Rarity == "Cosmic" then
+			starfield(Vector3.new(0, 14, z0 + depth / 2), Vector3.new(width - 6, 24, depth - 6))
+			for _ = 1, 14 do
+				asteroid(spot())
+			end
+			local crystalColors =
+				{ Color3.fromRGB(170, 80, 255), Color3.fromRGB(80, 220, 255), Color3.fromRGB(255, 90, 230) }
+			for _ = 1, 10 do
+				spaceCrystals(spot(), crystalColors[rng:NextInteger(1, #crystalColors)])
+			end
+			planet(Vector3.new(-half - 40, 70, z0 + depth * 0.3), 50, Color3.fromRGB(255, 120, 80), true)
+			planet(Vector3.new(half + 30, 55, z0 + depth * 0.7), 30, Color3.fromRGB(90, 180, 255), false)
+			planet(Vector3.new(0, 95, z0 + depth * 0.55), 18, Color3.fromRGB(190, 255, 140), true)
 		end
-	end
-
-	-- Hideaways: a candle with a purple flame in each nook, so they're easy to spot from the runway
-	for _, h in hideaways do
-		local x = (h.MinX + h.MaxX) / 2 + (if h.MinX > 0 then 3 else -3)
-		local z = (h.MinZ + h.MaxZ) / 2
-		ghost(block("HideawayCandle", Vector3.new(0.5, 1.2, 0.5), at(x, 0.6, z), Color3.fromRGB(250, 240, 220)))
-		local flame = ghost(
-			block(
-				"HideawayFlame",
-				Vector3.new(0.4, 0.6, 0.4),
-				at(x, 1.5, z),
-				Color3.fromRGB(200, 140, 255),
-				Enum.Material.Neon
-			)
-		)
-		glow(flame, Color3.fromRGB(180, 120, 255), 14, 1.4)
 	end
 
 	-- The entrance: events board hanging over the start of the runway
@@ -825,30 +1167,22 @@ function ManorDecor.Build(root: Instance, arena: Bounds, hideaways: { Bounds })
 
 	-- The plaza: lamps along both sides, the giant Void Edge at the back, fireflies everywhere
 	fireflies(Vector3.new(0, 6, -95), Vector3.new(width - 6, 10, 170), Color3.fromRGB(255, 230, 140), 10)
-	for z = -10, -170, -32 do
+	for z = -10, -230, -32 do
 		streetLamp(Vector3.new(-half + 4, 0, z))
 		streetLamp(Vector3.new(half - 4, 0, z))
 	end
-	local plinth = block("Plinth", Vector3.new(10, 6, 10), at(0, 3, -178), DARK_STONE, Enum.Material.Slate)
+	local plinth = block("Plinth", Vector3.new(10, 6, 10), at(0, 3, -205), DARK_STONE, Enum.Material.Slate)
 	glow(plinth, Color3.fromRGB(170, 70, 255), 30, 2)
 	local statueKnife = KnifeModel.Build("VoidEdge", true)
 	statueKnife:ScaleTo(7)
-	statueKnife:PivotTo(CFrame.new(0, 6 + 7 * 0.9, -178) * CFrame.Angles(0, math.rad(90), 0))
+	statueKnife:PivotTo(CFrame.new(0, 6 + 7 * 0.9, -205) * CFrame.Angles(0, math.rad(90), 0))
 	statueKnife.Name = "Statue"
 	statueKnife.Parent = folder
 	for _, x in { -8, 8 } do
-		torch(Vector3.new(x, 0, -172))
+		torch(Vector3.new(x, 0, -199))
 	end
-	block("PlazaWall", Vector3.new(width + 12, 34, 6), at(0, 17, -191), STONE, Enum.Material.Cobblestone)
 
 	manor(Vector3.new(0, 0, arena.MaxZ + 6))
-
-	-- Dead trees peeking over the walls, outside the runway
-	for z = -150, arena.MaxZ, 60 do
-		for _, side in { -1, 1 } do
-			deadTree(Vector3.new(side * rng:NextNumber(half + 60, half + 120), 0, z + rng:NextNumber(-20, 20)))
-		end
-	end
 end
 
 return ManorDecor

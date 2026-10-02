@@ -12,6 +12,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
@@ -26,6 +27,7 @@ type Carry = {
 	Kind: string, -- "Case" | "Knife"
 	Item: string, -- the case's rarity, or the knife item
 	StolenFrom: number?, -- UserId of the vault it was stolen from
+	Boss: { Zone: number, Slot: number }?, -- taken off a biome boss's wall (GuardService)
 	Visual: Model,
 	LastPos: Vector3,
 	LastCheck: number,
@@ -35,6 +37,9 @@ local StealService = {}
 
 -- Set by GuardService: (player, zoneIndex) when someone picks something up in the arena
 StealService.OnPickup = nil :: ((Player, number) -> ())?
+-- Set by GuardService: a knife taken off a boss's wall left the thief's hands. delivered = it made it
+-- home (the slot restocks later); otherwise it goes straight back on the wall.
+StealService.OnBossCarryEnded = nil :: ((zone: number, slot: number, item: string, delivered: boolean) -> ())?
 
 local carriers: { [Player]: Carry } = {}
 local dropFolder: Folder
@@ -96,7 +101,7 @@ local function ownerName(userId: number?): string?
 	return if owner then owner.DisplayName else nil
 end
 
-local startCarry: (Player, string, string, number?) -> ()
+local startCarry: (Player, string, string, number?, { Zone: number, Slot: number }?) -> ()
 
 -- Somewhere on the floor under `position`, ignoring bodies, players and other drops
 local function floorAt(position: Vector3): number
@@ -200,7 +205,7 @@ function StealService.DropKnife(item: string, position: Vector3, stolenFrom: num
 		{ Text = Items.DisplayName(item), Color = color, Height = 30 },
 		{ Text = knife.Rarity:upper(), Color = Knives.RarityColors[knife.Rarity], Height = 18 },
 		{
-			Text = `Damage {Items.Damage(item)}  ·  ${Items.Income(item)}/s`,
+			Text = `Damage {Items.Damage(item)}  ·  {Format.Cash(Items.Income(item))}/s`,
 			Color = Color3.new(1, 1, 1),
 			Height = 22,
 		},
@@ -302,6 +307,7 @@ local function endCarry(player: Player, deposited: boolean, dropAt: Vector3?)
 		return
 	end
 	carriers[player] = nil
+	player:SetAttribute("PlaceReady", nil)
 	local visual = carry.Visual
 	local fallback = visual.PrimaryPart and (visual.PrimaryPart :: BasePart).Position
 	visual:Destroy()
@@ -309,6 +315,14 @@ local function endCarry(player: Player, deposited: boolean, dropAt: Vector3?)
 	player:SetAttribute("StolenFrom", nil)
 	BaseService.RefreshWalkSpeed(player)
 	local where = dropAt or fallback
+	if carry.Boss then
+		-- Boss knives never lie around: they go back on the wall (or count as delivered)
+		local hook = StealService.OnBossCarryEnded
+		if hook then
+			hook(carry.Boss.Zone, carry.Boss.Slot, carry.Item, deposited)
+		end
+		return
+	end
 	if not deposited and where then
 		if carry.Kind == "Case" then
 			StealService.DropCase(carry.Item, where)
@@ -319,7 +333,13 @@ local function endCarry(player: Player, deposited: boolean, dropAt: Vector3?)
 end
 
 -- Lifts something over a player's head: kind "Case" (item = rarity) or "Knife" (item string)
-startCarry = function(player: Player, kind: string, item: string, stolenFrom: number?)
+startCarry = function(
+	player: Player,
+	kind: string,
+	item: string,
+	stolenFrom: number?,
+	boss: { Zone: number, Slot: number }?
+)
 	local character = player.Character :: Model
 	local head = character:FindFirstChild("Head") :: BasePart?
 	local root = rootPart(player)
@@ -364,6 +384,7 @@ startCarry = function(player: Player, kind: string, item: string, stolenFrom: nu
 		Kind = kind,
 		Item = item,
 		StolenFrom = stolenFrom,
+		Boss = boss,
 		Visual = visual,
 		LastPos = root.Position,
 		LastCheck = os.clock(),
@@ -373,7 +394,9 @@ startCarry = function(player: Player, kind: string, item: string, stolenFrom: nu
 	player:SetAttribute("StolenFrom", stolenFrom) -- the UserId it was taken from, if anyone
 	BaseService.RefreshWalkSpeed(player)
 	if kind == "Case" then
-		Net.Notify(player, `You grabbed a {item} Case! The guards know - RUN!`, "good")
+		Net.Notify(player, `You grabbed a {item} Case! Get it home!`, "good")
+	elseif boss then
+		Net.Notify(player, `You stole a {Items.DisplayName(item)}! RUN home before you're caught!`, "good")
 	elseif stolenFrom then
 		Net.Notify(player, `You stole a {Items.DisplayName(item)}! Get it home before they catch you!`, "good")
 	else
@@ -381,11 +404,34 @@ startCarry = function(player: Player, kind: string, item: string, stolenFrom: nu
 	end
 end
 
-function StealService.StartCarry(player: Player, kind: string, item: string, stolenFrom: number?)
+function StealService.StartCarry(
+	player: Player,
+	kind: string,
+	item: string,
+	stolenFrom: number?,
+	boss: { Zone: number, Slot: number }?
+)
 	if carriers[player] then
 		return
 	end
-	startCarry(player, kind, item, stolenFrom)
+	startCarry(player, kind, item, stolenFrom, boss)
+end
+
+-- A boss caught their thief: the knife goes back on the wall (OnBossCarryEnded, not delivered)
+function StealService.ReturnToBoss(player: Player): string?
+	local carry = carriers[player]
+	if not carry or not carry.Boss then
+		return nil
+	end
+	local item = carry.Item
+	endCarry(player, false, nil)
+	return item
+end
+
+-- The wall slot a carrier's knife came from, if it's a boss's
+function StealService.BossCarry(player: Player): { Zone: number, Slot: number }?
+	local carry = carriers[player]
+	return carry and carry.Boss
 end
 
 -- Rebirths bring better luck in cases
@@ -474,7 +520,7 @@ local function deposit(player: Player)
 	endCarry(player, true)
 	local name = Items.DisplayName(item)
 	BaseService.RefreshRack(player)
-	Net.Notify(player, `{name} is on your wall! +${Items.Income(item)}/s`, "good")
+	Net.Notify(player, `{name} is on your wall! +{Format.Cash(Items.Income(item))}/s`, "good")
 	Net.Remotes.Effect:FireAllClients("Deposit", player, parsed.Knife.Rarity)
 	if stolenFrom then
 		local victim = ownerName(stolenFrom) or "someone"
@@ -486,6 +532,41 @@ local function deposit(player: Player)
 	if player.Character then
 		Net.Animate(player.Character, "Cheer")
 	end
+end
+
+-- Put the carried knife on its plate: in your own vault, next to the first empty plate. A short
+-- animation (the knife flies from your hands onto the plate), then it's mounted.
+function StealService.Place(player: Player, slot: number)
+	local carry = carriers[player]
+	local root = rootPart(player)
+	local profile = DataService.Get(player)
+	if not carry or carry.Kind ~= "Knife" or not root or not profile then
+		return
+	end
+	if not BaseService.IsInOwnBase(player, root.Position) or slot ~= #profile.Knives + 1 or slot > profile.Slots then
+		return
+	end
+	local base = BaseService.GetBase(player)
+	if not base then
+		return
+	end
+	local head = player.Character and player.Character:FindFirstChild("Head") :: BasePart?
+	local from = if head then head.Position + Vector3.new(0, 1.2, 0) else root.Position
+	-- Hide the one overhead while the copy flies; mount it when it lands
+	for _, d in carry.Visual:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Transparency = 1
+		end
+	end
+	if player.Character then
+		Net.Animate(player.Character, "Pickup")
+	end
+	Net.Remotes.Effect:FireAllClients("PlaceKnife", from, base.SlotCFrames[slot].Position, carry.Item)
+	task.delay(0.45, function()
+		if carriers[player] == carry then
+			deposit(player)
+		end
+	end)
 end
 
 -- Deposits and the carrier speed check run on the server's view of positions
@@ -500,8 +581,23 @@ local function tick()
 		end
 		local pos = root.Position
 		if BaseService.IsInOwnBase(player, pos) then
-			deposit(player)
-			continue
+			if carry.Kind == "Case" then
+				deposit(player) -- cases open as soon as you're home
+				continue
+			end
+			-- Knives: you put them on a plate yourself (Tsunami style), StealService.Place
+			if not player:GetAttribute("PlaceReady") then
+				player:SetAttribute("PlaceReady", true)
+				local profile = DataService.Get(player)
+				if profile and #profile.Knives >= profile.Slots then
+					Net.Notify(player, "Your vault is full! Sell a knife or add a floor to make room.", "bad")
+					Offers.Show(player, "Mount", "Your vault is full! Add the next floor instantly.")
+				else
+					Net.Notify(player, "Walk to the glowing plate and press E to place your knife!", "good")
+				end
+			end
+		elseif player:GetAttribute("PlaceReady") then
+			player:SetAttribute("PlaceReady", nil)
 		end
 		local elapsed = now - carry.LastCheck
 		if elapsed >= 0.5 then
@@ -558,6 +654,7 @@ function StealService.ForceDrop(player: Player)
 end
 
 function StealService.Init()
+	BaseService.OnPlacePrompt = StealService.Place
 	dropFolder = Instance.new("Folder")
 	dropFolder.Name = "DroppedKnives"
 	dropFolder.Parent = workspace:FindFirstChild("Map")

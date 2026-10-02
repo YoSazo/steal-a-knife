@@ -4,10 +4,13 @@
 -- zones one after another down it, the vaults at the start. (Decoration lives in ManorDecor.)
 -- Layout (top-down, +Z is "deeper"):
 --
---   z = 1100+          the Manor
---   z = 880..1100  ║ Godly      ║
---   z = 660..880   ║ Legendary  ║    runway: ArenaWidth wide, ZoneDepth per zone, guards inside,
---   z = 440..660   ║ Epic       ║    candlelit hideaways cut into both walls (guards can't follow)
+--   z = 1760+          the Manor
+--   z = 1540..1760 ║ Cosmic     ║    Outer Space
+--   z = 1320..1540 ║ Celestial  ║    The Heavens
+--   z = 1100..1320 ║ Godly      ║    Mount Olympus
+--   z = 880..1100  ║ Mythic     ║    The Inferno
+--   z = 660..880   ║ Legendary  ║    runway: ArenaWidth (160) wide, ZoneDepth per zone, guards inside;
+--   z = 440..660   ║ Epic       ║    they chase you all the way back to the plaza
 --   z = 220..440   ║ Rare       ║
 --   z = 0..220     ║ Common     ║
 --   z = -170..0  [B1]  plaza  [B5]   four vaults on each side, opening onto the plaza
@@ -24,7 +27,8 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local ManorDecor = require(script.Parent.ManorDecor)
 local RoundMaps = require(script.Parent.RoundMaps)
 local VaultWalls = require(script.Parent.VaultWalls)
-local Props = require(ReplicatedStorage.Shared.Props)
+local Textures = require(ReplicatedStorage.Shared.Config.Textures)
+local Toy = require(ReplicatedStorage.Shared.Toy)
 
 export type Bounds = { MinX: number, MaxX: number, MinZ: number, MaxZ: number }
 export type BaseSite = {
@@ -42,6 +46,9 @@ export type BaseSite = {
 	SlotCFrames: { CFrame }, -- where each knife floats, over its pedestal
 	SlotPads: { BasePart }, -- each pedestal's stone (holds the prompts)
 	SlotRims: { BasePart }, -- each pedestal's glowing top (the knife's colour when filled)
+	FloorFolders: { Folder }, -- each storey's decks, ladder and plates (SetFloors shows the owned ones)
+	CashPads: { BasePart }, -- the green pad beside each plate: walk on it to collect that knife's money
+	CashLabels: { TextLabel }, -- the amount waiting, written on the pad
 	Treadmill: Part, -- the floor inside the Haunted Wheel; standing on it trains Speed
 	TreadmillSign: TextLabel,
 	Wheel: Model,
@@ -51,7 +58,7 @@ export type Zone = { Index: number, Rarity: string, Bounds: Bounds }
 
 local MapService = {}
 
-MapService.MaxBases = 8
+MapService.MaxBases = 16 -- 6 down each side of the plaza + 4 across the back (16-player servers)
 MapService.Arena = nil :: Bounds?
 MapService.Zones = {} :: { Zone }
 MapService.Hideaways = {} :: { Bounds }
@@ -59,7 +66,7 @@ MapService.Bases = {} :: { BaseSite }
 MapService.RoundSpawns = {} :: { CFrame }
 MapService.RoundCenter = Vector3.new(3000, 0, 0)
 MapService.RoundMapSize = Vector2.new(150, 110)
-MapService.LobbySpawn = CFrame.new(0, 4, -150)
+MapService.LobbySpawn = CFrame.new(0, 4, -110)
 
 local root: Folder
 
@@ -122,73 +129,108 @@ function MapService.IsInHideaway(pos: Vector3): boolean
 	return false
 end
 
--- Warm ambient fill keeps the estate readable even between lamps and during teleports.
+-- A sunny afternoon high in the sky (Steal An Egg style): a real sun low enough that everything
+-- throws a clear shadow, blue sky all the way round (also below: the map floats), soft clouds.
+-- Set Lighting.Technology to Future (or ShadowMap) in Studio for crisp shadows.
 local function buildLighting()
-	Lighting.ClockTime = 0
-	Lighting.Brightness = 2.4
-	Lighting.ExposureCompensation = 0.15
-	Lighting.Ambient = Color3.fromRGB(128, 123, 117)
-	Lighting.OutdoorAmbient = Color3.fromRGB(151, 146, 138)
-	Lighting.EnvironmentDiffuseScale = 0.65
-	Lighting.EnvironmentSpecularScale = 0.6
+	-- Noon with the sun almost straight overhead (like Steal An Egg): its glint only shows looking
+	-- down from above, never as a white sheen along the floor ahead of you
+	Lighting.ClockTime = 14.5
+	Lighting.GeographicLatitude = 25
+	-- Flat and bright: a gentle sun (a strong one glares off the floors in bright patches) and
+	-- strong, even fill light so nothing looks dim
+	Lighting.Brightness = 4
+	Lighting.ExposureCompensation = 0.1
+	-- Warm and even: no blue light from the sky (that read as icy), a warm sun
+	-- Lots of fill light: everything bright and sunny, nothing in gloom
+	Lighting.Ambient = Color3.fromRGB(165, 165, 170)
+	Lighting.OutdoorAmbient = Color3.fromRGB(175, 175, 180)
+	Lighting.ColorShift_Top = Color3.fromRGB(255, 252, 245)
+	Lighting.ColorShift_Bottom = Color3.fromRGB(0, 0, 0)
+	Lighting.EnvironmentDiffuseScale = 0
+	Lighting.EnvironmentSpecularScale = 0
+	-- Natural daylight: a strong afternoon sun throwing real shadows
 	Lighting.GlobalShadows = true
+	Lighting.ShadowSoftness = 0.2
 	for _, child in Lighting:GetChildren() do
-		if child:IsA("Atmosphere") or child:IsA("PostEffect") then
+		if child:IsA("Atmosphere") or child:IsA("PostEffect") or child:IsA("Sky") then
 			child:Destroy()
 		end
 	end
+	-- Almost no haze: the far end of the map stays crisp
 	local atmosphere = Instance.new("Atmosphere")
-	atmosphere.Density = 0.22
-	atmosphere.Offset = 0.1
-	atmosphere.Color = Color3.fromRGB(175, 160, 143)
-	atmosphere.Decay = Color3.fromRGB(95, 88, 101)
+	-- A soft, pale haze with distance (things far below or far away go lighter, close up stays crisp)
+	atmosphere.Density = 0.18
+	atmosphere.Offset = 0.05
+	atmosphere.Color = Color3.fromRGB(215, 232, 245)
+	atmosphere.Decay = Color3.fromRGB(170, 200, 230)
 	atmosphere:SetAttribute("HubColor", atmosphere.Color)
 	atmosphere:SetAttribute("HubDecay", atmosphere.Decay)
 	atmosphere.Glare = 0
-	atmosphere.Haze = 0.8
+	atmosphere.Haze = 0
 	atmosphere.Parent = Lighting
-	-- A huge full moon and plenty of stars
-	for _, child in Lighting:GetChildren() do
-		if child:IsA("Sky") then
-			child:Destroy()
-		end
-	end
 	local sky = Instance.new("Sky")
-	sky.MoonAngularSize = 24
-	sky.StarCount = 6000
-	sky.CelestialBodiesShown = true
+	sky.SkyboxFt = Textures.Day.Ft
+	sky.SkyboxBk = Textures.Day.Bk
+	sky.SkyboxLf = Textures.Day.Lf
+	sky.SkyboxRt = Textures.Day.Rt
+	sky.SkyboxUp = Textures.Day.Up
+	sky.SkyboxDn = Textures.Day.Dn
+	sky.StarCount = 0
+	sky.CelestialBodiesShown = true -- the real sun, matching the shadows
+	sky.SunAngularSize = 14
+	sky.MoonAngularSize = 0
 	sky.Parent = Lighting
-	Lighting.GeographicLatitude = 30
 	local bloom = Instance.new("BloomEffect")
-	bloom.Intensity = 0.5
-	bloom.Size = 28
-	bloom.Threshold = 1.4
+	bloom.Intensity = 0.25
+	bloom.Size = 20
+	bloom.Threshold = 2
 	bloom.Parent = Lighting
 	local grade = Instance.new("ColorCorrectionEffect")
+	-- Neutral: the colours come from the parts, not a filter (a saturation boost made it neon)
 	grade.Contrast = 0.04
 	grade.Saturation = 0.08
-	grade.TintColor = Color3.fromRGB(255, 251, 241)
+	grade.TintColor = Color3.new(1, 1, 1)
 	grade.Parent = Lighting
+	-- A clear sky (the few clouds are painted into the skybox)
+	local clouds = workspace.Terrain:FindFirstChildOfClass("Clouds")
+	if clouds then
+		clouds:Destroy()
+	end
 end
 
-local NIGHT = Color3.fromRGB(20, 18, 28)
--- Each zone gets its own ground so going deeper feels like moving through the estate
-local ZONE_MATERIALS = {
-	Enum.Material.Grass,
-	Enum.Material.Cobblestone,
-	Enum.Material.Slate,
-	Enum.Material.Marble,
-	Enum.Material.Basalt,
+-- Each zone is its own bright toy biome, so going deeper reads at a glance (Steal An Egg style)
+local ZONE_FLOORS: { [string]: Color3 } = {
+	Common = Color3.fromRGB(48, 146, 30), -- the Courtyard: grass (same green as the plaza)
+	Rare = Color3.fromRGB(26, 104, 30), -- the Gardens: deep grass
+	Epic = Color3.fromRGB(96, 100, 120), -- the Crypts: grey stone
+	Legendary = Color3.fromRGB(196, 158, 86), -- the Catacombs: sand
+	Mythic = Color3.fromRGB(150, 48, 30), -- the Inferno: red rock
+	Godly = Color3.fromRGB(200, 196, 180), -- Olympus: marble
+	Celestial = Color3.fromRGB(150, 196, 230), -- the Heavens: cloud blue
+	Cosmic = Color3.fromRGB(70, 46, 130), -- Space: purple
+}
+-- Walls change with the biome too, so going deeper looks deeper
+local ZONE_WALLS: { [string]: Color3 } = {
+	Common = Color3.fromRGB(150, 104, 62), -- dirt
+	Rare = Color3.fromRGB(122, 84, 52), -- dark dirt
+	Epic = Color3.fromRGB(110, 110, 118), -- stone
+	Legendary = Color3.fromRGB(176, 140, 80), -- sandstone
+	Mythic = Color3.fromRGB(90, 40, 34), -- dark basalt
+	Godly = Color3.fromRGB(196, 186, 160), -- marble
+	Celestial = Color3.fromRGB(200, 214, 230), -- cloud
+	Cosmic = Color3.fromRGB(48, 36, 84), -- void
 }
 
-local WALL_HEIGHT = 34
+local WALL_HEIGHT = 40
 local WALL_THICK = 6
-local STONE = Color3.fromRGB(70, 66, 80)
+local STONE = Color3.fromRGB(98, 92, 150)
 
 -- Runway walls take on a hint of the colour of the zone they're in
 local function zoneTint(z: number): Color3
 	local index = math.clamp(math.floor(z / GameConfig.ZoneDepth) + 1, 1, #GameConfig.Zones)
-	return STONE:Lerp(GameConfig.Zones[index].Color, 0.22)
+	local floor = ZONE_FLOORS[GameConfig.Zones[index].Rarity] or STONE
+	return floor:Lerp(Color3.new(0, 0, 0), 0.32)
 end
 
 -- The runway: zone floors one after another, tall walls with hideaway nooks cut into them
@@ -208,10 +250,10 @@ local function buildArena()
 			`Zone{i}Floor`,
 			Vector3.new(width, 1, depth),
 			CFrame.new(center + Vector3.new(0, -0.3, 0)),
-			zone.Color:Lerp(NIGHT, 0.72),
+			ZONE_FLOORS[zone.Rarity] or zone.Color,
 			arena
 		)
-		floor.Material = ZONE_MATERIALS[i] or Enum.Material.Grass
+		Toy.Dress(floor, nil, 1, 5)
 		table.insert(MapService.Zones, {
 			Index = i,
 			Rarity = zone.Rarity,
@@ -219,89 +261,94 @@ local function buildArena()
 		})
 	end
 
-	-- Walls down both sides, broken by hideaways: a 10-wide doorway into an 8-deep candlelit nook
-	local spacing = GameConfig.HideawaySpacing
-	local door = 10
+	-- Solid walls down both sides, one segment per zone so each takes on that zone's tint. (The old
+	-- hideaway nooks are gone: people sat in them throwing knives at guards that couldn't reach them.)
 	for _, side in { -1, 1 } do
 		local x = side * (width / 2 + WALL_THICK / 2)
-		local cursor = 0
-		local index = 0
-		local z = spacing * 0.6 + (if side > 0 then spacing / 2 else 0) -- staggered left / right
-		while z + door / 2 < totalDepth do
-			local wallLength = (z - door / 2) - cursor
+		for i = 1, #GameConfig.Zones do
+			local z0 = (i - 1) * depth
 			local wall = block(
 				"RunwayWall",
-				Vector3.new(WALL_THICK, WALL_HEIGHT, wallLength),
-				CFrame.new(x, WALL_HEIGHT / 2, cursor + wallLength / 2),
-				zoneTint(cursor + wallLength / 2),
+				Vector3.new(WALL_THICK, WALL_HEIGHT, depth),
+				CFrame.new(x, WALL_HEIGHT / 2, z0 + depth / 2),
+				zoneTint(z0 + depth / 2),
 				arena
 			)
-			wall.Material = Enum.Material.Cobblestone
-			-- Lintel over the doorway
-			block(
-				"Lintel",
-				Vector3.new(WALL_THICK, WALL_HEIGHT - 11, door),
-				CFrame.new(x, 11 + (WALL_HEIGHT - 11) / 2, z),
-				zoneTint(z),
-				arena
-			).Material =
-				Enum.Material.Cobblestone
-			-- The nook behind the doorway
-			local nookX = side * (width / 2 + WALL_THICK + 4)
-			for _, dz in { -door / 2 - 0.5, door / 2 + 0.5 } do
-				block("NookSide", Vector3.new(8, 11, 1), CFrame.new(nookX, 5.5, z + dz), zoneTint(z), arena).Material =
-					Enum.Material.Cobblestone
-			end
-			block(
-				"NookBack",
-				Vector3.new(1, 11, door + 2),
-				CFrame.new(side * (width / 2 + WALL_THICK + 8.5), 5.5, z),
-				STONE,
-				arena
-			).Material =
-				Enum.Material.Cobblestone
-			block("NookRoof", Vector3.new(9, 1, door + 2), CFrame.new(nookX, 11.5, z), STONE, arena).Material =
-				Enum.Material.Slate
-			table.insert(MapService.Hideaways, {
-				MinX = math.min(side * (width / 2 + 0.5), side * (width / 2 + WALL_THICK + 8)),
-				MaxX = math.max(side * (width / 2 + 0.5), side * (width / 2 + WALL_THICK + 8)),
-				MinZ = z - door / 2,
-				MaxZ = z + door / 2,
-			})
-			index += 1
-			cursor = z + door / 2
-			z += spacing
+			Toy.DirtWall(wall, ZONE_WALLS[GameConfig.Zones[i].Rarity])
 		end
-		local last = totalDepth - cursor
-		block(
-			"RunwayWall",
-			Vector3.new(WALL_THICK, WALL_HEIGHT, last),
-			CFrame.new(x, WALL_HEIGHT / 2, cursor + last / 2),
-			zoneTint(cursor + last / 2),
-			arena
-		).Material =
-			Enum.Material.Cobblestone
 	end
 	-- The far end: the Manor's wall
-	block(
+	local farWall = block(
 		"RunwayEnd",
 		Vector3.new(width + WALL_THICK * 2, WALL_HEIGHT, WALL_THICK),
 		CFrame.new(0, WALL_HEIGHT / 2, totalDepth + WALL_THICK / 2),
 		STONE,
 		arena
-	).Material =
-		Enum.Material.Cobblestone
+	)
+	Toy.DirtWall(farWall)
 
 	-- A glowing line where the runway starts
-	local line =
-		block("EntranceLine", Vector3.new(width, 0.2, 2), CFrame.new(0, 0.3, 0), Color3.fromRGB(255, 80, 90), arena)
-	line.Material = Enum.Material.Neon
+	local line = block(
+		"EntranceLine",
+		Vector3.new(width, 0.4, 0.5),
+		CFrame.new(0, 0.4, -0.25),
+		Color3.fromRGB(235, 80, 95),
+		arena
+	)
 	line.CanCollide = false
+	line.CanQuery = false
+	-- SAFE ZONE painted on the plaza floor: bosses give up the chase past the line
+	local paint = block("SafeZone", Vector3.new(60, 0.05, 10), CFrame.new(0, 0.23, -12), Color3.new(), arena)
+	paint.Transparency = 1
+	paint.CanCollide = false
+	paint.CanQuery = false
+	local surface = Instance.new("SurfaceGui")
+	surface.Face = Enum.NormalId.Top
+	surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	surface.PixelsPerStud = 20
+	surface.LightInfluence = 0
+	surface.Parent = paint
+	local safeText = Instance.new("TextLabel")
+	safeText.Size = UDim2.fromScale(1, 1)
+	safeText.BackgroundTransparency = 1
+	safeText.Font = Enum.Font.FredokaOne
+	safeText.TextScaled = true
+	safeText.TextColor3 = Color3.new(1, 1, 1)
+	safeText.Text = "🛡 SAFE ZONE 🛡"
+	safeText.Rotation = 180 -- reads the right way round walking up from the plaza
+	safeText.Parent = surface
+	local outline = Instance.new("UIStroke")
+	outline.Thickness = 6
+	outline.Color = Color3.fromRGB(30, 30, 40)
+	outline.Parent = safeText
 end
 
 -- Vaults: four down each side of the plaza, each opening onto it. Built in each vault's own frame
 -- (local +Z = the open side), so both columns share the same code.
 local VAULT_WIDTH, VAULT_DEPTH, VAULT_SPACING = 40, 44, 40 -- vaults touch: no gaps to slip out through
+-- Inside (vault-local; +Z is the open side), Tsunami style: every floor is a walkway down the middle
+-- with a ladder at the back, and five big plates down each side. Floor 1 is the ground; each
+-- upgrade shows the next storey (SetFloors).
+local SLOTS_PER_FLOOR = GameConfig.SlotsPerFloor
+local FLOORS = GameConfig.MaxSlots // SLOTS_PER_FLOOR
+local FLOOR_HEIGHT = 16 -- roomy: plenty of headroom over the knives
+local PLATE_X = 12 -- the two columns of plates, either side of the walkway
+local PLATE_Z = { -17, -9, -1, 7, 15 } -- back to front
+local WALK_HALF = 4
+local LADDER_LANDING = 3.5 -- deck behind the ladder at the back, where you step off at the top
+local LADDER_HOLE = 3 -- the slot in front of the ladder you climb up through
+local LADDER_HOLE_HALF = 2.5
+local PLATE_RADIUS = 3.4
+local FLOOR_PINK = Color3.fromRGB(255, 222, 238)
+local HUB_HALF = GameConfig.ArenaWidth / 2 + VAULT_DEPTH + 0.5 -- the hub's outer wall (inner face), just behind the vaults
+local COLUMN = 6 -- vaults down each side; 4 more across the back
+local HUB_BACK = COLUMN * 40 + 44 -- the hub ends right behind the back row of vaults
+local NAVY = Color3.fromRGB(40, 44, 90)
+local CYAN = Color3.fromRGB(70, 214, 245)
+local KNIFE_TILT = 12 -- degrees
+MapService.Floors = FLOORS
+MapService.FloorHeight = FLOOR_HEIGHT
+MapService.SlotsPerFloor = SLOTS_PER_FLOOR
 
 local function buildBases()
 	local bases = Instance.new("Folder")
@@ -316,16 +363,36 @@ local function buildBases()
 		Color3.fromRGB(150, 150, 255),
 		Color3.fromRGB(220, 140, 255),
 		Color3.fromRGB(255, 150, 210),
+		Color3.fromRGB(255, 160, 110),
+		Color3.fromRGB(190, 240, 120),
+		Color3.fromRGB(110, 240, 210),
+		Color3.fromRGB(120, 170, 255),
+		Color3.fromRGB(200, 120, 220),
+		Color3.fromRGB(255, 200, 150),
+		Color3.fromRGB(170, 255, 170),
+		Color3.fromRGB(180, 200, 255),
 	}
 	local half = GameConfig.ArenaWidth / 2
-	local perSide = MapService.MaxBases // 2
 
 	for i = 1, MapService.MaxBases do
-		local side = if i <= perSide then -1 else 1
-		local row = (i - 1) % perSide
-		local center = Vector3.new(side * (half + VAULT_DEPTH / 2), 0, -20 - row * VAULT_SPACING)
-		-- Rotate so local +Z faces the plaza (the left column faces +X, the right column -X)
-		local frame = CFrame.new(center) * CFrame.Angles(0, math.rad(if side < 0 then 90 else -90), 0)
+		-- 1-6 down the left side, 7-12 down the right, 13-16 across the back of the plaza
+		local center: Vector3, frame: CFrame
+		local sideways = i <= COLUMN * 2
+		if sideways then
+			local side = if i <= COLUMN then -1 else 1
+			local row = (i - 1) % COLUMN
+			center = Vector3.new(side * (half + VAULT_DEPTH / 2), 0, -20 - row * VAULT_SPACING)
+			-- Rotate so local +Z faces the plaza (the left column faces +X, the right column -X)
+			frame = CFrame.new(center) * CFrame.Angles(0, math.rad(if side < 0 then 90 else -90), 0)
+		else
+			local k = i - COLUMN * 2
+			center = Vector3.new(
+				-half + VAULT_WIDTH / 2 + (k - 1) * VAULT_WIDTH,
+				0,
+				-COLUMN * VAULT_SPACING - VAULT_DEPTH / 2
+			)
+			frame = CFrame.new(center) -- local +Z already faces the plaza
+		end
 		local function at(x: number, y: number, z: number): CFrame
 			return frame * CFrame.new(x, y, z)
 		end
@@ -334,96 +401,255 @@ local function buildBases()
 		folder.Name = `Base{i}`
 		folder.Parent = bases
 
-		-- A hideout: dark plank floor tinted with the owner's colour, stone walls, and a neon strip
-		-- along the top of each wall so you can spot your own from far away
-		local floor =
-			block("Floor", Vector3.new(VAULT_WIDTH, 1, VAULT_DEPTH), at(0, 0.1, 0), color:Lerp(NIGHT, 0.7), folder)
-		floor.Material = Enum.Material.WoodPlanks
+		-- An open platform (Tsunami style): a pale studded floor with a hint of the owner's colour
+		local floor = block(
+			"Floor",
+			Vector3.new(VAULT_WIDTH, 1, VAULT_DEPTH),
+			at(0, 0.1, 0),
+			FLOOR_PINK:Lerp(color, 0.12),
+			folder
+		)
+		Toy.Dress(floor, nil, 1, 4)
 		-- Walls, gate towers and the gate itself depend on the owner's wall tier (VaultWalls)
 		local wallFolder = Instance.new("Folder")
 		wallFolder.Name = "Walls"
 		wallFolder.Parent = folder
 		local walls = VaultWalls.Build(wallFolder, frame, color, 1)
-		-- Interior lighting: a Blender chandelier hanging from a crossbeam, candle sconces along the
-		-- back wall, and a rug in the vault's colour between the door and the pedestals
-		local beam = block(
-			"Crossbeam",
-			Vector3.new(VAULT_WIDTH - 2, 0.9, 0.9),
-			at(0, 11.6, -4),
-			Color3.fromRGB(60, 40, 28),
-			folder
-		)
-		beam.Material = Enum.Material.Wood
-		beam.CanCollide = false
-		local chandelier = Props.Build("Chandelier", true)
-		chandelier:PivotTo(at(0, 11.2, -4))
-		chandelier.Parent = folder
-		local flames = (chandelier:FindFirstChild("Flames") or chandelier.PrimaryPart) :: BasePart
-		local candleLight = Instance.new("PointLight")
-		candleLight.Color = Color3.fromRGB(255, 224, 184)
-		candleLight.Range = 44
-		candleLight.Brightness = 1.3
-		candleLight.Shadows = false
-		candleLight.Parent = flames
-		for _, x in { -16, -8, 8, 16 } do
-			local sconce = Props.Build("Sconce", true)
-			-- Sticks out from the back wall into the room
-			sconce:PivotTo(at(x, 7.5, -VAULT_DEPTH / 2 + 0.75) * CFrame.Angles(0, math.pi, 0))
-			sconce.Parent = folder
-			local flame = (sconce:FindFirstChild("Flame") or sconce.PrimaryPart) :: BasePart
-			local light = Instance.new("PointLight")
-			light.Color = Color3.fromRGB(255, 213, 165)
-			light.Range = 24
-			light.Brightness = 1
-			light.Parent = flame
+		-- The storeys. Each has its own folder so the vault can grow: decks with a hole at the back
+		-- middle, a ladder up from the floor below, a glass rail along the open front, the walkway
+		-- and ten plates (slots 1-10 ground, 11-20 next floor, ...)
+		local deckColor = FLOOR_PINK:Lerp(color, 0.12)
+		local floorFolders: { Folder } = {}
+		local slotCFrames: { CFrame }, slotPads: { BasePart }, slotRims: { BasePart } = {}, {}, {}
+		local cashPads: { BasePart }, cashLabels: { TextLabel } = {}, {}
+		local inner = VAULT_WIDTH / 2 - 0.5
+		local back, front = -VAULT_DEPTH / 2 + 0.5, VAULT_DEPTH / 2 - 0.5
+		for level = 1, FLOORS do
+			local levelFolder = Instance.new("Folder")
+			levelFolder.Name = `Floor{level}`
+			levelFolder.Parent = folder
+			floorFolders[level] = levelFolder
+			local y = (level - 1) * FLOOR_HEIGHT
+			local surface = if level == 1 then 0.6 else y
+			if level > 1 then
+				-- The deck is whole except a slot in front of the ladder (where you climb through);
+				-- behind the ladder is a small landing you step onto at the top, Roblox-ladder style
+				local landing = back + LADDER_LANDING
+				local holeTo = landing + 2 + LADDER_HOLE
+				local function deck(minX: number, maxX: number, minZ: number, maxZ: number)
+					local piece = block(
+						"Deck",
+						Vector3.new(maxX - minX, 1, maxZ - minZ),
+						at((minX + maxX) / 2, y - 0.5, (minZ + maxZ) / 2),
+						deckColor,
+						levelFolder
+					)
+					Toy.Dress(piece, nil, 1, 4)
+				end
+				deck(-inner, inner, back, landing) -- the landing
+				deck(-inner, inner, holeTo, front) -- the floor
+				for _, deckSide in { -1, 1 } do
+					local a, b = deckSide * LADDER_HOLE_HALF, deckSide * inner
+					deck(math.min(a, b), math.max(a, b), landing, holeTo)
+				end
+				local glass = block(
+					"RailGlass",
+					Vector3.new(inner * 2, 3.5, 0.3),
+					at(0, y + 1.75, front - 0.2),
+					Color3.fromRGB(190, 240, 255),
+					levelFolder
+				)
+				glass.Material = Enum.Material.Glass
+				glass.Transparency = 0.6
+				block("RailCap", Vector3.new(inner * 2, 0.4, 0.6), at(0, y + 3.6, front - 0.2), NAVY, levelFolder)
+				-- The ladder from the floor below, poking up through the hole so you can step off
+				local truss = Instance.new("TrussPart")
+				truss.Name = "Ladder"
+				truss.Anchored = true
+				-- From the floor below up to just over this deck: climb, then keep pushing to step onto the
+				-- landing behind it
+				local bottom = if level == 2 then 0.6 else y - FLOOR_HEIGHT
+				truss.Size = Vector3.new(2, FLOOR_HEIGHT, 2)
+				truss.CFrame = at(0, bottom + FLOOR_HEIGHT / 2, landing + 1)
+				truss.Transparency = 1 -- climbable, but the ladder you see is drawn below
+				truss.Parent = levelFolder
+				-- The ladder you see: two chunky navy rails and bright yellow rungs, and a yellow trim
+				-- round the hole so it's easy to spot from across the vault
+				local ladderZ = landing + 1
+				for _, railSide in { -1, 1 } do
+					local rail = block(
+						"LadderRail",
+						Vector3.new(0.45, FLOOR_HEIGHT + 2.5, 0.45),
+						at(railSide * 1.15, bottom + (FLOOR_HEIGHT + 2.5) / 2, ladderZ + 0.7),
+						NAVY,
+						levelFolder
+					)
+					rail.CanCollide = false
+					rail.CanQuery = false
+					Toy.Dress(rail, Toy.Sides, 1, 0)
+				end
+				for rungY = bottom + 1, bottom + FLOOR_HEIGHT - 0.4, 1.6 do
+					local rung = block(
+						"LadderRung",
+						Vector3.new(2.3, 0.3, 0.35),
+						at(0, rungY, ladderZ + 0.7),
+						Color3.fromRGB(255, 205, 40),
+						levelFolder
+					)
+					rung.CanCollide = false
+					rung.CanQuery = false
+				end
+				for _, trim in
+					{
+						{ Vector3.new(LADDER_HOLE_HALF * 2 + 0.6, 0.12, 0.3), Vector3.new(0, y + 0.06, holeTo) },
+						{
+							Vector3.new(0.3, 0.12, holeTo - landing),
+							Vector3.new(-LADDER_HOLE_HALF, y + 0.06, (landing + holeTo) / 2),
+						},
+						{
+							Vector3.new(0.3, 0.12, holeTo - landing),
+							Vector3.new(LADDER_HOLE_HALF, y + 0.06, (landing + holeTo) / 2),
+						},
+					}
+				do
+					local edge = block(
+						"HoleTrim",
+						trim[1],
+						at(trim[2].X, trim[2].Y, trim[2].Z),
+						Color3.fromRGB(255, 205, 40),
+						levelFolder
+					)
+					edge.CanCollide = false
+					edge.CanQuery = false
+				end
+			end
+			-- The walkway down the middle, from the gate to the ladder
+			-- (it stops where the ladder hole starts, so the cut-out reads as a hole)
+			local walkFrom = back + LADDER_LANDING + 2 + LADDER_HOLE
+			local walk = block(
+				"Walkway",
+				Vector3.new(WALK_HALF * 2, 0.06, front - walkFrom),
+				at(0, surface + 0.03, (front + walkFrom) / 2),
+				Color3.fromRGB(226, 230, 242),
+				levelFolder
+			)
+			walk.CanCollide = false
+			walk.CanQuery = false
+			Toy.Dress(walk, nil, 1, 0)
+			for index = 1, SLOTS_PER_FLOOR do
+				local plateSide = if index <= #PLATE_Z then -1 else 1
+				local x, z = plateSide * PLATE_X, PLATE_Z[(index - 1) % #PLATE_Z + 1]
+				local slot = (level - 1) * SLOTS_PER_FLOOR + index
+				-- A plain flat plate on the floor (Tsunami style), nothing else
+				local plate = block(
+					`Pedestal{slot}`,
+					Vector3.new(0.3, PLATE_RADIUS * 2, PLATE_RADIUS * 2),
+					at(x, surface + 0.15, z) * CFrame.Angles(0, 0, math.rad(90)),
+					CYAN,
+					levelFolder
+				)
+				plate.Shape = Enum.PartType.Cylinder
+				plate.CanCollide = false
+				slotPads[slot] = plate
+				slotRims[slot] = plate
+				-- The money pad between the plate and the walkway (Tsunami style): the knife's
+				-- earnings pile up here until its owner walks over it
+				-- Tsunami style: a rounded mint panel with a dark purple border, the money in big green
+				-- letters. The panel's +Z faces the plate, so the text reads from the walkway.
+				local padAt = at(plateSide * (WALK_HALF + 2.2), surface + 0.06, z).Position
+				local towardPlate = frame:VectorToWorldSpace(Vector3.new(plateSide, 0, 0))
+				local cashPad = block(
+					`CashPad{slot}`,
+					Vector3.new(3.8, 0.12, 5.2),
+					-- (a SurfaceGui on a Top face runs along the part's Z: turned so it reads across)
+					CFrame.lookAt(padAt, padAt - towardPlate) * CFrame.Angles(0, math.pi / 2, 0),
+					Color3.fromRGB(150, 240, 160),
+					levelFolder
+				)
+				cashPad.Transparency = 1
+				cashPad.CanCollide = false
+				cashPad.CanQuery = false
+				local padGui = Instance.new("SurfaceGui")
+				padGui.Face = Enum.NormalId.Top
+				padGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+				padGui.PixelsPerStud = 40
+				padGui.LightInfluence = 0
+				padGui.MaxDistance = 70
+				padGui.Parent = cashPad
+				local panel = Instance.new("Frame")
+				panel.AnchorPoint = Vector2.new(0.5, 0.5)
+				panel.Position = UDim2.fromScale(0.5, 0.5)
+				panel.Size = UDim2.new(1, -12, 1, -12)
+				panel.BackgroundColor3 = Color3.fromRGB(150, 240, 160)
+				panel.Parent = padGui
+				local corner = Instance.new("UICorner")
+				corner.CornerRadius = UDim.new(0.16, 0)
+				corner.Parent = panel
+				local border = Instance.new("UIStroke")
+				border.Thickness = 6
+				border.Color = Color3.fromRGB(70, 44, 120)
+				border.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+				border.Parent = panel
+				local padText = Instance.new("TextLabel")
+				padText.AnchorPoint = Vector2.new(0.5, 0.5)
+				padText.Position = UDim2.fromScale(0.5, 0.5)
+				padText.Size = UDim2.fromScale(0.9, 0.86)
+				padText.BackgroundTransparency = 1
+				padText.Font = Enum.Font.FredokaOne
+				padText.TextScaled = true
+				padText.TextColor3 = Color3.fromRGB(110, 255, 80)
+				padText.Text = ""
+				padText.Parent = panel
+				local padStroke = Instance.new("UIStroke")
+				padStroke.Thickness = 5
+				padStroke.Color = Color3.fromRGB(20, 80, 25)
+				padStroke.Parent = padText
+				cashPads[slot] = cashPad
+				cashLabels[slot] = padText
+				-- The knife floats upright over the plate, a little tilted
+				slotCFrames[slot] = at(x, surface + 4.2, z) * CFrame.Angles(0, 0, math.rad(KNIFE_TILT))
+			end
 		end
-		local rug = block("Rug", Vector3.new(14, 0.08, 22), at(0, 0.64, 6), color:Lerp(NIGHT, 0.45), folder)
-		rug.Material = Enum.Material.Fabric
-		rug.CanCollide = false
-		local rugBorder =
-			block("RugBorder", Vector3.new(15, 0.06, 23), at(0, 0.62, 6), Color3.fromRGB(200, 160, 70), folder)
-		rugBorder.Material = Enum.Material.Fabric
-		rugBorder.CanCollide = false
 
-		local signPart =
-			block("Sign", Vector3.new(20, 5, 1), at(0, 17, -VAULT_DEPTH / 2), Color3.fromRGB(45, 30, 25), folder)
-		signPart.Material = Enum.Material.WoodPlanks
+		-- The owner's sign rides on top of the frame (BaseService moves it as the vault grows)
+		local signPart = block("Sign", Vector3.new(20, 5, 1), at(0, 18, -VAULT_DEPTH / 2 + 1.5), NAVY, folder)
+		signPart.Transparency = 1
+		signPart.CanCollide = false
+		signPart.CanQuery = false
 		local sign = label(
 			signPart,
 			"Empty Vault",
 			color,
 			UDim2.fromScale(24, 5),
 			frame:VectorToWorldSpace(Vector3.new(0, 0, 1.5))
-		)
-
-		-- Display floor: 3 rows x 4 pedestals in the back half of the vault, a knife floating and
-		-- turning over each (Blender pedestal, see Props)
-		local slotCFrames, slotPads, slotRims = {}, {}, {}
-		for slot = 1, GameConfig.MaxSlots do
-			local col = (slot - 1) % 4
-			local pedestalRow = math.floor((slot - 1) / 4)
-			local x, z = -14 + col * (28 / 3), -18.5 + pedestalRow * 5.5
-			local pedestal = Props.Build("Pedestal", true)
-			pedestal.Name = `Pedestal{slot}`
-			pedestal:PivotTo(at(x, 0.6, z))
-			for _, d in pedestal:GetDescendants() do
-				if d:IsA("BasePart") then
-					d.CanCollide = d.Name == "Stone"
-					d.CanQuery = d.Name == "Stone"
-				end
-			end
-			pedestal.Parent = folder
-			local stone = (pedestal:FindFirstChild("Stone") or pedestal.PrimaryPart) :: BasePart
-			local glow = (pedestal:FindFirstChild("Glow") or stone) :: BasePart
-			table.insert(slotPads, stone)
-			table.insert(slotRims, glow)
-			-- The knife floats here, blade up, facing out of the vault
-			table.insert(slotCFrames, at(x, 4.2, z))
-		end
+		);
+		(sign.Parent :: BillboardGui).Enabled = false
 
 		-- The Haunted Wheel: a giant iron wheel you run inside to train Speed (the plate at the bottom
-		-- is what counts as "on it"). Clients spin it while its owner is training.
-		local wheelCenter = Vector3.new(-12, 6.6, 3)
+		-- is what counts as "on it"). Clients spin it while its owner is training. It stands just
+		-- outside the vault's gate, so the inside is nothing but knives.
+		local wheelCenter = Vector3.new(-13, 6.6, VAULT_DEPTH / 2 + 7.5)
+		-- The Upgrade Base sign on the other side of the gate (client/Hud fills it in for its owner)
+		local upgradeSign = Instance.new("Model")
+		upgradeSign.Name = "UpgradeSign"
+		block("Post", Vector3.new(0.6, 4, 0.6), at(13, 2, VAULT_DEPTH / 2 + 6), Color3.fromRGB(70, 46, 28), upgradeSign)
+		local signBoard = block(
+			"Board",
+			Vector3.new(7, 4, 0.5),
+			at(13, 5.4, VAULT_DEPTH / 2 + 6) * CFrame.Angles(math.rad(-12), 0, 0),
+			Color3.fromRGB(34, 26, 40),
+			upgradeSign
+		)
+		local signGui = Instance.new("SurfaceGui")
+		signGui.Name = "Gui"
+		-- The board's front (-Z) looks into the vault; its back faces the plaza
+		signGui.Face = Enum.NormalId.Back
+		signGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		signGui.PixelsPerStud = 40
+		signGui.LightInfluence = 0
+		signGui.MaxDistance = 80
+		signGui.Parent = signBoard
+		upgradeSign.Parent = folder
 		local wheel = Instance.new("Model")
 		wheel.Name = "HauntedWheel"
 		local hub = block(
@@ -449,8 +675,8 @@ local function buildBases()
 			cap.Material = Enum.Material.Metal
 			cap.CanCollide = false
 		end
-		local iron = Color3.fromRGB(70, 64, 80)
-		local radius, segments = 6, 20
+		local iron = NAVY
+		local radius, segments = 6, 16
 		for k = 0, segments - 1 do
 			local angle = k / segments * math.pi * 2
 			local oy, oz = math.cos(angle) * radius, math.sin(angle) * radius
@@ -470,12 +696,11 @@ local function buildBases()
 				"Rung",
 				Vector3.new(6.8, 0.25, 0.4),
 				at(wheelCenter.X, wheelCenter.Y + oy * 0.97, wheelCenter.Z + oz * 0.97) * CFrame.Angles(angle, 0, 0),
-				Color3.fromRGB(90, 70, 50),
+				Color3.new(1, 1, 1),
 				wheel
 			)
-			rung.Material = Enum.Material.Wood
 			rung.CanCollide = false
-			if k % 5 == 0 then
+			if k % 4 == 0 then
 				local spoke = block(
 					"Spoke",
 					Vector3.new(0.4, radius, 0.4),
@@ -495,10 +720,6 @@ local function buildBases()
 				wisp.Shape = Enum.PartType.Ball
 				wisp.Material = Enum.Material.Neon
 				wisp.CanCollide = false
-				local wispLight = Instance.new("PointLight")
-				wispLight.Color = color
-				wispLight.Range = 10
-				wispLight.Parent = wisp
 			end
 		end
 		wheel.PrimaryPart = hub
@@ -514,34 +735,11 @@ local function buildBases()
 				Enum.Material.Metal
 		end
 		-- The plate you stand on inside the bottom of the wheel
-		local belt = block(
-			"WheelFloor",
-			Vector3.new(6, 0.4, 5),
-			at(wheelCenter.X, 0.8, wheelCenter.Z),
-			Color3.fromRGB(40, 36, 46),
-			folder
-		)
-		belt.Material = Enum.Material.WoodPlanks
-		local wheelSign = block(
-			"WheelSign",
-			Vector3.new(6, 1.6, 0.4),
-			at(wheelCenter.X, 13.2, wheelCenter.Z),
-			Color3.fromRGB(45, 30, 25),
-			folder
-		)
-		wheelSign.Material = Enum.Material.WoodPlanks
+		local belt = block("WheelFloor", Vector3.new(6, 0.4, 5), at(wheelCenter.X, 0.8, wheelCenter.Z), CYAN, folder)
+		Toy.Dress(belt, nil, 1, 0)
+		local wheelSign =
+			block("WheelSign", Vector3.new(6, 1.6, 0.4), at(wheelCenter.X, 13.2, wheelCenter.Z), NAVY, folder)
 		local treadmillSign = label(wheelSign, "Creaky Wheel", color, UDim2.fromScale(9, 2), Vector3.new(0, 0.2, 1)) -- under the vault's own sign
-
-		-- Walking into the vault with a knife deposits it; this pad just shows where "home" is
-		local deposit = block(
-			"DepositPad",
-			Vector3.new(14, 0.3, 6),
-			at(0, 0.75, VAULT_DEPTH / 2 - 4),
-			Color3.fromRGB(80, 255, 140),
-			folder
-		)
-		deposit.Material = Enum.Material.Neon
-		deposit.CanCollide = false
 
 		-- Spawn just inside the door, facing out towards the plaza and the runway
 		local spawnPos = (at(0, 4, VAULT_DEPTH / 2 - 10)).Position
@@ -556,11 +754,16 @@ local function buildBases()
 			Center = center,
 			Frame = frame,
 			-- Rotated 90 degrees, so the world footprint swaps width and depth
-			Bounds = bounds(center, VAULT_DEPTH, VAULT_WIDTH),
+			Bounds = if sideways
+				then bounds(center, VAULT_DEPTH, VAULT_WIDTH)
+				else bounds(center, VAULT_WIDTH, VAULT_DEPTH),
 			Spawn = CFrame.lookAt(spawnPos, spawnPos + frame:VectorToWorldSpace(Vector3.zAxis)),
 			SlotCFrames = slotCFrames,
 			SlotPads = slotPads,
 			SlotRims = slotRims,
+			FloorFolders = floorFolders,
+			CashPads = cashPads,
+			CashLabels = cashLabels,
 			Treadmill = belt,
 			TreadmillSign = treadmillSign,
 			Wheel = wheel,
@@ -568,36 +771,205 @@ local function buildBases()
 		})
 	end
 
-	-- The plaza between the two columns of vaults
+	-- The plaza between the two columns of vaults, out to the hub's outer wall
 	local plaza = block(
 		"Plaza",
-		Vector3.new(GameConfig.ArenaWidth, 1, 190),
-		CFrame.new(0, -0.3, -95),
-		Color3.fromRGB(70, 68, 78),
+		Vector3.new(HUB_HALF * 2, 1, HUB_BACK),
+		CFrame.new(0, -0.3, -HUB_BACK / 2),
+		Toy.Grass, -- the same grass as the runway: one place
 		bases
 	)
-	plaza.Material = Enum.Material.Cobblestone
-	-- Close the plaza between the last vaults and its back wall
-	local lastEdge = -20 - (perSide - 1) * VAULT_SPACING - VAULT_WIDTH / 2
+	Toy.Dress(plaza, nil, 1, 5)
+	-- One dirt wall all the way round the hub, so you can't wander off anywhere: the two sides,
+	-- the back behind the plaza, and the shoulders joining them to the runway walls
+	local wallX = HUB_HALF + WALL_THICK / 2
 	for _, side in { -1, 1 } do
-		local length = 194 + lastEdge
+		Toy.DirtWall(
+			block(
+				"HubWall",
+				Vector3.new(WALL_THICK, WALL_HEIGHT, HUB_BACK + WALL_THICK * 2),
+				CFrame.new(side * wallX, WALL_HEIGHT / 2, -HUB_BACK / 2),
+				Toy.Dirt,
+				bases
+			)
+		)
+		local from, to = half, HUB_HALF + WALL_THICK
+		Toy.DirtWall(
+			block(
+				"HubWall",
+				Vector3.new(to - from, WALL_HEIGHT, WALL_THICK),
+				CFrame.new(side * (from + to) / 2, WALL_HEIGHT / 2, WALL_THICK / 2),
+				Toy.Dirt,
+				bases
+			)
+		)
+	end
+	Toy.DirtWall(
 		block(
-			"PlazaSideWall",
-			Vector3.new(WALL_THICK, WALL_HEIGHT, -length),
-			CFrame.new(side * (half + WALL_THICK / 2), WALL_HEIGHT / 2, lastEdge + length / 2),
-			STONE,
+			"HubWall",
+			Vector3.new(HUB_HALF * 2 + WALL_THICK * 2, WALL_HEIGHT, WALL_THICK),
+			CFrame.new(0, WALL_HEIGHT / 2, -HUB_BACK - WALL_THICK / 2),
+			Toy.Dirt,
 			bases
-		).Material =
-			Enum.Material.Cobblestone
+		)
+	)
+end
+
+-- The whole hub is a floating island in the sky: under every floor hangs a studded block of earth
+-- that narrows in steps, and puffy clouds drift around and below. Cosmetic only: nothing here collides.
+local function buildIsland()
+	local island = Instance.new("Folder")
+	island.Name = "Island"
+	island.Parent = root
+	local rng = Random.new(77)
+	local function deco(name: string, size: Vector3, cframe: CFrame, color: Color3): Part
+		local p = block(name, size, cframe, color, island)
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		return p
+	end
+
+	local half = GameConfig.ArenaWidth / 2
+	local runwayEnd = GameConfig.ZoneDepth * #GameConfig.Zones
+	local footprints = {
+		{ -half - WALL_THICK, half + WALL_THICK, 0, runwayEnd + WALL_THICK }, -- the runway
+		{ -HUB_HALF - WALL_THICK, HUB_HALF + WALL_THICK, -HUB_BACK - WALL_THICK, WALL_THICK }, -- plaza + vaults
+		{ -72, 72, runwayEnd, runwayEnd + 52 }, -- the Manor
+	}
+	-- Earth under each floor: three layers, each narrower and darker, studs on the sides
+	local layers = {
+		{ Inset = 0, Height = 7, Color = Color3.fromRGB(160, 108, 62) },
+		{ Inset = 10, Height = 12, Color = Color3.fromRGB(132, 88, 52) },
+		{ Inset = 26, Height = 16, Color = Color3.fromRGB(104, 70, 46) },
+	}
+	local sides = { Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right }
+	for _, f in footprints do
+		local minX, maxX, minZ, maxZ = f[1], f[2], f[3], f[4]
+		local top = -0.8
+		for _, layer in layers do
+			local sizeX = maxX - minX - layer.Inset * 2
+			local sizeZ = maxZ - minZ - layer.Inset * 2
+			if sizeX > 4 and sizeZ > 4 then
+				local slab = deco(
+					"Earth",
+					Vector3.new(sizeX, layer.Height, sizeZ),
+					CFrame.new((minX + maxX) / 2, top - layer.Height / 2, (minZ + maxZ) / 2),
+					layer.Color
+				)
+				Toy.Dress(slab, sides, 1, 4)
+			end
+			top -= layer.Height
+		end
+	end
+
+	-- Puffy cartoon clouds: clusters of white balls around the island and drifting far below it
+	local function cloud(at: Vector3, scale: number)
+		for _ = 1, rng:NextInteger(4, 7) do
+			local size = rng:NextNumber(10, 22) * scale
+			local puff = deco(
+				"Cloud",
+				Vector3.new(size, size * 0.8, size),
+				CFrame.new(
+					at
+						+ Vector3.new(
+							rng:NextNumber(-1.6, 1.6) * size,
+							rng:NextNumber(0, 0.4) * size,
+							rng:NextNumber(-0.8, 0.8) * size
+						)
+				),
+				Color3.fromRGB(250, 252, 255)
+			)
+			puff.Shape = Enum.PartType.Ball
+		end
+	end
+	for _ = 1, 28 do
+		local side = if rng:NextNumber() < 0.5 then -1 else 1
+		cloud(
+			Vector3.new(side * rng:NextNumber(190, 480), rng:NextNumber(-90, 50), rng:NextNumber(-350, runwayEnd + 250)),
+			rng:NextNumber(0.8, 1.6)
+		)
+	end
+	for _ = 1, 16 do
+		cloud(
+			Vector3.new(rng:NextNumber(-260, 260), rng:NextNumber(-160, -80), rng:NextNumber(-300, runwayEnd + 200)),
+			rng:NextNumber(1.2, 2)
+		)
+	end
+	-- Overhead: drifting above the runway and plaza, high enough to never get in the way
+	for _ = 1, 45 do
+		cloud(
+			Vector3.new(rng:NextNumber(-220, 220), rng:NextNumber(85, 150), rng:NextNumber(-350, runwayEnd + 150)),
+			rng:NextNumber(1, 2.2)
+		)
+	end
+	-- Just past the walls at eye level, so the sky around you is full of them
+	for _ = 1, 30 do
+		local side = if rng:NextNumber() < 0.5 then -1 else 1
+		cloud(
+			Vector3.new(side * rng:NextNumber(150, 230), rng:NextNumber(20, 70), rng:NextNumber(-320, runwayEnd + 100)),
+			rng:NextNumber(0.9, 1.6)
+		)
 	end
 end
 
 -- Round maps are real buildings (RoundMaps); a random one is rebuilt at the start of each round
+function MapService.RoundMapFolder(): Instance?
+	return root and root:FindFirstChild("RoundMap")
+end
+
+local ROUND_SCALE = 1.5 -- the buildings are built at 1x and scaled up: roomier, longer chases
+
 function MapService.BuildRoundMap(name: string?): RoundMaps.Built
 	local built = RoundMaps.Build(root, MapService.RoundCenter, name)
+	local center = MapService.RoundCenter
+	local folder = root:FindFirstChild("RoundMap")
+	if folder then
+		-- People stay the same size, so everything around them gets bigger
+		local model = Instance.new("Model")
+		for _, child in folder:GetChildren() do
+			child.Parent = model
+		end
+		model.WorldPivot = CFrame.new(center)
+		model:ScaleTo(ROUND_SCALE)
+		for _, child in model:GetChildren() do
+			child.Parent = folder
+		end
+		model:Destroy()
+		for i, spawn in built.Spawns do
+			built.Spawns[i] = CFrame.new(center + (spawn.Position - center) * ROUND_SCALE) * spawn.Rotation
+		end
+		built.Size *= ROUND_SCALE
+	end
 	MapService.RoundSpawns = built.Spawns
 	MapService.RoundMapSize = built.Size
 	return built
+end
+
+-- Sunny day everywhere: one even light, so lamps, torches, auras, glowing knives and the round
+-- maps' room lamps carry no Light (neon and particles still glow).
+local function noLights()
+	local function check(instance: Instance)
+		if instance:IsA("Light") then
+			instance:Destroy()
+		end
+	end
+	for _, d in workspace:GetDescendants() do
+		check(d)
+	end
+	workspace.DescendantAdded:Connect(function(d)
+		if d:IsA("Light") then
+			task.defer(check, d)
+		end
+	end)
+end
+
+-- Shows the vault's first `count` storeys (the rest wait out of the world until they're bought)
+function MapService.SetFloors(base: BaseSite, count: number)
+	for level, levelFolder in base.FloorFolders do
+		levelFolder.Parent = if level <= count then base.Folder else nil
+	end
 end
 
 function MapService.Init()
@@ -610,9 +982,6 @@ function MapService.Init()
 	root = Instance.new("Folder")
 	root.Name = "Map"
 	root.Parent = workspace
-
-	local ground = block("Ground", Vector3.new(700, 2, 1700), CFrame.new(0, -1.5, 560), Color3.fromRGB(38, 50, 40))
-	ground.Material = Enum.Material.Grass
 
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "LobbySpawn"
@@ -627,8 +996,15 @@ function MapService.Init()
 	buildLighting()
 	buildArena()
 	buildBases()
+	buildIsland()
 	ManorDecor.Build(root, MapService.Arena :: Bounds, MapService.Hideaways)
+	-- Nothing from the plaza decor in the way of the wheels outside the vault gates
+	for _, base in MapService.Bases do
+		ManorDecor.ClearArea((base.Wheel.PrimaryPart :: BasePart).Position, 9, 9)
+		MapService.SetFloors(base, 1)
+	end
 	MapService.BuildRoundMap("Office")
+	noLights()
 end
 
 return MapService

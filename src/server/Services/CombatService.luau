@@ -20,6 +20,7 @@ local DataService = require(script.Parent.DataService)
 local GuardService = require(script.Parent.GuardService)
 local Ragdoll = require(script.Parent.Ragdoll)
 local Targets = require(script.Parent.Targets)
+local StuckKnives = require(script.Parent.StuckKnives)
 
 local CombatService = {}
 
@@ -155,6 +156,8 @@ function CombatService.Disarm(player: Player)
 	local tool = currentTool(player)
 	if tool then
 		tool:Destroy()
+		-- ...and its Throw button goes with it (RoundService hands the Murderer their own later)
+		Net.Remotes.AbilityState:FireClient(player, nil)
 	end
 end
 
@@ -189,14 +192,18 @@ function CombatService.TakeCharge(player: Player): number
 end
 
 -- Where a thrown knife leaves from: the right hand, or the chest if there isn't one
+-- Where a thrown knife leaves from: the throwing hand at shoulder height, just ahead of the body.
+-- The server sees players a little in the past, so a sprinting thrower is led by their speed x ping
+-- (otherwise the knife would start behind them on their own screen).
 function CombatService.HandPosition(player: Player): Vector3?
-	local character = player.Character
-	local hand = character and character:FindFirstChild("RightHand") :: BasePart?
 	local root = rootOf(player)
-	if hand then
-		return hand.Position
+	if not root then
+		return nil
 	end
-	return if root then root.Position + Vector3.new(0, 1.2, 0) else nil
+	local from = (root.CFrame * CFrame.new(1, 1.4, -1.6)).Position
+	local velocity = root.AssemblyLinearVelocity
+	local flat = Vector3.new(velocity.X, 0, velocity.Z)
+	return from + flat * math.clamp(player:GetNetworkPing() + 0.08, 0.05, 0.35)
 end
 
 -- Thrown knives (hub): straight line from the hand, hits the first guard it passes through
@@ -286,6 +293,18 @@ local function stepFlying(dt: number)
 			-- Other players are ghosts to hub knives; anything else stops it
 			done = Players:GetPlayerFromCharacter(hit.Instance:FindFirstAncestorOfClass("Model")) == nil
 		end
+		-- Hit a wall (not a guard, target or person): it sticks there for a minute
+		if
+			done
+			and hit
+			and not passed
+			and not GuardService.FromPart(hit.Instance)
+			and not Targets.FromPart(f.Owner, hit.Instance)
+		then
+			StuckKnives.Stick(f.Model, hit.Position, f.Direction, 60)
+			table.remove(flying, i)
+			continue
+		end
 		f.Position += f.Direction * stepLength
 		f.Traveled += stepLength
 		if done or f.Traveled > config.Range then
@@ -299,12 +318,40 @@ local function stepFlying(dt: number)
 	end
 end
 
+-- Max health from the Health level (cash upgrade) and the Titan pass. Topping up keeps the same
+-- fraction of health you had, so buying mid-fight doesn't heal you outright.
+function CombatService.ApplyHealth(player: Player)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not humanoid or humanoid.Health <= 0 then
+		return
+	end
+	local level = (player:GetAttribute("HealthLevel") or 0) :: number
+	local max = GameConfig.MaxHealthFor(level, if player:GetAttribute("Pass_Titan") then 2 else 1)
+	if player:GetAttribute("InRound") then
+		max = GameConfig.Health.Base -- rounds are fair: everyone is equal
+	end
+	if humanoid.MaxHealth ~= max then
+		local fraction = humanoid.Health / math.max(humanoid.MaxHealth, 1)
+		humanoid.MaxHealth = max
+		humanoid.Health = math.max(1, max * fraction)
+	end
+end
+
 -- Deaths: go limp, cry out, collapse. Players respawn at their vault as usual.
 local function onCharacterAdded(player: Player, character: Model)
 	local humanoid = character:WaitForChild("Humanoid", 10) :: Humanoid?
 	if not humanoid then
 		return
 	end
+	task.defer(function()
+		local level = (player:GetAttribute("HealthLevel") or 0) :: number
+		local max = GameConfig.MaxHealthFor(level, if player:GetAttribute("Pass_Titan") then 2 else 1)
+		if not player:GetAttribute("InRound") and humanoid.Health > 0 then
+			humanoid.MaxHealth = max
+			humanoid.Health = max
+		end
+	end)
 	humanoid.BreakJointsOnDeath = false
 	humanoid.Died:Connect(function()
 		Ragdoll.DeathCry(character)
@@ -354,7 +401,13 @@ function CombatService.Init()
 			else
 				CombatService.Arm(player)
 			end
+			CombatService.ApplyHealth(player)
 		end)
+		for _, attribute in { "HealthLevel", "Pass_Titan" } do
+			player:GetAttributeChangedSignal(attribute):Connect(function()
+				CombatService.ApplyHealth(player)
+			end)
+		end
 	end
 	Players.PlayerAdded:Connect(watch)
 	for _, player in Players:GetPlayers() do

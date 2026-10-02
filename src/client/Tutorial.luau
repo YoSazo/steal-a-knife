@@ -2,7 +2,7 @@
 -- The first minute, for new players: a glowing trail from you to where you need to go, a bouncing
 -- arrow over it, and one short instruction at a time. Steps advance on their own as you do them:
 --   1. take down a watchman in the Courtyard   2. grab the case it drops
---   3. carry it home to your vault              4. run in your Haunted Wheel
+--   3. carry it home, place it on a plate             4. run in your Haunted Wheel
 -- Finishing (or skipping) tells the server, which pays a small reward once (Rewards).
 
 local CollectionService = game:GetService("CollectionService")
@@ -44,25 +44,6 @@ local function nearestGuard(): Vector3?
 		end
 	end
 	return best
-end
-
-local function nearestDrop(): Vector3?
-	local map = workspace:FindFirstChild("Map")
-	local drops = map and map:FindFirstChild("DroppedKnives")
-	local here = root()
-	if not drops or not here then
-		return nil
-	end
-	local best, bestDistance = nil, math.huge
-	for _, drop in drops:GetChildren() do
-		if drop:IsA("Model") and drop.PrimaryPart then
-			local distance = (drop.PrimaryPart.Position - here.Position).Magnitude
-			if distance < bestDistance then
-				best, bestDistance = drop.PrimaryPart.Position, distance
-			end
-		end
-	end
-	return if bestDistance < 80 then best else nil
 end
 
 local function myVault(): Model?
@@ -112,36 +93,34 @@ function Tutorial.Init()
 	player:GetAttributeChangedSignal("Carrying"):Connect(function()
 		if player:GetAttribute("Carrying") then
 			carriedOnce = true
-		elseif carriedOnce then
+		end
+	end)
+	-- Banked = a knife actually landed on your wall (getting caught also ends the carry)
+	local knivesAtStart = (player:GetAttribute("KnifeCount") or 0) :: number
+	player:GetAttributeChangedSignal("KnifeCount"):Connect(function()
+		if ((player:GetAttribute("KnifeCount") or 0) :: number) > knivesAtStart then
 			banked = true
 		end
 	end)
 	local steps: { Step } = {
 		{
-			Text = if Ui.Phone
-				then "Take down a watchman in the Courtyard! (tap to stab, hold the red button to throw)"
-				else "Take down a watchman in the Courtyard! (click to stab, hold to throw)",
+			Text = "Frank guards a wall of knives in the Courtyard. Walk up and hold E on one to steal it!",
 			Target = nearestGuard,
-			Done = function()
-				return nearestDrop() ~= nil or carriedOnce
-			end,
-		},
-		{
-			Text = "Grab the sealed case it dropped!",
-			Target = nearestDrop,
 			Done = function()
 				return carriedOnce
 			end,
 		},
 		{
-			Text = "RUN! Carry it home to your vault before the guards catch you!",
+			Text = if Ui.Phone
+				then "RUN home before Frank catches you! Then tap Place Knife at the glowing plate."
+				else "RUN home before Frank catches you! Then press E on the glowing plate to place it.",
 			Target = vaultDoor,
 			Done = function()
 				return banked
 			end,
 		},
 		{
-			Text = "Your knife earns cash every second. Now run in your Haunted Wheel to get faster!",
+			Text = "Your knife earns cash every second - walk over its green pad to collect! Now run in your Haunted Wheel to get faster.",
 			Target = wheel,
 			Done = function()
 				return player:GetAttribute("Training") == true
@@ -162,9 +141,11 @@ function Tutorial.Init()
 	local banner = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 104),
-		Size = UDim2.fromOffset(if Ui.Phone then 540 else 640, 64),
+		-- Half the screen at most, so it never covers the side menus on narrow windows
+		Size = UDim2.new(0.5, 0, 0, 64),
 		BackgroundColor3 = Color3.fromRGB(255, 200, 60),
 	}, Ui.gui)
+	new("UISizeConstraint", { MaxSize = Vector2.new(if Ui.Phone then 540 else 640, 64) }, banner)
 	Ui.corner(banner, 16)
 	Ui.gradient(banner, Color3.fromRGB(255, 220, 90), Color3.fromRGB(230, 150, 30))
 	new("UIStroke", { Thickness = 4, Color = Color3.fromRGB(20, 16, 28) }, banner)

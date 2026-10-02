@@ -11,6 +11,7 @@ local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("GameConfig"))
 local Sounds = require(ReplicatedStorage.Shared.Config:WaitForChild("Sounds"))
+local Knives = require(ReplicatedStorage.Shared.Config:WaitForChild("Knives"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local new = Ui.new
 
@@ -19,13 +20,7 @@ local Welcome = {}
 type Info = { Offline: number, Away: number, Streak: number, DailyReady: boolean, Shielded: boolean? }
 
 local GOLD = Color3.fromRGB(255, 205, 60)
-local RARITY_COLORS: { [string]: Color3 } = {
-	Common = Color3.fromRGB(170, 175, 185),
-	Rare = Color3.fromRGB(80, 160, 255),
-	Epic = Color3.fromRGB(180, 90, 255),
-	Legendary = Color3.fromRGB(255, 190, 40),
-	Godly = Color3.fromRGB(255, 80, 120),
-}
+local RARITY_COLORS: { [string]: Color3 } = Knives.RarityColors
 
 local function rewardText(reward: GameConfig.DailyReward): (string, string, Color3)
 	if reward.Kind == "Case" then

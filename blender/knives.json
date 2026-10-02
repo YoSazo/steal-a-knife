@@ -326,5 +326,467 @@
         0.08
       ]
     }
+  },
+  "PocketKnife": {
+    "rarity": "Common",
+    "fbx": "blender/exports/PocketKnife.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        0.82,
+        0.84,
+        0.86
+      ],
+      "Guard": [
+        0.67,
+        0.12,
+        0.12
+      ],
+      "Handle": [
+        0.78,
+        0.16,
+        0.16
+      ],
+      "Pommel": [
+        0.67,
+        0.12,
+        0.12
+      ]
+    }
+  },
+  "ThornDagger": {
+    "rarity": "Rare",
+    "fbx": "blender/exports/ThornDagger.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        0.47,
+        0.86,
+        0.43
+      ],
+      "Guard": [
+        0.24,
+        0.43,
+        0.16
+      ],
+      "Handle": [
+        0.27,
+        0.18,
+        0.1
+      ],
+      "Pommel": [
+        0.24,
+        0.43,
+        0.16
+      ]
+    }
+  },
+  "BoneCarver": {
+    "rarity": "Epic",
+    "fbx": "blender/exports/BoneCarver.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        0.92,
+        0.88,
+        0.78
+      ],
+      "Guard": [
+        0.47,
+        0.43,
+        0.37
+      ],
+      "Handle": [
+        0.27,
+        0.24,
+        0.22
+      ],
+      "Pommel": [
+        0.47,
+        0.43,
+        0.37
+      ]
+    }
+  },
+  "Reaper": {
+    "rarity": "Legendary",
+    "fbx": "blender/exports/Reaper.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        0.24,
+        0.24,
+        0.28
+      ],
+      "Guard": [
+        1.0,
+        0.78,
+        0.24
+      ],
+      "Handle": [
+        0.1,
+        0.08,
+        0.1
+      ],
+      "Pommel": [
+        1.0,
+        0.78,
+        0.24
+      ]
+    }
+  },
+  "MagmaCleaver": {
+    "rarity": "Godly",
+    "fbx": "blender/exports/MagmaCleaver.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        1.0,
+        0.31,
+        0.08
+      ],
+      "Guard": [
+        0.2,
+        0.1,
+        0.08
+      ],
+      "Handle": [
+        0.12,
+        0.08,
+        0.08
+      ],
+      "Pommel": [
+        0.2,
+        0.1,
+        0.08
+      ]
+    }
+  },
+  "DemonHorn": {
+    "rarity": "Godly",
+    "fbx": "blender/exports/DemonHorn.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        0.86,
+        0.08,
+        0.12
+      ],
+      "Guard": [
+        0.1,
+        0.04,
+        0.04
+      ],
+      "Handle": [
+        0.24,
+        0.0,
+        0.0
+      ],
+      "Pommel": [
+        0.1,
+        0.04,
+        0.04
+      ]
+    }
+  },
+  "ZeusBolt": {
+    "rarity": "Godly",
+    "fbx": "blender/exports/ZeusBolt.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        1.0,
+        0.94,
+        0.35
+      ],
+      "Guard": [
+        0.94,
+        0.94,
+        1.0
+      ],
+      "Handle": [
+        0.35,
+        0.55,
+        1.0
+      ],
+      "Pommel": [
+        0.94,
+        0.94,
+        1.0
+      ]
+    }
+  },
+  "AthenaBlade": {
+    "rarity": "Godly",
+    "fbx": "blender/exports/AthenaBlade.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        0.96,
+        0.96,
+        1.0
+      ],
+      "Guard": [
+        1.0,
+        0.8,
+        0.24
+      ],
+      "Handle": [
+        0.27,
+        0.43,
+        0.78
+      ],
+      "Pommel": [
+        1.0,
+        0.8,
+        0.24
+      ]
+    }
+  },
+  "OlympusEdge": {
+    "rarity": "Godly",
+    "fbx": "blender/exports/OlympusEdge.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        1.0,
+        0.47,
+        0.78
+      ],
+      "Guard": [
+        1.0,
+        0.84,
+        0.31
+      ],
+      "Handle": [
+        1.0,
+        0.98,
+        0.94
+      ],
+      "Pommel": [
+        1.0,
+        0.84,
+        0.31
+      ]
+    }
+  },
+  "HaloBlade": {
+    "rarity": "Godly",
+    "fbx": "blender/exports/HaloBlade.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        1.0,
+        0.98,
+        0.86
+      ],
+      "Guard": [
+        1.0,
+        0.86,
+        0.35
+      ],
+      "Handle": [
+        0.94,
+        0.94,
+        1.0
+      ],
+      "Pommel": [
+        1.0,
+        0.86,
+        0.35
+      ]
+    }
+  },
+  "SeraphSword": {
+    "rarity": "Godly",
+    "fbx": "blender/exports/SeraphSword.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        0.63,
+        0.94,
+        1.0
+      ],
+      "Guard": [
+        1.0,
+        0.9,
+        0.55
+      ],
+      "Handle": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "Pommel": [
+        1.0,
+        0.9,
+        0.55
+      ]
+    }
+  },
+  "AngelFeather": {
+    "rarity": "Godly",
+    "fbx": "blender/exports/AngelFeather.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "Guard": [
+        0.59,
+        0.9,
+        1.0
+      ],
+      "Handle": [
+        1.0,
+        0.84,
+        0.47
+      ],
+      "Pommel": [
+        0.59,
+        0.9,
+        1.0
+      ]
+    }
+  },
+  "StarCleaver": {
+    "rarity": "Godly",
+    "fbx": "blender/exports/StarCleaver.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        0.35,
+        0.86,
+        1.0
+      ],
+      "Guard": [
+        0.12,
+        0.08,
+        0.24
+      ],
+      "Handle": [
+        1.0,
+        0.9,
+        0.47
+      ],
+      "Pommel": [
+        0.12,
+        0.08,
+        0.24
+      ]
+    }
+  },
+  "GalaxyKatana": {
+    "rarity": "Godly",
+    "fbx": "blender/exports/GalaxyKatana.fbx",
+    "parts": [
+      "Blade",
+      "Guard",
+      "Handle",
+      "Pommel",
+      "Extra"
+    ],
+    "colors": {
+      "Blade": [
+        1.0,
+        0.35,
+        0.9
+      ],
+      "Guard": [
+        0.24,
+        0.86,
+        1.0
+      ],
+      "Handle": [
+        0.08,
+        0.04,
+        0.16
+      ],
+      "Pommel": [
+        0.24,
+        0.86,
+        1.0
+      ]
+    }
   }
 }

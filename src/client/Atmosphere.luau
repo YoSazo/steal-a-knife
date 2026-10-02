@@ -2,7 +2,7 @@
 -- Mood, on this client:
 --   * music: dark ambient around the hub, drums when a raid starts, silence in rounds so you can
 --     hear footsteps
---   * raids turn the sky blood-red
+--   * raids turn the sky deep red
 --   * rounds: a heartbeat and a red vignette that grow as the Murderer gets close (the server sends
 --     only how close, never who), Flash blinding, and the slow-motion moment when a round ends on
 --     the final kill or the Murderer goes down
@@ -35,6 +35,59 @@ local function track(id: string, volume: number): Sound
 end
 
 function Atmosphere.Init()
+	-- Keep the camera on the character. Round disguises rebuild the body (the root part is swapped
+	-- out) and the default camera loses its subject, leaving it parked back in the hub while you're
+	-- teleported to the round map - a black, "paused" screen. Re-attach it whenever that happens.
+	local function reattach()
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local camera = workspace.CurrentCamera
+		if not humanoid or not root then
+			return
+		end
+		camera.CameraType = Enum.CameraType.Custom
+		camera.CameraSubject = nil
+		camera.CameraSubject = humanoid
+		-- Snap behind them straight away instead of gliding across the map
+		if (camera.CFrame.Position - root.Position).Magnitude > 40 then
+			camera.CFrame =
+				CFrame.lookAt(root.Position - root.CFrame.LookVector * 8 + Vector3.new(0, 4, 0), root.Position)
+		end
+	end
+	local function watchCharacter(character: Model)
+		character.ChildAdded:Connect(function(child)
+			if child.Name == "HumanoidRootPart" or child:IsA("Humanoid") then
+				task.defer(reattach)
+			end
+		end)
+	end
+	player.CharacterAdded:Connect(watchCharacter)
+	if player.Character then
+		watchCharacter(player.Character)
+	end
+	player:GetAttributeChangedSignal("InRound"):Connect(function()
+		-- Teleports happen right around this; check again once they've landed
+		for _, delay in { 0.2, 1, 2.5 } do
+			task.delay(delay, reattach)
+		end
+	end)
+	-- Belt and braces: if the camera ever ends up far from a live character, bring it back
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			local camera = workspace.CurrentCamera
+			if
+				root
+				and camera.CameraType == Enum.CameraType.Custom
+				and (camera.Focus.Position - root.Position).Magnitude > 60
+			then
+				reattach()
+			end
+		end
+	end)
+
 	-- Music ---------------------------------------------------------------------------------------
 	local hubMusic = track(Sounds.HubMusic, 0.22)
 	local raidMusic = track(Sounds.RaidMusic, 0.3)
@@ -56,7 +109,7 @@ function Atmosphere.Init()
 	ReplicatedStorage:GetAttributeChangedSignal("Raid"):Connect(refreshMusic)
 	refreshMusic()
 
-	-- Raids: the sky goes blood-red -----------------------------------------------------------------
+	-- Raids: the sky goes deep red -----------------------------------------------------------------
 	local raidTint = new("ColorCorrectionEffect", {
 		Name = "RaidTint",
 		TintColor = Color3.new(1, 1, 1),

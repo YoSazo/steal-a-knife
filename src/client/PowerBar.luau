@@ -33,7 +33,7 @@ end
 function PowerBar.Init()
 	local bar = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -78),
+		Position = UDim2.new(0.5, 0, 1, if Ui.Phone then -38 else -110),
 		Size = UDim2.fromOffset(3 * 96, 84),
 		BackgroundTransparency = 1,
 	}, Ui.gui)
@@ -127,8 +127,17 @@ function PowerBar.Init()
 
 	RunService.RenderStepped:Connect(function()
 		-- The Murderer fights with their knife; powers are for innocents
-		local murderer = player:GetAttribute("InRound") and player:GetAttribute("Role") == "Murderer"
-		bar.Visible = not murderer and #loadout > 0
+		local inRound = player:GetAttribute("InRound") == true
+		local murderer = inRound and player:GetAttribute("Role") == "Murderer"
+		-- In the hub the powers only show where you'd use them: out on the runway with the guards,
+		-- or during a Thief Moon. Safe on the plaza / in your vault, they're out of the way.
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local onRunway = root ~= nil
+			and root.Position.Z > -2
+			and math.abs(root.Position.X) < GameConfig.ArenaWidth / 2 + 2
+		local bloodMoon = type(ReplicatedStorage:GetAttribute("RaidEndsAt")) == "number"
+		local classic = inRound and ReplicatedStorage:GetAttribute("Classic") == true
+		bar.Visible = not murderer and not classic and #loadout > 0 and (inRound or onRunway or bloodMoon)
 		local gamepad = UserInputService.GamepadEnabled
 		local now = workspace:GetServerTimeNow()
 		for i, slot in slots do
@@ -136,18 +145,14 @@ function PowerBar.Init()
 			if not id then
 				continue
 			end
+			-- Rounds: only your first power comes along
+			slot.Button.Visible = not inRound or i == 1
 			slot.Key.Text = if gamepad then PAD_LABELS[i] else KEY_LABELS[i]
 			local energy = player:GetAttribute("Energy")
 			if type(energy) == "number" then
 				-- In a round: costs Energy (coins fill it); shaded while you can't afford it
 				local power = byId[id]
-				local level = 1
-				for _, entry in Ui.list(player:GetAttribute("Powers")) do
-					local pid, lvl = entry:match("^(%w+):(%d+)$")
-					if pid == id then
-						level = tonumber(lvl) or 1
-					end
-				end
+				local level = GameConfig.RoundPowerLevel -- the same for everyone in rounds
 				local cost = power.Energy[math.clamp(level, 1, #power.Energy)]
 				slot.Shade.Size = UDim2.fromScale(1, if energy >= cost then 0 else 1 - energy / cost)
 				slot.Count.Text = `⚡{cost}`

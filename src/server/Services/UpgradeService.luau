@@ -5,6 +5,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Net = require(script.Parent.Parent.Remotes)
 local DataService = require(script.Parent.DataService)
@@ -70,6 +71,27 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			Net.Remotes.Effect:FireAllClients("Deposit", player, "Epic")
 		end
 		return true, `{nextTrail.Name}! Your wheel now trains Speed x{nextTrail.Multiplier}`
+	elseif kind == "Health" then
+		if profile.HealthLevel >= GameConfig.Health.MaxLevel then
+			return false, "Your health is maxed!"
+		end
+		local cost = GameConfig.HealthCost(profile.HealthLevel)
+		if not DataService.TrySpend(player, cost) then
+			Offers.Show(player, "HealthBoost", "Need more health now? +3 Health levels instantly.")
+			return short(player, cost)
+		end
+		DataService.Update(player, function(p)
+			p.HealthLevel += 1
+		end)
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root then
+			Net.Remotes.Effect:FireAllClients("Heal", root.Position)
+		end
+		return true,
+			`Max health {GameConfig.MaxHealthFor(
+				profile.HealthLevel,
+				if player:GetAttribute("Pass_Titan") then 2 else 1
+			)}!`
 	elseif kind == "Walls" then
 		local nextTier = GameConfig.Walls[profile.WallLevel + 1]
 		if not nextTier then
@@ -95,7 +117,7 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			return false, "Finish what you're doing first"
 		end
 		if profile.Cash < cost then
-			return false, `Rebirth needs ${cost}`
+			return false, `Rebirth needs {Format.Cash(cost)}`
 		end
 		-- Start over with a permanent boost: powers, stats, collection and tickets stay
 		DataService.Update(player, function(p)
@@ -123,17 +145,17 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			`Rebirth {profile.Rebirths}! Everything earns x{1 + profile.Rebirths * GameConfig.Rebirth.IncomeBonus}`
 	elseif kind == "Slot" then
 		if profile.Slots >= GameConfig.MaxSlots then
-			return false, "Your rack is maxed!"
+			return false, "Your vault is as tall as it gets!"
 		end
 		if not DataService.TrySpend(player, GameConfig.SlotCost(profile.Slots)) then
-			Offers.Show(player, "Mount", "Want it now? Add another mount instantly.")
+			Offers.Show(player, "Mount", "Want it now? Add the next floor instantly.")
 			return false, "Not enough cash"
 		end
 		DataService.Update(player, function(p)
-			p.Slots += 1
+			p.Slots = math.min(GameConfig.MaxSlots, p.Slots + GameConfig.SlotsPerFloor)
 		end)
 		BaseService.RefreshRack(player)
-		return true, `Rack now holds {profile.Slots} knives!`
+		return true, `Your vault grew a floor: {profile.Slots} knife plates!`
 	elseif kind == "Ticket" then
 		if profile.Tickets >= GameConfig.MaxTickets then
 			return false, `You can hold {GameConfig.MaxTickets} tickets at most`
@@ -159,6 +181,9 @@ function UpgradeService.Init()
 	Net.Remotes.Purchase.OnServerInvoke = buy
 	BaseService.OnUpgradeWalls = function(player: Player)
 		buy(player, "Walls")
+	end
+	BaseService.OnUpgradeBase = function(player: Player)
+		buy(player, "Slot")
 	end
 	game:GetService("Players").PlayerRemoving:Connect(function(player)
 		lastRequest[player] = nil

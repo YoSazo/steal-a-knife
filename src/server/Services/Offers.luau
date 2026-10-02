@@ -8,6 +8,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
 local Net = require(script.Parent.Parent.Remotes)
@@ -62,7 +63,7 @@ function Offers.Cash(player: Player, short: number, income: number)
 	for _, key in { "CashSmall", "CashMedium", "CashBig" } do
 		local product = Monetization.ProductByKey[key]
 		if product and product.Cash and GameConfig.Pay(product.Cash, income) >= short then
-			Offers.Show(player, key, `Only ${math.ceil(short)} short? This covers it right now.`)
+			Offers.Show(player, key, `Only {Format.Cash(math.ceil(short))} short? This covers it right now.`)
 			return
 		end
 	end

@@ -16,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local AnimLibrary = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("AnimLibrary"))
+local Lod = require(script.Parent.Lod)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local localPlayer = Players.LocalPlayer
 
@@ -157,6 +158,16 @@ local function step(dt: number)
 		if not humanoid or humanoid.Health <= 0 then
 			continue -- ragdolls are physics now
 		end
+		-- Too far away to see the detail (LOD): leave it to the Animator. Our own character always
+		-- animates. Whatever we'd written gets overwritten by the Animator next frame.
+		if model ~= localPlayer.Character and #rig.Playing == 0 then
+			local root = model.PrimaryPart
+			if root and not Lod.Near(root.Position) then
+				table.clear(rig.LastWritten)
+				table.clear(rig.LastBase)
+				continue
+			end
+		end
 		local total: { [string]: Vector3 } = {}
 		local trail = false
 		local undo = 0 -- how much of the tool-hold arm raise to take out this frame
@@ -245,6 +256,18 @@ local function step(dt: number)
 		end
 
 		-- Guards fidget while nothing else is happening: look around, lantern swings, breathing
+		if CollectionService:HasTag(model, "ShopNPC") and not busy then
+			-- Shopkeepers: lean on the counter, gesture, look around at the customers
+			local s = rig.Seed
+			addPose(total, {
+				Neck = Vector3.new(math.sin(now * 0.7 + s) * 8, math.sin(now * 0.5 + s) * 30, 0),
+				LeftShoulder = Vector3.new(40 + math.sin(now * 1.3 + s) * 25, 0, -10),
+				LeftElbow = Vector3.new(50 + math.sin(now * 2.1 + s) * 20, 0, 0),
+				RightShoulder = Vector3.new(30 + math.sin(now * 1.1 + s + 1) * 15, 0, 10),
+				RightElbow = Vector3.new(45, 0, 0),
+				Waist = Vector3.new(6 + math.sin(now * 1.4 + s) * 3, math.sin(now * 0.6 + s) * 10, 0),
+			}, 1)
+		end
 		if CollectionService:HasTag(model, "Guard") and not busy and not chargeStart then
 			local s = rig.Seed
 			addPose(total, {
@@ -317,7 +340,7 @@ function Moves.Init()
 		track(guard)
 	end)
 	-- Round bots (Studio bot rounds) and raid burglars
-	for _, tag in { "RoundBot", "Burglar" } do
+	for _, tag in { "RoundBot", "Burglar", "ShopNPC" } do
 		for _, model in CollectionService:GetTagged(tag) do
 			track(model)
 		end

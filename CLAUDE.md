@@ -6,7 +6,9 @@ and return knives. Steal-and-collect + Murder Mystery 2-style rounds. Players fi
 that knife home and mount it on their vault wall, which pays cash/s. They buy
 Speed / rack Slots / Murderer tickets, and every few minutes everyone is pulled into a round with one
 random Murderer (weighted by a luck meter + tickets) and a survival timer. No Sheriff, no PvP in the arena.
-Rarities: Common, Rare, Epic, Legendary, Godly. Audience ~9-15, low-poly.
+Rarities (one biome zone each): Common, Rare, Epic, Legendary, Mythic, Godly, Celestial, Cosmic (24 knives,
+3 per rarity). Money is Steal An Egg-sized (starter knife $75/s, into the quintillions; `shared/Format` prints
+K/M/B/T/Qd/Qn/Sx/...). Audience ~9-15, low-poly.
 Look: dark murder-mystery theme. The hub is "Blackwood Manor" at night (fences, lamps, dead trees,
 the Manor behind the arena); rounds are The Mad Murderer-style indoor maps (Office, Mansion) with
 disguises (named pre-made characters), bodies that stay, and a Revolver innocents can grab.
@@ -22,30 +24,73 @@ victim's rack (returned if the Murderer is shot); survivors get 2x vault income 
   the cosmetic hub; `RoundMaps` lays out the indoor round maps (random one per round) from `RoundMapKit`
   (walls with trim and per-face wallpaper, windows, lights, furniture; furniture front = local -Z, rotation
   0/180/-90/90 for north/south/west/east walls). Anything named "Floor" is where coins/Revolver land.
-  Tags the client animates: "Flicker" (+ attribute Flame = soft waver), "ClockHand" (real time), "Coin".
+  Tags the client animates: "Flicker" (+ attribute Flame = soft waver), "ClockHand" (real time), "Coin",
+  "ShopNPC" (shopkeeper fidgets).
+- Murderer perks: Spam Knife is passive (every click throws at the cursor, no stab, Range 1000; client sends
+  `Ability(aim, "Spam")`); Hellfire's Q sets player SpamUntil for the same click-throw mode with flaming knives.
+  Stunned (Flash / trap: StunnedUntil) Murderers can't stab, throw or use perks. Perk icons are Blender renders
+  (`blender/scripts/make_icons.py` -> Config/Textures.PerkIcons): ability button, perk card, knife cards.
+- Raiders: damaging a gate marks you (player RaiderOf/RaiderUntil); the owner's knife then does real damage to you
+  anywhere in the hub (RaidService playerTargets), like a guard - health levels decide how many hits you take.
 - Round coins: the Blender "Coin" prop + invisible Hitbox (RoundService.spawnCoin); the client predicts the
   pickup (fly-in, streak chime) and the server pays.
-- Hub layout (MapService): one long runway (ArenaWidth x ZoneDepth per zone) with hideaway nooks in the walls
-  (guards ignore players inside), vaults in two columns opening onto a plaza at the start, events board over the
-  entrance, round maps far away at x = 3000. ManorDecor dresses each zone as its own biome.
+- Hub layout (MapService): one long, wide runway (ArenaWidth 160 x ZoneDepth per zone, 8 zones, solid walls - the
+  old hideaway nooks were removed because people farmed guards from them), vaults in two columns opening onto a
+  plaza at the start, events board over the entrance, round maps far away at x = 3000. ManorDecor dresses each
+  zone as its own biome (Courtyard, Gardens, Crypts, Catacombs, Inferno, Mount Olympus, Heavens, Outer Space).
+- Vaults grow a floor at a time (Tsunami style, FLOOR_HEIGHT 16): each floor = a walkway down the middle, a ladder
+  at the back middle (invisible TrussPart + drawn rails/rungs) up through a slot cut in the deck above, with a small
+  landing behind it to step onto (Roblox trusses step you off in the direction you push), 5 flat cyan disc plates
+  down each side (no vault sign; SAFE ZONE is painted on the plaza by the thin red line at the runway start) (GameConfig.SlotsPerFloor 10, up to
+  4 floors = MaxSlots 40). The "Slot" upgrade / Mount product buys the next floor (+10, GameConfig.FloorCosts);
+  MapService.SetFloors shows the owned storeys (BaseSite.FloorFolders) and VaultWalls.Build(..., floors) sizes the
+  frame. The Haunted Wheel stands outside the gate. Burglars only rob the ground floor.
+- Shopkeepers (`ShopNPCs`): Mortimer the Knife Merchant (cases + Health) and Madame Vesper the Mystic (Powers), side by
+  side by the runway entrance (striped toy stalls, glowing floor ring, one gradient title); their "Talk" prompt (attribute ShopPanel) opens the panel client-side (Menus), walking away closes it.
+- Health: profile HealthLevel (cash, GameConfig.Health), Titan pass (x2) and HealthBoost product; CombatService
+  .ApplyHealth sets MaxHealth (rounds stay at 100). HUD draws its own health bar bottom centre (CoreGui Health off).
 - Speed (Steal An Egg style): `profile.Speed` is trained by standing in your vault's Haunted Wheel (the code calls
   it the treadmill; tiers in `GameConfig.Treadmills`), turned into walk speed by `GameConfig.WalkSpeedFor`. Zones have
   `SpeedNeeded` and guards fast enough to catch anyone below it. No dash.
 - `BaseService` vaults, wall mounts, the Haunted Wheel training tick, income tick, and the single `RefreshWalkSpeed`.
-- `StealService` dropped knives (tag + light beam + "Take" prompt), carrying, deposit on the server's view of position,
-  carrier speed check; a carrier who dies drops the knife where they fell.
+  Income is Tsunami style: every second each knife adds to profile.Pending[slot], shown on its green cash pad
+  (BaseSite.CashPads/CashLabels) beside the plate; the owner walking over a pad collects it (CashBurst effect).
+  Offline earnings still pay straight into cash. `client/Overheads` shows everyone's cash over their head (hub only).
+- `StealService` dropped knives (tag + light beam + "Take" prompt), carrying (overhead), carrier speed check; a carrier
+  who dies drops the knife where they fell. Knives are NOT auto-deposited: at home the next empty plate gets a "Place
+  Knife" prompt (BaseService placePrompts, enabled while Carrying) -> StealService.Place (flying-knife "PlaceKnife"
+  effect, then deposit). Cases still open on arrival. Equipping fires Effect "Equipped" (knife flies to your hand +
+  banner) and the Draw clip. Each vault has an Upgrade Base sign by the gate (client/Hud fills it; prompt -> "Slot").
+- Hotbar knives show an icon (Tool.TextureId from Config/KnifeIcons, rendered by blender/scripts/render_knife_icons.py).
+- Rounds: one innocent power per round (Loadout[1], GameConfig.RoundPowerLevel for everyone); Spam Knife is a Q burst;
+  ~20% CLASSIC rounds (no powers/perks, ClassicPay); Radar only finds a Murderer whose knife is out (KnifeOut), the
+  Murderer's speed boost only applies with the knife out; HUD shows "Your chance to be the Murderer" (MurdererChance);
+  end-of-round VS card (Effect "RoundCard" -> client/Transitions).
 - `CombatService` the hub knife Tool (equipped or best owned, else the Rusty Shank): swing (Tool.Activated) and throw
   (Remotes.Ability outside rounds) - only guards take damage. Also every death: `Ragdoll` collapse + death cry.
-- `GuardService` R15 night watchmen (named, animated) but anchored and moved on Heartbeat. Health/damage per zone,
-  each holds a knife from its zone pool (the loot), attacks players near it in its zone, fights back when hit;
-  picking up a knife alerts the zone + the one in front; Epic+ throw knives; death = ragdoll, drop, respawn.
+- `GuardService` = the biome BOSSES (name kept: powers/combat/raids call its API: All, Stun, Lure, FromPart,
+  InReach, Damage, RootHeight). One per zone (GameConfig.Zones Boss/BossTitle/BossWear/Restock): a round character
+  (Disguises.BuildCharacter, e.g. Frank the Groundskeeper ... Nick the Void Walker) on a small lair stage against
+  the runway's side wall (GameConfig.BossLair / BossLairCenter: odd zones left, even right) in front of a wall of BossWallSlots knives (Items.OpenCase rolls). Idle until you hold E on
+  a knife ("BossSteal" prompt); then they chase you (a ForceField shadow clone if they're busy) at GuardSpeed to
+  the plaza. Caught = StealService.ReturnToBoss puts it back + Damage x2; delivered = slot restocks after Restock s
+  (rare mutations announced). Hub hits stagger a chaser (damage / zone Health, with immunity); Vanish makes them
+  stop and search; Epic+ throw knives. StealService carries a `Boss` slot ref; OnBossCarryEnded hook.
 - `PowerService` Innocent Powers (Vanish, Radar, Bear Trap, Shield, Decoy, Mimic): bought/upgraded with cash, equipped
   in a loadout (PowerSlots), usable in the arena vs guards (cooldowns) and in rounds vs the Murderer (uses per round).
   Contracts are attributes: player `Invisible`/`Mimic` (guards ignore), character `ShieldUntil` (guards + RoundService
   respect it), player `StunnedUntil` (walk speed 0). `Stealth` hides/restores characters for Vanish and Mimic.
 - `InventoryService` equip / sell (vault wall prompts: E equip, hold F sell; also the Knives menu). `UpgradeService` also sells one-round items (Shield, Sneakers, Smoke).
-- `Disguises` round outfits: classic Shirt/Pants templates + face decals (`tools/make_clothing.py`, uploaded image ids
-  inline) and Blender hair/hats/glasses from PropMeshes (part fallbacks). `Shift` = ShapeShifter perk. `Revolver` the pickup/tool. `DebugService` Studio-only hook.
+- `Disguises` round outfits: classic Shirt/Pants templates (`tools/make_clothing.py`) + face decals
+  (`tools/make_faces.py`, 12 faces, 4x supersampled) and Blender hair/hats/glasses from PropMeshes (part fallbacks).
+  Hair is sculpted by `blender/scripts/hair.py` (a cap fitted to the R15 head down to a hairline that stays above the
+  eyebrows + tapered locks; 8 styles); hats are worn 1.12x over hair; Wear.On puts pieces on the body (wings). `Shift` = ShapeShifter perk. `Revolver` the pickup/tool. `DebugService` Studio-only hook.
+- Rounds: maps are built at 1x then scaled 1.5x (MapService.BuildRoundMap, ROUND_SCALE); doors are solid. A random
+  innocent (player or bot) is the Sheriff from the start (giveRevolver / giveRevolverToBot); the floor Revolver only
+  appears if nobody holds it. Bot Sheriffs aim + shoot once the Murderer's knife is out (botShoot, distance-based
+  aim), other bots grab a dropped Revolver, the Murderer bot goes for the Sheriff first. Each innocent is shown the
+  knife they'd lose (round.AtRisk, Effect "AtRisk" -> client/Transitions reel); lootKnife takes that one.
+  Thrown knives start at CombatService.HandPosition (led by speed x ping).
 - `RoundService` phase loop; state is attributes on ReplicatedStorage (Phase, PhaseEndsAt, Status, Alive, MapName,
   Revolver, Loot). Melee from `Tool.Activated`; perks via `Remotes.Ability`, gun via `Remotes.Shoot` - all validated server-side.
 - Client modules (`src/client`): Ui, Hud, Menus (Knives/Shop panels), Abilities (knife input: click combo,
@@ -73,10 +118,20 @@ victim's rack (returned if the Murderer is shot); survivors get 2x vault income 
   Mutations Gold/Diamond/Rainbow/Void and sizes Tiny..Colossal multiply income/damage. Watchmen drop sealed CASES
   (`StealService.DropCase`); `StealService.OpenCase` rolls the item (rebirth luck) and fires the client reel
   (`client/Unbox`). The Case Shop (`Rewards.BuyCase`, Purchase "Case:<Rarity>") uses the same path.
-- Vaults: knives float over 12 Blender pedestals (MapService slots, BaseService.RefreshRack: nameplate billboard,
-  light beam, aura). Aura = `Items.AuraPower`: sparks/flames/crackle + dashed floor ring; non-owners inside it are
-  slowed (RaidService.stepAuras -> player AuraSlow/AuraFrom). Walls per tier (`VaultWalls`, GameConfig.Walls) with a
-  gate whose invisible Blocker is solid client-side for non-owners (client/Raid) and evicted server-side.
+- Look: the toy style (Steal An Egg / Tsunami): bright flat colours + stud/checker Textures via `Shared/Toy`
+  (`Toy.Dress(part, faces, studSize, checker)`, ids in `Textures.Toy`); zone floors in MapService ZONE_FLOORS,
+  plaza in the same grass green as the first zone, navy vault frames. One `Toy.DirtWall` (tan dirt checker + grass cap, 40 tall)
+  runs all the way round (runway sides, shoulders, hub sides + back: HubWall) and on lair backs. Zone names are not
+  in the world: `client/Transitions` pops the title up on entering a zone and fades the screen on round teleports
+  (server fires Effect "Fade" 0.35 s before moving people). Boss stash knives have
+  NO labels (the knife speaks for itself; the prompt names it up close); vault labels are one compact block
+  (rarity / name / $ per second). Sunny afternoon high in the sky (MapService.buildLighting: ClockTime 15.2, real
+  sun, NO shadows and no Light instances anywhere (noLights strips them, round maps included) for one even light, day skybox from `tools/make_sky_day.py` -> `Textures.Day`, Terrain Clouds); the hub is a
+  floating island (buildIsland: stepped studded earth under every floor, puffy cloud clusters around and below). No blood (hit bursts are yellow; the raid event is "Thief Moon" in text).
+- Vaults: open Tsunami-style platforms (3 floors, 24 pedestals as navy/cyan plates). BaseService.RefreshRack: nameplate
+  billboard, green floor money plaque (+$/s), light beam, aura (every knife: rising Money bills + a Swirl in its colour). Aura = `Items.AuraPower`: sparks/flames/crackle + dashed floor ring; non-owners inside it are
+  slowed (RaidService.stepAuras -> player AuraSlow/AuraFrom). `VaultWalls` = open navy frame + glass rail + invisible
+  walls, and a laser gate ("Pane" lasers, more lines per GameConfig.Walls tier) whose invisible Blocker is solid client-side for non-owners (client/Raid) and evicted server-side.
 - Break-ins (`RaidService`): any time in Intermission. Gates have health (Targets registry: hub swings/throws hit
   gates at `Raid.PlayerGateDamage`, and knock down intruders/carriers), break, reforge, regen; the owner is alerted
   on the first hit with the attacker outlined, and can repair (R) or upgrade walls (hold G at their gate). Not while
@@ -102,6 +157,11 @@ victim's rack (returned if the Murderer is shot); survivors get 2x vault income 
   (part fallbacks if missing). Textures: `blender/scripts/make_textures.py` -> Studio upload_image -> `Config/Textures`.
 - Studio test buttons (left column): Bot rounds, Raid toggle, Epic case drop. Debug hook also has "Case", "Raid",
   "Walls", "Drop".
+- Performance (`client/Lod`): picks a profile (High / Medium / Low from the graphics slider; phones max Medium,
+  Low on Automatic) and every 0.2s keeps only nearby lights on (closest LightBudget) and nearby particles/fire;
+  no bloom on Low. `Lod.Near(pos)` is the shared distance check: Moves skips far rigs, Effects skips far
+  spinners/rainbows, KnifeTrails thins its stream. Rigs (guards, burglars, bots, shopkeepers) stream Atomic.
+  Patrolling guards step at 20 Hz, chasing ones every frame. Avoid adding per-object lights where neon will do.
 - Phones: `Ui.Phone` (touch, no keyboard) switches every HUD piece to a compact layout clear of Roblox's thumbstick
   (bottom left) and jump button (bottom right); `Ui.iconOnly` for menu buttons. Landscape is forced
   (PlayerGui.ScreenOrientation). Studio preview: ReplicatedStorage `DebugPhone = true` (draws touch-control ghosts).

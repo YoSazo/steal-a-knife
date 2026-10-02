@@ -275,10 +275,15 @@ function Raid.Init()
 
 	local camera = workspace.CurrentCamera
 	local baseFov = 70
+	local barrierTimer = 0
 	RunService.RenderStepped:Connect(function(dt: number)
 		-- Repair button
-		repairButton.Visible = nearOwnGate()
-		refreshBarriers()
+		barrierTimer += dt
+		if barrierTimer >= 0.1 then
+			barrierTimer = 0
+			repairButton.Visible = nearOwnGate()
+			refreshBarriers()
+		end
 		-- Aura pressure
 		local slow = player:GetAttribute("AuraSlow")
 		local pressure = if type(slow) == "number" then math.clamp((1 - slow) / 0.6, 0, 1) else 0

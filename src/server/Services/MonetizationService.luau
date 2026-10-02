@@ -15,6 +15,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
 local Net = require(script.Parent.Parent.Remotes)
@@ -142,7 +143,7 @@ local function grantProduct(player: Player, product: Monetization.Product): bool
 		local cash = GameConfig.Pay(product.Cash, BaseService.RackIncome(player))
 		DataService.AddCash(player, cash)
 		Net.Remotes.Effect:FireClient(player, "CashBurst", nil, cash)
-		table.insert(got, `${cash}`)
+		table.insert(got, `{Format.Cash(cash)}`)
 	end
 	if product.Tickets then
 		local amount = product.Tickets
@@ -158,15 +159,33 @@ local function grantProduct(player: Player, product: Monetization.Product): bool
 	if key == "Mount" then
 		if profile.Slots < GameConfig.MaxSlots then
 			DataService.Update(player, function(p)
-				p.Slots += 1
+				p.Slots = math.min(GameConfig.MaxSlots, p.Slots + GameConfig.SlotsPerFloor)
 			end)
 			BaseService.RefreshRack(player)
-			table.insert(got, "another mount")
+			table.insert(got, "a new vault floor")
 		else
 			-- Already maxed: their Robux turn into the cash a mount would have cost
 			local value = GameConfig.SlotCost(profile.Slots)
 			DataService.AddCash(player, value)
-			table.insert(got, `${value} (your wall was already maxed)`)
+			table.insert(got, `{Format.Cash(value)} (your vault was already maxed)`)
+		end
+	elseif key == "HealthBoost" then
+		local before = profile.HealthLevel
+		local after = math.min(before + 3, GameConfig.Health.MaxLevel)
+		if after > before then
+			DataService.Update(player, function(p)
+				p.HealthLevel = after
+			end)
+			table.insert(got, `+{after - before} Health levels`)
+		end
+		-- Anything past the max comes back as the cash those levels would have cost
+		local refund = 0
+		for level = after, before + 2 do
+			refund += GameConfig.HealthCost(level)
+		end
+		if refund > 0 then
+			DataService.AddCash(player, refund)
+			table.insert(got, `{Format.Cash(refund)} (health was maxed)`)
 		end
 	elseif key == "Repair" then
 		RaidService.RepairFull(player)
@@ -191,7 +210,7 @@ local function grantProduct(player: Player, product: Monetization.Product): bool
 		table.insert(got, "a full free chest")
 	elseif key == "BloodMoon" then
 		RaidService.Summon(player)
-		table.insert(got, "the Blood Moon")
+		table.insert(got, "the Thief Moon")
 	end
 	if product.OneTime then
 		DataService.Update(player, function(p)

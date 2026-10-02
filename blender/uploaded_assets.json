@@ -120,29 +120,29 @@
     "uploaded": "2026-10-01"
   },
   "Prop_HairLong": {
-    "assetId": "136567144406005",
+    "assetId": "112611985658179",
     "file": "blender/exports/props/HairLong.fbx",
-    "uploaded": "2026-10-01 13:27"
+    "uploaded": "2026-10-02 00:24"
   },
   "Prop_HairBob": {
-    "assetId": "91546743809972",
+    "assetId": "114380105183409",
     "file": "blender/exports/props/HairBob.fbx",
-    "uploaded": "2026-10-01 13:27"
+    "uploaded": "2026-10-02 00:24"
   },
   "Prop_HairSpiky": {
-    "assetId": "98535037835669",
+    "assetId": "127024713290902",
     "file": "blender/exports/props/HairSpiky.fbx",
-    "uploaded": "2026-10-01 13:27"
+    "uploaded": "2026-10-02 00:24"
   },
   "Prop_HairPonytail": {
-    "assetId": "126805141130289",
+    "assetId": "111388649069706",
     "file": "blender/exports/props/HairPonytail.fbx",
-    "uploaded": "2026-10-01 13:27"
+    "uploaded": "2026-10-02 00:24"
   },
   "Prop_HairSwoop": {
-    "assetId": "126028224865295",
+    "assetId": "102188192503283",
     "file": "blender/exports/props/HairSwoop.fbx",
-    "uploaded": "2026-10-01 13:28"
+    "uploaded": "2026-10-02 00:24"
   },
   "Prop_Beanie": {
     "assetId": "73867157958772",
@@ -183,5 +183,125 @@
     "assetId": "117863373500093",
     "file": "blender/exports/props/Coin.fbx",
     "uploaded": "2026-10-01 14:07"
+  },
+  "PocketKnife": {
+    "assetId": "123252623211668",
+    "file": "blender/exports/PocketKnife.fbx",
+    "uploaded": "2026-10-01 20:02"
+  },
+  "ThornDagger": {
+    "assetId": "114130954490464",
+    "file": "blender/exports/ThornDagger.fbx",
+    "uploaded": "2026-10-01 20:02"
+  },
+  "BoneCarver": {
+    "assetId": "123245750602214",
+    "file": "blender/exports/BoneCarver.fbx",
+    "uploaded": "2026-10-01 20:02"
+  },
+  "Reaper": {
+    "assetId": "109711859868659",
+    "file": "blender/exports/Reaper.fbx",
+    "uploaded": "2026-10-01 20:02"
+  },
+  "MagmaCleaver": {
+    "assetId": "103218405080426",
+    "file": "blender/exports/MagmaCleaver.fbx",
+    "uploaded": "2026-10-01 20:03"
+  },
+  "DemonHorn": {
+    "assetId": "81063445048139",
+    "file": "blender/exports/DemonHorn.fbx",
+    "uploaded": "2026-10-01 20:03"
+  },
+  "ZeusBolt": {
+    "assetId": "113257051546229",
+    "file": "blender/exports/ZeusBolt.fbx",
+    "uploaded": "2026-10-01 20:03"
+  },
+  "AthenaBlade": {
+    "assetId": "113827953876893",
+    "file": "blender/exports/AthenaBlade.fbx",
+    "uploaded": "2026-10-01 20:03"
+  },
+  "OlympusEdge": {
+    "assetId": "90727035387819",
+    "file": "blender/exports/OlympusEdge.fbx",
+    "uploaded": "2026-10-01 20:03"
+  },
+  "HaloBlade": {
+    "assetId": "100462924686198",
+    "file": "blender/exports/HaloBlade.fbx",
+    "uploaded": "2026-10-01 20:04"
+  },
+  "SeraphSword": {
+    "assetId": "128528718018704",
+    "file": "blender/exports/SeraphSword.fbx",
+    "uploaded": "2026-10-01 20:04"
+  },
+  "AngelFeather": {
+    "assetId": "98566674806465",
+    "file": "blender/exports/AngelFeather.fbx",
+    "uploaded": "2026-10-01 20:04"
+  },
+  "StarCleaver": {
+    "assetId": "95427113495523",
+    "file": "blender/exports/StarCleaver.fbx",
+    "uploaded": "2026-10-01 20:04"
+  },
+  "GalaxyKatana": {
+    "assetId": "114714296688621",
+    "file": "blender/exports/GalaxyKatana.fbx",
+    "uploaded": "2026-10-01 20:04"
+  },
+  "Prop_FlowerCrown": {
+    "assetId": "126560878631734",
+    "file": "blender/exports/props/FlowerCrown.fbx",
+    "uploaded": "2026-10-02 00:11"
+  },
+  "Prop_Monocle": {
+    "assetId": "121940294839455",
+    "file": "blender/exports/props/Monocle.fbx",
+    "uploaded": "2026-10-02 00:11"
+  },
+  "Prop_DevilHorns": {
+    "assetId": "92155045590242",
+    "file": "blender/exports/props/DevilHorns.fbx",
+    "uploaded": "2026-10-02 00:11"
+  },
+  "Prop_Crown": {
+    "assetId": "122205350993183",
+    "file": "blender/exports/props/Crown.fbx",
+    "uploaded": "2026-10-02 00:11"
+  },
+  "Prop_Halo": {
+    "assetId": "77429884398867",
+    "file": "blender/exports/props/Halo.fbx",
+    "uploaded": "2026-10-02 00:11"
+  },
+  "Prop_AngelWings": {
+    "assetId": "87420596355866",
+    "file": "blender/exports/props/AngelWings.fbx",
+    "uploaded": "2026-10-02 00:11"
+  },
+  "Prop_SpaceHelmet": {
+    "assetId": "82314148726826",
+    "file": "blender/exports/props/SpaceHelmet.fbx",
+    "uploaded": "2026-10-02 00:12"
+  },
+  "Prop_HairAfro": {
+    "assetId": "85140017767781",
+    "file": "blender/exports/props/HairAfro.fbx",
+    "uploaded": "2026-10-02 00:25"
+  },
+  "Prop_HairBuns": {
+    "assetId": "77147435745757",
+    "file": "blender/exports/props/HairBuns.fbx",
+    "uploaded": "2026-10-02 00:25"
+  },
+  "Prop_HairMessy": {
+    "assetId": "130600768737483",
+    "file": "blender/exports/props/HairMessy.fbx",
+    "uploaded": "2026-10-02 00:25"
   }
 }

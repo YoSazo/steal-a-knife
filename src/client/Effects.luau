@@ -15,6 +15,10 @@ local Knives = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 local Sounds = require(ReplicatedStorage.Shared.Config:WaitForChild("Sounds"))
 local GameConfig = require(ReplicatedStorage.Shared.Config:WaitForChild("GameConfig"))
 local Props = require(ReplicatedStorage.Shared:WaitForChild("Props"))
+local Format = require(ReplicatedStorage.Shared:WaitForChild("Format"))
+local Items = require(ReplicatedStorage.Shared:WaitForChild("Items"))
+local KnifeModel = require(ReplicatedStorage.Shared:WaitForChild("KnifeModel"))
+local Lod = require(script.Parent.Lod)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
 
@@ -237,7 +241,7 @@ local function flash(text: string?, strength: number, duration: number)
 	gui.Parent = player:WaitForChild("PlayerGui")
 	local frame = Instance.new("Frame")
 	frame.Size = UDim2.fromScale(1, 1)
-	frame.BackgroundColor3 = Color3.fromRGB(150, 0, 10)
+	frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- a white flash, not a red one
 	frame.BackgroundTransparency = 1 - strength
 	frame.Parent = gui
 	local info = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
@@ -320,7 +324,140 @@ local function pillar(position: Vector3, color: Color3, height: number, duration
 	Debris:AddItem(beam, duration + 0.1)
 end
 
+-- A copy of a knife flying in an arc from `from` to `to` (placing it, equipping it)
+local function flyKnife(item: string, from: Vector3, to: Vector3, duration: number, length: number)
+	local model = KnifeModel.Build(item, true)
+	KnifeModel.FitLength(model, length)
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+		elseif d:IsA("Trail") then
+			d.Enabled = true
+		end
+	end
+	model.Parent = workspace
+	local start = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		local t = math.min(1, (os.clock() - start) / duration)
+		local eased = 1 - (1 - t) ^ 2
+		local at = from:Lerp(to, eased) + Vector3.new(0, math.sin(t * math.pi) * 3, 0)
+		model:PivotTo(CFrame.new(at) * CFrame.Angles(0, t * math.pi * 2, math.rad(20)))
+		if t >= 1 then
+			connection:Disconnect()
+			model:Destroy()
+		end
+	end)
+end
+
 local handlers: { [string]: (...any) -> () } = {
+	-- Putting a stolen knife on your plate: it flies from your hands and lands with a burst
+	PlaceKnife = function(from: Vector3, to: Vector3, item: string)
+		if not Lod.Near(to) then
+			return
+		end
+		flyKnife(item, from, to, 0.45, 4)
+		task.delay(0.45, function()
+			Effects.Burst(to, Items.Color(item), 30, 14, 0.7)
+			Effects.Burst(to, Color3.fromRGB(110, 255, 110), 16, 10, 0.5)
+			Effects.Sound(Sounds.Cash, to, 0.8)
+		end)
+	end,
+	-- Equipping a knife: it flies off its plate into your hand, a ring of light, a big banner
+	Equipped = function(who: Player, item: string, from: Vector3?)
+		local character = who.Character
+		local hand = character
+			and (character:FindFirstChild("RightHand") or character:FindFirstChild("HumanoidRootPart")) :: BasePart?
+		if not hand then
+			return
+		end
+		local to = hand.Position
+		if from and Lod.Near(to) then
+			flyKnife(item, from, to, 0.4, 3)
+		end
+		task.delay(if from then 0.4 else 0, function()
+			Effects.Burst(to, Items.Color(item), 40, 18, 0.8)
+			Effects.Sound(Sounds.Unsheath, to, 1)
+		end)
+		if who ~= player then
+			return
+		end
+		-- Your own screen: the knife's name, big, in its colour, and its Murderer power
+		local gui = Instance.new("ScreenGui")
+		gui.Name = "EquipBanner"
+		gui.ResetOnSpawn = false
+		gui.DisplayOrder = 40
+		gui.Parent = player:WaitForChild("PlayerGui")
+		local function line(text: string, y: number, height: number, color: Color3): TextLabel
+			local label = Instance.new("TextLabel")
+			label.AnchorPoint = Vector2.new(0.5, 0.5)
+			label.Position = UDim2.fromScale(0.5, y)
+			label.Size = UDim2.fromOffset(700, height)
+			label.BackgroundTransparency = 1
+			label.Font = Enum.Font.FredokaOne
+			label.TextScaled = true
+			label.TextColor3 = color
+			label.Text = text
+			label.Parent = gui
+			local stroke = Instance.new("UIStroke")
+			stroke.Thickness = 3
+			stroke.Color = Color3.fromRGB(20, 16, 26)
+			stroke.Parent = label
+			return label
+		end
+		local parsed = Items.Parse(item)
+		local perk = parsed and parsed.Knife.Perk and GameConfig.Perks[parsed.Knife.Perk]
+		local labels = {
+			line("EQUIPPED", 0.3, 34, Color3.fromRGB(255, 230, 120)),
+			line(Items.DisplayName(item), 0.36, 56, Items.Color(item)),
+		}
+		if perk then
+			table.insert(
+				labels,
+				line(`🔪 Murderer power: {perk.DisplayName}`, 0.42, 30, Color3.fromRGB(255, 120, 140))
+			)
+		end
+		for _, label in labels do
+			local scale = Instance.new("UIScale")
+			scale.Scale = 0.4
+			scale.Parent = label
+			TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+		end
+		task.delay(2.2, function()
+			for _, label in labels do
+				TweenService:Create(label, TweenInfo.new(0.5), { TextTransparency = 1 }):Play()
+				local stroke = label:FindFirstChildOfClass("UIStroke")
+				if stroke then
+					TweenService:Create(stroke, TweenInfo.new(0.5), { Transparency = 1 }):Play()
+				end
+			end
+			task.wait(0.55)
+			gui:Destroy()
+		end)
+	end,
+	-- (Murderer only) a vanished innocent still leaves a faint shimmer
+	Shimmer = function(character: Model?, duration: number)
+		if not character or not character.Parent then
+			return
+		end
+		local highlight = Instance.new("Highlight")
+		highlight.FillColor = Color3.fromRGB(200, 220, 255)
+		highlight.FillTransparency = 0.88
+		highlight.OutlineColor = Color3.fromRGB(220, 235, 255)
+		highlight.OutlineTransparency = 0.65
+		highlight.DepthMode = Enum.HighlightDepthMode.Occluded
+		highlight.Adornee = character
+		highlight.Parent = character
+		Debris:AddItem(highlight, duration)
+	end,
+	-- Bought a Health level: a green burst over them
+	Heal = function(position: Vector3)
+		Effects.FloatText(position + Vector3.new(0, 4, 0), "+MAX HEALTH", Color3.fromRGB(110, 255, 140))
+		Effects.Sound(Sounds.Reveal, position, 0.5)
+	end,
 	-- Radar: outlines through walls, only on this client, for a few seconds
 	Radar = function(entries: { any }, duration: number)
 		Effects.Sound(Sounds.Sting, nil, 0.4)
@@ -361,7 +498,8 @@ local handlers: { [string]: (...any) -> () } = {
 		Effects.Sound(Sounds.Slash, position, 0.8)
 	end,
 	Hit = function(position: Vector3)
-		Effects.Burst(position, Color3.fromRGB(220, 30, 40), 30, 16, 0.7)
+		-- Cartoon impact sparks (no blood: keeps the game rated for younger players)
+		Effects.Burst(position, Color3.fromRGB(255, 235, 120), 24, 16, 0.6)
 	end,
 	Shield = function(position: Vector3)
 		Effects.Burst(position, Color3.fromRGB(90, 190, 255), 40, 20, 0.9)
@@ -389,7 +527,7 @@ local handlers: { [string]: (...any) -> () } = {
 		if os.clock() - lastCoinPredicted > 0.75 then
 			coinChime()
 		end
-		Effects.FloatText(position, `+${amount}`, Color3.fromRGB(255, 215, 60))
+		Effects.FloatText(position, `+${Format.Short(amount)}`, Color3.fromRGB(255, 215, 60))
 	end,
 	Deposit = function(who: Player, rarity: string)
 		local character = who.Character
@@ -524,7 +662,7 @@ local handlers: { [string]: (...any) -> () } = {
 			return
 		end
 		Effects.Burst(position + Vector3.new(0, 2, 0), Color3.fromRGB(110, 255, 110), 70, 30, 1)
-		Effects.FloatText(position + Vector3.new(0, 6, 0), `+${cash}`, Color3.fromRGB(110, 255, 110))
+		Effects.FloatText(position + Vector3.new(0, 6, 0), `+${Format.Short(cash)}`, Color3.fromRGB(110, 255, 110))
 		Effects.Sound(Sounds.Cash, nil, 0.9)
 	end,
 	IndexClaim = function(cash: number, speed: number)
@@ -533,7 +671,7 @@ local handlers: { [string]: (...any) -> () } = {
 		if root then
 			Effects.FloatText(
 				root.Position + Vector3.new(0, 3, 0),
-				`+${cash}  +{speed}⚡`,
+				`+${Format.Short(cash)}  +{Format.Short(speed)}⚡`,
 				Color3.fromRGB(255, 230, 90)
 			)
 			Effects.Burst(root.Position, Color3.fromRGB(80, 170, 255), 50, 20, 0.8)
@@ -576,6 +714,10 @@ function Effects.Init()
 		for instance, base in spinning do
 			if not instance.Parent then
 				spinning[instance] = nil
+				continue
+			end
+			-- Nobody near enough to notice it turning (LOD)
+			if not Lod.Near(base.Position) then
 				continue
 			end
 			-- Each one a little out of step with its neighbours
@@ -626,6 +768,10 @@ function Effects.Init()
 				rainbow[model] = nil
 				continue
 			end
+			local first = parts[1]
+			if first and not Lod.Near(first.Position) then
+				continue
+			end
 			for i, part in parts do
 				part.Color = Color3.fromHSV((t * 0.35 + i * 0.08) % 1, 0.75, 1)
 			end
@@ -633,6 +779,9 @@ function Effects.Init()
 		for ring, size in rings do
 			if not ring.Parent then
 				rings[ring] = nil
+				continue
+			end
+			if not Lod.Near(ring.Position) then
 				continue
 			end
 			local pulse = 1 + math.sin(t * 2.2 + size.Y) * 0.04
@@ -673,10 +822,10 @@ function Effects.Init()
 	local function roundLighting()
 		local inRound = player:GetAttribute("InRound") == true
 		local info = TweenInfo.new(1.2, Enum.EasingStyle.Quad)
-		Lighting.ExposureCompensation = 0.15
+		Lighting.ExposureCompensation = 0
 		local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
 		if bloom then
-			TweenService:Create(bloom, info, { Intensity = if inRound then 0.35 else 0.5 }):Play()
+			TweenService:Create(bloom, info, { Intensity = if inRound then 0.25 else 0.3 }):Play()
 		end
 	end
 	player:GetAttributeChangedSignal("InRound"):Connect(roundLighting)

@@ -7,6 +7,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
+
 local Ui = {}
 
 -- Phones (and tablets): touch with no keyboard. They get a compact layout that keeps clear of the
@@ -212,13 +214,7 @@ function Ui.badge(parent: GuiObject): TextLabel
 end
 
 function Ui.abbreviate(n: number): string
-	local suffixes = { "", "K", "M", "B", "T" }
-	local i = 1
-	while n >= 1000 and i < #suffixes do
-		n /= 1000
-		i += 1
-	end
-	return if i == 1 then tostring(math.floor(n)) else string.format("%.1f%s", n, suffixes[i])
+	return Format.Short(n)
 end
 
 function Ui.clock(seconds: number): string
@@ -251,7 +247,8 @@ local function updateScale()
 	local camera = workspace.CurrentCamera
 	local shortSide = math.min(camera.ViewportSize.X, camera.ViewportSize.Y)
 	-- Phones lay out for ~560 units of height so buttons stay thumb-sized (~36pt and up)
-	uiScale.Scale = if Ui.Phone then math.clamp(shortSide / 560, 0.55, 1) else math.clamp(shortSide / 800, 0.6, 1.2)
+	-- Desktop: compact, so the world gets the screen (about 0.7 on a 1080p window)
+	uiScale.Scale = if Ui.Phone then math.clamp(shortSide / 560, 0.55, 1) else math.clamp(shortSide / 1500, 0.5, 0.85)
 end
 -- Roblox games are played sideways: never let a phone turn this into portrait
 player:WaitForChild("PlayerGui").ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor

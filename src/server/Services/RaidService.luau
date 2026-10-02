@@ -10,7 +10,7 @@
 --   * a vault that just lost a knife is sealed for a while (GameConfig.Raid.RobbedSeal)
 --   * gates can't be touched while their owner is in a round, during a round, or while the owner
 --     still has the new-player shield
--- The Blood Moon (the "raid" in code) rises every few intermissions: burglars (NPCs) come for
+-- The Thief Moon (the "raid" in code) rises every few intermissions: burglars (NPCs) come for
 -- everyone's knives, gates take more damage, bounties double and anyone outside their own vault can
 -- be knocked down.
 -- Getting robbed gives you revenge: for a while the thief's vault is open to you.
@@ -23,6 +23,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local AnimLibrary = require(ReplicatedStorage.Shared.AnimLibrary)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
@@ -180,7 +181,7 @@ local function mayEnter(player: Player, base: MapService.BaseSite, owner: Player
 end
 
 -- Who hub knives (and home traps, Flash, Radar) can go after: intruders in someone else's vault
--- and anyone carrying loot, any time; during the Blood Moon anyone who isn't home
+-- and anyone carrying loot, any time; during the Thief Moon anyone who isn't home
 function RaidService.CanAttackPlayer(attacker: Player, victim: Player): boolean
 	if
 		ReplicatedStorage:GetAttribute("Phase") ~= "Intermission"
@@ -200,7 +201,29 @@ function RaidService.CanAttackPlayer(attacker: Player, victim: Player): boolean
 	if vaultOwner == victim then
 		return false -- safe at home
 	end
+	-- Hit my gate? Then you're fair game for me, anywhere in the hub, for a while
+	if RaidService.IsMarkedBy(victim, attacker) then
+		return true
+	end
 	return raiding or (vaultOwner ~= nil and vaultOwner ~= victim) or victim:GetAttribute("Carrying") ~= nil
+end
+
+-- Raiders: hitting someone's gate marks you as theirs to hunt (RaiderOf / RaiderUntil). Like the
+-- watchmen, the owner's knife does real damage to you - a starter knife takes a few hits, a great
+-- knife one-shots - and your Health level is what keeps you standing.
+function RaidService.IsMarkedBy(raider: Player, owner: Player): boolean
+	local until_ = raider:GetAttribute("RaiderUntil")
+	return raider:GetAttribute("RaiderOf") == owner.UserId and type(until_) == "number" and now() < until_
+end
+
+local function markRaider(raider: Player, owner: Player)
+	local fresh = not RaidService.IsMarkedBy(raider, owner)
+	raider:SetAttribute("RaiderOf", owner.UserId)
+	raider:SetAttribute("RaiderUntil", now() + CONFIG.RaiderMarkTime)
+	if fresh then
+		Net.Notify(raider, `You're raiding {owner.DisplayName}! They can fight back now - watch your health.`, "bad")
+		Net.Notify(owner, `{raider.DisplayName} is raiding you! Your knife hurts them now - take them out!`, "bad")
+	end
 end
 
 -- Gates ------------------------------------------------------------------------------------
@@ -257,6 +280,10 @@ local function damageGate(base: MapService.BaseSite, amount: number, by: string,
 	local health = before - amount
 	state.LastHit = now()
 	local owner = BaseService.OwnerOf(base)
+	local raider = attacker and Players:GetPlayerFromCharacter(attacker)
+	if raider and owner and raider ~= owner then
+		markRaider(raider, owner)
+	end
 	-- Someone just started on it: tell the owner straight away (not every hit)
 	if owner and now() - state.LastAlert > 12 then
 		state.LastAlert = now()
@@ -451,17 +478,35 @@ local function playerTargets(): { Targets.Target }
 				end
 				return true
 			end,
-			Hit = function(attacker: Player, _damage: number, _kind: string, from: Vector3)
-				-- Caught by the vault's owner (in their vault, or running off with their knife)?
-				-- Then it's not just a knockdown: the thief gets sent home
+			Hit = function(attacker: Player, damage: number, _kind: string, from: Vector3)
+				-- The vault's owner vs someone raiding them (marked at the gate, inside the vault, or
+				-- running off with the owner's knife): real damage, like a watchman
 				local _, vaultOwner = BaseService.BaseAt(root.Position)
-				local caught = vaultOwner == attacker or player:GetAttribute("StolenFrom") == attacker.UserId
-				-- The owner snatches their knife back before it hits the floor
-				local recovered = if caught then StealService.Recover(player, attacker) else nil
-				if not RaidService.Knockdown(player, from, attacker.DisplayName) then
-					return
-				end
-				if caught then
+				local caught = vaultOwner == attacker
+					or player:GetAttribute("StolenFrom") == attacker.UserId
+					or RaidService.IsMarkedBy(player, attacker)
+				local humanoid = character:FindFirstChildOfClass("Humanoid")
+				if caught and humanoid and humanoid.Health > 0 and not DataService.IsNewPlayer(player) then
+					-- A Shield eats one hit
+					local shieldUntil = character:GetAttribute("ShieldUntil")
+					if type(shieldUntil) == "number" and now() < shieldUntil then
+						character:SetAttribute("ShieldUntil", nil)
+						Net.Remotes.Effect:FireAllClients("Shield", root.Position)
+						return
+					end
+					local lethal = damage >= humanoid.Health
+					-- The owner snatches their knife back before the thief's body hits the floor
+					local recovered = if lethal then StealService.Recover(player, attacker) else nil
+					humanoid:TakeDamage(damage)
+					Net.Remotes.Effect:FireAllClients("Hit", root.Position)
+					Net.Remotes.Effect:FireClient(player, "Hurt", from)
+					Net.Remotes.Effect:FireClient(attacker, "Damage", root.Position + Vector3.new(0, 3, 0), damage)
+					if humanoid.Health > 0 then
+						Net.Animate(character, "Hurt")
+						return
+					end
+					player:SetAttribute("RaiderOf", nil)
+					player:SetAttribute("RaiderUntil", nil)
 					local bonus = if raiding then CONFIG.BloodMoonBounty else 1
 					local bounty = if recovered
 						then GameConfig.Pay(CONFIG.CatchBounty, Items.Income(recovered)) * bonus
@@ -469,26 +514,21 @@ local function playerTargets(): { Targets.Target }
 					DataService.AddCash(attacker, bounty)
 					Net.Remotes.Effect:FireClient(attacker, "CashBurst", root.Position, bounty)
 					if recovered then
-						Net.Notify(attacker, `Got your {Items.DisplayName(recovered)} back! Bounty +${bounty}`, "good")
+						Net.Notify(
+							attacker,
+							`Got your {Items.DisplayName(recovered)} back! Bounty +{Format.Cash(bounty)}`,
+							"good"
+						)
 					else
-						Net.Notify(attacker, `Intruder down! Bounty +${bounty}`, "good")
+						Net.Notify(attacker, `Raider down! Bounty +{Format.Cash(bounty)}`, "good")
 					end
+					Net.Notify(player, `{attacker.DisplayName} took you down defending their vault!`, "bad")
+					return
 				end
-				Net.Remotes.Effect:FireClient(
-					attacker,
-					"Damage",
-					root.Position + Vector3.new(0, 3, 0),
-					if caught then "CAUGHT!" else "KO!"
-				)
-				if caught then
-					Net.Notify(player, `{attacker.DisplayName} caught you! Back to your vault...`, "bad")
-					Net.Notify(attacker, `You caught {player.DisplayName}!`, "good")
-					task.delay(CONFIG.KnockdownTime, function()
-						if player.Parent and not player:GetAttribute("InRound") then
-							BaseService.TeleportHome(player)
-						end
-					end)
+				if not RaidService.Knockdown(player, from, attacker.DisplayName) then
+					return
 				end
+				Net.Remotes.Effect:FireClient(attacker, "Damage", root.Position + Vector3.new(0, 3, 0), "KO!")
 			end,
 		}
 		table.insert(list, target)
@@ -696,6 +736,7 @@ local function buildBurglar(name: string): Model
 	description.RightLegColor = black
 	local rig = Players:CreateHumanoidModelFromDescription(description, Enum.HumanoidRigType.R15)
 	rig.Name = name
+	rig.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- streams in whole, never half a body
 	rig:AddTag("Burglar")
 	local humanoid = rig:FindFirstChildOfClass("Humanoid") :: Humanoid
 	humanoid.DisplayName = name
@@ -824,7 +865,7 @@ killBurglar = function(b: Burglar, killer: Player?)
 	if killer then
 		local bounty = GameConfig.Pay(CONFIG.BurglarReward, BaseService.RackIncome(killer)) * CONFIG.BloodMoonBounty
 		DataService.AddCash(killer, bounty)
-		Net.Notify(killer, `You stopped {b.Name}! Bounty +${bounty}`, "good")
+		Net.Notify(killer, `You stopped {b.Name}! Bounty +{Format.Cash(bounty)}`, "good")
 	end
 end
 
@@ -863,7 +904,8 @@ local function stealableSlot(base: MapService.BaseSite): number?
 	end
 	local protected = BaseService.ProtectedItem(owner)
 	for slot, item in profile.Knives do
-		if slot <= profile.Slots and item ~= protected then
+		-- Burglars walk the ground floor only
+		if slot <= profile.Slots and slot <= MapService.SlotsPerFloor and item ~= protected then
 			return slot
 		end
 	end
@@ -886,7 +928,7 @@ local function pickTarget(except: MapService.BaseSite?): (MapService.BaseSite?, 
 			local any = false
 			if (takenFrom[base] or 0) < CONFIG.BurglarStealsPerVault then
 				for slot, item in profile.Knives do
-					if item ~= protected and slot <= profile.Slots then
+					if item ~= protected and slot <= profile.Slots and slot <= MapService.SlotsPerFloor then
 						table.insert(options, { Base = base, Slot = slot })
 						any = true
 					end
@@ -1216,7 +1258,7 @@ function RaidService.Start()
 		refreshGateBar(base)
 	end
 	Net.Announce(
-		"BLOOD MOON! Burglars are coming, gates are weak and bounties are doubled!",
+		"THIEF MOON! Burglars are coming, gates are weak and bounties are doubled!",
 		Color3.fromRGB(255, 60, 60),
 		3
 	)
@@ -1258,23 +1300,23 @@ function RaidService.Stop()
 			b.NextAction = 0
 		end
 	end
-	Net.Announce("The Blood Moon sets. The burglars are fleeing...", Color3.fromRGB(200, 200, 220), 1)
+	Net.Announce("The Thief Moon sets. The burglars are fleeing...", Color3.fromRGB(200, 200, 220), 1)
 	Net.Remotes.Effect:FireAllClients("RaidEnd")
 end
 
 -- Raids happen near the end of each intermission (GameConfig.Raid.StartBefore before the round)
--- Summon the Blood Moon (Robux): now if we can, otherwise as soon as the next intermission
+-- Summon the Thief Moon (Robux): now if we can, otherwise as soon as the next intermission
 -- allows; during one already it lasts a minute longer
 local pendingSummon: string? = nil
 function RaidService.Summon(player: Player)
 	if raiding then
 		raidEndsAt += 60
 		ReplicatedStorage:SetAttribute("RaidEndsAt", raidEndsAt)
-		Net.Announce(`🌕 {player.DisplayName} made the Blood Moon last longer!`, Color3.fromRGB(255, 70, 70), 2)
+		Net.Announce(`🌕 {player.DisplayName} made the Thief Moon last longer!`, Color3.fromRGB(255, 70, 70), 2)
 		return
 	end
 	pendingSummon = player.DisplayName
-	Net.Notify(player, "The Blood Moon will rise as soon as the next intermission allows", "info")
+	Net.Notify(player, "The Thief Moon will rise as soon as the next intermission allows", "info")
 end
 
 local function schedule()
@@ -1297,7 +1339,7 @@ local function schedule()
 				RaidService.Start()
 				if raiding then
 					raidedThisIntermission = true
-					Net.Announce(`🌕 {who} summoned the BLOOD MOON!`, Color3.fromRGB(255, 60, 60), 3)
+					Net.Announce(`🌕 {who} summoned the THIEF MOON!`, Color3.fromRGB(255, 60, 60), 3)
 				end
 			end
 			local bloodMoon = intermissions % CONFIG.Every == 0
@@ -1386,19 +1428,24 @@ function RaidService.Init()
 	Net.Remotes.RepairGate.OnServerEvent:Connect(onRepair)
 
 	-- Flash blinds burglars and raiders in front of you too
-	PowerService.OnFlash(function(flasher, origin, look, range, duration)
+	PowerService.OnFlash(function(flasher, origin, look, range, duration, burst)
 		for _, b in burglars do
 			local offset = b.Position - origin
-			if not b.Dead and offset.Magnitude < range and look:Dot(offset.Unit) > 0.7 then
+			if
+				not b.Dead
+				and offset.Magnitude < range
+				and (offset.Magnitude <= burst or look:Dot(offset.Unit) > 0.57)
+			then
 				b.StunnedUntil = now() + duration
 			end
 		end
-		if raiding then
+		-- Anyone you could hit (raiders marked on your gate, thieves, Thief Moon targets)
+		do
 			for _, player in Players:GetPlayers() do
 				local root = rootOf(player)
 				if root and RaidService.CanAttackPlayer(flasher, player) then
 					local offset = root.Position - origin
-					if offset.Magnitude < range and look:Dot(offset.Unit) > 0.7 then
+					if offset.Magnitude < range and (offset.Magnitude <= burst or look:Dot(offset.Unit) > 0.57) then
 						player:SetAttribute("StunnedUntil", now() + duration)
 						BaseService.RefreshWalkSpeed(player)
 						Net.Remotes.Effect:FireClient(player, "Blinded", duration)

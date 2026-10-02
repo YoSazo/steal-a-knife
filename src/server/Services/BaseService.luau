@@ -5,11 +5,13 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local Textures = require(ReplicatedStorage.Shared.Config.Textures)
+local Net = require(script.Parent.Parent.Remotes)
 local DataService = require(script.Parent.DataService)
 local MapService = require(script.Parent.MapService)
 local VaultWalls = require(script.Parent.VaultWalls)
@@ -28,6 +30,11 @@ BaseService.OnStealPrompt = nil :: ((Player, Player, number) -> ())?
 -- Set by RaidService: a vault's walls were rebuilt (new tier, or the vault changed hands)
 BaseService.OnWallsBuilt = nil :: ((MapService.BaseSite, Player?) -> ())?
 BaseService.OnUpgradeWalls = nil :: ((Player) -> ())?
+-- Set by StealService: the owner pressed Place on their next empty plate while carrying a knife
+BaseService.OnPlacePrompt = nil :: ((Player, number) -> ())?
+-- Set by UpgradeService: the owner pressed Upgrade Base at the sign by their gate
+BaseService.OnUpgradeBase = nil :: ((Player) -> ())?
+local placePrompts: { [Player]: ProximityPrompt } = {}
 
 -- Rebirths multiply everything a vault earns
 function BaseService.IncomeMultiplier(player: Player): number
@@ -98,7 +105,9 @@ function BaseService.RefreshWalls(base: MapService.BaseSite)
 	local owner = owners[base.Index]
 	local profile = owner and DataService.Get(owner)
 	local tier = if profile then profile.WallLevel else 1
-	local built = VaultWalls.Build(base.WallFolder, base.Frame, base.Color, tier)
+	local floors = if profile then GameConfig.FloorsFor(profile.Slots) else 1
+	MapService.SetFloors(base, floors)
+	local built = VaultWalls.Build(base.WallFolder, base.Frame, base.Color, tier, floors)
 	base.Gate = built.Gate
 	base.Blocker = built.Blocker
 	-- Fortified Vault pass: +50% gate health on every tier
@@ -113,7 +122,7 @@ function BaseService.RefreshWalls(base: MapService.BaseSite)
 	if owner and nextTier then
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.Name = "UpgradeWalls"
-		prompt.ActionText = `Upgrade Walls (${nextTier.Cost})`
+		prompt.ActionText = `Upgrade Walls ({Format.Cash(nextTier.Cost)})`
 		prompt.ObjectText = `{GameConfig.Walls[tier].Name} - {GameConfig.Walls[tier].GateHealth} HP`
 		prompt.KeyboardKeyCode = Enum.KeyCode.G
 		prompt.GamepadKeyCode = Enum.KeyCode.ButtonY
@@ -135,6 +144,31 @@ function BaseService.RefreshWalls(base: MapService.BaseSite)
 			end
 		end)
 		prompt.Parent = base.Blocker
+	end
+	-- The Upgrade Base sign by the gate: the owner buys the next floor there
+	local upgradeSign = base.Folder:FindFirstChild("UpgradeSign")
+	local board = upgradeSign and upgradeSign:FindFirstChild("Board") :: BasePart?
+	if board then
+		local old = board:FindFirstChild("UpgradeBase")
+		if old then
+			old:Destroy()
+		end
+		if owner then
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.Name = "UpgradeBase"
+			prompt.ActionText = "Upgrade Base"
+			prompt.ObjectText = "+1 floor, 10 more plates"
+			prompt.HoldDuration = 0.3
+			prompt.MaxActivationDistance = 10
+			prompt.RequiresLineOfSight = false
+			prompt:SetAttribute("Owner", owner.UserId)
+			prompt.Triggered:Connect(function(player)
+				if player == owner and not player:GetAttribute("InRound") and BaseService.OnUpgradeBase then
+					BaseService.OnUpgradeBase(player)
+				end
+			end)
+			prompt.Parent = board
+		end
 	end
 	-- The vault's sign rides on top of its back wall
 	base.SignPart.CFrame = base.Frame * CFrame.new(0, built.BackHeight + 2.4, -22)
@@ -167,7 +201,32 @@ function BaseService.TeleportHome(player: Player)
 		return
 	end
 	local base = baseOf[player]
-	character:PivotTo(if base then base.Spawn else MapService.LobbySpawn)
+	local destination = if base then base.Spawn else MapService.LobbySpawn
+	task.spawn(function()
+		-- Load the vault on their client first so StreamingEnabled doesn't pause them on arrival,
+		-- but never wait long: a slow stream must not leave them stranded
+		local streamed = false
+		task.spawn(function()
+			pcall(player.RequestStreamAroundAsync, player, destination.Position, 3)
+			streamed = true
+		end)
+		local started = os.clock()
+		while not streamed and os.clock() - started < 1.5 do
+			task.wait()
+		end
+		-- Move them, and make sure it stuck (their client owns the character and can fight a move)
+		for _ = 1, 3 do
+			if not character.Parent then
+				return
+			end
+			character:PivotTo(destination)
+			task.wait(0.4)
+			local root = character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if not root or (root.Position - destination.Position).Magnitude < 30 then
+				return
+			end
+		end
+	end)
 end
 
 -- (Knife trails are bought - GameConfig.Trails, profile.TrailLevel - and drawn by client/KnifeTrails)
@@ -180,9 +239,13 @@ function BaseService.RefreshWalkSpeed(player: Player)
 	end
 	local profile = DataService.Get(player)
 	local speed = GameConfig.WalkSpeedFor(if profile then profile.Speed else 0)
+	-- Slow mode: plain walking speed, for getting around your vault without overshooting
+	if player:GetAttribute("SlowMode") then
+		speed = GameConfig.WalkSpeedFor(0)
+	end
 	if player:GetAttribute("InRound") then
 		speed = if player:GetAttribute("Role") == "Murderer"
-			then GameConfig.MurdererWalkSpeed
+			then (if player:GetAttribute("KnifeOut") then GameConfig.MurdererWalkSpeed else GameConfig.RoundWalkSpeed)
 			else GameConfig.RoundWalkSpeed
 		-- Sneakers and knife perks (both set by RoundService, cleared when the round ends)
 		speed += (player:GetAttribute("RoundSpeedBonus") or 0) :: number
@@ -211,21 +274,31 @@ local function nameplate(parent: Instance, adornee: BasePart, item: string, perS
 	local parsed = Items.Parse(item) :: Items.Item
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "Nameplate"
-	gui.Size = UDim2.fromOffset(200, 64)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, 3.2, 0)
-	gui.MaxDistance = 70
+	gui.Size = UDim2.fromOffset(170, 54)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, 4.4, 0)
+	gui.MaxDistance = 40
 	gui.LightInfluence = 0
 	gui.Adornee = adornee
 	gui.Parent = parent
 	local lines = {
-		{ Text = Items.DisplayName(item), Color = Items.Color(item), Height = 24 },
+		{ Text = parsed.Knife.Rarity, Color = Knives.RarityColors[parsed.Knife.Rarity], Height = 16 },
+		{ Text = Items.DisplayName(item), Color = Color3.new(1, 1, 1), Height = 20 },
 		{
-			Text = parsed.Knife.Rarity,
-			Color = Color3.fromRGB(230, 230, 240):Lerp(Knives.RarityColors[parsed.Knife.Rarity], 0.6),
-			Height = 16,
+			Text = `{Format.Cash(math.floor(perSecond * 10 + 0.5) / 10)}/s`,
+			Color = Color3.fromRGB(110, 255, 110),
+			Height = 18,
 		},
-		{ Text = `${math.floor(perSecond * 10 + 0.5) / 10}/s`, Color = Color3.fromRGB(120, 255, 120), Height = 24 },
 	}
+	-- Its Murderer power, so you know what it does in a round
+	local perk = parsed.Knife.Perk and GameConfig.Perks[parsed.Knife.Perk]
+	if perk then
+		table.insert(lines, 1, {
+			Text = `🔪 {perk.DisplayName} · Murderer power`,
+			Color = Color3.fromRGB(255, 120, 140),
+			Height = 15,
+		})
+		gui.Size = UDim2.fromOffset(190, 70)
+	end
 	local y = 0
 	for _, line in lines do
 		local label = Instance.new("TextLabel")
@@ -248,9 +321,6 @@ end
 -- light beam over each pedestal grows with it too (RefreshRack).
 local function aura(folder: Instance, model: Model, base: MapService.BaseSite, item: string, color: Color3)
 	local power = Items.AuraPower(item)
-	if power < 0.5 then
-		return
-	end
 	local boxCF, boxSize = model:GetBoundingBox()
 	local anchor = Instance.new("Part")
 	anchor.Name = "Aura"
@@ -262,6 +332,56 @@ local function aura(folder: Instance, model: Model, base: MapService.BaseSite, i
 	anchor.Size = boxSize
 	anchor.CFrame = boxCF
 	anchor.Parent = folder
+	-- Every knife pays: little bills float up off it (more of them on better knives)
+	local money = Instance.new("ParticleEmitter")
+	money.Name = "Money"
+	money.Texture = Textures.Toy.Money
+	money.LightInfluence = 0
+	money.Rate = 0.8 + power * 0.35
+	money.Lifetime = NumberRange.new(1.4, 2)
+	money.Speed = NumberRange.new(2, 3)
+	money.SpreadAngle = Vector2.new(25, 25)
+	money.EmissionDirection = Enum.NormalId.Top
+	money.Rotation = NumberRange.new(-20, 20)
+	money.RotSpeed = NumberRange.new(-40, 40)
+	money.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.15, 0.7),
+		NumberSequenceKeypoint.new(1, 0.6),
+	})
+	money.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.75, 0),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	money.Parent = anchor
+	-- And a soft swirl turning around it in the knife's own colour
+	local swirl = Instance.new("ParticleEmitter")
+	swirl.Name = "Swirl"
+	swirl.Texture = Textures.Toy.Swirl
+	swirl.Color = ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.2))
+	swirl.LightEmission = 0.6
+	swirl.LightInfluence = 0
+	swirl.LockedToPart = true
+	swirl.Rate = 1.4
+	swirl.Lifetime = NumberRange.new(1.6)
+	swirl.Speed = NumberRange.new(0)
+	swirl.Rotation = NumberRange.new(0, 360)
+	swirl.RotSpeed = NumberRange.new(160, 200)
+	swirl.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 2.5),
+		NumberSequenceKeypoint.new(1, 4.5 + math.min(power, 8) * 0.25),
+	})
+	swirl.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.3, 0.45),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	swirl.ZOffset = -1
+	swirl.Parent = anchor
+	if power < 0.5 then
+		return
+	end
 	local sparks = Instance.new("ParticleEmitter")
 	sparks.Name = "Sparks"
 	sparks.Texture = Textures.Sparkle
@@ -386,23 +506,26 @@ function BaseService.RefreshRack(player: Player)
 			end
 		end
 	end
+	-- Bought a floor: the vault grows (and its frame with it)
+	if base.Blocker:GetAttribute("Floors") ~= GameConfig.FloorsFor(profile.Slots) then
+		BaseService.RefreshWalls(base)
+	end
 	local equipped = profile.Equipped
 	local protected = BaseService.ProtectedItem(player)
 	local multiplier = BaseService.IncomeMultiplier(player)
 	for slot, pad in base.SlotPads do
 		local rim = base.SlotRims[slot]
 		local unlocked = slot <= profile.Slots
-		-- Locked pedestals stay dark; unlocked empty ones glow faintly
-		pad.Color = if unlocked then Color3.fromRGB(78, 70, 92) else Color3.fromRGB(34, 32, 40)
-		rim.Color = if unlocked then Color3.fromRGB(70, 90, 110) else Color3.fromRGB(26, 24, 30)
-		rim.Material = if unlocked then Enum.Material.Neon else Enum.Material.SmoothPlastic
+		-- Tsunami plates: navy and cyan when unlocked, grey while locked
+		rim.Color = if unlocked then Color3.fromRGB(70, 214, 245) else Color3.fromRGB(150, 150, 160)
+		rim.Material = Enum.Material.SmoothPlastic
 		local item = profile.Knives[slot]
 		local parsed = item and Items.Parse(item)
 		if unlocked and item and parsed then
 			local knife = parsed.Knife
 			local model = KnifeModel.Build(item, true)
 			-- Bigger items float bigger (a Colossal towers over its pedestal)
-			KnifeModel.FitLength(model, 3.6 * (1 + (parsed.Size.Scale - 1) * 0.7))
+			KnifeModel.FitLength(model, 6 * (1 + (parsed.Size.Scale - 1) * 0.5))
 			-- Centre the blade over the pedestal, then let clients bob and turn it (tag Spin)
 			model:PivotTo(base.SlotCFrames[slot])
 			local boxCF = model:GetBoundingBox()
@@ -410,8 +533,11 @@ function BaseService.RefreshRack(player: Player)
 			model:AddTag("Spin")
 			model.Parent = folder
 			local glow = Items.Color(item)
-			rim.Color = if item == equipped then Color3.new(1, 1, 1) else glow
-			rim.Material = Enum.Material.Neon
+			-- The knife you fight with lights its plate up white
+			if item == equipped then
+				rim.Color = Color3.new(1, 1, 1)
+				rim.Material = Enum.Material.Neon
+			end
 			-- A beam of light up from the pedestal, and the label floating over it
 			local beam = Instance.new("Part")
 			beam.Name = "PedestalBeam"
@@ -428,6 +554,12 @@ function BaseService.RefreshRack(player: Player)
 			local _, knifeSize = model:GetBoundingBox()
 			local beamFrom = base.SlotCFrames[slot].Position.Y + knifeSize.Y / 2 + 0.6
 			local beamLength = 9 + Items.AuraPower(item) * 1.5
+			-- On the lower floors the beam stops under the deck above
+			local level = math.floor((slot - 1) / MapService.SlotsPerFloor) + 1
+			if level < MapService.Floors then
+				local ceiling = rim.Position.Y + MapService.FloorHeight - 2.2
+				beamLength = math.max(1, math.min(beamLength, ceiling - beamFrom))
+			end
 			beam.Size = Vector3.new(beamLength, 0.9, 0.9)
 			beam.CFrame = CFrame.new(Vector3.new(rim.Position.X, beamFrom + beamLength / 2, rim.Position.Z))
 				* CFrame.Angles(0, 0, math.rad(90))
@@ -445,7 +577,9 @@ function BaseService.RefreshRack(player: Player)
 			local name = Items.DisplayName(item)
 			local equip = makePrompt(pad, {
 				ActionText = if item == equipped then "Equipped" else "Equip",
-				ObjectText = `{name} · Damage {Items.Damage(item)} · +${Items.Income(item) * multiplier}/s`,
+				ObjectText = if knife.Perk and GameConfig.Perks[knife.Perk]
+					then `{name} · Murderer power: {GameConfig.Perks[knife.Perk].DisplayName}`
+					else `{name} · Damage {Items.Damage(item)} · +{Format.Cash(Items.Income(item) * multiplier)}/s`,
 			})
 			equip:SetAttribute("Owner", player.UserId)
 			equip.Triggered:Connect(function(who)
@@ -454,7 +588,7 @@ function BaseService.RefreshRack(player: Player)
 				end
 			end)
 			local sell = makePrompt(pad, {
-				ActionText = `Sell ${math.floor(Items.Income(item) * GameConfig.SellSeconds)}`,
+				ActionText = `Sell {Format.Cash(math.floor(Items.Income(item) * GameConfig.SellSeconds))}`,
 				ObjectText = name,
 				HoldDuration = 1,
 				KeyboardKeyCode = Enum.KeyCode.F,
@@ -485,6 +619,27 @@ function BaseService.RefreshRack(player: Player)
 			end
 		end
 	end
+	-- The next empty plate takes the knife you're carrying: "Place Knife" (only while carrying one)
+	placePrompts[player] = nil
+	local nextSlot = #profile.Knives + 1
+	local nextPad = base.SlotPads[nextSlot]
+	if nextPad and nextSlot <= profile.Slots then
+		local place = makePrompt(nextPad, {
+			ActionText = "Place Knife",
+			ObjectText = "",
+			HoldDuration = 0,
+			MaxActivationDistance = 12,
+		})
+		place:SetAttribute("Owner", player.UserId)
+		local carrying = player:GetAttribute("Carrying")
+		place.Enabled = type(carrying) == "string" and carrying:sub(1, 5) ~= "Case:"
+		place.Triggered:Connect(function(who)
+			if who == player and BaseService.OnPlacePrompt then
+				BaseService.OnPlacePrompt(player, nextSlot)
+			end
+		end)
+		placePrompts[player] = place
+	end
 	player:SetAttribute("Income", rackIncome(player))
 	base.TreadmillSign.Text = GameConfig.Treadmills[profile.TreadmillLevel].Name
 end
@@ -500,6 +655,13 @@ local function claimBase(player: Player)
 			folder.Parent = workspace:FindFirstChild("Map")
 			rackModels[player] = folder
 			player:SetAttribute("VaultIndex", i)
+			player:GetAttributeChangedSignal("Carrying"):Connect(function()
+				local place = placePrompts[player]
+				local carrying = player:GetAttribute("Carrying")
+				if place and place.Parent then
+					place.Enabled = type(carrying) == "string" and carrying:sub(1, 5) ~= "Case:"
+				end
+			end)
 			BaseService.RefreshRack(player)
 			BaseService.RefreshWalls(base)
 			return
@@ -547,6 +709,25 @@ local function onCharacterAdded(player: Player, character: Model)
 end
 
 function BaseService.Init()
+	Net.Remotes.SlowMode.OnServerEvent:Connect(function(player: Player, on: unknown)
+		player:SetAttribute("SlowMode", if on == true then true else nil)
+		BaseService.RefreshWalkSpeed(player)
+	end)
+	-- The hub floats in space: anyone who falls off the island is caught and sent home (whatever
+	-- they were carrying drops where they fell, like any other fall)
+	task.spawn(function()
+		while true do
+			task.wait(0.5)
+			for _, player in Players:GetPlayers() do
+				local character = player.Character
+				local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if root and root.Position.Y < -45 and not player:GetAttribute("InRound") then
+					root.AssemblyLinearVelocity = Vector3.zero
+					BaseService.TeleportHome(player)
+				end
+			end
+		end
+	end)
 	DataService.PlayerLoaded:Connect(function(player: Player)
 		claimBase(player)
 		if player.Character then
@@ -634,18 +815,72 @@ function BaseService.Init()
 		end
 	end)
 
-	-- Pay every rack once a second
+	-- Every knife earns onto its own cash pad once a second (Tsunami style); the pads show what's
+	-- waiting
 	task.spawn(function()
 		while true do
 			task.wait(1)
-			for player in baseOf do
-				local income = rackIncome(player)
+			for player, base in baseOf do
+				local profile = DataService.Get(player)
+				if not profile then
+					continue
+				end
+				local multiplier = BaseService.IncomeMultiplier(player)
 				local boostUntil = player:GetAttribute("BoostUntil")
 				if type(boostUntil) == "number" and workspace:GetServerTimeNow() < boostUntil then
-					income *= GameConfig.BoostMultiplier
+					multiplier *= GameConfig.BoostMultiplier
 				end
-				if income > 0 then
-					DataService.AddCash(player, income)
+				DataService.Update(player, function(p)
+					for slot, item in p.Knives do
+						if slot > p.Slots then
+							break
+						end
+						p.Pending[slot] = (p.Pending[slot] or 0) + Items.Income(item) * multiplier
+					end
+				end)
+				for slot, label in base.CashLabels do
+					local waiting = profile.Pending[slot] or 0
+					-- "$18.85" over "Qd", like Tsunami's pads
+					local text = if waiting > 0 and slot <= profile.Slots then Format.Cash(waiting) else ""
+					local number, suffix = text:match("^(%$[%d%.]+)(.*)$")
+					label.Text = if number and suffix and suffix ~= "" then number .. "\n" .. suffix else text
+				end
+			end
+		end
+	end)
+
+	-- Walking over a cash pad collects it (only the owner's own pads)
+	task.spawn(function()
+		while true do
+			task.wait(0.15)
+			for player, base in baseOf do
+				local profile = DataService.Get(player)
+				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if not profile or not root or player:GetAttribute("InRound") then
+					continue
+				end
+				if not MapService.InBounds(base.Bounds, root.Position, 2) then
+					continue
+				end
+				for slot, pad in base.CashPads do
+					local waiting = profile.Pending[slot] or 0
+					if waiting <= 0 or not pad.Parent or not pad:IsDescendantOf(workspace) then
+						continue
+					end
+					local offset = pad.CFrame:PointToObjectSpace(root.Position)
+					if
+						math.abs(offset.X) < pad.Size.X / 2 + 0.8
+						and math.abs(offset.Z) < pad.Size.Z / 2 + 0.8
+						and offset.Y > 0
+						and offset.Y < 6
+					then
+						DataService.Update(player, function(p)
+							p.Pending[slot] = 0
+						end)
+						DataService.AddCash(player, waiting)
+						base.CashLabels[slot].Text = ""
+						Net.Remotes.Effect:FireClient(player, "CashBurst", pad.Position, waiting)
+					end
 				end
 			end
 		end

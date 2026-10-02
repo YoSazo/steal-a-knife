@@ -20,12 +20,23 @@ ns["clear_scene"]()
 import accessories  # noqa: E402
 
 skin = ns["material"]("Skin", ns["rgb"](245, 205, 140))
-for i, (name, build) in enumerate(accessories.ACCESSORIES.items()):
+ONLY = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+items = [(n, b) for n, b in accessories.ACCESSORIES.items() if not ONLY or n in ONLY]
+for i, (name, build) in enumerate(items):
     root = bpy.data.objects.new(name, None)
     bpy.context.collection.objects.link(root)
     build(root)
+    if name == "AngelWings":  # worn on the torso, not the head
+        for child in root.children:
+            child.location.z -= 1.45
     head = bmesh.new()
-    ns["add_box"](head, (1.16, 1.16, 1.18), (0, 0, 0))
+    accessories.hair.cap(head, thickness=0.0, edge=0.0, line=lambda t: -0.62, top_puff=0.0)
+    face_ink = bmesh.new()
+    for x in (-0.2, 0.2):
+        ns["add_box"](face_ink, (0.09, 0.02, 0.16), (x, -0.585, 0.2))
+        ns["add_box"](face_ink, (0.2, 0.02, 0.04), (x, -0.585, 0.34))
+    ns["add_box"](face_ink, (0.3, 0.02, 0.04), (0, -0.585, -0.12))
+    ns["mesh_object"]("Face", face_ink, ns["material"]("Ink", (0.05, 0.05, 0.05)), root)
     torso = bmesh.new()
     ns["add_box"](torso, (1.95, 1.0, 1.7), (0, 0, -1.45))
     ns["mesh_object"]("Head", head, skin, root)

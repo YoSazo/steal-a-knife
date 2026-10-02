@@ -33,6 +33,8 @@ type PowerConfig = {
 	Duration: { number },
 	Energy: { number },
 	Hits: { number }?,
+	RoundDuration: { number }?, -- rounds use this instead of Duration when set
+	RoundUses: number?, -- most uses per round
 	Cooldown: number,
 }
 
@@ -57,9 +59,10 @@ end
 
 local lastRequest: { [Player]: number } = {}
 local energy: { [Player]: number? } = {} -- in a round
+local roundUses: { [Player]: { [string]: number } } = {} -- powers used this round (RoundUses caps)
 -- Others who react to a Flash (RoundService: Murderer bots; RaidService: burglars and raiders).
 -- Called with (flasher, origin, look, range, duration).
-local flashHandlers: { (Player, Vector3, Vector3, number, number) -> () } = {}
+local flashHandlers: { (Player, Vector3, Vector3, number, number, number) -> () } = {}
 local traps: { Trap } = {}
 local decoys: { Decoy } = {}
 local effectsFolder: Folder
@@ -200,18 +203,23 @@ end
 
 -- The powers ------------------------------------------------------------------------------
 
--- Radar: see through walls. Rounds: the Murderer. Arena: every guard, outlined in the colour of
+-- Radar: see through walls. Rounds: the Murderer, once their knife is out (no free reveals). Arena: every guard, outlined in the colour of
 -- the knife it carries, plus knives lying on the floor.
 local function radar(player: Player, duration: number)
 	local entries: { any } = {} -- { Model, Color } pairs for the client
 	if player:GetAttribute("InRound") then
 		for _, other in Players:GetPlayers() do
-			if other:GetAttribute("InRound") and other:GetAttribute("Role") == "Murderer" and other.Character then
+			if
+				other:GetAttribute("InRound")
+				and other:GetAttribute("Role") == "Murderer"
+				and other:GetAttribute("KnifeOut")
+				and other.Character
+			then
 				table.insert(entries, { Model = other.Character, Color = Color3.fromRGB(255, 40, 50) })
 			end
 		end
 		for _, bot in CollectionService:GetTagged("RoundBot") do
-			if bot:GetAttribute("Role") == "Murderer" then
+			if bot:GetAttribute("Role") == "Murderer" and bot:GetAttribute("KnifeOut") then
 				table.insert(entries, { Model = bot, Color = Color3.fromRGB(255, 40, 50) })
 			end
 		end
@@ -243,6 +251,9 @@ local function radar(player: Player, duration: number)
 				table.insert(entries, { Model = drop, Color = Color3.fromRGB(255, 255, 255) })
 			end
 		end
+	end
+	if player:GetAttribute("InRound") and #entries == 0 then
+		Net.Notify(player, "No knife drawn... the Murderer is hiding among you.", "info")
 	end
 	Net.Remotes.Effect:FireClient(player, "Radar", entries, duration)
 end
@@ -692,23 +703,33 @@ local function mimic(player: Player, duration: number)
 	end)
 end
 
--- Flash: a blinding camera flash in a cone in front of you
-local FLASH_RANGE = 32
-local FLASH_CONE = math.cos(math.rad(40))
-local function flash(player: Player, duration: number)
+-- Flash: a blinding camera flash. Everything within FLASH_BURST of you is caught whichever way
+-- you face, and the beam reaches FLASH_RANGE in a wide cone where you aim (the client sends its
+-- camera aim: people mostly flash over their shoulder while running away).
+local FLASH_RANGE = 40
+local FLASH_BURST = 24
+local FLASH_CONE = math.cos(math.rad(55))
+local function flash(player: Player, duration: number, aim: unknown)
 	local root = rootOf(player)
 	if not root then
 		return
 	end
 	local origin = root.Position + Vector3.new(0, 1.5, 0)
 	local look = root.CFrame.LookVector
+	if typeof(aim) == "Vector3" then
+		local flat = Vector3.new((aim :: Vector3).X, 0, (aim :: Vector3).Z)
+		if flat.Magnitude > 0.01 and flat.Magnitude == flat.Magnitude then
+			look = flat.Unit
+		end
+	end
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = { effectsFolder, player.Character :: Model }
 	local function inCone(position: Vector3, model: Instance?): boolean
 		local offset = position - origin
 		local distance = offset.Magnitude
-		if distance > FLASH_RANGE or (distance > 1 and look:Dot(offset.Unit) < FLASH_CONE) then
+		local inBurst = distance <= FLASH_BURST
+		if distance > FLASH_RANGE or (not inBurst and look:Dot(offset.Unit) < FLASH_CONE) then
 			return false
 		end
 		-- Walls block the light
@@ -742,7 +763,7 @@ local function flash(player: Player, duration: number)
 		end
 	end
 	for _, handler in flashHandlers do
-		handler(player, origin, look, FLASH_RANGE, duration)
+		handler(player, origin, look, FLASH_RANGE, duration, FLASH_BURST)
 	end
 end
 
@@ -876,11 +897,13 @@ function PowerService.AddEnergy(player: Player, amount: number)
 	publishRound(player)
 end
 
-function PowerService.OnFlash(handler: (Player, Vector3, Vector3, number, number) -> ())
+-- handler(flasher, origin, look, range, duration, burst): anything within `burst` is caught
+-- whichever way the flasher faces; further out, only inside the cone along `look`
+function PowerService.OnFlash(handler: (Player, Vector3, Vector3, number, number, number) -> ())
 	table.insert(flashHandlers, handler)
 end
 
-local function usePower(player: Player, id: unknown, _aim: unknown)
+local function usePower(player: Player, id: unknown, aim: unknown)
 	if type(id) ~= "string" then
 		return
 	end
@@ -898,6 +921,15 @@ local function usePower(player: Player, id: unknown, _aim: unknown)
 		if player:GetAttribute("Role") == "Murderer" then
 			return -- the Murderer has their knife; powers are for innocents
 		end
+		if ReplicatedStorage:GetAttribute("Classic") then
+			Net.Notify(player, "CLASSIC round: no powers this time!", "bad")
+			return
+		end
+		-- One power per round (the first in your loadout), the same strength for everyone
+		if profile.Loadout[1] ~= id then
+			return
+		end
+		level = GameConfig.RoundPowerLevel
 		local have = energy[player]
 		local cost = stat(power.Energy, level)
 		if not have then
@@ -908,6 +940,14 @@ local function usePower(player: Player, id: unknown, _aim: unknown)
 			Net.Remotes.Effect:FireClient(player, "NoEnergy", id)
 			return
 		end
+		-- Some powers are capped per round (Vanish), so nobody can just stay invisible
+		local uses = roundUses[player] or {}
+		roundUses[player] = uses
+		if power.RoundUses and (uses[id] or 0) >= power.RoundUses then
+			Net.Notify(player, `{power.DisplayName} is used up for this round!`, "bad")
+			return
+		end
+		uses[id] = (uses[id] or 0) + 1
 		energy[player] = have - cost
 		publishRound(player)
 	else
@@ -919,9 +959,17 @@ local function usePower(player: Player, id: unknown, _aim: unknown)
 		player:SetAttribute(`PowerReady_{id}`, now + power.Cooldown)
 	end
 
-	local duration = stat(power.Duration, level)
+	local duration = stat(if inRound and power.RoundDuration then power.RoundDuration else power.Duration, level)
 	if id == "Vanish" then
 		Stealth.Vanish(player, duration)
+		if inRound then
+			-- The Murderer still catches a faint shimmer of you
+			for _, other in Players:GetPlayers() do
+				if other:GetAttribute("InRound") and other:GetAttribute("Role") == "Murderer" then
+					Net.Remotes.Effect:FireClient(other, "Shimmer", player.Character, duration)
+				end
+			end
+		end
 	elseif id == "Radar" then
 		radar(player, duration)
 	elseif id == "Trap" then
@@ -933,7 +981,7 @@ local function usePower(player: Player, id: unknown, _aim: unknown)
 	elseif id == "Mimic" then
 		mimic(player, duration)
 	elseif id == "Flash" then
-		flash(player, duration)
+		flash(player, duration, aim)
 	elseif id == "Barricade" then
 		barricade(player, duration, stat(power.Hits or { 3 }, level))
 	end
@@ -947,6 +995,7 @@ end
 
 -- Round start/end: hand out starting Energy, and clean everything up afterwards
 local function onRoundChanged(player: Player)
+	roundUses[player] = nil
 	if player:GetAttribute("InRound") then
 		energy[player] = if player:GetAttribute("Role") ~= "Murderer" then GameConfig.StartEnergy else nil
 	else
@@ -992,6 +1041,7 @@ function PowerService.Init()
 	Players.PlayerRemoving:Connect(function(player)
 		lastRequest[player] = nil
 		energy[player] = nil
+		roundUses[player] = nil
 		for _, entry in table.clone(decoys) do
 			if entry.Owner == player then
 				entry.Pop()

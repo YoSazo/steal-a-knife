@@ -18,6 +18,7 @@ local Ui = require(script.Parent.Ui)
 local Moves = require(script.Parent.Moves)
 local AnimLibrary = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("AnimLibrary"))
 local GameConfig = require(ReplicatedStorage.Shared:WaitForChild("Config"):WaitForChild("GameConfig"))
+local Textures = require(ReplicatedStorage.Shared.Config:WaitForChild("Textures"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
 
@@ -42,9 +43,9 @@ local function screenAim(): Vector2
 	return UserInputService:GetMouseLocation()
 end
 
-local function aimPoint(): Vector3
+local function aimPoint(at: Vector2?): Vector3
 	local camera = workspace.CurrentCamera
-	local screen = screenAim()
+	local screen = at or screenAim()
 	local ray = camera:ViewportPointToRay(screen.X, screen.Y)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
@@ -54,13 +55,13 @@ local function aimPoint(): Vector3
 end
 
 -- Direction from the character to what's under the cursor / crosshair, like MM2's knife throw
-local function aimDirection(): Vector3
+local function aimDirection(at: Vector2?): Vector3
 	local character = player.Character
 	local head = character and character:FindFirstChild("Head") :: BasePart?
 	if not head then
 		return workspace.CurrentCamera.CFrame.LookVector
 	end
-	local offset = aimPoint() - head.Position
+	local offset = aimPoint(at) - head.Position
 	return if offset.Magnitude > 0.1 then offset.Unit else workspace.CurrentCamera.CFrame.LookVector
 end
 
@@ -114,6 +115,69 @@ function Abilities.Init()
 		Text = "",
 		Visible = false,
 	}, gui)
+
+	-- The Murderer's perk: its Blender badge on the ability button, and a card above it that
+	-- explains the perk (passive perks get the card only)
+	local buttonIcon = Instance.new("ImageLabel")
+	buttonIcon.Name = "PerkIcon"
+	buttonIcon.AnchorPoint = Vector2.new(0, 0.5)
+	buttonIcon.Position = UDim2.new(0, -18, 0.5, 0)
+	buttonIcon.Size = UDim2.fromOffset(if Ui.Phone then 58 else 66, if Ui.Phone then 58 else 66)
+	buttonIcon.BackgroundTransparency = 1
+	buttonIcon.ZIndex = (button.ZIndex or 1) + 3
+	buttonIcon.Visible = false
+	buttonIcon.Parent = button
+	local perkCard = Instance.new("Frame")
+	perkCard.Name = "PerkCard"
+	perkCard.AnchorPoint = Vector2.new(1, 1)
+	perkCard.Position = if Ui.Phone then UDim2.new(1, -160, 1, -100) else UDim2.new(1, -20, 1, -262)
+	perkCard.Size = UDim2.fromOffset(260, 70)
+	perkCard.BackgroundColor3 = Color3.fromRGB(28, 20, 34)
+	perkCard.BackgroundTransparency = 0.15
+	perkCard.Visible = false
+	perkCard.Parent = gui
+	Ui.corner(perkCard, 14)
+	Ui.stroke(perkCard)
+	local cardIcon = Instance.new("ImageLabel")
+	cardIcon.Position = UDim2.fromOffset(4, 3)
+	cardIcon.Size = UDim2.fromOffset(64, 64)
+	cardIcon.BackgroundTransparency = 1
+	cardIcon.Parent = perkCard
+	local cardName = Ui.label({
+		Position = UDim2.fromOffset(74, 4),
+		Size = UDim2.new(1, -80, 0, 26),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = Color3.fromRGB(255, 90, 100),
+		Text = "",
+	}, perkCard)
+	Ui.textStroke(cardName, 2)
+	local cardText = Ui.label({
+		Position = UDim2.fromOffset(74, 30),
+		Size = UDim2.new(1, -80, 0, 36),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		TextScaled = false,
+		TextSize = 13,
+		TextWrapped = true,
+		Text = "",
+	}, perkCard)
+	Ui.textStroke(cardText, 1)
+	local function refreshPerk()
+		local id = player:GetAttribute("Perk")
+		local perk = type(id) == "string" and GameConfig.Perks[id] or nil
+		local icon = if type(id) == "string" then Textures.PerkIcons[id] else nil
+		perkCard.Visible = perk ~= nil and player:GetAttribute("InRound") == true
+		buttonIcon.Visible = icon ~= nil
+		if perk then
+			cardIcon.Image = icon or ""
+			buttonIcon.Image = icon or ""
+			cardName.Text = if perk.Passive then `{perk.DisplayName} (passive)` else perk.DisplayName
+			cardText.Text = perk.Description
+		end
+	end
+	player:GetAttributeChangedSignal("Perk"):Connect(refreshPerk)
+	player:GetAttributeChangedSignal("InRound"):Connect(refreshPerk)
+	refreshPerk()
 
 	-- Crosshair + charge ring, shown while winding up a throw
 	local crosshairGui = Instance.new("ScreenGui")
@@ -175,6 +239,29 @@ function Abilities.Init()
 	local function holdingMurderKnife(): boolean
 		local tool = knifeInHand()
 		return tool ~= nil and tool:GetAttribute("MurderKnife") == true
+	end
+
+	-- Spam Knife (always) / Hellfire (a few seconds after Q): no stab, every click throws a knife
+	-- straight at the cursor
+	local lastSpam = 0
+	local function spamMode(): boolean
+		if not holdingMurderKnife() then
+			return false
+		end
+		local until_ = player:GetAttribute("SpamUntil")
+		return type(until_) == "number" and workspace:GetServerTimeNow() < until_
+	end
+	local function spamThrow(at: Vector2?)
+		local now = os.clock()
+		if now - lastSpam < 0.1 then
+			return
+		end
+		lastSpam = now
+		local character = player.Character
+		if character then
+			Moves.Play(character, "Throw")
+		end
+		Remotes.Ability:FireServer(aimDirection(at), "Spam")
 	end
 
 	local function beginCharge(kind: string?)
@@ -256,6 +343,15 @@ function Abilities.Init()
 		if processed or not isPrimary(input) or not knifeInHand() then
 			return
 		end
+		if spamMode() then
+			-- A tap on a phone throws at the spot tapped
+			spamThrow(
+				if input.UserInputType == Enum.UserInputType.Touch
+					then Vector2.new(input.Position.X, input.Position.Y) + game:GetService("GuiService"):GetGuiInset()
+					else nil
+			)
+			return
+		end
 		primaryDown = input
 		local pressedAt = os.clock()
 		primaryAt = pressedAt
@@ -304,9 +400,14 @@ function Abilities.Init()
 	end)
 
 	Remotes:WaitForChild("AbilityState").OnClientEvent:Connect(function(name: string?, until_: number?)
+		-- The hub knife's throw never belongs in a round (a late message can't bring it back)
+		if name == "Throw Knife" and player:GetAttribute("InRound") then
+			name = nil
+		end
 		abilityName = name
 		readyAt = until_ or 0
-		button.Visible = name ~= nil
+		-- The hub throw is "hold click" with a mouse: the big button is only needed on touch screens
+		button.Visible = name ~= nil and (Ui.Phone or name ~= "Throw Knife")
 		button.BackgroundColor3 = if name == "Smoke Bomb"
 			then Color3.fromRGB(120, 120, 140)
 			else Color3.fromRGB(200, 40, 60)
@@ -332,6 +433,19 @@ function Abilities.Init()
 			else
 				button.Text = `[{key}] {abilityName}`
 				button.BackgroundTransparency = 0
+			end
+		end
+		-- Spam mode: a red crosshair on the cursor the whole time the knife is out
+		if not chargingSince then
+			local spamming = spamMode()
+			crosshairGui.Enabled = spamming
+			if spamming then
+				local at = screenAim()
+				ring.Position = UDim2.fromOffset(at.X, at.Y)
+				ring.Size = UDim2.fromOffset(40, 40)
+				ringStroke.Color = Color3.fromRGB(255, 70, 70)
+				fill.Size = UDim2.fromScale(0.3, 0.3)
+				fill.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
 			end
 		end
 		-- Crosshair follows the aim point; the ring fills as the arm cranks back

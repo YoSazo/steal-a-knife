@@ -1,0 +1,30 @@
+--!strict
+-- Hotbar icons for every knife (blender/scripts/render_knife_icons.py, uploaded). Tool.TextureId,
+-- so the backpack shows the knife instead of its name (MM2 style).
+
+return {
+	AngelFeather = "rbxassetid://81978611463973",
+	AthenaBlade = "rbxassetid://84222205741634",
+	BoneCarver = "rbxassetid://86364801842429",
+	Cleaver = "rbxassetid://131964431849952",
+	DemonHorn = "rbxassetid://109119989107463",
+	GalaxyKatana = "rbxassetid://140341218811836",
+	GoldenDagger = "rbxassetid://75436625020682",
+	HaloBlade = "rbxassetid://121459408641803",
+	HunterBlade = "rbxassetid://123959555519922",
+	InfernoFang = "rbxassetid://79873234147523",
+	Katana = "rbxassetid://82916092048746",
+	KitchenKnife = "rbxassetid://120610054111372",
+	Machete = "rbxassetid://137409163274553",
+	MagmaCleaver = "rbxassetid://111833017614966",
+	OlympusEdge = "rbxassetid://112430670376065",
+	PocketKnife = "rbxassetid://96392279925213",
+	Reaper = "rbxassetid://115319047930998",
+	RustyShank = "rbxassetid://96310763284939",
+	SeraphSword = "rbxassetid://122423271553167",
+	StarCleaver = "rbxassetid://101373974893032",
+	Switchblade = "rbxassetid://108859265694901",
+	ThornDagger = "rbxassetid://106701861356267",
+	VoidEdge = "rbxassetid://77434953061110",
+	ZeusBolt = "rbxassetid://90138601002361",
+} :: { [string]: string }

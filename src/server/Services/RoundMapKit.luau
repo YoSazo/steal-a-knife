@@ -303,7 +303,8 @@ function Kit.wall(
 			then Vector3.new(0, -0.4, DOOR_WIDTH / 2 - 1)
 			else Vector3.new(DOOR_WIDTH / 2 - 1, -0.4, 0)
 		ball(deco("Knob", Vector3.one * 0.45, leafCf * CFrame.new(knobOffset), rgb(212, 175, 80), Enum.Material.Metal))
-		local _ = leaf
+		leaf.CanCollide = true -- an open door you bump into, not walk through
+		leaf.CanQuery = true -- and thrown knives stick in it
 		cursor = d1
 	end
 	segment(cursor, b, 0, WALL_HEIGHT)

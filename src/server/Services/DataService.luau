@@ -41,8 +41,10 @@ export type Profile = {
 	DailyStreak: number, -- day of the 7-day login streak last claimed (0 = none yet)
 	LastDaily: number, -- the UTC day number it was claimed on
 	TrailLevel: number, -- highest knife trail bought (GameConfig.Trails), 0 = none
+	HealthLevel: number, -- max health upgrades bought (GameConfig.Health)
 	Receipts: { string }, -- recent Robux PurchaseIds already granted (ProcessReceipt is idempotent)
 	Bought: { string }, -- one-time Robux products already bought (Starter Pack)
+	Pending: { number }, -- money waiting on each slot's cash pad (BaseService), collected by walking over it
 }
 
 local STORE_NAME = "PlayerData_v1"
@@ -100,6 +102,8 @@ local function defaultProfile(): Profile
 		Receipts = {},
 		Bought = {},
 		TrailLevel = 0,
+		HealthLevel = 0,
+		Pending = {},
 	}
 end
 
@@ -113,13 +117,31 @@ local function reconcile(data: any): Profile
 			end
 		end
 	end
-	profile.Slots = math.clamp(profile.Slots, GameConfig.StartingSlots, GameConfig.MaxSlots)
+	-- Whole floors only (older saves bought single mounts: round up to the floor they started)
+	profile.Slots = math.clamp(
+		math.ceil(profile.Slots / GameConfig.SlotsPerFloor) * GameConfig.SlotsPerFloor,
+		GameConfig.StartingSlots,
+		GameConfig.MaxSlots
+	)
+	-- One number per slot, never negative or broken (a dense array saves cleanly)
+	local pending: { number } = {}
+	for slot = 1, GameConfig.MaxSlots do
+		local value = profile.Pending[slot]
+		pending[slot] = if type(value) == "number"
+				and value == value
+				and value >= 0
+				and value < math.huge
+			then value
+			else 0
+	end
+	profile.Pending = pending
 	profile.Speed = math.max(0, profile.Speed)
 	profile.TreadmillLevel = math.clamp(math.floor(profile.TreadmillLevel), 1, #GameConfig.Treadmills)
 	profile.Cash = math.max(0, profile.Cash)
 	profile.WallLevel = math.clamp(math.floor(profile.WallLevel), 1, #GameConfig.Walls)
 	profile.Rebirths = math.clamp(math.floor(profile.Rebirths), 0, GameConfig.Rebirth.Max)
 	profile.TrailLevel = math.clamp(math.floor(profile.TrailLevel), 0, #GameConfig.Trails)
+	profile.HealthLevel = math.clamp(math.floor(profile.HealthLevel), 0, GameConfig.Health.MaxLevel)
 	-- Drop knives that were removed from the catalog so nothing downstream sees an unknown name
 	local items = {}
 	for _, item in profile.Knives do
@@ -182,7 +204,9 @@ local function loadAsync(player: Player): Profile?
 	end
 	for attempt = 1, MAX_ATTEMPTS do
 		local lockedElsewhere = false
-		local forceLock = attempt == MAX_ATTEMPTS -- the other server is probably dead, take over
+		-- The other server is probably dead: take over. In Studio the "other server" is always the
+		-- previous playtest that was stopped before it could release, so don't make testers wait.
+		local forceLock = attempt == MAX_ATTEMPTS or (RunService:IsStudio() and attempt >= 2)
 		local ok, result = pcall(function()
 			return store:UpdateAsync(key(player), function(old: any)
 				old = old or {}
@@ -284,6 +308,7 @@ local function publish(player: Player, profile: Profile)
 	player:SetAttribute("NextFreeChest", profile.NextFreeChest)
 	player:SetAttribute("DailyStreak", profile.DailyStreak)
 	player:SetAttribute("TrailLevel", profile.TrailLevel)
+	player:SetAttribute("HealthLevel", profile.HealthLevel)
 	for _, bought in profile.Bought do
 		player:SetAttribute("Bought_" .. bought, true)
 	end

@@ -24,6 +24,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local AnimLibrary = require(ReplicatedStorage.Shared.AnimLibrary)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
@@ -42,6 +43,7 @@ local Sounds = require(ReplicatedStorage.Shared.Config.Sounds)
 local Disguises = require(script.Parent.Disguises)
 local Obstacles = require(script.Parent.Obstacles)
 local Revolver = require(script.Parent.Revolver)
+local StuckKnives = require(script.Parent.StuckKnives)
 local StealService = require(script.Parent.StealService)
 local RoundBots = require(script.Parent.RoundBots)
 local Offers = require(script.Parent.Offers)
@@ -80,12 +82,22 @@ type Round = {
 	PayScale: number, -- 1, or GameConfig.BotRoundPay with fewer than two real players
 	HumanKills: number, -- real players the Murderer got (bots don't count toward the wipe prize)
 	Connections: { RBXScriptConnection },
+	GunnerBot: Bot?, -- a bot Sheriff
+	ShotByBot: boolean, -- a bot shot the (player) Murderer: loot goes home like a hero's shot
+	AtRisk: { [Player]: string }, -- the knife each innocent loses if the Murderer gets them (shown at the start)
+	Classic: boolean, -- no powers, no perks, extra pay
 }
 
 local current: Round? = nil
 local rng = Random.new()
 local updateDread: (Round) -> ()
 local onMurderKill: (Round, Vector3) -> ()
+
+-- Hellfire's burst of click-throws (SpamUntil is a player attribute the client reads too)
+local function spamActive(player: Player): boolean
+	local until_ = player:GetAttribute("SpamUntil")
+	return type(until_) == "number" and workspace:GetServerTimeNow() < until_
+end
 -- Set by the Studio "Bot Round" buttons; used by the next round
 local botPlan: { Player: Player, Role: string }? = nil
 
@@ -145,6 +157,36 @@ local function eligiblePlayers(): { Player }
 	return list
 end
 
+-- One player's draw weight (luck meter, pass, a ticket waiting to be used)
+local function murdererWeight(player: Player): number
+	local profile = DataService.Get(player)
+	local weight = (1 + (if profile then profile.Luck else 0))
+		* (if player:GetAttribute("Pass_MurdererLuck") then 2 else 1)
+	return weight + (if profile and profile.Tickets > 0 then GameConfig.TicketWeight else 0)
+end
+
+-- Everyone's chance (0-100) of the knife next round, shown on their HUD (MurdererChance)
+local function publishChances()
+	local players = {}
+	for _, player in Players:GetPlayers() do
+		if DataService.Get(player) then
+			table.insert(players, player)
+		end
+	end
+	local total = 0
+	for _, player in players do
+		total += murdererWeight(player)
+	end
+	-- Alone, bots fill the round and one of them can draw the knife instead
+	if #players == 1 then
+		total += math.max(0, GameConfig.BotFill.Size - 1)
+	end
+	for _, player in players do
+		local chance = if total > 0 then murdererWeight(player) / total * 100 else 0
+		player:SetAttribute("MurdererChance", math.floor(chance + 0.5))
+	end
+end
+
 -- Luck meter + tickets. Everyone has at least weight 1 so a brand new player can still get picked.
 local function pickMurderer(participants: { Player }): Player
 	local weights, total = {}, 0
@@ -200,9 +242,12 @@ local function leaveRound(player: Player)
 	end
 	player:SetAttribute("InRound", nil)
 	player:SetAttribute("Role", nil)
+	player:SetAttribute("SpamUntil", nil)
+	player:SetAttribute("Perk", nil)
 	player:SetAttribute("RoundSpeedBonus", nil)
 	player:SetAttribute("PerkSpeed", nil)
 	player:SetAttribute("Dread", nil)
+	player:SetAttribute("KnifeOut", nil)
 	BaseService.RefreshWalkSpeed(player)
 end
 
@@ -265,6 +310,13 @@ local function lootKnife(round: Round, victim: Player)
 			break
 		end
 		local index = choices[rng:NextInteger(1, #choices)]
+		-- The knife they were shown at the start of the round goes first
+		local promised = round.AtRisk[victim]
+		local promisedAt = promised and table.find(profile.Knives, promised)
+		if promisedAt and promised ~= protected then
+			index = promisedAt
+			round.AtRisk[victim] = nil
+		end
 		local name = profile.Knives[index]
 		DataService.Update(victim, function(p)
 			table.remove(p.Knives, index)
@@ -298,11 +350,13 @@ local function giveKnife(player: Player, item: string)
 	else
 		local value = math.floor(Items.Income(item) * GameConfig.SellSeconds)
 		DataService.AddCash(player, value)
-		Net.Notify(player, `Rack full - {Items.DisplayName(item)} sold for ${value}`, "info")
+		Net.Notify(player, `Rack full - {Items.DisplayName(item)} sold for {Format.Cash(value)}`, "info")
 	end
 end
 
 local spawnRevolver: (Round, Vector3?) -> ()
+local giveRevolver: (Round, Player) -> ()
+local giveRevolverToBot: (Round, Bot) -> ()
 
 local function dropRevolver(round: Round, position: Vector3)
 	if round.GunTool then
@@ -362,7 +416,7 @@ local function eliminate(round: Round, victim: Player, killer: Player?, fatal: b
 		DataService.Update(killer, function(p)
 			p.TotalKills += 1
 		end)
-		Net.Notify(killer, `Eliminated {round.Names[victim] or victim.DisplayName}! +${amount}`, "good")
+		Net.Notify(killer, `Eliminated {round.Names[victim] or victim.DisplayName}! +{Format.Cash(amount)}`, "good")
 	end
 	if killer or fatal then
 		Net.Notify(victim, "You were killed! You'll respawn at your vault.", "bad")
@@ -420,6 +474,14 @@ local function killBot(round: Round, bot: Bot, killer: Player?)
 		push = Vector3.new(away.X, 0, away.Z).Unit * 18 + Vector3.new(0, 8, 0)
 	end
 	Net.Remotes.Effect:FireAllClients("Hit", bot.Root.Position)
+	if bot == round.GunnerBot then
+		round.GunnerBot = nil
+		if bot.Gun then
+			bot.Gun:Destroy()
+			bot.Gun = nil
+		end
+		spawnRevolver(round, bot.Root.Position)
+	end
 	RoundBots.Kill(bot, push, round.Bodies)
 	if bot == round.MurdererBot then
 		finalMoment(round, bot.Root.Position, "Hero")
@@ -437,7 +499,7 @@ local function killBot(round: Round, bot: Bot, killer: Player?)
 		round.Kills += 1
 		if killer then
 			local amount = pay(round, killer, GameConfig.RoundPay.Kill, GameConfig.BotKillPay)
-			Net.Notify(killer, `Eliminated {bot.Name}! +${amount}`, "good")
+			Net.Notify(killer, `Eliminated {bot.Name}! +{Format.Cash(amount)}`, "good")
 			if killer == round.Murderer then
 				onMurderKill(round, bot.Root.Position)
 			end
@@ -456,10 +518,20 @@ local function botAt(round: Round, instance: Instance): Bot?
 end
 
 -- Server-side melee check: range, facing, cooldown, and the victim must still be alive in this round
+-- Flashed or caught in a Bear Trap: no stabbing, throwing or perks until it wears off
+local function isStunned(player: Player): boolean
+	local until_ = player:GetAttribute("StunnedUntil")
+	return type(until_) == "number" and workspace:GetServerTimeNow() < until_
+end
+
 local function onAttack(round: Round)
 	local now = os.clock()
 	local murderer = round.Murderer
-	if not murderer or now - round.LastAttack < GameConfig.AttackCooldown then
+	if not murderer or now - round.LastAttack < GameConfig.AttackCooldown or isStunned(murderer) then
+		return
+	end
+	-- During a Spam Knife / Hellfire burst every click is a throw instead (onAbility "Spam")
+	if spamActive(murderer) then
 		return
 	end
 	local murdererRoot = rootOf(murderer)
@@ -585,6 +657,9 @@ end
 
 -- The Murderer's perk (from their knife), or nil
 local function perkOf(round: Round): (string?, any)
+	if round.Classic then
+		return nil, nil -- CLASSIC: just a knife
+	end
 	local parsed = Items.Parse(round.WeaponKnife)
 	local id = parsed and parsed.Knife.Perk
 	return id, if id then GameConfig.Perks[id] else nil
@@ -612,10 +687,18 @@ end
 
 -- A thrown knife. Perks change it: Fury (faster per kill), Laser Knife (full charge = lightning
 -- fast), Ghost Knife (flies through people), Exploding Knife / Hellfire (kills explode).
-local function throwKnife(round: Round, origin: Vector3, direction: Vector3, charge: number, flaming: boolean?)
-	local config = GameConfig.MurderThrow
+local function throwKnife(
+	round: Round,
+	origin: Vector3,
+	direction: Vector3,
+	charge: number,
+	flaming: boolean?,
+	range: number?,
+	speedOverride: number?
+)
+	local config = { Range = range or GameConfig.MurderThrow.Range }
 	local perkId, perk = perkOf(round)
-	local speed = config.Speed * (0.55 + 0.45 * charge)
+	local speed = speedOverride or GameConfig.MurderThrow.Speed * (0.55 + 0.45 * charge)
 	if perkId == "Fury" then
 		speed *= 1 + round.FuryKills * perk.PerKill
 	end
@@ -660,7 +743,9 @@ local function throwKnife(round: Round, origin: Vector3, direction: Vector3, cha
 	local connection: RBXScriptConnection
 	local function finish(stuck: boolean)
 		connection:Disconnect()
-		game:GetService("Debris"):AddItem(model, if stuck then 2 else 0)
+		if not stuck then
+			model:Destroy()
+		end
 	end
 	local function landed(at: Vector3, killed: boolean): boolean
 		if killed then
@@ -678,6 +763,11 @@ local function throwKnife(round: Round, origin: Vector3, direction: Vector3, cha
 		end
 		local stepLength = math.min(speed * dt, config.Range - traveled)
 		local nextPosition = position + direction * stepLength
+		-- Walls first: anyone standing behind the wall this step is safe
+		local hit = workspace:Raycast(position, nextPosition - position, params)
+		if hit then
+			nextPosition = hit.Position
+		end
 
 		-- Generous hit test against innocents so it feels fair on laggy connections
 		for player in round.Alive do
@@ -713,14 +803,14 @@ local function throwKnife(round: Round, origin: Vector3, direction: Vector3, cha
 				end
 			end
 		end
-		local hit = workspace:Raycast(position, nextPosition - position, params)
 		if hit then
 			-- A Barricade takes the knife
 			local obstacle = Obstacles.Near(hit.Position, 1.5, nil)
 			if obstacle then
 				obstacle.Hit("Murderer")
 			end
-			model:PivotTo(CFrame.lookAt(hit.Position, hit.Position + direction) * CFrame.Angles(-math.pi / 2, 0, 0))
+			-- Stays stuck in the wall / door for the rest of the round (round.Bodies goes at the end)
+			StuckKnives.Stick(model, hit.Position, direction, 0, round.Bodies)
 			finish(true)
 			return
 		end
@@ -737,7 +827,15 @@ local function throwKnife(round: Round, origin: Vector3, direction: Vector3, cha
 end
 
 -- Throws one knife from the Murderer's hand on the Throw clip's release frame
-local function throwFromHand(round: Round, murderer: Player, direction: Vector3, charge: number, flaming: boolean?)
+local function throwFromHand(
+	round: Round,
+	murderer: Player,
+	direction: Vector3,
+	charge: number,
+	flaming: boolean?,
+	range: number?,
+	speed: number?
+)
 	local character = murderer.Character
 	if not character then
 		return
@@ -746,35 +844,39 @@ local function throwFromHand(round: Round, murderer: Player, direction: Vector3,
 	task.delay(AnimLibrary.Clips.Throw.Release or 0.07, function()
 		local from = CombatService.HandPosition(murderer)
 		if from and current == round then
-			throwKnife(round, from, direction, charge, flaming)
+			throwKnife(round, from, direction, charge, flaming, range, speed)
 		end
 	end)
 end
 
--- Spam Knife / Hellfire: a volley of quick throws wherever the Murderer is aiming
-local function volley(round: Round, murderer: Player, perk: any, flaming: boolean)
-	local endsAt = os.clock() + perk.Duration
-	murderer:SetAttribute("SpamUntil", workspace:GetServerTimeNow() + perk.Duration)
-	task.spawn(function()
-		while current == round and os.clock() < endsAt and round.Alive[murderer] do
-			local root = rootOf(murderer)
-			if not root then
-				break
-			end
-			local aim = round.LatestAim or root.CFrame.LookVector
-			-- A little spread, so it sprays
-			local spread = CFrame.Angles(math.rad(rng:NextNumber(-3, 3)), math.rad(rng:NextNumber(-5, 5)), 0)
-			throwFromHand(round, murderer, (CFrame.lookAt(Vector3.zero, aim) * spread).LookVector, 0.6, flaming)
-			task.wait(perk.Interval)
-		end
-		murderer:SetAttribute("SpamUntil", nil)
-	end)
+-- Spam Knife (always) / Hellfire (for a few seconds after Q): every click throws a knife straight
+-- at where you aimed, as fast as you can click, flying until it hits something
+local SPAM_SPEED = 170
+local lastSpam: { [Player]: number } = {}
+local function spamThrow(round: Round, murderer: Player, direction: Vector3)
+	local character = murderer.Character
+	local weapon = round.Weapon
+	if not character or not weapon or weapon.Parent ~= character or isStunned(murderer) then
+		return
+	end
+	local perkId, perk = perkOf(round)
+	local flaming = perkId == "Hellfire"
+	if not ((perkId == "SpamKnife" or flaming) and spamActive(murderer)) then
+		return
+	end
+	local now = os.clock()
+	if now - (lastSpam[murderer] or 0) < perk.Interval then
+		return
+	end
+	lastSpam[murderer] = now
+	local range = if perkId == "SpamKnife" then perk.Range else GameConfig.MurderThrow.Range
+	throwFromHand(round, murderer, direction, 1, flaming, range, SPAM_SPEED)
 end
 
 local function usePerk(round: Round, direction: Vector3)
 	local now = os.clock()
 	local murderer = round.Murderer
-	if not murderer or not round.Weapon or now < round.PerkReadyAt then
+	if not murderer or not round.Weapon or now < round.PerkReadyAt or isStunned(murderer) then
 		return
 	end
 	local perkId, perk = perkOf(round)
@@ -794,11 +896,13 @@ local function usePerk(round: Round, direction: Vector3)
 	round.LatestAim = direction
 
 	if perkId == "SpamKnife" then
-		volley(round, murderer, perk, false)
-		Net.Remotes.Effect:FireAllClients("Dash", root.Position)
+		murderer:SetAttribute("SpamUntil", workspace:GetServerTimeNow() + perk.Duration)
+		Net.Notify(murderer, "SPAM KNIFE! Click to throw!", "bad")
 	elseif perkId == "Hellfire" then
-		volley(round, murderer, perk, true)
+		-- For a few seconds every click throws a flaming knife
+		murderer:SetAttribute("SpamUntil", workspace:GetServerTimeNow() + perk.Duration)
 		Net.Remotes.Effect:FireAllClients("Hellfire", root.Position)
+		Net.Notify(murderer, "HELLFIRE! Click to throw flaming knives!", "bad")
 	elseif perkId == "Identifier" then
 		-- Who has the Revolver? Outlined through walls for a few seconds, on the Murderer's screen only
 		local gunner = round.Gunner
@@ -872,7 +976,7 @@ local function basicThrow(round: Round, murderer: Player, direction: Vector3)
 	local now = os.clock()
 	local character = murderer.Character
 	local weapon = round.Weapon
-	if now < round.ThrowReadyAt or not character or not weapon or weapon.Parent ~= character then
+	if now < round.ThrowReadyAt or not character or not weapon or weapon.Parent ~= character or isStunned(murderer) then
 		CombatService.TakeCharge(murderer)
 		return
 	end
@@ -891,8 +995,8 @@ local function onAbility(player: Player, aim: unknown, kind: unknown)
 		return
 	end
 	if player == round.Murderer then
-		if kind == "Aim" then
-			round.LatestAim = direction -- the client keeps this fresh during a volley
+		if kind == "Spam" then
+			spamThrow(round, player, direction)
 		elseif kind == "Throw" then
 			basicThrow(round, player, direction)
 		else
@@ -1012,6 +1116,25 @@ local function spawnCoin(round: Round)
 end
 
 -- Revolver ----------------------------------------------------------------------------------
+
+-- The Sheriff: hand the Revolver to a player, or to a bot (which then hunts and shoots, see the brains)
+giveRevolver = function(round: Round, player: Player)
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	local tool = Revolver.BuildTool()
+	tool.Parent = backpack
+	round.GunTool = tool
+	round.Gunner = player
+	ReplicatedStorage:SetAttribute("Revolver", "Taken")
+	Net.Notify(player, "You're the SHERIFF! Shoot the Murderer - but hit an innocent and you're out too.", "good")
+end
+giveRevolverToBot = function(round: Round, bot: Bot)
+	local tool = Revolver.BuildTool()
+	tool.Parent = bot.Model
+	bot.Humanoid:EquipTool(tool)
+	bot.Gun = tool
+	round.GunnerBot = bot
+	ReplicatedStorage:SetAttribute("Revolver", "Taken")
+end
 
 spawnRevolver = function(round: Round, position: Vector3?)
 	if current ~= round or round.Revolver then
@@ -1166,6 +1289,10 @@ local function murdererThreat(round: Round): BasePart?
 	if not murderer or not round.Alive[murderer] or not round.Weapon then
 		return nil
 	end
+	-- Only once the knife is out (pulling it is the reveal)
+	if round.Weapon.Parent ~= murderer.Character then
+		return nil
+	end
 	if murderer:GetAttribute("Invisible") or murderer:GetAttribute("Mimic") then
 		return nil
 	end
@@ -1185,8 +1312,112 @@ local function wander(bot: Bot, now: number)
 	end
 end
 
+-- Can this point see that one? (only the round map's walls, doors and furniture block)
+local function canSee(from: Vector3, to: Vector3): boolean
+	local map = MapService.RoundMapFolder()
+	if not map then
+		return true
+	end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { map }
+	return workspace:Raycast(from, to - from, params) == nil
+end
+
+-- A bot Sheriff's shot: good aim up close, worse far away
+local function botShoot(round: Round, bot: Bot, target: BasePart)
+	local from = bot.Root.Position + Vector3.new(0, 1.5, 0)
+	local dist = (target.Position - from).Magnitude
+	-- Nervous shots: decent point-blank, mostly misses from across a room
+	local hits = rng:NextNumber() < math.clamp(0.55 - dist / 80, 0.12, 0.55)
+	local aimAt = if hits
+		then target.Position
+		else target.Position + Vector3.new(rng:NextNumber(-4, 4), rng:NextNumber(0, 3), rng:NextNumber(-4, 4))
+	local handle = bot.Gun and bot.Gun:FindFirstChild("Handle")
+	local sound = handle and handle:FindFirstChild("Shot") :: Sound?
+	if sound then
+		sound:Play()
+	end
+	Net.Animate(bot.Model, "Recoil")
+	Net.Remotes.Effect:FireAllClients("Shot", from, aimAt)
+	if not hits then
+		return
+	end
+	local murdererBot = round.MurdererBot
+	if murdererBot and target == murdererBot.Root then
+		for other in round.Alive do
+			Net.Notify(other, `{bot.Name} shot the Murderer!`, "good")
+		end
+		killBot(round, murdererBot, nil)
+		return
+	end
+	local murderer = round.Murderer
+	if not murderer then
+		return
+	end
+	local perkId = perkOf(round)
+	if perkId == "Bulletproof" and not round.BulletproofUsed then
+		round.BulletproofUsed = true
+		Net.Remotes.Effect:FireAllClients("Shield", target.Position)
+		Net.Notify(murderer, "BULLETPROOF! That shot bounced off. Next one counts!", "good")
+		return
+	end
+	round.ShotByBot = true
+	finalMoment(round, target.Position, "Hero")
+	for other in round.Alive do
+		Net.Notify(other, `{bot.Name} shot the Murderer!`, "good")
+	end
+	eliminate(round, murderer, nil, true)
+end
+
 local function innocentBrain(round: Round, bot: Bot, now: number)
 	local threat = murdererThreat(round)
+	local eye = bot.Root.Position + Vector3.new(0, 1.5, 0)
+	-- The Sheriff: once it knows who the Murderer is, it closes in, stops, aims and shoots
+	if bot.Gun then
+		if threat then
+			local dist = (threat.Position - bot.Root.Position).Magnitude
+			if dist < 45 and canSee(eye, threat.Position) then
+				RoundBots.WalkTo(bot, nil)
+				RoundBots.Face(bot, threat.Position)
+				if bot.AimUntil == 0 then
+					bot.AimUntil = now + 1.1 + dist / 40 -- a slow, shaky aim: time to dodge or close in
+				end
+				if now >= bot.AimUntil and now >= bot.NextShot then
+					bot.NextShot = now + GameConfig.RevolverCooldown + 2
+					bot.AimUntil = 0
+					botShoot(round, bot, threat)
+				end
+				return
+			end
+			-- Lost sight: go to where it was
+			bot.AimUntil = 0
+			bot.Humanoid.WalkSpeed = GameConfig.RoundWalkSpeed - 1
+			RoundBots.WalkTo(bot, threat.Position)
+			return
+		end
+		bot.AimUntil = 0
+		wander(bot, now)
+		return
+	end
+	-- A Revolver lying around and the coast is clear: go get it
+	local pickup = round.Revolver
+	if pickup and pickup.Parent and not round.Gunner and not round.GunnerBot then
+		local spot = pickup:GetPivot().Position
+		if not threat or (threat.Position - bot.Root.Position).Magnitude > 22 then
+			bot.Humanoid.WalkSpeed = GameConfig.RoundWalkSpeed - 1
+			RoundBots.WalkTo(bot, spot)
+			if (spot - bot.Root.Position).Magnitude < 4 then
+				pickup:Destroy()
+				round.Revolver = nil
+				giveRevolverToBot(round, bot)
+				for other in round.Alive do
+					Net.Notify(other, "Someone picked up the Revolver...", "info")
+				end
+			end
+			return
+		end
+	end
 	if not threat or (threat.Position - bot.Root.Position).Magnitude > 32 then
 		wander(bot, now)
 		return
@@ -1254,6 +1485,15 @@ local function murdererBrain(round: Round, bot: Bot, now: number)
 				target, targetPlayer, targetBot, bestDist = other.Root, nil, other, dist
 			end
 		end
+	end
+	local sheriff: BasePart? = if round.Gunner
+		then rootOf(round.Gunner)
+		elseif round.GunnerBot then round.GunnerBot.Root
+		else nil
+	if sheriff and (sheriff.Position - bot.Root.Position).Magnitude < 40 then
+		target, bestDist = sheriff, (sheriff.Position - bot.Root.Position).Magnitude
+		targetPlayer = round.Gunner
+		targetBot = round.GunnerBot
 	end
 	if not target then
 		wander(bot, now)
@@ -1354,6 +1594,24 @@ local function giveWeapon(round: Round)
 	slash.Parent = tool:FindFirstChild("Handle")
 	tool.Parent = backpack
 	round.Weapon = tool
+	-- Knife in hand = revealed: only then the Murderer's speed (no speed tell while hiding) and
+	-- only then can Radar find them
+	local function knifeOut(out: boolean)
+		murderer:SetAttribute("KnifeOut", if out then true else nil)
+		BaseService.RefreshWalkSpeed(murderer)
+	end
+	table.insert(
+		round.Connections,
+		tool.Equipped:Connect(function()
+			knifeOut(true)
+		end)
+	)
+	table.insert(
+		round.Connections,
+		tool.Unequipped:Connect(function()
+			knifeOut(false)
+		end)
+	)
 	-- Tool.Activated replicates to the server; the client never reports hits itself
 	table.insert(
 		round.Connections,
@@ -1455,11 +1713,19 @@ local function startRound(participants: { Player })
 		BulletproofUsed = false,
 		LatestAim = nil,
 		Hero = nil,
+		GunnerBot = nil,
+		ShotByBot = false,
+		Classic = rng:NextNumber() < GameConfig.ClassicChance,
+		AtRisk = {},
 		PayScale = if #participants >= 2 then 1 else GameConfig.BotRoundPay,
 		HumanKills = 0,
 		Connections = {},
 	}
 	current = round
+	ReplicatedStorage:SetAttribute("Classic", round.Classic or nil)
+	if round.Classic then
+		round.PayScale *= GameConfig.ClassicPay
+	end
 	ReplicatedStorage:SetAttribute("Revolver", nil)
 	ReplicatedStorage:SetAttribute("Loot", nil)
 
@@ -1471,6 +1737,33 @@ local function startRound(participants: { Player })
 	for i = #spawns, 2, -1 do
 		local j = rng:NextInteger(1, i)
 		spawns[i], spawns[j] = spawns[j], spawns[i]
+	end
+
+	-- Screens fade to black with the map's name while everyone is moved (client/Transitions)
+	for _, player in participants do
+		Net.Remotes.Effect:FireClient(
+			player,
+			"Fade",
+			`🔪 {ReplicatedStorage:GetAttribute("MapName") or "The Murder"}{if round.Classic
+				then "\nCLASSIC ROUND - no powers, no perks, x" .. GameConfig.ClassicPay .. " pay!"
+				else ""}`
+		)
+	end
+	task.wait(0.35)
+
+	-- The round map is far from the hub: load it on everyone's client first, or StreamingEnabled
+	-- freezes them with "Gameplay paused" while it streams in (all at once, at most 4 seconds)
+	local pending = 0
+	for i, player in participants do
+		pending += 1
+		task.spawn(function()
+			pcall(player.RequestStreamAroundAsync, player, spawns[(i - 1) % #spawns + 1].Position, 4)
+			pending -= 1
+		end)
+	end
+	local streamStart = os.clock()
+	while pending > 0 and os.clock() - streamStart < 4 do
+		task.wait()
 	end
 
 	for i, player in participants do
@@ -1536,8 +1829,50 @@ local function startRound(participants: { Player })
 			giveWeapon(round)
 		end
 	end)
+	-- A Sheriff from the start (MM2 style): any innocent, player or bot, gets the Revolver now
+	local sheriffs: { any } = {}
+	for _, player in round.Innocents do
+		if round.Alive[player] then
+			table.insert(sheriffs, player)
+		end
+	end
+	for _, bot in round.Bots do
+		if bot.Alive and bot ~= round.MurdererBot then
+			table.insert(sheriffs, bot)
+		end
+	end
+	if #sheriffs > 0 then
+		local chosen = sheriffs[rng:NextInteger(1, #sheriffs)]
+		if typeof(chosen) == "Instance" then
+			giveRevolver(round, chosen :: Player)
+		else
+			giveRevolverToBot(round, chosen)
+		end
+	end
+
+	-- Everyone sees the knife they'd lose to the Murderer (client/Transitions spins a reel onto it)
+	for _, player in round.Innocents do
+		local profile = DataService.Get(player)
+		if not profile or DataService.IsNewPlayer(player, profile) then
+			continue
+		end
+		local protected = BaseService.ProtectedItem(player)
+		local choices = {}
+		for _, item in profile.Knives do
+			if item ~= protected then
+				table.insert(choices, item)
+			end
+		end
+		if #choices > 0 then
+			local chosen = choices[rng:NextInteger(1, #choices)]
+			round.AtRisk[player] = chosen
+			Net.Remotes.Effect:FireClient(player, "AtRisk", choices, chosen)
+		end
+	end
+
+	-- Nobody took the Revolver (or it dropped): it turns up somewhere later
 	task.delay(GameConfig.RevolverTime, function()
-		if current == round then
+		if current == round and not round.Gunner and not round.GunnerBot and not round.Revolver then
 			spawnRevolver(round, nil)
 			for player in round.Alive do
 				Net.Notify(player, "A Revolver appeared somewhere in the building!", "info")
@@ -1580,7 +1915,7 @@ local function endRound(round: Round)
 
 	-- Loot goes back to its owners if the Murderer was shot (or quit); otherwise they keep it
 	local hero = round.Hero
-	if hero or not murdererPresent then
+	if hero or round.ShotByBot or not murdererPresent then
 		for _, entry in round.Loot do
 			if entry.Owner.Parent then
 				giveKnife(entry.Owner, entry.Knife)
@@ -1589,7 +1924,7 @@ local function endRound(round: Round)
 		end
 		if hero and hero.Parent then
 			local amount = pay(round, hero, GameConfig.RoundPay.Hero)
-			Net.Notify(hero, `HERO! You stopped the Murderer! +${amount}`, "good")
+			Net.Notify(hero, `HERO! You stopped the Murderer! +{Format.Cash(amount)}`, "good")
 		end
 	elseif murderer then
 		for _, entry in round.Loot do
@@ -1607,7 +1942,7 @@ local function endRound(round: Round)
 		for _, player in round.Innocents do
 			if player.Parent and not table.find(survivors, player) and player ~= hero then
 				local amount = pay(round, player, GameConfig.RoundPay.TeamWin)
-				Net.Notify(player, `Your side won! +${amount}`, "good")
+				Net.Notify(player, `Your side won! +{Format.Cash(amount)}`, "good")
 			end
 		end
 	end
@@ -1618,7 +1953,7 @@ local function endRound(round: Round)
 		DataService.Update(player, function(p)
 			p.RoundsWon += 1
 		end)
-		Net.Notify(player, `You survived! +${reward}`, "good")
+		Net.Notify(player, `You survived! +{Format.Cash(reward)}`, "good")
 		if player.Character then
 			Net.Animate(player.Character, "Cheer")
 		end
@@ -1641,7 +1976,7 @@ local function endRound(round: Round)
 			DataService.Update(murderer, function(p)
 				p.RoundsWon += 1
 			end)
-			Net.Notify(murderer, `You got everyone! Bonus +${bonus}`, "good")
+			Net.Notify(murderer, `You got everyone! Bonus +{Format.Cash(bonus)}`, "good")
 			if round.HumanKills > 0 then
 				local config = GameConfig.WipeCase
 				local rarity = if #round.Innocents >= config.BigLobby then config.Big else config.Small
@@ -1661,7 +1996,7 @@ local function endRound(round: Round)
 						DataService.AddCash(murderer, value)
 						Net.Notify(
 							murderer,
-							`Wipe prize: your wall is full, so +${value} instead of a {rarity} Case`,
+							`Wipe prize: your wall is full, so +{Format.Cash(value)} instead of a {rarity} Case`,
 							"good"
 						)
 					end
@@ -1686,7 +2021,17 @@ local function endRound(round: Round)
 		end
 	end
 
-	-- Everyone still in the round goes home as themselves
+	-- Everyone still in the round goes home as themselves, behind a fade (client/Transitions)
+	local fading = false
+	for player in round.Alive do
+		if player.Parent then
+			Net.Remotes.Effect:FireClient(player, "Fade", "🏠 Back to the hub")
+			fading = true
+		end
+	end
+	if fading then
+		task.wait(0.35)
+	end
 	for player in round.Alive do
 		if player.Parent then
 			leaveRound(player)
@@ -1710,6 +2055,34 @@ local function endRound(round: Round)
 		elseif innocentsWon then `Innocents win! The Murderer was {murdererName}`
 		else `The Murderer wins! It was {murdererName}`
 	setPhase("Results", GameConfig.ResultsTime, status)
+	ReplicatedStorage:SetAttribute("Classic", nil)
+	-- The VS card: who was the Murderer, with which knife, and who stopped them (client/Transitions)
+	local heroName: string? = if hero
+		then `{round.Names[hero] or "?"} ({hero.DisplayName})`
+		elseif round.ShotByBot then "A bot Sheriff"
+		else nil
+	local card = {
+		Title = if hero or round.ShotByBot
+			then "The Sheriff saved the day!"
+			elseif innocentsWon then "The innocents survived!"
+			else "The Murderer wins!",
+		Won = if innocentsWon then "Innocents" else "Murderer",
+		MurdererName = if murderer
+			then `{round.Names[murderer] or "?"} ({murderer.DisplayName})`
+			elseif round.MurdererBot then `{round.MurdererBot.Name} (bot)`
+			else "?",
+		MurdererId = if murderer then murderer.UserId else 0,
+		Knife = round.WeaponKnife,
+		HeroName = heroName,
+		HeroId = if hero then hero.UserId else 0,
+		Kills = round.Kills,
+		Classic = round.Classic,
+	}
+	for player in round.Names do
+		if player.Parent then
+			Net.Remotes.Effect:FireClient(player, "RoundCard", card)
+		end
+	end
 end
 
 local function roundOver(round: Round): boolean
@@ -1788,13 +2161,19 @@ function RoundService.DebugBotRound(player: Player, role: string)
 end
 
 function RoundService.Init()
+	task.spawn(function()
+		while true do
+			publishChances()
+			task.wait(2)
+		end
+	end)
 	-- Flash blinds a Murderer bot too
-	PowerService.OnFlash(function(_flasher, origin, look, range, duration)
+	PowerService.OnFlash(function(_flasher, origin, look, range, duration, burst)
 		local round = current
 		local bot = round and round.MurdererBot
 		if bot and bot.Alive then
 			local offset = bot.Root.Position - origin
-			if offset.Magnitude < range and look:Dot(offset.Unit) > 0.7 then
+			if offset.Magnitude < range and (offset.Magnitude <= burst or look:Dot(offset.Unit) > 0.57) then
 				bot.StunnedUntil = workspace:GetServerTimeNow() + duration
 				Net.Animate(bot.Model, "Hurt")
 			end

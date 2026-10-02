@@ -6,6 +6,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Net = require(script.Parent.Parent.Remotes)
@@ -44,11 +45,27 @@ local function equip(player: Player, name: unknown): boolean
 	DataService.Update(player, function(p)
 		p.Equipped = name
 	end)
+	-- The knife flies off its plate into your hand, with a flourish (client Effects "Equipped")
+	local base = BaseService.GetBase(player)
+	local slot = if name ~= "" then table.find(profile.Knives, name) else nil
+	local from = if base and slot and base.SlotCFrames[slot] then base.SlotCFrames[slot].Position else nil
+	if name ~= "" then
+		Net.Remotes.Effect:FireAllClients("Equipped", player, name, from)
+		if player.Character then
+			Net.Animate(player.Character, "Draw")
+		end
+	end
 	Net.Notify(
 		player,
 		if name ~= "" then `{Items.DisplayName(name)} equipped!` else "Auto-equip: your best knife",
 		"good"
 	)
+	-- ...and what it gives you when you're the Murderer
+	local parsed = if name ~= "" then Items.Parse(name) else nil
+	local perk = parsed and parsed.Knife.Perk and GameConfig.Perks[parsed.Knife.Perk]
+	if perk then
+		Net.Notify(player, `🔪 As the Murderer: {perk.DisplayName} - {perk.Description}`, "info")
+	end
 	return true
 end
 
@@ -70,7 +87,7 @@ local function sell(player: Player, index: unknown): boolean
 		end
 	end)
 	BaseService.RefreshRack(player)
-	Net.Notify(player, `Sold {Items.DisplayName(name)} for ${price}`, "good")
+	Net.Notify(player, `Sold {Items.DisplayName(name)} for {Format.Cash(price)}`, "good")
 	return true
 end
 

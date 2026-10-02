@@ -217,7 +217,8 @@ function Items.AuraPower(item: string): number
 end
 
 function Items.AuraRadius(power: number): number
-	return 4 + power * 1.3
+	-- Capped so the best knives still fit their floor of the vault
+	return math.min(4 + power * 1.1, 15)
 end
 
 local function weighted<T>(rng: Random, list: { T }, weightOf: (T) -> number): T
