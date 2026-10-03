@@ -17,6 +17,11 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Ui = require(script.Parent.Ui)
+local Theme = require(script.Parent.MenuTheme)
+local IndexView = require(script.Parent.IndexView)
+local RebirthView = require(script.Parent.RebirthView)
+local CaseShowcase = require(script.Parent.CaseShowcase)
+local CaseOdds = require(script.Parent.CaseOdds)
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("Config"):WaitForChild("GameConfig"))
 local Items = require(Shared:WaitForChild("Items"))
@@ -29,7 +34,7 @@ local new = Ui.new
 
 local Menus = {}
 
-local DARK = Color3.fromRGB(28, 24, 38)
+local DARK = Ui.PANEL
 
 -- A live 3D knife (or case) in a card; rotates slowly
 local spinning: { [ViewportFrame]: Model } = {}
@@ -60,30 +65,46 @@ RunService.RenderStepped:Connect(function(dt: number)
 	for frame, model in spinning do
 		if not frame.Parent then
 			spinning[frame] = nil
-		elseif frame.Visible then
-			model:PivotTo(model:GetPivot() * CFrame.Angles(0, dt * 0.8, 0))
+		else
+			local visible = true
+			local ancestor: Instance? = frame
+			while ancestor do
+				if ancestor:IsA("GuiObject") and not ancestor.Visible then
+					visible = false
+					break
+				end
+				ancestor = ancestor.Parent
+			end
+			if visible and require(script.Parent.Lod).Profile == "High" then
+				model:PivotTo(model:GetPivot() * CFrame.Angles(0, dt * 0.8, 0))
+			end
 		end
 	end
 end)
 
 local function panel(title: string, color: Color3, icon: string): (Frame, Frame)
+	if title == "Mortimer's Knife Cases" then
+		local frame, body = Theme.shell(title, "Shop", Theme.Green, "Cash", 540)
+		return frame, body
+	end
 	local frame = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.52),
-		Size = UDim2.fromOffset(700, 470),
+		Name = title,
+		Size = UDim2.fromOffset(960, 650),
 		BackgroundColor3 = DARK,
 		Visible = false,
 		ZIndex = 5,
 	}, Ui.gui)
 	Ui.corner(frame, 18)
-	new("UIStroke", { Thickness = 5, Color = Color3.fromRGB(16, 12, 22) }, frame)
+	new("UIStroke", { Thickness = 2, Color = Color3.fromRGB(10, 18, 34) }, frame)
 	-- Faint diagonal stripes in the background
 	new("UIGradient", {
 		Rotation = 45,
 		Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 200, 215)),
 	}, frame)
 	local header = new("Frame", {
-		Size = UDim2.new(1, 0, 0, 64),
+		Size = UDim2.new(1, 0, 0, 56),
 		BackgroundColor3 = Color3.new(1, 1, 1),
 		ZIndex = 5,
 	}, frame)
@@ -115,8 +136,8 @@ local function panel(title: string, color: Color3, icon: string): (Frame, Frame)
 	)
 	close.Name = "Close"
 	local body = new("Frame", {
-		Position = UDim2.fromOffset(0, 72),
-		Size = UDim2.new(1, 0, 1, -72),
+		Position = UDim2.fromOffset(0, 64),
+		Size = UDim2.new(1, 0, 1, -64),
 		BackgroundTransparency = 1,
 		ZIndex = 5,
 	}, frame)
@@ -125,11 +146,13 @@ local function panel(title: string, color: Color3, icon: string): (Frame, Frame)
 	frame:GetPropertyChangedSignal("Visible"):Connect(function()
 		if frame.Visible then
 			local scale = frame:FindFirstChildOfClass("UIScale") or new("UIScale", {}, frame)
-			local target = if Ui.Phone then 1 else 1.25 -- a bit bigger on desktop: easier to read
+			local target = 1 -- a bit bigger on desktop: easier to read
 			scale.Scale = target * 0.85
 			TweenService:Create(scale, TweenInfo.new(0.22, Enum.EasingStyle.Back), { Scale = target }):Play()
 		end
 	end)
+	Ui.fitMenu(frame)
+	Ui.registerMenu(frame)
 	return frame, body
 end
 
@@ -148,6 +171,14 @@ local function scrollGrid(parent: Instance, cell: Vector2): ScrollingFrame
 		SortOrder = Enum.SortOrder.LayoutOrder,
 	}, scroll)
 	Ui.padding(scroll, 4, 4)
+	local grid = scroll:FindFirstChildOfClass("UIGridLayout") :: UIGridLayout
+	local function reflow()
+		local width = math.max(140, scroll.AbsoluteSize.X - 16)
+		local columns = math.max(1, math.floor((width + 10) / (cell.X + 10)))
+		grid.CellSize = UDim2.fromOffset((width - (columns - 1) * 10) / columns, cell.Y)
+	end
+	scroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(reflow)
+	reflow()
 	return scroll
 end
 
@@ -169,6 +200,7 @@ local function cardText(parent: Instance, y: number, height: number, text: strin
 		Position = UDim2.fromOffset(6, y),
 		Size = UDim2.new(1, -12, 0, height),
 		Text = text,
+		TextTruncate = Enum.TextTruncate.AtEnd,
 		TextColor3 = color or Color3.new(1, 1, 1),
 		ZIndex = 6,
 	}, parent)
@@ -223,16 +255,26 @@ function Menus.Init()
 	-- Left column of big buttons
 	-- (phones: a strip of square icon buttons down the left edge, under the Store button)
 	local column = new("Frame", {
+		Name = "Navigation",
 		AnchorPoint = if Ui.Phone then Vector2.zero else Vector2.new(0, 0.5),
 		Position = if Ui.Phone then UDim2.fromOffset(10, 118) else UDim2.new(0, 14, 0.4, 0),
 		Size = if Ui.Phone then UDim2.fromOffset(60, 300) else UDim2.fromOffset(190, 330),
 		BackgroundTransparency = 1,
 	}, Ui.gui)
-	new(
-		"UIListLayout",
-		{ Padding = UDim.new(0, if Ui.Phone then 6 else 9), SortOrder = Enum.SortOrder.LayoutOrder },
-		column
-	)
+	local navGrid = new("UIGridLayout", {
+		CellSize = UDim2.fromOffset(112, 44),
+		CellPadding = UDim2.fromOffset(8, 8),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, column)
+	local function placeNavigation()
+		local layout = Ui.Layout.get()
+		column.AnchorPoint = Vector2.zero
+		column.Position = UDim2.fromOffset(12, 64)
+		column.Size = UDim2.fromOffset(layout.NavigationWidth, if layout.Short then 96 else 200)
+		navGrid.FillDirectionMaxCells = if layout.Short then 2 else 1
+	end
+	Ui.Layout.Changed:Connect(placeNavigation)
+	placeNavigation()
 
 	local panels: { Frame } = {}
 	local function toggle(frame: Frame)
@@ -258,20 +300,34 @@ function Menus.Init()
 		ZIndex = 5,
 	}, shopBody)
 	new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, shopList)
-	-- Odds shared by every case
-	local mutationTotal, sizeTotal = 0, 0
-	for _, m in Items.Mutations do
-		mutationTotal += m.Weight
-	end
-	for _, s in Items.Sizes do
-		sizeTotal += s.Weight
-	end
-	local function pct(n: number): string
-		if n >= 10 then
-			return `{math.floor(n + 0.5)}%`
+	local oddsFrame, oddsBody = panel("Cash case: full odds", Color3.fromRGB(61, 178, 255), "📊")
+	table.insert(panels, oddsFrame)
+	local oddsScroll = new("ScrollingFrame", {
+		Size = UDim2.new(1, 0, 1, -56),
+		BackgroundTransparency = 1,
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		CanvasSize = UDim2.new(),
+		ScrollBarThickness = 4,
+		ZIndex = 5,
+	}, oddsBody)
+	local fullOdds = Ui.label({
+		Size = UDim2.new(1, -12, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		TextSize = 16,
+		TextScaled = false,
+		TextWrapped = true,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		ZIndex = 6,
+	}, oddsScroll)
+	Ui.button(
+		{ Text = "Back to cash cases", Position = UDim2.new(0, 0, 1, -48), Size = UDim2.new(1, 0, 0, 44), ZIndex = 6 },
+		oddsBody,
+		function()
+			oddsFrame.Visible = false
+			shopFrame.Visible = true
 		end
-		return string.format("%.1f%%", n)
-	end
+	)
+
 	-- Health upgrades, at the top of the merchant's list
 	do
 		local color = Color3.fromRGB(235, 70, 90)
@@ -328,143 +384,25 @@ function Menus.Init()
 		refreshHealth()
 	end
 	for order, entry in GameConfig.CaseShop do
-		local color = Knives.RarityColors[entry.Rarity]
-		local row = new("Frame", {
-			LayoutOrder = order,
-			Size = UDim2.new(1, -12, 0, 150),
-			BackgroundColor3 = Color3.new(1, 1, 1),
-			ZIndex = 5,
-		}, shopList)
-		Ui.corner(row, 14)
-		Ui.gradient(row, color:Lerp(DARK, 0.3), color:Lerp(DARK, 0.8))
-		new("UIStroke", { Thickness = 3, Color = color }, row)
-		viewport(row, function()
-			return KnifeModel.BuildCase(entry.Rarity, true)
-		end, false, UDim2.fromOffset(130, 130)).Position =
-			UDim2.fromOffset(6, 10)
-		local title = Ui.label({
-			Position = UDim2.fromOffset(140, 6),
-			Size = UDim2.fromOffset(300, 36),
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Text = `{entry.Rarity:upper()} CASE`,
-			TextColor3 = color,
-			ZIndex = 6,
-		}, row)
-		Ui.textStroke(title, 2.5)
-		-- What's inside, with chances
-		local pool = Knives.ByRarity[entry.Rarity]
-		local nextRarity = Knives.Rarities[(table.find(Knives.Rarities, entry.Rarity) or 1) + 1]
-		local inside = {}
-		for _, knife in pool do
-			table.insert(inside, `{knife.DisplayName} {pct((if nextRarity then 96 else 100) / #pool)}`)
-		end
-		if nextRarity then
-			table.insert(inside, `any {nextRarity} 4%`)
-		end
-		local odds = Ui.label({
-			Position = UDim2.fromOffset(140, 42),
-			Size = UDim2.fromOffset(370, 40),
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextYAlignment = Enum.TextYAlignment.Top,
-			TextScaled = false,
-			TextSize = 15,
-			TextWrapped = true,
-			Text = table.concat(inside, "  ·  "),
-			ZIndex = 6,
-		}, row)
-		Ui.textStroke(odds, 1)
-		local mutationBits = {}
-		for _, m in Items.Mutations do
-			if m.Rank > 0 then
-				table.insert(
-					mutationBits,
-					`<font color="#{m.Color:ToHex()}">{m.DisplayName} {pct(m.Weight / mutationTotal * 100)}</font>`
-				)
-			end
-		end
-		local sizeBits = {}
-		for _, s in Items.Sizes do
-			if s.Rank > 0 then
-				table.insert(sizeBits, `{s.DisplayName} {pct(s.Weight / sizeTotal * 100)}`)
-			end
-		end
-		local extra = Ui.label({
-			Position = UDim2.fromOffset(140, 86),
-			Size = UDim2.fromOffset(370, 52),
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextYAlignment = Enum.TextYAlignment.Top,
-			TextScaled = false,
-			TextSize = 15,
-			TextWrapped = true,
-			RichText = true,
-			Text = `Mutations: {table.concat(mutationBits, " · ")}\nSizes: {table.concat(sizeBits, " · ")}`,
-			ZIndex = 6,
-		}, row)
-		Ui.textStroke(extra, 1)
-		Ui.chunky(
-			{
-				AnchorPoint = Vector2.new(1, 0.5),
-				Position = UDim2.new(1, -12, 0.5, 0),
-				Size = UDim2.fromOffset(140, 70),
-				BackgroundColor3 = Color3.fromRGB(70, 200, 90),
-				Text = `${Ui.abbreviate(entry.Cost)}`,
-				ZIndex = 7,
-			},
-			row,
-			nil,
-			function()
-				Remotes.Purchase:InvokeServer(`Case:{entry.Rarity}`)
-			end
-		)
+		local row = CaseShowcase.Build(shopList, entry.Rarity, "$" .. Ui.abbreviate(entry.Cost), function()
+			Remotes.Purchase:InvokeServer("Case:" .. entry.Rarity)
+		end, function()
+			fullOdds.Text = CaseOdds.Text(entry.Rarity)
+				.. "\n\nCash purchase. Knife, mutation and size are separate rolls. Current rebirth and server luck apply to mutation and size."
+			oddsFrame.Visible = true
+		end)
+		row.LayoutOrder = order + 1
 	end
 
-	-- INDEX: every knife, rewards to claim ---------------------------------------------------------
-	local indexFrame, indexBody = panel("Index", Color3.fromRGB(60, 150, 255), "📖")
+	-- INDEX: the illustrated collection grid and selected knife inspector.
+	local indexFrame, refreshIndexView = IndexView.Build()
 	table.insert(panels, indexFrame)
-	local indexTop = new("Frame", { Size = UDim2.new(1, 0, 0, 50), BackgroundTransparency = 1, ZIndex = 5 }, indexBody)
-	local progressBack = new("Frame", {
-		Size = UDim2.new(0.55, 0, 0, 40),
-		Position = UDim2.fromOffset(0, 4),
-		BackgroundColor3 = Color3.fromRGB(16, 12, 22),
-		ZIndex = 5,
-	}, indexTop)
-	Ui.corner(progressBack, 10)
-	local progressFill = new("Frame", {
-		Size = UDim2.fromScale(0, 1),
-		BackgroundColor3 = Color3.fromRGB(90, 220, 90),
-		ZIndex = 6,
-	}, progressBack)
-	Ui.corner(progressFill, 10)
-	local progressText = Ui.label({ Size = UDim2.fromScale(1, 1), Text = "", ZIndex = 7 }, progressBack)
-	Ui.textStroke(progressText, 2)
-	local claimAll = Ui.chunky(
-		{
-			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, 0, 0, 2),
-			Size = UDim2.new(0.42, 0, 0, 44),
-			BackgroundColor3 = Color3.fromRGB(60, 150, 255),
-			Text = "CLAIM ALL",
-			ZIndex = 6,
-		},
-		indexTop,
-		nil,
-		function()
-			Remotes.ClaimIndex:InvokeServer("All")
-		end
-	)
-	local indexHolder = new("Frame", {
-		Position = UDim2.fromOffset(0, 58),
-		Size = UDim2.new(1, 0, 1, -58),
-		BackgroundTransparency = 1,
-		ZIndex = 5,
-	}, indexBody)
-	local indexGrid = scrollGrid(indexHolder, Vector2.new(150, 186))
 
 	-- KNIVES: your wall ----------------------------------------------------------------------------
 	local knivesFrame, knivesBody =
 		panel("My Knives · equipped = your Murderer perk", Color3.fromRGB(130, 80, 230), "🔪")
 	table.insert(panels, knivesFrame)
-	local rackGrid = scrollGrid(knivesBody, Vector2.new(150, 214))
+	local rackGrid = scrollGrid(knivesBody, Vector2.new(150, 254))
 
 	-- POWERS ---------------------------------------------------------------------------------------
 	local powersFrame, powersBody = panel("Innocent Powers", Color3.fromRGB(240, 130, 40), "⚡")
@@ -498,37 +436,11 @@ function Menus.Init()
 		BackgroundTransparency = 1,
 		ZIndex = 5,
 	}, powersBody)
-	local powersGrid = scrollGrid(powersHolder, Vector2.new(205, 170))
+	local powersGrid = scrollGrid(powersHolder, Vector2.new(205, 230))
 
 	-- REBIRTH --------------------------------------------------------------------------------------
-	local rebirthFrame, rebirthBody = panel("Rebirth", Color3.fromRGB(240, 190, 50), "♻️")
+	local rebirthFrame, refreshRebirth = RebirthView.Build()
 	table.insert(panels, rebirthFrame)
-	local rebirthInfo = Ui.label({
-		Size = UDim2.new(1, 0, 0, 250),
-		TextScaled = false,
-		TextSize = 22,
-		TextWrapped = true,
-		RichText = true,
-		TextYAlignment = Enum.TextYAlignment.Top,
-		Text = "",
-		ZIndex = 6,
-	}, rebirthBody)
-	Ui.textStroke(rebirthInfo, 1.5)
-	local rebirthButton = Ui.chunky(
-		{
-			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -6),
-			Size = UDim2.fromOffset(360, 74),
-			BackgroundColor3 = Color3.fromRGB(240, 190, 50),
-			Text = "REBIRTH",
-			ZIndex = 7,
-		},
-		rebirthBody,
-		nil,
-		function()
-			Remotes.Purchase:InvokeServer("Rebirth")
-		end
-	)
 
 	-- Refreshers ------------------------------------------------------------------------------------
 	local function clearGrid(grid: Instance)
@@ -555,9 +467,27 @@ function Menus.Init()
 			end
 			local knife = parsed.Knife
 			local c = card(rackGrid, index, Items.Color(item))
-			viewport(c, function()
-				return KnifeModel.Build(item, true)
-			end, false, UDim2.fromScale(1, 0.45))
+			Ui.art(c, knife.Name, { Size = UDim2.new(1, 0, 0, 84), ZIndex = 6 })
+			local previewButton = new(
+				"TextButton",
+				{ Name = "Preview", Text = "", Size = UDim2.new(1, 0, 0, 84), BackgroundTransparency = 1, ZIndex = 7 },
+				c
+			)
+			previewButton.Activated:Connect(function()
+				local selected, body = panel("Knife Preview", Items.Color(item), "🔪")
+				selected:SetAttribute("MaximumWidth", 460)
+				selected:SetAttribute("MaximumHeight", 380)
+				viewport(body, function()
+					return KnifeModel.Build(item, true)
+				end, false, UDim2.new(1, 0, 1, -44))
+				cardText(body, 0, 24, Items.DisplayName(item), Items.Color(item)).Position = UDim2.new(0, 6, 1, -36)
+				selected.Visible = true
+				selected:GetPropertyChangedSignal("Visible"):Connect(function()
+					if not selected.Visible then
+						selected:Destroy()
+					end
+				end)
+			end)
 			cardText(c, 88, 20, Items.DisplayName(item), Items.Color(item))
 			cardText(c, 108, 16, `{knife.Rarity} · Dmg {Items.Damage(item)}`, Knives.RarityColors[knife.Rarity])
 			cardText(c, 124, 18, `+${Ui.abbreviate(Items.Income(item))}/s`, Color3.fromRGB(120, 255, 140))
@@ -567,8 +497,8 @@ function Menus.Init()
 			local isEquipped = item == equipped
 			smallButton(
 				c,
-				UDim.new(1, -64),
-				28,
+				UDim.new(1, -98),
+				44,
 				if isEquipped then Color3.fromRGB(70, 200, 100) else Color3.fromRGB(80, 150, 240),
 				if isEquipped then "Equipped" else "Equip",
 				function()
@@ -577,8 +507,8 @@ function Menus.Init()
 			)
 			smallButton(
 				c,
-				UDim.new(1, -32),
-				26,
+				UDim.new(1, -48),
+				44,
 				Color3.fromRGB(230, 150, 50),
 				`Sell ${Ui.abbreviate(Items.Income(item) * GameConfig.SellSeconds)}`,
 				function()
@@ -590,58 +520,7 @@ function Menus.Init()
 
 	local indexBadge: TextLabel? = nil
 	local function refreshIndex()
-		clearGrid(indexGrid)
-		local found, claimed = {}, {}
-		for _, name in Ui.list(player:GetAttribute("Discovered")) do
-			found[name] = true
-		end
-		for _, name in Ui.list(player:GetAttribute("IndexClaimed")) do
-			claimed[name] = true
-		end
-		local count, claimable = 0, 0
-		for index, knife in Knives.List do
-			local known = found[knife.Name] == true
-			count += if known then 1 else 0
-			local color = Knives.RarityColors[knife.Rarity]
-			local c = card(indexGrid, index, if known then color else Color3.fromRGB(70, 70, 85))
-			viewport(c, function()
-				return KnifeModel.Build(knife.Name, true)
-			end, not known, UDim2.fromScale(1, 0.5))
-			cardText(c, 94, 22, if known then knife.DisplayName else "???", color)
-			cardText(c, 116, 16, knife.Rarity, Color3.fromRGB(210, 210, 220))
-			-- (powers are rare rolls on any knife now, not part of the knife type)
-			local reward = GameConfig.IndexRewards[knife.Rarity]
-			if known and not claimed[knife.Name] then
-				claimable += 1
-				smallButton(
-					c,
-					UDim.new(1, -38),
-					32,
-					Color3.fromRGB(90, 210, 90),
-					`CLAIM $${Ui.abbreviate(reward.Cash)}`,
-					function()
-						Remotes.ClaimIndex:InvokeServer(knife.Name)
-					end
-				)
-			else
-				cardText(
-					c,
-					140,
-					32,
-					if known
-						then "✔ Claimed"
-						else `Reward: ${Ui.abbreviate(reward.Cash)} + {Ui.abbreviate(reward.Speed)}⚡`,
-					if known then Color3.fromRGB(120, 230, 150) else Color3.fromRGB(180, 180, 195)
-				)
-			end
-		end
-		progressFill.Size = UDim2.fromScale(count / #Knives.List, 1)
-		progressText.Text = `{count}/{#Knives.List} found`
-		claimAll.Visible = claimable > 0
-		local label = claimAll:FindFirstChild("Label") :: TextLabel?
-		if label then
-			label.Text = `CLAIM ALL ({claimable})`
-		end
+		local claimable = refreshIndexView()
 		if indexBadge then
 			indexBadge.Visible = claimable > 0
 			indexBadge.Text = tostring(claimable)
@@ -664,7 +543,7 @@ function Menus.Init()
 		local owned = parsePowers()
 		local loadout = Ui.list(player:GetAttribute("Loadout"))
 		local slots = player:GetAttribute("PowerSlots") or GameConfig.PowerSlots
-		loadoutLabel.Text = `Loadout {#loadout}/{slots}  ·  keys Z X C`
+		loadoutLabel.Text = `Loadout {#loadout}/{slots}{if Ui.Phone then "" else " · keys Z X C"}`
 		local label = slotButton:FindFirstChild("Label") :: TextLabel?
 		if label then
 			label.Text = if slots >= GameConfig.MaxPowerSlots
@@ -703,8 +582,8 @@ function Menus.Init()
 			local maxed = level >= GameConfig.PowerMaxLevel
 			smallButton(
 				c,
-				UDim.new(1, -62),
-				28,
+				UDim.new(1, -98),
+				44,
 				if maxed then Color3.fromRGB(90, 90, 100) else Color3.fromRGB(240, 150, 50),
 				if maxed
 					then "MAX"
@@ -719,8 +598,8 @@ function Menus.Init()
 			if level > 0 then
 				smallButton(
 					c,
-					UDim.new(1, -31),
-					26,
+					UDim.new(1, -48),
+					44,
 					if equipped then Color3.fromRGB(70, 200, 100) else Color3.fromRGB(80, 150, 240),
 					if equipped then "Equipped" else "Equip",
 					function()
@@ -731,32 +610,7 @@ function Menus.Init()
 		end
 	end
 
-	local function refreshRebirth()
-		local rebirths = player:GetAttribute("Rebirths") or 0
-		local cash = player:GetAttribute("Cash") or 0
-		local cost = GameConfig.RebirthCost(rebirths)
-		local config = GameConfig.Rebirth
-		local nextTitle = GameConfig.RebirthTitle(rebirths + 1) or ""
-		local current = 1 + rebirths * config.IncomeBonus
-		local nextMult = 1 + (rebirths + 1) * config.IncomeBonus
-		rebirthInfo.Text = table.concat({
-			`<font size="30" color="#FFD84A">Rebirth {rebirths} → {rebirths + 1}</font>`,
-			`Become a <b>{nextTitle}</b>`,
-			"",
-			`<font color="#78FF8C">Income x{current} → x{nextMult}</font>`,
-			`<font color="#8CC8FF">Speed training +{math.floor((rebirths + 1) * config.SpeedBonus * 100)}%</font>`,
-			`<font color="#FF9CF0">Case luck +{math.floor((rebirths + 1) * config.LuckBonus * 100)}%</font>`,
-			"",
-			`<font color="#FF8080">Resets: cash, knives, mounts, Speed, Haunted Wheel, vault walls</font>`,
-			`<font color="#C8C8D8">Keeps: powers, Index, tickets, stats</font>`,
-		}, "\n")
-		local label = rebirthButton:FindFirstChild("Label") :: TextLabel?
-		if label then
-			label.Text = if cash >= cost
-				then `REBIRTH  ($ {Ui.abbreviate(cost)})`
-				else `Need ${Ui.abbreviate(cost)}  ({math.floor(cash / cost * 100)}%)`
-		end
-	end
+	-- RebirthView owns its live requirement and bonus displays.
 
 	for attribute, refresh in
 		{
@@ -780,29 +634,57 @@ function Menus.Init()
 
 	-- The buttons themselves ------------------------------------------------------------------------
 	local function menuButton(order: number, text: string, color: Color3, icon: string, frame: Frame, refresh: () -> ())
-		local button = Ui.chunky(
-			{
-				LayoutOrder = order,
-				Size = UDim2.new(1, 0, 0, if Ui.Phone then 52 else 56),
-				BackgroundColor3 = color,
-				Text = text,
-			},
-			column,
-			icon,
-			function()
-				refresh()
-				toggle(frame)
-			end
-		)
-		if Ui.Phone then
-			Ui.iconOnly(button)
-		end
+		local button = Theme.button(column, text, color, {
+			LayoutOrder = order,
+			Size = UDim2.fromOffset(112, 44),
+			MaximumTextSize = 23,
+		}, function()
+			refresh()
+			toggle(frame)
+		end, icon)
 		return button
 	end
-	local indexButton = menuButton(2, "Index", Color3.fromRGB(60, 150, 255), "📖", indexFrame, refreshIndex)
-	indexBadge = Ui.badge(indexButton)
-	menuButton(3, "Knives [K]", Color3.fromRGB(130, 80, 230), "🔪", knivesFrame, refreshRack)
-	menuButton(5, "Rebirth", Color3.fromRGB(240, 190, 50), "♻️", rebirthFrame, refreshRebirth)
+	Ui.Navigation = column
+	local indexButton = menuButton(2, "Index", Theme.Cyan, "Index", indexFrame, refreshIndex)
+	indexBadge = Theme.badge(indexButton)
+	local moreFrame, moreBody = Theme.shell("More", "More", Theme.Cyan, "More", 460, 580)
+	table.insert(panels, moreFrame)
+	local moreList = new("ScrollingFrame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		CanvasSize = UDim2.new(),
+		ScrollBarThickness = 4,
+		ZIndex = 5,
+	}, moreBody)
+	Ui.new(
+		"UIPadding",
+		{ PaddingTop = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4) },
+		moreList
+	)
+	Ui.new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, moreList)
+	local moreOrder = { Knives = 1, Players = 2, Powers = 3, Rebirth = 4, Stats = 5 }
+	local moreColors = {
+		Knives = Theme.Gold,
+		Players = Theme.Cyan,
+		Powers = Color3.fromRGB(255, 148, 28),
+		Rebirth = Theme.Purple,
+		Stats = Theme.Green,
+	}
+	local function moreButton(name: string, icon: string, frame: Frame, refresh: () -> ())
+		Theme.button(moreList, name, moreColors[name], {
+			Name = name,
+			LayoutOrder = moreOrder[name],
+			Size = UDim2.new(1, -6, 0, 60),
+			ZIndex = 8,
+		}, function()
+			refresh()
+			toggle(frame)
+		end, icon)
+	end
+	moreButton("Knives", "Katana", knivesFrame, refreshRack)
+	moreButton("Powers", "Speed", powersFrame, refreshPowers)
+	moreButton("Rebirth", "Rebirth", rebirthFrame, refreshRebirth)
 
 	-- PLAYERS: everyone here, with a Team Up and a Trade button each (+ invite friends) -------------
 	local playersFrame, playersBody = panel("Players", Color3.fromRGB(90, 200, 255), "👥")
@@ -827,7 +709,7 @@ function Menus.Init()
 	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, playersList)
 	local function refreshPlayers()
 		for _, child in playersList:GetChildren() do
-			if child:IsA("Frame") or child:IsA("TextButton") then
+			if child:IsA("Frame") or child:IsA("TextButton") or child:IsA("TextLabel") then
 				child:Destroy()
 			end
 		end
@@ -846,6 +728,17 @@ function Menus.Init()
 				end)
 			end
 		)
+		local others = #Players:GetPlayers() - 1
+		playersFrame:SetAttribute("PreferredHeight", math.min(650, 200 + math.max(1, others) * 100))
+		if others == 0 then
+			Ui.label({
+				Text = "No other players here yet",
+				Size = UDim2.new(1, -10, 0, 44),
+				TextSize = 16,
+				TextScaled = false,
+				ZIndex = 6,
+			}, playersList)
+		end
 		local partnerId = player:GetAttribute("Partner")
 		for i, other in Players:GetPlayers() do
 			if other == player then
@@ -853,7 +746,7 @@ function Menus.Init()
 			end
 			local row = new("Frame", {
 				LayoutOrder = i,
-				Size = UDim2.new(1, -10, 0, 50),
+				Size = UDim2.new(1, -10, 0, 96),
 				BackgroundColor3 = Color3.fromRGB(44, 38, 58),
 				ZIndex = 6,
 			}, playersList)
@@ -861,7 +754,8 @@ function Menus.Init()
 			local teammate = partnerId == other.UserId
 			Ui.label({
 				Position = UDim2.fromOffset(10, 0),
-				Size = UDim2.new(1, -300, 1, 0),
+				Size = UDim2.new(1, -20, 0, 32),
+				TextTruncate = Enum.TextTruncate.AtEnd,
 				Text = (if teammate then "🤝 " else "") .. other.DisplayName,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextColor3 = if teammate then Color3.fromRGB(120, 255, 140) else Color3.new(1, 1, 1),
@@ -869,9 +763,9 @@ function Menus.Init()
 			}, row)
 			Ui.button(
 				{
-					AnchorPoint = Vector2.new(1, 0.5),
-					Position = UDim2.new(1, -148, 0.5, 0),
-					Size = UDim2.fromOffset(136, 38),
+					AnchorPoint = Vector2.new(1, 1),
+					Position = UDim2.new(0.5, -6, 1, -8),
+					Size = UDim2.new(0.5, -16, 0, 44),
 					Text = if teammate then "Leave team" else "🤝 Team up",
 					BackgroundColor3 = if teammate then Color3.fromRGB(200, 80, 80) else Color3.fromRGB(80, 170, 255),
 					ZIndex = 7,
@@ -887,9 +781,9 @@ function Menus.Init()
 			)
 			Ui.button(
 				{
-					AnchorPoint = Vector2.new(1, 0.5),
-					Position = UDim2.new(1, -6, 0.5, 0),
-					Size = UDim2.fromOffset(136, 38),
+					AnchorPoint = Vector2.new(1, 1),
+					Position = UDim2.new(1, -6, 1, -8),
+					Size = UDim2.new(0.5, -16, 0, 44),
 					Text = "🔁 Trade",
 					BackgroundColor3 = Color3.fromRGB(240, 170, 60),
 					ZIndex = 7,
@@ -901,7 +795,80 @@ function Menus.Init()
 			)
 		end
 	end
-	menuButton(6, "Players", Color3.fromRGB(90, 200, 255), "👥", playersFrame, refreshPlayers)
+	moreButton("Players", "Players", playersFrame, refreshPlayers)
+	local statsFrame, statsBody = panel("Stats", Color3.fromRGB(87, 202, 150), "📊")
+	table.insert(panels, statsFrame)
+	local detailsScroll = new("ScrollingFrame", {
+		Size = UDim2.new(1, 0, 1, -56),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		CanvasSize = UDim2.new(),
+		BackgroundTransparency = 1,
+		ScrollBarThickness = 4,
+		ZIndex = 5,
+	}, statsBody)
+	local statsText = Ui.label({
+		Size = UDim2.new(1, -8, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		TextScaled = false,
+		TextSize = 18,
+		TextWrapped = true,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		ZIndex = 6,
+	}, detailsScroll)
+	local blurButton = Ui.button(
+		{
+			Name = "MenuBlur",
+			Text = "Menu blur: OFF",
+			Position = UDim2.new(0, 0, 1, -48),
+			Size = UDim2.new(1, -8, 0, 44),
+			ZIndex = 6,
+		},
+		statsBody,
+		function()
+			if Ui.Menu.CanBlur() then
+				Ui.gui:SetAttribute("MenuBlurEnabled", not Ui.gui:GetAttribute("MenuBlurEnabled"))
+			end
+		end
+	)
+	local function refreshDetails()
+		statsText.Text = `Income: ${Ui.abbreviate(player:GetAttribute("Income") or 0)}/s\nHeat: {player:GetAttribute(
+			"Heat"
+		) or 0}/10\nWalk speed: {math.floor(GameConfig.WalkSpeedFor((player:GetAttribute("Speed") or 0) :: number))}\nWall level: {player:GetAttribute(
+			"WallLevel"
+		) or 0}\nLuck: {player:GetAttribute("Luck") or 0}\nRebirths: {player:GetAttribute("Rebirths") or 0}\nFriend boost: +{(player:GetAttribute(
+			"FriendsHere"
+		) or 0) * 10}%\n\nServer goal: {ReplicatedStorage:GetAttribute("GoalText") or "None"} ({ReplicatedStorage:GetAttribute(
+			"GoalProgress"
+		) or 0}/{ReplicatedStorage:GetAttribute("GoalNeed") or 1})`
+		local now = workspace:GetServerTimeNow()
+		local boost = player:GetAttribute("BoostUntil")
+		local luck = ReplicatedStorage:GetAttribute("ServerLuckUntil")
+		statsText.Text ..= `\nShield: {if player:GetAttribute("Shielded")
+			then Ui.clock(player:GetAttribute("ShieldLeft") or 0)
+			else "None"}\nCash boost: {if type(boost) == "number" and boost > now then Ui.clock(boost - now) else "None"}\nServer luck: {if type(
+				luck
+			)
+					== "number"
+				and luck > now
+			then Ui.clock(luck - now)
+			else "None"}`
+		blurButton.Text = if Ui.Menu.CanBlur()
+			then (if Ui.gui:GetAttribute("MenuBlurEnabled") then "Menu blur: ON" else "Menu blur: OFF")
+			else "Menu blur: requires High graphics"
+	end
+	moreButton("Stats", "Stats", statsFrame, refreshDetails)
+	Ui.gui:GetAttributeChangedSignal("MenuBlurEnabled"):Connect(refreshDetails)
+	player.AttributeChanged:Connect(function()
+		if statsFrame.Visible then
+			refreshDetails()
+		end
+	end)
+	ReplicatedStorage.AttributeChanged:Connect(function()
+		if statsFrame.Visible then
+			refreshDetails()
+		end
+	end)
+	menuButton(3, "More", Theme.Cyan, "More", moreFrame, function() end)
 	player:GetAttributeChangedSignal("Partner"):Connect(function()
 		if playersFrame.Visible then
 			refreshPlayers()
@@ -918,6 +885,8 @@ function Menus.Init()
 			ZIndex = 40,
 		}, Ui.gui)
 		Ui.corner(box, 14)
+		Ui.fitMenu(box, Vector2.new(420, 120))
+		Ui.registerMenu(box)
 		Ui.stroke(box)
 		Ui.label({
 			Position = UDim2.fromOffset(10, 8),
@@ -937,7 +906,7 @@ function Menus.Init()
 		Ui.button(
 			{
 				Position = UDim2.new(0, 10, 1, -50),
-				Size = UDim2.new(0.5, -15, 0, 40),
+				Size = UDim2.new(0.5, -15, 0, 44),
 				Text = "✅ Yes",
 				BackgroundColor3 = Color3.fromRGB(80, 200, 100),
 				ZIndex = 41,
@@ -950,7 +919,7 @@ function Menus.Init()
 		Ui.button(
 			{
 				Position = UDim2.new(0.5, 5, 1, -50),
-				Size = UDim2.new(0.5, -15, 0, 40),
+				Size = UDim2.new(0.5, -15, 0, 44),
 				Text = "No",
 				BackgroundColor3 = Color3.fromRGB(200, 80, 80),
 				ZIndex = 41,
@@ -971,6 +940,16 @@ function Menus.Init()
 	local tradeFrame, tradeBody = panel("Trade", Color3.fromRGB(240, 170, 60), "🔁")
 	local tradeOffer: { string } = {}
 	local tradeState: { [string]: any } = {}
+	local tradeActive = false
+	tradeFrame:GetPropertyChangedSignal("Visible"):Connect(function()
+		if not tradeFrame.Visible and tradeActive then
+			tradeActive = false
+			tradeOffer = {}
+			task.spawn(function()
+				Remotes.Trade:InvokeServer("Cancel")
+			end)
+		end
+	end)
 	local function tradeColumn(x: number, title: string): ScrollingFrame
 		Ui.label({
 			Position = UDim2.new(x, 4, 0, 0),
@@ -1023,14 +1002,14 @@ function Menus.Init()
 		},
 		tradeBody,
 		function()
-			Remotes.Trade:InvokeServer("Cancel")
 			tradeFrame.Visible = false
 		end
 	)
 	local function itemRow(list: ScrollingFrame, item: string, order: number, picked: boolean, onTap: (() -> ())?)
 		local row = Ui.button({
 			LayoutOrder = order,
-			Size = UDim2.new(1, -8, 0, 34),
+			Size = UDim2.new(1, -8, 0, 44),
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			Text = Items.DisplayName(item),
 			TextColor3 = Items.Color(item),
 			BackgroundColor3 = if picked then Color3.fromRGB(80, 160, 90) else Color3.fromRGB(60, 54, 74),
@@ -1092,6 +1071,7 @@ function Menus.Init()
 				Remotes.Trade:InvokeServer("Decline", a)
 			end)
 		elseif kind == "TradeState" and type(a) == "table" then
+			tradeActive = true
 			tradeState = a
 			tradeOffer = table.clone(a.Mine or {})
 			if not tradeFrame.Visible then
@@ -1102,6 +1082,7 @@ function Menus.Init()
 			end
 			drawTrade()
 		elseif kind == "TradeClosed" then
+			tradeActive = false
 			tradeFrame.Visible = false
 			tradeState = {}
 			tradeOffer = {}
@@ -1120,24 +1101,23 @@ function Menus.Init()
 	local slowButton: TextButton
 	local function setSlow(on: boolean)
 		Remotes.SlowMode:FireServer(on)
-		slowButton.Text = if on then "[T] Slow: ON" else "[T] Slow: OFF"
+	end
+	slowButton = Theme.button(column, "Slow: OFF", Color3.fromRGB(150, 150, 160), {
+		LayoutOrder = 5,
+		Name = "Slow",
+		Size = UDim2.fromOffset(112, 44),
+		MaximumTextSize = 18,
+	}, function()
+		setSlow(not player:GetAttribute("SlowMode"))
+	end)
+	local function refreshSlow()
+		local on = player:GetAttribute("SlowMode") == true
+		(slowButton:FindFirstChild("Label") :: TextLabel).Text = (if Ui.Phone then "Slow: " else "[T] Slow: ")
+			.. (if on then "ON" else "OFF")
 		slowButton.BackgroundColor3 = if on then Color3.fromRGB(90, 200, 110) else Color3.fromRGB(150, 150, 160)
 	end
-	slowButton = Ui.button(
-		{
-			LayoutOrder = 5,
-			Size = UDim2.new(1, 0, 0, if Ui.Phone then 34 else 40),
-			Text = "[T] Slow: OFF",
-			BackgroundColor3 = Color3.fromRGB(150, 150, 160),
-		},
-		column,
-		function()
-			setSlow(not player:GetAttribute("SlowMode"))
-		end
-	)
-	if Ui.Phone then
-		slowButton.Text = "Slow"
-	end
+	player:GetAttributeChangedSignal("SlowMode"):Connect(refreshSlow)
+	refreshSlow()
 	game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
 		if not processed and input.KeyCode == Enum.KeyCode.T then
 			setSlow(not player:GetAttribute("SlowMode"))

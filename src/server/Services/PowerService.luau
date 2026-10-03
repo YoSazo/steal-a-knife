@@ -672,9 +672,21 @@ local function mimic(player: Player, duration: number)
 	prop.Name = `Mimic_{player.Name}`
 	local yaw = math.random() * math.pi * 2
 	buildProp(PROPS[math.random(1, #PROPS)], CFrame.new(root.Position) * CFrame.Angles(0, yaw, 0), prop)
+	-- The disguise moves with you (prop-hunt style), so it works mid-run too: weld it to the root
+	for _, d in prop:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = false
+			d.CanCollide = false
+			d.CanTouch = false
+			d.Massless = true
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = root
+			weld.Part1 = d
+			weld.Parent = d
+		end
+	end
 	prop.Parent = effectsFolder
 	player:SetAttribute("Mimic", true)
-	local startPos = root.Position
 	local finished = false
 	local connection: RBXScriptConnection
 	local function finish()
@@ -695,9 +707,8 @@ local function mimic(player: Player, duration: number)
 	Stealth.Register(player, finish)
 	local started = os.clock()
 	connection = RunService.Heartbeat:Connect(function()
-		local r = rootOf(player)
-		-- Moving (or the time running out) breaks the disguise
-		if not r or os.clock() - started > duration or (r.Position - startPos).Magnitude > 1.5 then
+		-- Only dying or the time running out ends it (walking around in it is the fun part)
+		if not rootOf(player) or os.clock() - started > duration then
 			finish()
 		end
 	end)

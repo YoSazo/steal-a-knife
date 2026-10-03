@@ -196,11 +196,11 @@ function Raid.Init()
 	-- Repairing your own gate during a raid ------------------------------------------------------
 	local repairButton = Ui.chunky(
 		{
-			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -230),
-			Size = UDim2.fromOffset(280, 58),
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -12, 0, 108),
+			Size = UDim2.fromOffset(120, 44),
 			BackgroundColor3 = Color3.fromRGB(90, 160, 255),
-			Text = "Repair gate [R]",
+			Text = "Repair" .. Ui.hint("R", "L3"),
 			Visible = false,
 		},
 		Ui.gui,
@@ -223,7 +223,7 @@ function Raid.Init()
 		Ui.gui:SetAttribute("RepairVisible", repairButton.Visible)
 	end)
 	ContextActionService:BindAction("RepairGate", function(_, state)
-		if state == Enum.UserInputState.Begin and nearOwnGate() then
+		if state == Enum.UserInputState.Begin and nearOwnGate() and not Ui.menuOpen() then
 			Remotes.RepairGate:FireServer()
 			return Enum.ContextActionResult.Sink
 		end
@@ -258,6 +258,8 @@ function Raid.Init()
 		Visible = false,
 	}, auraGui)
 	Ui.textStroke(knockLabel, 4)
+	Ui.fitPhone(knockLabel)
+	Ui.fitPhone(warning)
 	local grey = new("ColorCorrectionEffect", { Name = "KnockGrey", Enabled = false }, workspace.CurrentCamera)
 	player:GetAttributeChangedSignal("KnockedUntil"):Connect(function()
 		local knocked = player:GetAttribute("KnockedUntil")
@@ -282,6 +284,8 @@ function Raid.Init()
 		if barrierTimer >= 0.1 then
 			barrierTimer = 0
 			repairButton.Visible = nearOwnGate()
+				and not Ui.menuOpen()
+				and Ui.gui:GetAttribute("KnifeGestureActive") ~= true
 			refreshBarriers()
 		end
 		-- Aura pressure

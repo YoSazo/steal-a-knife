@@ -51,7 +51,7 @@ local function show(info: Info)
 		Name = "Welcome",
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = Color3.fromRGB(30, 26, 23),
-		BackgroundTransparency = 0.78,
+		BackgroundTransparency = 1,
 		ZIndex = 50,
 	}, Ui.gui)
 	local card = new("Frame", {
@@ -247,7 +247,42 @@ local function show(info: Info)
 			ZIndex = 53,
 		}, card, "🔪", close)
 	end
-	card.Size = UDim2.fromOffset(620, y + 76)
+	local content = new("ScrollingFrame", {
+		Name = "Content",
+		Position = UDim2.fromOffset(0, 72),
+		Size = UDim2.new(1, 0, 1, -132),
+		BackgroundTransparency = 1,
+		CanvasSize = UDim2.fromOffset(0, y - 72),
+		ScrollBarThickness = 4,
+		ZIndex = 52,
+	}, card)
+	local children = card:GetChildren()
+	for _, child in children do
+		if child:IsA("GuiObject") and child ~= title and child ~= content then
+			if child:IsA("TextButton") then
+				child.AnchorPoint = Vector2.new(0.5, 1)
+				child.Position, child.Size = UDim2.new(0.5, 0, 1, -8), UDim2.new(1, -40, 0, 44)
+			else
+				child.Position -= UDim2.fromOffset(0, 72)
+				child.Parent = content
+			end
+		end
+	end
+	for _, tile in row:GetChildren() do
+		if tile:IsA("Frame") then
+			tile.Size = UDim2.new(1 / 7, -8, 0, tile.Size.Y.Offset)
+		end
+	end
+	title.Size = UDim2.new(1, -88, 0, 44)
+	Ui.button({
+		Name = "Close",
+		Text = "X",
+		Position = UDim2.new(1, -52, 0, 12),
+		Size = UDim2.fromOffset(44, 44),
+		ZIndex = 55,
+	}, card, close)
+	Ui.fitMenu(card, Vector2.new(620, y + 76))
+	Ui.registerMenu(dim)
 	if info.Offline > 0 then
 		Effects.Sound(Sounds.Cash, nil, 0.6)
 	end

@@ -14,6 +14,8 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 
+local Ui = require(script.Parent.Ui)
+local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 local Transitions = {}
 
 local player = Players.LocalPlayer
@@ -62,7 +64,8 @@ function Transitions.Init()
 	banner.Size = UDim2.fromScale(0.5, 0.11)
 	banner.BackgroundTransparency = 1
 	banner.Visible = false
-	banner.Parent = gui
+	banner.Parent = Ui.root
+	banner.ZIndex = 3
 	local title = label(banner, { Size = UDim2.fromScale(1, 0.68) })
 	local subtitle = label(banner, {
 		Position = UDim2.fromScale(0, 0.68),
@@ -70,13 +73,41 @@ function Transitions.Init()
 		TextColor3 = Color3.fromRGB(255, 90, 90),
 	})
 	local bannerToken = 0
+	if Ui.Phone then
+		local function fitZone()
+			local _, bounds = Ui.bounds()
+			banner.Position = UDim2.fromScale(0.5, 0)
+			banner.Size = UDim2.fromOffset(math.min(380, math.max(220, bounds.X - 300)), 40)
+		end
+		Ui.Layout.Changed:Connect(fitZone)
+		fitZone()
+		title.Size = UDim2.new(1, 0, 0, 22)
+		subtitle.Position, subtitle.Size = UDim2.fromOffset(0, 22), UDim2.new(1, 0, 0, 18)
+		for _, text in { title, subtitle } do
+			text.TextScaled, text.TextSize, text.TextTruncate = false, 14, Enum.TextTruncate.AtEnd
+		end
+	end
+	Ui.Menu.Changed:Connect(function()
+		if Ui.menuOpen() then
+			bannerToken += 1
+			banner.Visible = false
+			Ui.gui:SetAttribute("ZoneNotice", false)
+		end
+	end)
 	local function showZone(index: number)
+		if Ui.menuOpen() then
+			return
+		end
 		local zone = GameConfig.Zones[index] :: any
 		title.Text = `{zone.Title or zone.Rarity} {ZONE_EMOJI[zone.Rarity] or ""}`
 		title.TextColor3 = zone.Color:Lerp(Color3.new(1, 1, 1), 0.35)
 		local need = zone.SpeedNeeded or 0
 		local speed = (player:GetAttribute("Speed") or 0) :: number
-		subtitle.Text = if need > speed then `Needs {Format.Short(need)} speed to outrun the boss!` else ""
+		subtitle.Text = if need > speed
+			then (if Ui.Phone
+				then `Needs {Format.Short(need)} speed`
+				else `Needs {Format.Short(need)} speed to outrun the boss!`)
+			else ""
 		bannerToken += 1
 		local token = bannerToken
 		banner.Visible = true
@@ -85,10 +116,14 @@ function Transitions.Init()
 			local stroke = text:FindFirstChildOfClass("UIStroke") :: UIStroke
 			stroke.Transparency = 0
 		end
-		banner.Position = UDim2.fromScale(0.5, 0.14)
-		TweenService
-			:Create(banner, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Position = UDim2.fromScale(0.5, 0.17) })
-			:Play()
+		if Ui.Phone then
+			Ui.gui:SetAttribute("ZoneNotice", true)
+		else
+			banner.Position = UDim2.fromScale(0.5, 0.14)
+			TweenService
+				:Create(banner, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Position = UDim2.fromScale(0.5, 0.17) })
+				:Play()
+		end
 		task.delay(1.8, function()
 			if token ~= bannerToken then
 				return
@@ -98,6 +133,12 @@ function Transitions.Init()
 				TweenService:Create(text:FindFirstChildOfClass("UIStroke") :: UIStroke, TweenInfo.new(0.5), {
 					Transparency = 1,
 				}):Play()
+			end
+		end)
+		task.delay(2.3, function()
+			if token == bannerToken then
+				banner.Visible = false
+				Ui.gui:SetAttribute("ZoneNotice", false)
 			end
 		end)
 	end
@@ -195,10 +236,37 @@ function Transitions.Init()
 		Size = UDim2.fromOffset(320, 24),
 		Text = "",
 		Visible = false,
-		ZIndex = 20,
+		ZIndex = 3,
 	})
+	local riskIcon = Ui.new("ImageLabel", {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(28, 28),
+		Position = UDim2.fromOffset(-32, 0),
+		Visible = false,
+		ZIndex = 20,
+	}, badge)
+	if Ui.Phone then
+		badge.Name = "AtRisk"
+		badge.Parent = Ui.root
+		badge.TextScaled = false
+		badge.TextSize = 14
+		badge.TextTruncate = Enum.TextTruncate.AtEnd
+		badge.BackgroundTransparency = 0.15
+		badge.BackgroundColor3 = Ui.PANEL
+		Ui.corner(badge, 8)
+	end
 	local TILE = 150
 	local riskToken = 0
+	local riskActive = false
+	Ui.Menu.Changed:Connect(function()
+		badge.Visible = riskActive and player:GetAttribute("InRound") == true and not Ui.menuOpen()
+	end)
+	Ui.Layout.Changed:Connect(function()
+		if Ui.Phone then
+			local _, bounds = Ui.bounds()
+			badge.Size = UDim2.fromOffset(math.min(320, bounds.X * 0.5), 28)
+		end
+	end)
 	local function tile(item: string, index: number)
 		local parsed = Items.Parse(item)
 		local frame = Instance.new("Frame")
@@ -226,8 +294,21 @@ function Transitions.Init()
 		})
 	end
 	local function showRisk(choices: { string }, chosen: string)
+		riskActive = true
 		riskToken += 1
 		local token = riskToken
+		if Ui.Phone then
+			local parsed = Items.Parse(chosen)
+			badge.Text = `At risk: {Items.DisplayName(chosen)}`
+			badge.TextColor3 = Items.Color(chosen)
+			local _, bounds = Ui.bounds()
+			badge.Size = UDim2.fromOffset(math.min(320, bounds.X * 0.5), 28)
+			badge.Position = UDim2.new(0.5, 0, 0, 90)
+			riskIcon.Image = if parsed then KnifeIcons[parsed.Knife.Name] or "" else ""
+			riskIcon.Visible = true
+			badge.Visible = player:GetAttribute("InRound") == true and not Ui.menuOpen()
+			return
+		end
 		strip:ClearAllChildren()
 		local count = 34
 		local landAt = count - 3
@@ -267,11 +348,33 @@ function Transitions.Init()
 	end
 	player:GetAttributeChangedSignal("InRound"):Connect(function()
 		if not player:GetAttribute("InRound") then
+			riskActive = false
 			riskToken += 1
 			riskPanel.Visible = false
 			badge.Visible = false
 		end
 	end)
+
+	player.CharacterAdded:Connect(function(character)
+		local humanoid = character:WaitForChild("Humanoid") :: Humanoid
+		humanoid.Died:Connect(function()
+			riskActive = false
+			riskToken += 1
+			badge.Visible = false
+			riskPanel.Visible = false
+		end)
+	end)
+	if player.Character then
+		local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.Died:Connect(function()
+				riskActive = false
+				riskToken += 1
+				badge.Visible = false
+				riskPanel.Visible = false
+			end)
+		end
+	end
 
 	-- End-of-round VS card (MM2 style) --------------------------------------------------------------
 	local card = Instance.new("Frame")
@@ -282,16 +385,26 @@ function Transitions.Init()
 	card.BackgroundTransparency = 0.08
 	card.Visible = false
 	card.ZIndex = 30
-	card.Parent = gui
+	card.Name = "RoundResults"
+	card.Parent = Ui.root
+	Ui.fitMenu(card, Vector2.new(560, 260))
+	Ui.registerMenu(card)
+	Ui.button(
+		{ Name = "Close", Text = "X", Position = UDim2.new(1, -52, 0, 6), Size = UDim2.fromOffset(44, 44), ZIndex = 33 },
+		card,
+		function()
+			card.Visible = false
+		end
+	)
 	local cardCorner = Instance.new("UICorner")
 	cardCorner.CornerRadius = UDim.new(0, 16)
 	cardCorner.Parent = card
 	local cardStroke = Instance.new("UIStroke")
-	cardStroke.Thickness = 4
+	cardStroke.Thickness = 2
 	cardStroke.Parent = card
 	local cardTitle = label(card, {
 		Position = UDim2.fromOffset(12, 8),
-		Size = UDim2.new(1, -24, 0, 38),
+		Size = UDim2.new(1, -80, 0, 38),
 		ZIndex = 31,
 	})
 	label(card, {

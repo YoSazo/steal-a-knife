@@ -33,8 +33,9 @@ end
 function PowerBar.Init()
 	local bar = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, if Ui.Phone then -38 else -110),
-		Size = UDim2.fromOffset(3 * 96, 84),
+		Name = "Powers",
+		Position = UDim2.new(0.5, 0, 1, -110),
+		Size = UDim2.fromOffset(224, 52),
 		BackgroundTransparency = 1,
 	}, Ui.gui)
 	new("UIListLayout", {
@@ -49,7 +50,7 @@ function PowerBar.Init()
 
 	local function use(index: number)
 		local id = loadout[index]
-		if id and bar.Visible then
+		if id and bar.Visible and not Ui.menuOpen() then
 			Remotes.UsePower:FireServer(id, aimDirection())
 		end
 	end
@@ -57,18 +58,19 @@ function PowerBar.Init()
 	for i = 1, GameConfig.MaxPowerSlots do
 		local button: TextButton = new("TextButton", {
 			LayoutOrder = i,
-			Size = UDim2.fromOffset(86, 84),
+			Size = UDim2.fromOffset(68, 52),
 			AutoButtonColor = true,
 			Text = "",
 			BackgroundColor3 = Ui.PANEL,
 			Visible = false,
 		}, bar)
 		Ui.corner(button, 14)
-		new("UIStroke", { Thickness = 3, Color = Color3.new(1, 1, 1) }, button)
+		new("UIStroke", { Thickness = 2, Color = Color3.new(1, 1, 1) }, button)
 		local name = Ui.label({
-			Position = UDim2.fromOffset(4, 22),
-			Size = UDim2.new(1, -8, 0, 22),
+			Position = UDim2.fromOffset(4, 2),
+			Size = UDim2.new(1, -8, 0, 26),
 			Text = "",
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			TextStrokeTransparency = 0.4,
 		}, button)
 		local key = Ui.label({
@@ -87,8 +89,8 @@ function PowerBar.Init()
 		}, button)
 		Ui.corner(shade, 14)
 		local count = Ui.label({
-			Position = UDim2.new(0, 4, 1, -32),
-			Size = UDim2.new(1, -8, 0, 26),
+			Position = UDim2.new(0, 4, 1, -22),
+			Size = UDim2.new(1, -8, 0, 20),
 			Text = "",
 			ZIndex = 4,
 		}, button)
@@ -126,6 +128,18 @@ function PowerBar.Init()
 	end)
 
 	RunService.RenderStepped:Connect(function()
+		if Ui.Phone then
+			local _, bounds = Ui.bounds()
+			local knife = Ui.Layout.knifePosition()
+			local right = math.min(bounds.X / 2 + 112, knife.X - 88)
+			local left = math.max(152, right - 224)
+			local width = math.max(140, right - left)
+			bar.Position = UDim2.fromOffset((left + right) / 2, math.max(172, bounds.Y - 162) + 52)
+			bar.Size = UDim2.fromOffset(width, 52)
+			for _, slot in slots do
+				slot.Button.Size = UDim2.fromOffset((width - 20) / 3, 52)
+			end
+		end
 		-- The Murderer fights with their knife; powers are for innocents
 		local inRound = player:GetAttribute("InRound") == true
 		local murderer = inRound and player:GetAttribute("Role") == "Murderer"
@@ -137,8 +151,12 @@ function PowerBar.Init()
 			and math.abs(root.Position.X) < GameConfig.ArenaWidth / 2 + 2
 		local bloodMoon = type(ReplicatedStorage:GetAttribute("RaidEndsAt")) == "number"
 		local classic = inRound and ReplicatedStorage:GetAttribute("Classic") == true
-		bar.Visible = not murderer and not classic and #loadout > 0 and (inRound or onRunway or bloodMoon)
-		local gamepad = UserInputService.GamepadEnabled
+		bar.Visible = not Ui.menuOpen()
+			and not murderer
+			and not classic
+			and #loadout > 0
+			and (inRound or onRunway or bloodMoon)
+		local gamepad = UserInputService.PreferredInput == Enum.PreferredInput.Gamepad
 		local now = workspace:GetServerTimeNow()
 		for i, slot in slots do
 			local id = loadout[i]
@@ -147,7 +165,7 @@ function PowerBar.Init()
 			end
 			-- Rounds: only your first power comes along
 			slot.Button.Visible = not inRound or i == 1
-			slot.Key.Text = if gamepad then PAD_LABELS[i] else KEY_LABELS[i]
+			slot.Key.Text = if Ui.Phone then "" elseif gamepad then PAD_LABELS[i] else KEY_LABELS[i]
 			local energy = player:GetAttribute("Energy")
 			if type(energy) == "number" then
 				-- In a round: costs Energy (coins fill it); shaded while you can't afford it

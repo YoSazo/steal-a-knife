@@ -6,15 +6,19 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Layout = require(script.Parent.Layout)
+local MenuController = require(script.Parent.MenuController)
 
 local Format = require(ReplicatedStorage.Shared.Format)
+local Artwork = require(ReplicatedStorage.Shared.Config.UiArtwork)
+local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 
-local Ui = {}
+local Ui = { gui = nil :: any, root = nil :: any, Navigation = nil :: any }
 
 -- Phones (and tablets): touch with no keyboard. They get a compact layout that keeps clear of the
 -- thumbstick (bottom left) and jump button (bottom right). In Studio, ReplicatedStorage attribute
 -- DebugPhone = true previews it on desktop (with ghosts of where the touch controls would be).
-Ui.Phone = (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
+Ui.Phone = UserInputService.TouchEnabled
 	or (RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugPhone") == true)
 
 -- Turn a Ui.chunky button into a square icon-only one (phones: no room for the words)
@@ -34,8 +38,8 @@ end
 
 Ui.FONT = Enum.Font.FredokaOne
 Ui.WHITE = Color3.new(1, 1, 1)
-Ui.PANEL = Color3.fromRGB(30, 26, 40)
-Ui.SPOOKY = Enum.Font.Creepster -- big dramatic text (role reveal, results)
+Ui.PANEL = Color3.fromRGB(24, 35, 57)
+Ui.SPOOKY = Enum.Font.FredokaOne -- big dramatic text (role reveal, results)
 Ui.OUTLINE = Color3.fromRGB(30, 30, 40)
 
 function Ui.new(className: string, props: { [string]: any }, parent: Instance?): any
@@ -43,8 +47,29 @@ function Ui.new(className: string, props: { [string]: any }, parent: Instance?):
 	for key, value in props do
 		(instance :: any)[key] = value
 	end
-	instance.Parent = parent
+	instance.Parent = if parent == Ui.gui and Ui.root then Ui.root else parent
 	return instance
+end
+
+function Ui.art(parent: Instance, name: string, props: { [string]: any }?): ImageLabel
+	local defaults: { [string]: any } = {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Image = KnifeIcons[name] or Artwork[name] or "",
+		ScaleType = Enum.ScaleType.Fit,
+	}
+	for key, value in (props or {}) :: { [string]: any } do
+		defaults[key] = value
+	end
+	local image: ImageLabel = Ui.new("ImageLabel", defaults, parent)
+	if KnifeIcons[name] then
+		task.delay(8, function()
+			if image.Parent and not image.IsLoaded then
+				image.Image = Artwork[name] or KnifeIcons[name]
+			end
+		end)
+	end
+	return image
 end
 
 function Ui.corner(parent: Instance, radius: number)
@@ -53,7 +78,7 @@ end
 
 function Ui.stroke(parent: Instance, thickness: number?)
 	Ui.new("UIStroke", {
-		Thickness = thickness or 3,
+		Thickness = math.min(thickness or 2, 2),
 		Color = Ui.OUTLINE,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 	}, parent)
@@ -78,7 +103,11 @@ function Ui.label(props: { [string]: any }, parent: Instance?): TextLabel
 	for key, value in props do
 		defaults[key] = value
 	end
-	return Ui.new("TextLabel", defaults, parent)
+	local label: TextLabel = Ui.new("TextLabel", defaults, parent)
+	if label.TextScaled then
+		Ui.new("UITextSizeConstraint", { MinTextSize = 14, MaxTextSize = 28 }, label)
+	end
+	return label
 end
 
 -- Chunky rounded button with an outline; `onClick` fires for mouse, touch and gamepad select
@@ -107,7 +136,7 @@ end
 -- Thick dark outline around text (the chunky Steal-An-Egg look)
 function Ui.textStroke(label: TextLabel | TextButton, thickness: number?, color: Color3?)
 	Ui.new("UIStroke", {
-		Thickness = thickness or 3,
+		Thickness = math.min(thickness or 2, 2),
 		Color = color or Color3.fromRGB(20, 16, 28),
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
 		LineJoinMode = Enum.LineJoinMode.Round,
@@ -138,7 +167,7 @@ function Ui.chunky(
 	local button: TextButton = Ui.new("TextButton", props, parent)
 	Ui.corner(button, 12)
 	Ui.new("UIStroke", {
-		Thickness = 3.5,
+		Thickness = 2,
 		Color = Color3.fromRGB(20, 16, 28),
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 	}, button)
@@ -155,6 +184,17 @@ function Ui.chunky(
 	local iconLabel: TextLabel? = nil
 	local hasIcon = icon ~= nil and icon ~= ""
 	if hasIcon then
+		local symbol = ({
+			["📖"] = "Index",
+			["☰"] = "More",
+			["⬆️"] = "Upgrades",
+			["♻️"] = "Rebirth",
+			["💎"] = "CaseLegendary",
+			["🔪"] = "RustyShank",
+			["💰"] = "Cash",
+			["👑"] = "VIP",
+			["❤️"] = "Health",
+		})[icon :: string]
 		iconLabel = Ui.label({
 			Size = UDim2.new(1, -8, 1, -8),
 			Position = UDim2.fromOffset(6, 4),
@@ -162,6 +202,14 @@ function Ui.chunky(
 			Text = icon,
 			ZIndex = (button.ZIndex or 1) + 2,
 		}, button)
+		if symbol then
+			(iconLabel :: TextLabel).Visible = false
+			Ui.art(
+				button,
+				symbol,
+				{ Size = UDim2.new(0, 36, 1, -8), Position = UDim2.fromOffset(4, 4), ZIndex = (button.ZIndex or 1) + 2 }
+			)
+		end
 	end
 	local label = Ui.label({
 		Name = "Label",
@@ -174,7 +222,7 @@ function Ui.chunky(
 		-- leave room for the icon on the left
 		Ui.new("UIPadding", { PaddingLeft = UDim.new(0.28, 0) }, label)
 	end
-	Ui.textStroke(label, 2.5)
+	Ui.textStroke(label, 1.5)
 	Ui.new("UITextSizeConstraint", { MaxTextSize = 34 }, label)
 	local scale = Ui.new("UIScale", {}, button)
 	button.MouseEnter:Connect(function()
@@ -238,21 +286,68 @@ Ui.gui = Ui.new("ScreenGui", {
 	Name = "HUD",
 	ResetOnSpawn = false,
 	IgnoreGuiInset = false,
+	ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, player:WaitForChild("PlayerGui")) :: ScreenGui
 
--- Scale everything down a bit on small (phone) screens
-local uiScale = Ui.new("UIScale", {}, Ui.gui)
-local function updateScale()
-	local camera = workspace.CurrentCamera
-	local shortSide = math.min(camera.ViewportSize.X, camera.ViewportSize.Y)
-	-- Phones lay out for ~560 units of height so buttons stay thumb-sized (~36pt and up)
-	-- Desktop: compact, so the world gets the screen (about 0.7 on a 1080p window)
-	uiScale.Scale = if Ui.Phone then math.clamp(shortSide / 560, 0.55, 1) else math.clamp(shortSide / 1500, 0.5, 0.85)
-end
--- Roblox games are played sideways: never let a phone turn this into portrait
+-- The root uses safe-area pixels; individual components reflow instead of shrinking text.
+Ui.root =
+	Ui.new("Frame", { Name = "SafeRoot", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, Ui.gui) :: Frame
+Ui.Scale = Ui.new("UIScale", { Scale = 1 }, Ui.gui)
+Ui.Layout = Layout
+Ui.Menu = MenuController
+Layout.bind(Ui.root)
 player:WaitForChild("PlayerGui").ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor
-workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
-updateScale()
+function Ui.bounds(): (Vector2, Vector2)
+	return Layout.bounds()
+end
+-- How much to shrink big one-off screen text (banners, reveals) so it fits a phone: 1 on
+-- desktop, ~0.55 on a small landscape phone
+function Ui.phoneScale(): number
+	if not Ui.Phone then
+		return 1
+	end
+	local _, bounds = Layout.bounds()
+	return math.clamp(math.min(bounds.Y / 720, bounds.X / 1280), 0.5, 1)
+end
+-- Gives a whole ScreenGui (or frame) a UIScale that follows Ui.phoneScale
+function Ui.fitPhone(target: Instance)
+	if not Ui.Phone then
+		return
+	end
+	local scale = target:FindFirstChild("PhoneScale") :: UIScale?
+	if not scale then
+		scale = Ui.new("UIScale", { Name = "PhoneScale" }, target)
+	end
+	(scale :: UIScale).Scale = Ui.phoneScale()
+end
+function Ui.fitMenu(frame: GuiObject, maximum: Vector2?)
+	Layout.fit(frame, maximum)
+end
 
+local backdrop = Ui.new("TextButton", {
+	Name = "MenuBackdrop",
+	Size = UDim2.fromScale(1, 1),
+	Text = "",
+	BackgroundColor3 = Color3.fromRGB(7, 13, 25),
+	BackgroundTransparency = 0.35,
+	AutoButtonColor = false,
+	Visible = false,
+	ZIndex = 4,
+	Active = true,
+	Selectable = false,
+}, Ui.gui)
+MenuController.Init(Ui.gui, backdrop)
+function Ui.registerMenu(frame: GuiObject)
+	MenuController.Register(frame)
+end
+function Ui.menuOpen(): boolean
+	return MenuController.IsOpen()
+end
+function Ui.hint(keyboard: string, gamepad: string): string
+	if UserInputService.PreferredInput == Enum.PreferredInput.Touch or Ui.Phone then
+		return ""
+	end
+	return ` [{if UserInputService.PreferredInput == Enum.PreferredInput.Gamepad then gamepad else keyboard}]`
+end
 return Ui

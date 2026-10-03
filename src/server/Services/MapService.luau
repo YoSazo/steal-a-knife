@@ -28,6 +28,7 @@ local ManorDecor = require(script.Parent.ManorDecor)
 local RoundMaps = require(script.Parent.RoundMaps)
 local VaultWalls = require(script.Parent.VaultWalls)
 local Textures = require(ReplicatedStorage.Shared.Config.Textures)
+local SignTheme = require(ReplicatedStorage.Shared.SignTheme)
 local Toy = require(ReplicatedStorage.Shared.Toy)
 
 export type Bounds = { MinX: number, MaxX: number, MinZ: number, MaxZ: number }
@@ -87,6 +88,8 @@ end
 -- offset is in world space, so a sign's text can sit in front of its board
 local function label(adornee: BasePart, text: string, color: Color3, size: UDim2, offset: Vector3): TextLabel
 	local gui = Instance.new("BillboardGui")
+	gui:SetAttribute("LabelCategory", "Utility")
+	gui:AddTag("ResponsiveWorldLabel")
 	gui.Size = size
 	gui.StudsOffsetWorldSpace = offset
 	gui.AlwaysOnTop = false
@@ -336,7 +339,7 @@ local VAULT_WIDTH, VAULT_DEPTH, VAULT_SPACING = 40, 44, 40 -- vaults touch: no g
 -- upgrade shows the next storey (SetFloors).
 local SLOTS_PER_FLOOR = GameConfig.SlotsPerFloor
 local FLOORS = GameConfig.MaxSlots // SLOTS_PER_FLOOR
-local FLOOR_HEIGHT = 16 -- roomy: plenty of headroom over the knives
+local FLOOR_HEIGHT = 22 -- tall Tsunami storeys: lots of air over the knives
 local PLATE_X = 12 -- the two columns of plates, either side of the walkway
 local PLATE_Z = { -17, -9, -1, 7, 15 } -- back to front
 local WALK_HALF = 4
@@ -344,12 +347,12 @@ local LADDER_LANDING = 3.5 -- deck behind the ladder at the back, where you step
 local LADDER_HOLE = 3 -- the slot in front of the ladder you climb up through
 local LADDER_HOLE_HALF = 2.5
 local PLATE_RADIUS = 3.4
-local FLOOR_PINK = Color3.fromRGB(255, 222, 238)
+local FLOOR_PINK = Color3.fromRGB(242, 238, 255) -- (lavender white, like Tsunami's floors)
 local HUB_HALF = GameConfig.ArenaWidth / 2 + VAULT_DEPTH + 0.5 -- the hub's outer wall (inner face), just behind the vaults
 local COLUMN = 6 -- vaults down each side; 4 more across the back
 local HUB_BACK = COLUMN * 40 + 44 -- the hub ends right behind the back row of vaults
 local NAVY = Color3.fromRGB(40, 44, 90)
-local CYAN = Color3.fromRGB(70, 214, 245)
+local CYAN = Color3.fromRGB(80, 228, 255)
 local KNIFE_TILT = 12 -- degrees
 MapService.Floors = FLOORS
 MapService.FloorHeight = FLOOR_HEIGHT
@@ -411,7 +414,7 @@ local function buildBases()
 			"Floor",
 			Vector3.new(VAULT_WIDTH, 1, VAULT_DEPTH),
 			at(0, 0.1, 0),
-			FLOOR_PINK:Lerp(color, 0.12),
+			FLOOR_PINK:Lerp(color, 0.08),
 			folder
 		)
 		Toy.Dress(floor, nil, 1, 4)
@@ -423,7 +426,7 @@ local function buildBases()
 		-- The storeys. Each has its own folder so the vault can grow: decks with a hole at the back
 		-- middle, a ladder up from the floor below, a glass rail along the open front, the walkway
 		-- and ten plates (slots 1-10 ground, 11-20 next floor, ...)
-		local deckColor = FLOOR_PINK:Lerp(color, 0.12)
+		local deckColor = FLOOR_PINK:Lerp(color, 0.08)
 		local floorFolders: { Folder } = {}
 		local slotCFrames: { CFrame }, slotPads: { BasePart }, slotRims: { BasePart } = {}, {}, {}
 		local cashPads: { BasePart }, cashLabels: { TextLabel } = {}, {}
@@ -559,8 +562,7 @@ local function buildBases()
 				slotRims[slot] = plate
 				-- The money pad between the plate and the walkway (Tsunami style): the knife's
 				-- earnings pile up here until its owner walks over it
-				-- Tsunami style: a rounded mint panel with a dark purple border, the money in big green
-				-- letters. The panel's +Z faces the plate, so the text reads from the walkway.
+				-- The panel's +Z faces the plate, so the text reads from the walkway.
 				local padAt = at(plateSide * (WALK_HALF + 2.2), surface + 0.06, z).Position
 				local towardPlate = frame:VectorToWorldSpace(Vector3.new(plateSide, 0, 0))
 				local cashPad = block(
@@ -586,30 +588,24 @@ local function buildBases()
 				panel.AnchorPoint = Vector2.new(0.5, 0.5)
 				panel.Position = UDim2.fromScale(0.5, 0.5)
 				panel.Size = UDim2.new(1, -12, 1, -12)
-				panel.BackgroundColor3 = Color3.fromRGB(150, 240, 160)
 				panel.Parent = padGui
-				local corner = Instance.new("UICorner")
-				corner.CornerRadius = UDim.new(0.16, 0)
-				corner.Parent = panel
-				local border = Instance.new("UIStroke")
-				border.Thickness = 6
-				border.Color = Color3.fromRGB(70, 44, 120)
-				border.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-				border.Parent = panel
+				SignTheme.surface(panel, SignTheme.Green)
+				-- Steal An Egg pad: a small "COLLECT" over the money in huge chunky numbers
+				SignTheme.cashIcon(panel, UDim2.fromScale(0.05, 0.04), UDim2.fromScale(0.2, 0.3))
+				local collect = Instance.new("TextLabel")
+				collect.Name = "Collect"
+				collect.Position, collect.Size = UDim2.fromScale(0.26, 0.06), UDim2.fromScale(0.5, 0.24)
+				collect.Text = "COLLECT"
+				collect.Parent = panel
+				SignTheme.text(collect, 30)
 				local padText = Instance.new("TextLabel")
 				padText.AnchorPoint = Vector2.new(0.5, 0.5)
-				padText.Position = UDim2.fromScale(0.5, 0.5)
-				padText.Size = UDim2.fromScale(0.9, 0.86)
-				padText.BackgroundTransparency = 1
-				padText.Font = Enum.Font.FredokaOne
-				padText.TextScaled = true
-				padText.TextColor3 = Color3.fromRGB(110, 255, 80)
+				padText.Name = "Amount"
+				padText.Position = UDim2.fromScale(0.5, 0.64)
+				padText.Size = UDim2.fromScale(0.94, 0.6)
 				padText.Text = ""
 				padText.Parent = panel
-				local padStroke = Instance.new("UIStroke")
-				padStroke.Thickness = 5
-				padStroke.Color = Color3.fromRGB(20, 80, 25)
-				padStroke.Parent = padText
+				SignTheme.text(padText, 90, SignTheme.NumberFont)
 				cashPads[slot] = cashPad
 				cashLabels[slot] = padText
 				-- The knife floats upright over the plate, a little tilted

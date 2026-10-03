@@ -16,6 +16,8 @@ local function attach(owner: Player, character: Model)
 	end
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "CashTag"
+	gui:SetAttribute("LabelCategory", "Utility")
+	gui:AddTag("ResponsiveWorldLabel")
 	gui.Size = UDim2.fromOffset(160, 34)
 	gui.StudsOffset = Vector3.new(0, 2.6, 0)
 	gui.MaxDistance = 80

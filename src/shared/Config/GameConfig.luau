@@ -327,7 +327,9 @@ local GameConfig = {
 	-- all the way to the Manor. Each guard holds a knife from its zone's pool; kill it for the knife.
 	ZoneDepth = 220,
 	ArenaWidth = 160,
-	CatchRadius = 4.5,
+	CatchRadius = 5.5, -- (bosses are BossScale big: longer arms)
+	BossScale = 1.6, -- bosses tower over players so they're easy to spot, phones included
+	MimicSpotRange = 10, -- a chaser this close sees through a Mimic disguise
 	-- Each zone has one boss: a round character standing in front of a wall of knives. They leave you
 	-- alone until you steal one; then they (or, if they're already busy, a shadow of them) chase you
 	-- at GuardSpeed all the way to the plaza. Caught = they take the knife back (and Damage hurts).
@@ -504,7 +506,7 @@ local GameConfig = {
 	CoinRespawn = 12,
 
 	-- Guards shout "!" and hesitate this long before they start chasing
-	GuardAlertTime = 0.7,
+	GuardAlertTime = 0.45,
 	GuardAttackCooldown = 1.1, -- seconds between a guard's melee hits
 	GuardAttackRange = 5,
 	-- Hitting a guard or picking up its case alerts every guard in that zone and the zone in front
@@ -627,7 +629,7 @@ local GameConfig = {
 		{
 			Id = "Mimic",
 			DisplayName = "Mimic",
-			Description = "Become furniture! Stay still and nobody knows it's you.",
+			Description = "Become furniture you can walk around in! Chasers lose you (unless they get close).",
 			Cost = 110000,
 			Color = Color3.fromRGB(255, 120, 180),
 			Duration = { 8, 12, 16 },
@@ -691,11 +693,10 @@ local GameConfig = {
 		},
 		SpamKnife = {
 			DisplayName = "Spam Knife",
-			Description = "Q: for a few seconds every click throws a knife where you aim",
-			Cooldown = 18,
-			Duration = 3,
+			Description = "No stab: every click throws a knife where you aim, all round",
+			Passive = true, -- always on (RoundService.giveWeapon turns spam mode on for the round)
 			Interval = 0.15, -- server floor between two spam throws
-			Range = 400,
+			Range = 1000,
 		},
 		GhostKnife = {
 			DisplayName = "Ghost Knife",

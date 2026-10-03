@@ -136,6 +136,11 @@ function CombatService.Arm(player: Player, equip: boolean?)
 	local name = CombatService.WieldedKnife(player)
 	local existing = currentTool(player)
 	if existing and existing:GetAttribute(HUB_KNIFE) == name then
+		-- Already the right knife: just make sure it's in hand when asked
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if equip and existing.Parent ~= character and humanoid then
+			humanoid:EquipTool(existing)
+		end
 		return
 	end
 	local wasHeld = existing ~= nil and existing.Parent == character
@@ -380,11 +385,13 @@ function CombatService.Init()
 			task.spawn(onCharacterAdded, player, player.Character)
 		end
 		-- Re-arm when the equipped knife / collection changes, and around rounds
-		for _, attribute in { "Equipped", "Knives" } do
-			player:GetAttributeChangedSignal(attribute):Connect(function()
-				CombatService.Arm(player)
-			end)
-		end
+		-- Equipping a knife puts it straight in your hands; a changed collection just swaps it
+		player:GetAttributeChangedSignal("Equipped"):Connect(function()
+			CombatService.Arm(player, true)
+		end)
+		player:GetAttributeChangedSignal("Knives"):Connect(function()
+			CombatService.Arm(player)
+		end)
 		-- Hands full while carrying a stolen knife; your own knife comes back once you're home
 		player:GetAttributeChangedSignal("Carrying"):Connect(function()
 			if player:GetAttribute("Carrying") then

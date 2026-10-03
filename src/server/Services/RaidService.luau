@@ -341,13 +341,14 @@ local function trackGate(base: MapService.BaseSite)
 		Model = base.Gate,
 		Solid = true,
 		CanHit = function(attacker: Player)
-			local owner = BaseService.OwnerOf(base)
-			-- Your own gate only in Studio with DebugSelfRaid (to see break-ins without a second player).
-			-- Empty vaults still take the swing, so the attacker hears why nothing happens.
-			local selfRaid = RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugSelfRaid") == true
-			return (owner ~= attacker or selfRaid) and not attacker:GetAttribute("InRound") and not gateOpen(base)
+			-- Never your own gate. Empty vaults still take the swing, so the attacker hears why
+			-- nothing happens.
+			return BaseService.OwnerOf(base) ~= attacker and not attacker:GetAttribute("InRound") and not gateOpen(base)
 		end,
 		Hit = function(attacker: Player, damage: number, kind: string)
+			if BaseService.OwnerOf(base) == attacker then
+				return -- belt and braces: whatever path the hit came by
+			end
 			local reason = protectedReason(base)
 			if reason then
 				tellProtected(attacker, base, reason)
@@ -576,11 +577,12 @@ local function onStealPrompt(thief: Player, owner: Player, slot: number)
 	if not item or item == BaseService.ProtectedItem(owner) then
 		return
 	end
-	if (root.Position - base.SlotCFrames[slot].Position).Magnitude > 14 then
+	local spot = base.SlotCFrames[DataService.PlateOf(profile, slot)]
+	if not spot or (root.Position - spot.Position).Magnitude > 14 then
 		return
 	end
 	DataService.Update(owner, function(p)
-		table.remove(p.Knives, slot)
+		DataService.RemoveKnife(p, slot)
 	end)
 	BaseService.RefreshRack(owner)
 	StealService.StartCarry(thief, "Knife", item, owner.UserId)
@@ -642,7 +644,7 @@ local function stepAuras()
 			local profile = owner and DataService.Get(owner)
 			if base and owner and owner ~= player and profile then
 				for slot, item in profile.Knives do
-					local cf = base.SlotCFrames[slot]
+					local cf = base.SlotCFrames[DataService.PlateOf(profile, slot)]
 					local power = RaidService.AuraPower(item)
 					if cf and power > 0.5 then
 						local radius = Items.AuraRadius(power)
@@ -906,7 +908,8 @@ local function stealableSlot(base: MapService.BaseSite): number?
 	local protected = BaseService.ProtectedItem(owner)
 	for slot, item in profile.Knives do
 		-- Burglars walk the ground floor only
-		if slot <= profile.Slots and slot <= MapService.SlotsPerFloor and item ~= protected then
+		local plate = DataService.PlateOf(profile, slot)
+		if plate <= profile.Slots and plate <= MapService.SlotsPerFloor and item ~= protected then
 			return slot
 		end
 	end
@@ -1124,7 +1127,11 @@ local function stepBurglar(b: Burglar, dt: number)
 		elseif gateOpen(base) or not BaseService.OwnerOf(base) then
 			b.State = "Enter"
 			b.Slot = stealableSlot(base)
-			local slotCF = b.Slot and base.SlotCFrames[b.Slot]
+			local robbed = BaseService.OwnerOf(base)
+			local robbedProfile = robbed and DataService.Get(robbed)
+			local slotCF = if b.Slot and robbedProfile
+				then base.SlotCFrames[DataService.PlateOf(robbedProfile, b.Slot)]
+				else nil
 			local height = GuardService.RootHeight()
 			local inside = (base.Frame * CFrame.new(0, 0, 10)).Position
 			b.Waypoints = { Vector3.new(inside.X, height, inside.Z) }
@@ -1174,7 +1181,7 @@ local function stepBurglar(b: Burglar, dt: number)
 		then
 			takenFrom[base] = (takenFrom[base] or 0) + 1
 			DataService.Update(owner, function(p)
-				table.remove(p.Knives, slot)
+				DataService.RemoveKnife(p, slot)
 			end)
 			BaseService.RefreshRack(owner)
 			b.Carrying = item

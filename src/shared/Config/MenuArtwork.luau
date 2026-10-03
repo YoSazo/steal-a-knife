@@ -1,0 +1,35 @@
+--!strict
+-- Illustrated menu atlases. Kept separate from the in-world/hotbar knife renders.
+return {
+	Icons = "rbxassetid://133699882433723",
+	-- Roblox transcodes uploaded images to a maximum 1024px edge.
+	IconSize = Vector2.new(1024, 1024),
+	Knives = "rbxassetid://119639585335202",
+	KnifeSize = Vector2.new(1024, 682),
+	KnifeNames = {
+		"RustyShank",
+		"KitchenKnife",
+		"HunterBlade",
+		"Switchblade",
+		"Cleaver",
+		"Machete",
+		"GoldenDagger",
+		"Katana",
+		"VoidEdge",
+		"InfernoFang",
+		"PocketKnife",
+		"ThornDagger",
+		"BoneCarver",
+		"Reaper",
+		"MagmaCleaver",
+		"DemonHorn",
+		"ZeusBolt",
+		"OlympusEdge",
+		"AthenaBlade",
+		"HaloBlade",
+		"AngelFeather",
+		"StarCleaver",
+		"SeraphSword",
+		"GalaxyKatana",
+	},
+}

@@ -438,13 +438,13 @@ local PropMeshes: { [string]: { Spec } } = {
 			Material = "Fabric",
 		},
 	},
-	-- Sculpted hair (blender/scripts/hair.py) and the biome bosses' signature pieces
+	-- Fine stepped hair (blender/scripts/voxel_hair.py), retaining the original sculpted silhouettes.
 	HairSpiky = {
 		{
 			Name = "Hair",
-			MeshId = "rbxassetid://139074510620397",
-			Size = Vector3.new(1.895, 1.549, 1.799),
-			Offset = Vector3.new(0.000, 0.347, 0.094),
+			MeshId = "rbxassetid://106017931366845",
+			Size = Vector3.new(2.040, 1.615, 1.870),
+			Offset = Vector3.new(0.000, 0.298, 0.085),
 			Color = rgb(240, 200, 80),
 			Material = "SmoothPlastic",
 		},
@@ -452,9 +452,9 @@ local PropMeshes: { [string]: { Spec } } = {
 	HairAfro = {
 		{
 			Name = "Hair",
-			MeshId = "rbxassetid://71549551346671",
-			Size = Vector3.new(2.253, 1.637, 2.133),
-			Offset = Vector3.new(-0.007, 0.513, 0.112),
+			MeshId = "rbxassetid://110383238620997",
+			Size = Vector3.new(2.380, 1.700, 2.210),
+			Offset = Vector3.new(0.000, 0.510, 0.085),
 			Color = rgb(40, 26, 16),
 			Material = "SmoothPlastic",
 		},
@@ -492,9 +492,9 @@ local PropMeshes: { [string]: { Spec } } = {
 	HairBuns = {
 		{
 			Name = "Hair",
-			MeshId = "rbxassetid://125222348915714",
-			Size = Vector3.new(1.313, 1.347, 1.198),
-			Offset = Vector3.new(-0.008, 0.287, 0.023),
+			MeshId = "rbxassetid://123349151741142",
+			Size = Vector3.new(1.360, 1.445, 1.275),
+			Offset = Vector3.new(0.000, 0.298, 0.043),
 			Color = rgb(240, 140, 190),
 			Material = "SmoothPlastic",
 		},
@@ -510,9 +510,9 @@ local PropMeshes: { [string]: { Spec } } = {
 	HairSwoop = {
 		{
 			Name = "Hair",
-			MeshId = "rbxassetid://138025115495503",
-			Size = Vector3.new(1.355, 1.169, 1.417),
-			Offset = Vector3.new(0.000, 0.157, -0.073),
+			MeshId = "rbxassetid://100467277364565",
+			Size = Vector3.new(1.530, 1.275, 1.445),
+			Offset = Vector3.new(0.000, 0.128, -0.043),
 			Color = rgb(20, 20, 24),
 			Material = "SmoothPlastic",
 		},
@@ -520,9 +520,9 @@ local PropMeshes: { [string]: { Spec } } = {
 	HairBob = {
 		{
 			Name = "Hair",
-			MeshId = "rbxassetid://76086993462754",
-			Size = Vector3.new(1.511, 1.251, 1.447),
-			Offset = Vector3.new(0.000, 0.115, 0.030),
+			MeshId = "rbxassetid://113820332926779",
+			Size = Vector3.new(1.530, 1.275, 1.530),
+			Offset = Vector3.new(0.000, 0.128, 0.000),
 			Color = rgb(30, 25, 20),
 			Material = "SmoothPlastic",
 		},
@@ -556,9 +556,9 @@ local PropMeshes: { [string]: { Spec } } = {
 	HairMessy = {
 		{
 			Name = "Hair",
-			MeshId = "rbxassetid://96789792622525",
-			Size = Vector3.new(1.722, 1.283, 1.534),
-			Offset = Vector3.new(0.023, 0.214, 0.064),
+			MeshId = "rbxassetid://130913580679997",
+			Size = Vector3.new(1.785, 1.445, 1.615),
+			Offset = Vector3.new(-0.043, 0.213, 0.043),
 			Color = rgb(120, 80, 45),
 			Material = "SmoothPlastic",
 		},
@@ -592,9 +592,9 @@ local PropMeshes: { [string]: { Spec } } = {
 	HairPonytail = {
 		{
 			Name = "Hair",
-			MeshId = "rbxassetid://74302347394212",
-			Size = Vector3.new(1.345, 1.505, 1.750),
-			Offset = Vector3.new(-0.000, -0.062, 0.267),
+			MeshId = "rbxassetid://72282176746448",
+			Size = Vector3.new(1.360, 1.615, 1.870),
+			Offset = Vector3.new(0.000, -0.043, 0.255),
 			Color = rgb(200, 70, 30),
 			Material = "SmoothPlastic",
 		},
@@ -654,13 +654,17 @@ local PropMeshes: { [string]: { Spec } } = {
 	HairLong = {
 		{
 			Name = "Hair",
-			MeshId = "rbxassetid://135816413534219",
-			Size = Vector3.new(1.711, 2.010, 1.553),
-			Offset = Vector3.new(0.000, -0.258, 0.023),
+			MeshId = "rbxassetid://91854855348453",
+			Size = Vector3.new(1.870, 2.040, 1.615),
+			Offset = Vector3.new(0.000, -0.255, 0.043),
 			Color = rgb(110, 60, 30),
 			Material = "SmoothPlastic",
 		},
 	},
 }
+
+for name, specs in require(script.Parent.MapDetailMeshes) do
+	PropMeshes[name] = specs
+end
 
 return PropMeshes

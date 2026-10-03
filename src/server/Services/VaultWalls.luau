@@ -21,12 +21,12 @@ local T = 1 -- rail thickness
 local POST = 1.8
 local GATE_HALF = 8 -- gate opening is 16 wide
 local GATE_H = 11
-local FLOOR_H = 16 -- MapService.FloorHeight
+local FLOOR_H = 22 -- MapService.FloorHeight
 local RAIL_H = 3.5
 -- The front's invisible wall stops just under the first deck: too high to jump in from the plaza,
 -- but from the upper floors you can jump out over the rail (the sides stay full height, so you
 -- can't walk into the next vault)
-local FRONT_H = 15
+local FRONT_H = 21
 local NAVY = Color3.fromRGB(40, 44, 90)
 local GLASS = Color3.fromRGB(190, 240, 255)
 
@@ -161,6 +161,22 @@ function VaultWalls.Build(folder: Folder, frame: CFrame, color: Color3, tierInde
 			deco(folder, "Beam", Vector3.new(HALF_W * 2, 1, POST * 0.7), at(0, y - 0.5, inZ), frameColor)
 		end
 	end
+	-- The roof (Tsunami style): a see-through canopy in the vault's colour with lighter bands
+	-- across it, so the vault reads as one bright box from the plaza
+	local roofColor = color:Lerp(Color3.fromRGB(110, 120, 255), 0.55)
+	local bands = 6
+	for k = 1, bands do
+		local depth = HALF_D * 2 / bands
+		local band = deco(
+			folder,
+			"Roof",
+			Vector3.new(HALF_W * 2, 0.4, depth),
+			at(0, FRAME_H + 0.2, -HALF_D + depth * (k - 0.5)),
+			if k % 2 == 0 then roofColor else roofColor:Lerp(Color3.new(1, 1, 1), 0.25)
+		)
+		band.Transparency = 0.3
+		band.CastShadow = false
+	end
 	-- Post tops: plain caps, glowing caps from tier 3, spinning crystals from tier 5
 	for _, cf in posts do
 		local cap = deco(
@@ -184,6 +200,7 @@ function VaultWalls.Build(folder: Folder, frame: CFrame, color: Color3, tierInde
 				end
 			end
 			crystal:AddTag("Spin")
+			crystal.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- spun whole on clients
 			crystal.Parent = folder
 		end
 		if tierIndex >= 7 then
@@ -225,6 +242,26 @@ function VaultWalls.Build(folder: Folder, frame: CFrame, color: Color3, tierInde
 		):SetAttribute("Keep", true)
 	end
 	local lines = math.clamp(tierIndex + 2, 3, 10)
+	if Props.Has("DetailGateHardware") then
+		for _, side in { -1, 1 } do
+			local hardware = Props.Build("DetailGateHardware", true)
+			hardware:PivotTo(at(side * (GATE_HALF + POST / 2 + 0.3), 0, gateZ + 0.15) * CFrame.Angles(0, math.pi, 0))
+			hardware:SetAttribute("MapDetail", true)
+			for _, part in hardware:GetDescendants() do
+				if part:IsA("BasePart") then
+					part:SetAttribute("Keep", true)
+					if part.Name == "Power" or part.Name == "Bolts" then
+						part.Color = accent
+					elseif part.Name == "Shell" then
+						part.Color = frameColor
+					elseif part.Name == "Plates" then
+						part.Color = tier.Color:Lerp(Color3.new(1, 1, 1), 0.35)
+					end
+				end
+			end
+			hardware.Parent = gate
+		end
+	end
 	for i = 1, lines do
 		local y = 0.9 + (i - 1) * (GATE_H - 1.4) / (lines - 1)
 		local laser =
@@ -247,15 +284,15 @@ function VaultWalls.Build(folder: Folder, frame: CFrame, color: Color3, tierInde
 	-- Health bar, shown during raids
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "GateHealth"
-	gui.Size = UDim2.fromOffset(200, 46)
+	gui.Size = UDim2.fromScale(10, 2.3) -- studs: far gates draw small
 	gui.StudsOffsetWorldSpace = Vector3.new(0, GATE_H / 2 + 2.6, 0)
-	gui.MaxDistance = 160
+	gui.MaxDistance = 120
 	gui.Enabled = false
 	gui.Adornee = blocker
 	gui.Parent = blocker
 	local name = Instance.new("TextLabel")
 	name.Name = "Title"
-	name.Size = UDim2.new(1, 0, 0, 20)
+	name.Size = UDim2.fromScale(1, 0.45)
 	name.BackgroundTransparency = 1
 	name.Font = Enum.Font.FredokaOne
 	name.TextScaled = true
@@ -265,8 +302,8 @@ function VaultWalls.Build(folder: Folder, frame: CFrame, color: Color3, tierInde
 	name.Parent = gui
 	local back = Instance.new("Frame")
 	back.Name = "Back"
-	back.Position = UDim2.fromOffset(0, 24)
-	back.Size = UDim2.new(1, 0, 0, 16)
+	back.Position = UDim2.fromScale(0, 0.52)
+	back.Size = UDim2.fromScale(1, 0.36)
 	back.BackgroundColor3 = Color3.fromRGB(30, 20, 30)
 	back.BorderSizePixel = 0
 	back.Parent = gui

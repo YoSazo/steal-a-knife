@@ -35,6 +35,7 @@ type Carry = {
 	Visual: Model,
 	LastPos: Vector3,
 	LastCheck: number,
+	Plate: number?, -- the plate the owner chose to put it on (Place)
 }
 
 local StealService = {}
@@ -131,6 +132,7 @@ end
 -- The glow, light pillar and pickup prompt every drop gets
 local function dress(model: Model, color: Color3, floorY: number, at: Vector3, objectText: string): ProximityPrompt
 	model:AddTag("Spin")
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- spun whole on clients
 	local highlight = Instance.new("Highlight")
 	highlight.FillColor = color
 	highlight.FillTransparency = 0.7
@@ -232,7 +234,7 @@ function StealService.DropKnife(item: string, position: Vector3, stolenFrom: num
 				if #profile.Knives < profile.Slots then
 					model:Destroy()
 					DataService.Update(player, function(p)
-						table.insert(p.Knives, item)
+						DataService.AddKnife(p, item)
 					end)
 					BaseService.RefreshRack(player)
 					Net.Notify(player, `Got your {Items.DisplayName(item)} back!`, "good")
@@ -260,7 +262,7 @@ function StealService.DropKnife(item: string, position: Vector3, stolenFrom: num
 			local profile = owner and DataService.Get(owner)
 			if owner and profile and #profile.Knives < profile.Slots then
 				DataService.Update(owner, function(p)
-					table.insert(p.Knives, item)
+					DataService.AddKnife(p, item)
 				end)
 				BaseService.RefreshRack(owner)
 				Net.Notify(owner, `Your {Items.DisplayName(item)} found its way home.`, "good")
@@ -489,7 +491,7 @@ function StealService.OpenCase(player: Player, rarity: string, force: boolean?):
 	local isNew = not table.find(profile.Discovered, parsed.Name)
 	local hype = Items.Hype(item)
 	DataService.Update(player, function(p)
-		table.insert(p.Knives, item)
+		DataService.AddKnife(p, item)
 		if isNew then
 			table.insert(p.Discovered, parsed.Name)
 		end
@@ -577,7 +579,7 @@ local function deposit(player: Player)
 		revealPower(player, item)
 	end
 	DataService.Update(player, function(p)
-		table.insert(p.Knives, item)
+		DataService.AddKnife(p, item, carry.Plate)
 		if isNew then
 			table.insert(p.Discovered, parsed.Name)
 		end
@@ -589,21 +591,19 @@ local function deposit(player: Player)
 	endCarry(player, true)
 	local name = Items.DisplayName(item)
 	BaseService.RefreshRack(player)
-	Net.Notify(player, `{name} is on your wall! +{Format.Cash(Items.Income(item))}/s`, "good")
+	-- One short line (the plate's own label already shows the rest)
+	Net.Notify(player, `{if isNew then "NEW! " else ""}{name} +{Format.Cash(Items.Income(item))}/s`, "good")
 	Net.Remotes.Effect:FireAllClients("Deposit", player, parsed.Knife.Rarity)
 	if stolenFrom then
 		local victim = ownerName(stolenFrom) or "someone"
 		Net.Announce(`{player.DisplayName} stole {victim}'s {name}!`, Color3.fromRGB(255, 90, 90), 1)
-	end
-	if isNew then
-		Net.Notify(player, `NEW! {parsed.Knife.DisplayName} added to your collection`, "info")
 	end
 	if player.Character then
 		Net.Animate(player.Character, "Cheer")
 	end
 end
 
--- Put the carried knife on its plate: in your own vault, next to the first empty plate. A short
+-- Put the carried knife on a plate: any empty, unlocked plate in your own vault. A short
 -- animation (the knife flies from your hands onto the plate), then it's mounted.
 function StealService.Place(player: Player, slot: number)
 	local carry = carriers[player]
@@ -612,7 +612,12 @@ function StealService.Place(player: Player, slot: number)
 	if not carry or carry.Kind ~= "Knife" or not root or not profile then
 		return
 	end
-	if not BaseService.IsInOwnBase(player, root.Position) or slot ~= #profile.Knives + 1 or slot > profile.Slots then
+	if
+		not BaseService.IsInOwnBase(player, root.Position)
+		or slot < 1
+		or slot > profile.Slots
+		or DataService.IndexOnPlate(profile, slot) ~= nil
+	then
 		return
 	end
 	local base = BaseService.GetBase(player)
@@ -630,6 +635,7 @@ function StealService.Place(player: Player, slot: number)
 	if player.Character then
 		Net.Animate(player.Character, "Pickup")
 	end
+	carry.Plate = slot
 	Net.Remotes.Effect:FireAllClients("PlaceKnife", from, base.SlotCFrames[slot].Position, carry.Item)
 	task.delay(0.45, function()
 		if carriers[player] == carry then
@@ -669,7 +675,11 @@ local function tick()
 			player:SetAttribute("PlaceReady", nil)
 		end
 		local elapsed = now - carry.LastCheck
-		if elapsed >= 0.5 then
+		if player:GetAttribute("Tumbling") then
+			-- Flung by a hit (Ragdoll.Tumble): that's not cheating, start measuring again after
+			carry.LastPos = pos
+			carry.LastCheck = now
+		elseif elapsed >= 0.5 then
 			local humanoid = (player.Character :: Model):FindFirstChildOfClass("Humanoid") :: Humanoid
 			local flat = Vector3.new(pos.X - carry.LastPos.X, 0, pos.Z - carry.LastPos.Z).Magnitude
 			local allowed = math.max(humanoid.WalkSpeed, GameConfig.BaseWalkSpeed) * elapsed * GameConfig.SpeedTolerance
@@ -711,7 +721,7 @@ function StealService.Recover(thief: Player, owner: Player): string?
 	local item = carry.Item
 	endCarry(thief, true, nil)
 	DataService.Update(owner, function(p)
-		table.insert(p.Knives, item)
+		DataService.AddKnife(p, item)
 	end)
 	BaseService.RefreshRack(owner)
 	return item

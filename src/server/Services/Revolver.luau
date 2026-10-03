@@ -133,6 +133,7 @@ function Revolver.BuildPickup(position: Vector3): Model
 	zone.Transparency = 1
 	zone.Parent = model
 	model:AddTag("Spin")
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- spun whole on clients
 	return model
 end
 

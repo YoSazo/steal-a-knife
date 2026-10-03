@@ -9,12 +9,15 @@ and their ids go in src/shared/Config/KnifeIcons.luau (Tool.TextureId).
 """
 
 import math
+import sys
 from pathlib import Path
 
 import bpy
 from mathutils import Vector
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "blender" / "scripts"))
+import detail_knives
 OUT = ROOT / "blender" / "textures" / "knife_icons"
 
 # Load make_knives' builders without running its main()
@@ -66,8 +69,11 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     setup_render()
     for name, spec in KNIVES.items():
+        spec = detail_knives.silhouette_spec(name)
         clear_scene()
         root, parts = build_knife(name, spec)
+        parts += detail_knives.build_details(name, spec, root)
+        detail_knives.restyle(name, parts)
         # Diagonal, blade up and to the right (like a hotbar icon)
         root.rotation_euler = (0, math.radians(-40), 0)
         bpy.context.view_layer.update()

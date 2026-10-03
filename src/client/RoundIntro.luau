@@ -32,11 +32,12 @@ function RoundIntro.Init()
 		ZIndex = 60, -- over the welcome card (50s): it matters more right now
 	}, Ui.gui)
 	Ui.corner(card, 18)
+	Ui.fitMenu(card, Vector2.new(620, 190))
 	Ui.gradient(card, Color3.fromRGB(70, 16, 24), Color3.fromRGB(30, 8, 14))
-	new("UIStroke", { Thickness = 5, Color = Color3.fromRGB(255, 70, 70) }, card)
+	new("UIStroke", { Thickness = 2, Color = Color3.fromRGB(255, 70, 70) }, card)
 	local scale = new("UIScale", {}, card)
 	local title = Ui.label({
-		Size = UDim2.new(1, -30, 0, 70),
+		Size = UDim2.new(1, -30, 0, 44),
 		Position = UDim2.fromOffset(15, 10),
 		Font = Ui.SPOOKY,
 		TextColor3 = Color3.fromRGB(255, 70, 70),
@@ -45,8 +46,10 @@ function RoundIntro.Init()
 	}, card)
 	Ui.textStroke(title, 4)
 	local body = Ui.label({
-		Size = UDim2.new(1, -40, 0, 92),
-		Position = UDim2.fromOffset(20, 86),
+		Size = UDim2.new(1, -40, 1, -68),
+		Position = UDim2.fromOffset(20, 60),
+		TextScaled = false,
+		TextSize = 16,
 		TextWrapped = true,
 		Text = "",
 		ZIndex = 61,
@@ -94,6 +97,7 @@ function RoundIntro.Init()
 			end
 			shownThisSession = true
 			showing = true
+			Ui.Menu.Close()
 			card.Visible = true
 			scale.Scale = 0.6
 			TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()

@@ -48,6 +48,53 @@ function Ragdoll.Collapse(model: Model, push: Vector3?)
 	end
 end
 
+-- Steal An Egg-style hit: a living player goes limp and is flung, then gets back up after
+-- `seconds`. The joints go limp here (replicates to everyone); the fling itself is applied by the
+-- player's own client (client/Tumble, from the TumblePush attribute) because their client owns the
+-- body's physics - flinging from the server makes it freeze and snap on their screen.
+-- Returns false if they're already tumbling (no stacking).
+local tumbling: { [Player]: boolean } = {}
+function Ragdoll.Tumble(player: Player, push: Vector3, seconds: number): boolean
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if tumbling[player] or not character or not humanoid or humanoid.Health <= 0 then
+		return false
+	end
+	tumbling[player] = true
+	local root = character:FindFirstChild("HumanoidRootPart")
+	local joints: { AnimationConstraint } = {}
+	for _, d in character:GetDescendants() do
+		if d:IsA("AnimationConstraint") and d.Enabled then
+			-- Keep the root joint: it's what ties the body to the (invisible) root part the fling
+			-- moves. Without it the root flies off alone and the body flops where it was hit.
+			local a0, a1 = d.Attachment0, d.Attachment1
+			local onRoot = (a0 ~= nil and a0.Parent == root) or (a1 ~= nil and a1.Parent == root)
+			if not onRoot then
+				d.Enabled = false
+				table.insert(joints, d)
+			end
+		end
+	end
+	humanoid.PlatformStand = true
+	player:SetAttribute("TumblePush", push)
+	player:SetAttribute("Tumbling", workspace:GetServerTimeNow() + seconds)
+	task.delay(seconds, function()
+		tumbling[player] = nil
+		if player.Parent then
+			player:SetAttribute("Tumbling", nil)
+			player:SetAttribute("TumblePush", nil)
+		end
+		if not character.Parent or humanoid.Health <= 0 then
+			return
+		end
+		for _, joint in joints do
+			joint.Enabled = true
+		end
+		humanoid.PlatformStand = false
+	end)
+	return true
+end
+
 function Ragdoll.DeathCry(model: Model)
 	local head = model:FindFirstChild("Head")
 	if not head then

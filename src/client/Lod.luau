@@ -40,6 +40,7 @@ local function phone(): boolean
 end
 
 local applyStars: (ParticleEmitter) -> ()
+local applyKnifeAura: (ParticleEmitter) -> ()
 
 -- The graphics slider (1-10; 0 = automatic) decides the profile; phones never go above Medium
 local function pickProfile()
@@ -70,6 +71,11 @@ local function pickProfile()
 			applyStars(emitter)
 		end
 	end
+	for _, effect in game:GetService("CollectionService"):GetTagged("KnifeAuraEmitter") do
+		if effect:IsA("ParticleEmitter") then
+			applyKnifeAura(effect)
+		end
+	end
 	-- Bloom is a full-screen pass: skip it on low settings
 	local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
 	if bloom then
@@ -94,6 +100,15 @@ end
 -- Star fields (tag "StarField" on the emitter's part) are seen from everywhere: instead of being
 -- culled by distance, their density follows the profile
 local STAR_DENSITY: { [string]: number } = { High = 1, Medium = 0.55, Low = 0.25 }
+local AURA_DENSITY: { [string]: number } = { High = 1, Medium = 0.65, Low = 0.35 }
+applyKnifeAura = function(emitter: ParticleEmitter)
+	local rate = emitter:GetAttribute("BaseRate")
+	if type(rate) == "number" then
+		local minimum = emitter:GetAttribute("AuraMinRate")
+		local floor = if type(minimum) == "number" then minimum else 0
+		emitter.Rate = math.min(rate, math.max(floor, rate * AURA_DENSITY[Lod.Profile]))
+	end
+end
 local function isStarField(instance: Instance): boolean
 	local parent = instance.Parent
 	return parent ~= nil and game:GetService("CollectionService"):HasTag(parent, "StarField")
@@ -115,6 +130,9 @@ applyStars = function(emitter: ParticleEmitter)
 end
 
 local function add(instance: Instance)
+	if instance:IsA("ParticleEmitter") and instance:HasTag("KnifeAuraEmitter") then
+		applyKnifeAura(instance)
+	end
 	if instance:IsA("ParticleEmitter") and isStarField(instance) then
 		applyStars(instance)
 		return

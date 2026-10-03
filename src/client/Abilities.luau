@@ -1,6 +1,7 @@
 --!strict
 -- Knife controls from the client side, MM2 style:
---   * tap left click (or the screen) with a knife: stab / slash combo
+--   * desktop click / gamepad trigger: existing stab and throw controls
+--   * mobile: tap the translucent knife button to stab; hold its joystick to aim and throw
 --   * HOLD left click (or Q, gamepad LT/X, or the on-screen button): your arm cranks back, a
 --     crosshair shows and the camera leans in; let go to throw at whatever is under the cursor
 -- Knife tools are ManualActivationOnly, so a tap is turned into tool:Activate() here and the
@@ -16,9 +17,14 @@ local UserInputService = game:GetService("UserInputService")
 
 local Ui = require(script.Parent.Ui)
 local Moves = require(script.Parent.Moves)
+local KnifeGesture = require(script.Parent.KnifeGesture)
+local KnifeAim = require(script.Parent.KnifeAim)
+local KNIFE_SIZE = KnifeAim.ButtonSize
 local AnimLibrary = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("AnimLibrary"))
 local GameConfig = require(ReplicatedStorage.Shared:WaitForChild("Config"):WaitForChild("GameConfig"))
 local Textures = require(ReplicatedStorage.Shared.Config:WaitForChild("Textures"))
+local Items = require(ReplicatedStorage.Shared.Items)
+local Artwork = require(ReplicatedStorage.Shared.Config.UiArtwork)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
 
@@ -37,7 +43,7 @@ local BASE_FOV = 70
 local function screenAim(): Vector2
 	local camera = workspace.CurrentCamera
 	local lastInput = UserInputService:GetLastInputType()
-	if lastInput.Name:find("Gamepad") or UserInputService.TouchEnabled and not UserInputService.MouseEnabled then
+	if lastInput.Name:find("Gamepad") or Ui.Phone or UserInputService.PreferredInput == Enum.PreferredInput.Touch then
 		return camera.ViewportSize / 2
 	end
 	return UserInputService:GetMouseLocation()
@@ -135,7 +141,7 @@ function Abilities.Init()
 	perkCard.BackgroundColor3 = Color3.fromRGB(28, 20, 34)
 	perkCard.BackgroundTransparency = 0.15
 	perkCard.Visible = false
-	perkCard.Parent = gui
+	perkCard.Parent = Ui.root
 	Ui.corner(perkCard, 14)
 	Ui.stroke(perkCard)
 	local cardIcon = Instance.new("ImageLabel")
@@ -157,7 +163,7 @@ function Abilities.Init()
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
 		TextScaled = false,
-		TextSize = 13,
+		TextSize = 14,
 		TextWrapped = true,
 		Text = "",
 	}, perkCard)
@@ -166,7 +172,7 @@ function Abilities.Init()
 		local id = player:GetAttribute("Perk")
 		local perk = type(id) == "string" and GameConfig.Perks[id] or nil
 		local icon = if type(id) == "string" then Textures.PerkIcons[id] else nil
-		perkCard.Visible = perk ~= nil and player:GetAttribute("InRound") == true
+		perkCard.Visible = not Ui.Phone and not Ui.menuOpen() and perk ~= nil and player:GetAttribute("InRound") == true
 		buttonIcon.Visible = icon ~= nil
 		if perk then
 			cardIcon.Image = icon or ""
@@ -182,6 +188,7 @@ function Abilities.Init()
 	-- Crosshair + charge ring, shown while winding up a throw
 	local crosshairGui = Instance.new("ScreenGui")
 	crosshairGui.Name = "Crosshair"
+	crosshairGui.ResetOnSpawn = false
 	crosshairGui.IgnoreGuiInset = true
 	crosshairGui.DisplayOrder = 5
 	crosshairGui.Enabled = false
@@ -219,6 +226,7 @@ function Abilities.Init()
 	-- hold-click throw that every Murderer has
 	local chargeKind = "perk"
 	local basicThrowReadyAt = 0
+	local restoreFov = BASE_FOV
 	local lastSwing = 0
 	local comboIndex = 0
 
@@ -277,7 +285,8 @@ function Abilities.Init()
 		Moves.SetLocalCharge(chargingSince)
 		Remotes.Charge:FireServer(true)
 		crosshairGui.Enabled = true
-		zoom(BASE_FOV - 10)
+		restoreFov = workspace.CurrentCamera.FieldOfView
+		zoom(restoreFov - 10)
 	end
 
 	local function endCharge(throw: boolean)
@@ -287,7 +296,7 @@ function Abilities.Init()
 		chargingSince = nil
 		Moves.SetLocalCharge(nil)
 		crosshairGui.Enabled = false
-		zoom(BASE_FOV)
+		zoom(restoreFov)
 		local character = player.Character
 		if throw and character and knifeInHand() then
 			Moves.Play(character, "Throw")
@@ -304,7 +313,7 @@ function Abilities.Init()
 
 	-- Press: instant abilities fire; throws start charging
 	local function press()
-		if not abilityName then
+		if Ui.menuOpen() or not abilityName then
 			return
 		end
 		if isThrow() then
@@ -318,7 +327,7 @@ function Abilities.Init()
 	end
 
 	UserInputService.InputBegan:Connect(function(input, processed)
-		if processed then
+		if processed or Ui.menuOpen() then
 			return
 		end
 		if THROW_INPUTS[input.KeyCode] or THROW_INPUTS[input.UserInputType] then
@@ -335,21 +344,14 @@ function Abilities.Init()
 	local primaryDown: InputObject? = nil
 	local primaryAt = 0
 	local function isPrimary(input: InputObject): boolean
-		return input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch
-			or input.KeyCode == Enum.KeyCode.ButtonR2
+		return input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.ButtonR2
 	end
 	UserInputService.InputBegan:Connect(function(input, processed)
-		if processed or not isPrimary(input) or not knifeInHand() then
+		if processed or Ui.menuOpen() or not isPrimary(input) or not knifeInHand() then
 			return
 		end
 		if spamMode() then
-			-- A tap on a phone throws at the spot tapped
-			spamThrow(
-				if input.UserInputType == Enum.UserInputType.Touch
-					then Vector2.new(input.Position.X, input.Position.Y) + game:GetService("GuiService"):GetGuiInset()
-					else nil
-			)
+			spamThrow(nil)
 			return
 		end
 		primaryDown = input
@@ -387,7 +389,9 @@ function Abilities.Init()
 			input.UserInputType == Enum.UserInputType.Touch
 			or input.UserInputType == Enum.UserInputType.MouseButton1
 		then
-			press()
+			if not Ui.Phone or not isThrow() then
+				press()
+			end
 		end
 	end)
 	button.InputEnded:Connect(function(input)
@@ -395,8 +399,354 @@ function Abilities.Init()
 			input.UserInputType == Enum.UserInputType.Touch
 			or input.UserInputType == Enum.UserInputType.MouseButton1
 		then
-			release()
+			if not Ui.Phone and isThrow() then
+				release()
+			end
 		end
+	end)
+
+	local knifeButton = Ui.button({
+		Name = "KnifeButton",
+		Text = "",
+		Size = UDim2.fromOffset(KNIFE_SIZE, KNIFE_SIZE),
+		BackgroundColor3 = Color3.fromRGB(218, 56, 77),
+		BackgroundTransparency = 0.65,
+		Visible = false,
+		ZIndex = 3,
+	}, gui)
+	local knifePadding = knifeButton:FindFirstChildOfClass("UIPadding")
+	if knifePadding then
+		knifePadding:Destroy()
+	end
+	local knifeCorner = knifeButton:FindFirstChildOfClass("UICorner") :: UICorner
+	knifeCorner.CornerRadius = UDim.new(1, 0)
+	local knifeBorder = knifeButton:FindFirstChildOfClass("UIStroke") :: UIStroke
+	knifeBorder.Color, knifeBorder.Transparency = Color3.fromRGB(240, 250, 255), 0.2
+	local knifeIcon = Ui.new("ImageLabel", {
+		Name = "KnifeIcon",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(60, 52),
+		Size = UDim2.fromOffset(64, 64),
+		ZIndex = 3,
+	}, knifeButton)
+	local knifeLabel = Ui.label({
+		Text = "Knife",
+		TextScaled = false,
+		TextSize = 14,
+		Position = UDim2.fromOffset(0, 94),
+		Size = UDim2.new(1, 0, 0, 20),
+		ZIndex = 3,
+	}, knifeButton)
+	local knifeFallback = Ui.label({
+		Text = "🔪",
+		TextScaled = false,
+		TextSize = 56,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 4,
+	}, knifeIcon)
+	local chargeOutline =
+		Ui.new("UIStroke", { Thickness = 3, Color = Color3.fromRGB(255, 219, 89), Enabled = false }, knifeIcon)
+	Ui.corner(knifeIcon, 28)
+	local chargeSegments: { Frame } = {}
+	for i = 1, 24 do
+		local angle = (i / 24) * math.pi * 2 - math.pi / 2
+		local segment = Ui.new("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromOffset(60 + math.cos(angle) * 55, 60 + math.sin(angle) * 55),
+			Size = UDim2.fromOffset(4, 7),
+			Rotation = math.deg(angle) + 90,
+			BackgroundColor3 = Color3.fromRGB(255, 219, 89),
+			BorderSizePixel = 0,
+			Visible = false,
+			ZIndex = 4,
+		}, knifeButton)
+		Ui.corner(segment, 2)
+		chargeSegments[i] = segment
+	end
+	local cancelButton = Ui.button({
+		Name = "CancelKnife",
+		Text = "X",
+		Size = UDim2.fromOffset(44, 44),
+		BackgroundColor3 = Color3.fromRGB(43, 55, 80),
+		Visible = false,
+		ZIndex = 3,
+	}, gui)
+	local chargeHint = Ui.label({
+		Text = "Release to throw",
+		TextScaled = false,
+		TextSize = 14,
+		TextWrapped = true,
+		Size = UDim2.fromOffset(150, 22),
+		Visible = false,
+		ZIndex = 3,
+	}, gui)
+	local gesture = KnifeGesture.new()
+	local gestureTool: Tool? = nil
+	local aimAxis = Vector2.zero
+	local aimDelta = Vector2.zero
+	local pointerOrigin = Vector2.zero
+	local lastPointer = Vector2.zero
+	local hasUsedKnife = false
+	local iconTool: Tool? = nil
+	local iconStarted = 0
+	local fallbackImage = ""
+	local function allowed(): boolean
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		local stunned = player:GetAttribute("StunnedUntil")
+		return humanoid ~= nil
+			and humanoid.Health > 0
+			and not Ui.menuOpen()
+			and not player:GetAttribute("Carrying")
+			and (type(stunned) ~= "number" or stunned <= workspace:GetServerTimeNow())
+	end
+	local function cancelKnife()
+		gui:SetAttribute("KnifeGestureActive", false)
+		KnifeGesture.cancel(gesture)
+		gestureTool = nil
+		aimAxis = Vector2.zero
+		aimDelta = Vector2.zero
+		primaryDown = nil
+		endCharge(false)
+	end
+	local function knifeAvailable(): Tool?
+		local held = knifeInHand()
+		if held then
+			return held
+		end
+		local backpack = player:FindFirstChildOfClass("Backpack")
+		if backpack then
+			for _, tool in backpack:GetChildren() do
+				if isKnife(tool) then
+					return tool :: Tool
+				end
+			end
+		end
+		return nil
+	end
+	local function positionControls()
+		local at = Ui.Layout.knifePosition()
+		local x, y = at.X, at.Y
+		local factor = Ui.Scale.Scale
+		knifeButton.Position = UDim2.fromOffset(x / factor, y / factor)
+		knifeButton.Size = UDim2.fromOffset(KNIFE_SIZE / factor, KNIFE_SIZE / factor)
+		local aiming = gesture.mode == "charging" or gesture.mode == "spam"
+		local center = KNIFE_SIZE / 2
+		local knob = if aiming then Vector2.new(center, center) + aimAxis * 40 else Vector2.new(center, center - 8)
+		knifeIcon.Position = UDim2.fromOffset(knob.X / factor, knob.Y / factor)
+		local iconSize = if aiming then 80 else 104
+		knifeIcon.Size = UDim2.fromOffset(iconSize / factor, iconSize / factor)
+		knifeFallback.TextSize = 56 / factor
+		knifeLabel.Position = UDim2.fromOffset(0, (KNIFE_SIZE - 26) / factor)
+		knifeLabel.Size = UDim2.new(1, 0, 0, 20 / factor)
+		knifeLabel.TextSize = 18 / factor
+		for i, segment in chargeSegments do
+			local angle = (i / 24) * math.pi * 2 - math.pi / 2
+			local radius = center - 5
+			segment.Position = UDim2.fromOffset(
+				(center + math.cos(angle) * radius) / factor,
+				(center + math.sin(angle) * radius) / factor
+			)
+			segment.Size = UDim2.fromOffset(4 / factor, 9 / factor)
+		end
+		cancelButton.Position = UDim2.fromOffset((x + KNIFE_SIZE - 44) / factor, (y - 56) / factor)
+		cancelButton.Size = UDim2.fromOffset(44 / factor, 44 / factor)
+		local _, bounds = Ui.bounds()
+		local hintX = x + KNIFE_SIZE + 12
+		chargeHint.Position = UDim2.fromOffset(hintX / factor, (y - 44) / factor)
+		chargeHint.Size = UDim2.fromOffset(math.max(44, math.min(112, bounds.X - hintX - 12)) / factor, 32 / factor)
+		chargeHint.TextSize = 14 / factor
+		if Ui.Phone then
+			local padding = button:FindFirstChildOfClass("UIPadding")
+			if padding then
+				padding:Destroy()
+			end
+			button.AnchorPoint = Vector2.zero
+			button.Position = UDim2.fromOffset((x - 76) / factor, (y + 8) / factor)
+			button.Size = UDim2.fromOffset(64 / factor, 64 / factor)
+			buttonIcon.Position, buttonIcon.Size =
+				UDim2.fromOffset(4 / factor, 4 / factor), UDim2.fromOffset(56 / factor, 40 / factor)
+			button.TextYAlignment = Enum.TextYAlignment.Bottom
+			button.TextSize, button.TextScaled, button.TextTruncate = 14 / factor, false, Enum.TextTruncate.AtEnd
+		end
+	end
+	knifeButton.InputBegan:Connect(function(input)
+		if
+			input.UserInputType ~= Enum.UserInputType.Touch
+			and not (Ui.Phone and input.UserInputType == Enum.UserInputType.MouseButton1)
+		then
+			return
+		end
+		if not allowed() or gesture.owner ~= nil then
+			return
+		end
+		local tool = drawKnife()
+		if not tool then
+			return
+		end
+		if KnifeGesture.press(gesture, input, os.clock()) then
+			gui:SetAttribute("KnifeGestureActive", true)
+			gestureTool = tool
+			lastPointer = Vector2.new(input.Position.X, input.Position.Y)
+			pointerOrigin = lastPointer
+			hasUsedKnife = true
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		local previewMouse = RunService:IsStudio()
+			and gesture.owner ~= nil
+			and gesture.owner.UserInputType == Enum.UserInputType.MouseButton1
+			and input.UserInputType == Enum.UserInputType.MouseMovement
+		if input ~= gesture.owner and not previewMouse then
+			return
+		end
+		local at = Vector2.new(input.Position.X, input.Position.Y)
+		local pos, size = cancelButton.AbsolutePosition, cancelButton.AbsoluteSize
+		if
+			cancelButton.Visible
+			and at.X >= pos.X
+			and at.X <= pos.X + size.X
+			and at.Y >= pos.Y
+			and at.Y <= pos.Y + size.Y
+		then
+			cancelKnife()
+			return
+		end
+		aimDelta += at - lastPointer
+		lastPointer = at
+		aimAxis = KnifeAim.Axis(at, pointerOrigin)
+	end)
+	local function applyKnifeAim()
+		if gesture.owner == nil or aimDelta == Vector2.zero then
+			return
+		end
+		local camera = workspace.CurrentCamera
+		camera.CFrame = KnifeAim.Rotate(
+			camera.CFrame,
+			camera.Focus.Position,
+			aimDelta,
+			UserSettings().GameSettings:GetCameraYInvertValue()
+		)
+		aimDelta = Vector2.zero
+	end
+	UserInputService.InputEnded:Connect(function(input)
+		if input ~= gesture.owner then
+			return
+		end
+		-- Consume the final movement before sampling the release crosshair.
+		applyKnifeAim()
+		-- Input may end between render ticks on a slow phone. Resolve the threshold first.
+		local canCharge = if holdingMurderKnife() then os.clock() >= basicThrowReadyAt else isThrow() and ready()
+		local pending = KnifeGesture.tick(gesture, os.clock(), canCharge, spamMode())
+		if allowed() and gestureTool == knifeInHand() then
+			if pending == "charge" then
+				beginCharge(if holdingMurderKnife() then "basic" else "perk")
+			elseif pending == "spam" then
+				spamThrow(nil)
+			end
+		end
+		local action = KnifeGesture.release(gesture, input, os.clock(), spamMode())
+		if allowed() and gestureTool == knifeInHand() then
+			if action == "swing" then
+				(gestureTool :: Tool):Activate()
+			elseif action == "throw" then
+				endCharge(true)
+			elseif action == "spam" then
+				spamThrow(nil)
+			end
+		end
+		cancelKnife()
+	end)
+	UserInputService.WindowFocusReleased:Connect(cancelKnife)
+	gui:GetAttributeChangedSignal("MenuOpen"):Connect(function()
+		if Ui.menuOpen() then
+			cancelKnife()
+		end
+	end)
+	player:GetAttributeChangedSignal("InRound"):Connect(cancelKnife)
+	ReplicatedStorage:GetAttributeChangedSignal("Phase"):Connect(cancelKnife)
+	player:GetAttributeChangedSignal("StunnedUntil"):Connect(function()
+		if not allowed() then
+			cancelKnife()
+		end
+	end)
+	player:GetAttributeChangedSignal("Carrying"):Connect(function()
+		if not allowed() then
+			cancelKnife()
+		end
+	end)
+	player.CharacterAdded:Connect(cancelKnife)
+	cancelButton.Activated:Connect(cancelKnife)
+	RunService:BindToRenderStep("KnifeThumbAim", Enum.RenderPriority.Camera.Value + 1, applyKnifeAim)
+	RunService.RenderStepped:Connect(function()
+		local available = knifeAvailable()
+		knifeButton.Visible = Ui.Phone and allowed() and available ~= nil
+		if gesture.owner ~= nil and (not allowed() or gestureTool ~= knifeInHand()) then
+			cancelKnife()
+		end
+		if Ui.Phone then
+			positionControls()
+			button.Visible = allowed() and abilityName ~= nil and not isThrow()
+			perkCard.Visible = false
+		end
+		if not knifeButton.Visible then
+			if Ui.Phone then
+				cancelKnife()
+			end
+			cancelButton.Visible = false
+			chargeHint.Visible = false
+			return
+		end
+		if available ~= iconTool then
+			iconTool, iconStarted = available, os.clock()
+			knifeIcon.Image = if available then available.TextureId else ""
+			local item = if available
+				then available:GetAttribute("HubKnife") or player:GetAttribute("Equipped")
+				else nil
+			local parsed = if type(item) == "string" then Items.Parse(item) else nil
+			fallbackImage = if parsed then Artwork[parsed.Knife.Name] or "" else ""
+		end
+		if not knifeIcon.IsLoaded and os.clock() - iconStarted > 8 and fallbackImage ~= "" then
+			knifeIcon.Image = fallbackImage
+		end
+		knifeFallback.Visible = knifeIcon.Image == "" or not knifeIcon.IsLoaded
+		local canCharge = if holdingMurderKnife() then os.clock() >= basicThrowReadyAt else isThrow() and ready()
+		local action = KnifeGesture.tick(gesture, os.clock(), canCharge, spamMode())
+		if action == "charge" then
+			beginCharge(if holdingMurderKnife() then "basic" else "perk")
+		elseif action == "spam" then
+			spamThrow(nil)
+		end
+		cancelButton.Visible = gesture.mode == "charging" or gesture.mode == "spam"
+		chargeHint.Visible = gesture.mode == "charging" or gesture.mode == "spam" or not hasUsedKnife
+		chargeHint.Text = if gesture.mode == "charging"
+			then "Release to throw"
+			elseif gesture.mode == "spam" then "Drag: aim\nHold: throw"
+			elseif spamMode() then "Tap: throw\nHold: repeat"
+			else "Tap: stab\nHold: aim"
+		knifeLabel.Text = if gesture.mode == "charging"
+			then "Throw"
+			elseif gesture.mode == "blocked" then "Wait"
+			else "Knife"
+		knifeButton.BackgroundColor3 = if gesture.owner
+			then Color3.fromRGB(61, 178, 255)
+			else Color3.fromRGB(218, 56, 77)
+		knifeButton.BackgroundTransparency = if gesture.owner then 0.4 else 0.65
+		knifeIcon.BackgroundColor3 = Color3.fromRGB(61, 178, 255)
+		knifeIcon.BackgroundTransparency = if gesture.mode == "charging" or gesture.mode == "spam" then 0.35 else 1
+		chargeOutline.Enabled = chargingSince ~= nil
+		local fraction = if chargingSince
+			then math.clamp((os.clock() - chargingSince) / AnimLibrary.ChargeTime, 0, 1)
+			else 0
+		for i, segment in chargeSegments do
+			segment.Visible = chargingSince ~= nil
+			segment.BackgroundTransparency = if i / 24 <= fraction then 0 else 0.8
+		end
+		chargeOutline.Thickness = if chargingSince
+			then 2 + 4 * math.clamp((os.clock() - chargingSince) / AnimLibrary.ChargeTime, 0, 1)
+			else 2
 	end)
 
 	Remotes:WaitForChild("AbilityState").OnClientEvent:Connect(function(name: string?, until_: number?)
@@ -417,10 +767,17 @@ function Abilities.Init()
 	end)
 
 	RunService.RenderStepped:Connect(function()
+		if Ui.menuOpen() then
+			button.Visible = false
+			perkCard.Visible = false
+			crosshairGui.Enabled = false
+			endCharge(false)
+			return
+		end
 		-- Button label + cooldown
 		if abilityName then
 			local left = readyAt - workspace:GetServerTimeNow()
-			local key = if UserInputService.GamepadEnabled
+			local key = if UserInputService.PreferredInput == Enum.PreferredInput.Gamepad
 				then "LT"
 				elseif UserInputService.TouchEnabled and not UserInputService.MouseEnabled then "Hold"
 				else if isThrow() then "Hold Click" else "Q"
@@ -431,7 +788,7 @@ function Abilities.Init()
 				button.Text = `{abilityName}  {math.ceil(left)}s`
 				button.BackgroundTransparency = 0.4
 			else
-				button.Text = `[{key}] {abilityName}`
+				button.Text = if Ui.Phone then abilityName :: string else `[{key}] {abilityName}`
 				button.BackgroundTransparency = 0
 			end
 		end
@@ -504,13 +861,15 @@ function Abilities.Init()
 
 	-- Knife swings: animate the instant you click (same combo order as the server)
 	local function wireKnife(tool: Tool)
+		tool.ManualActivationOnly = true
+		tool.Unequipped:Connect(cancelKnife)
 		if tool:GetAttribute("Wired") then
 			return
 		end
 		tool:SetAttribute("Wired", true)
 		tool.Activated:Connect(function()
 			local character = player.Character
-			if not character or chargingSince then
+			if not character or chargingSince or Ui.menuOpen() or not allowed() or spamMode() then
 				return
 			end
 			local now = os.clock()
@@ -539,7 +898,9 @@ function Abilities.Init()
 		elseif tool:GetAttribute("Revolver") and not tool:GetAttribute("Wired") then
 			tool:SetAttribute("Wired", true)
 			tool.Activated:Connect(function()
-				Remotes.Shoot:FireServer(aimPoint())
+				if not Ui.menuOpen() then
+					Remotes.Shoot:FireServer(aimPoint())
+				end
 			end)
 		end
 	end
@@ -551,12 +912,10 @@ function Abilities.Init()
 	end
 	local function onCharacter(character: Model)
 		watchContainer(character)
-		endCharge(false)
+		cancelKnife()
 		local humanoid = character:WaitForChild("Humanoid", 10) :: Humanoid?
 		if humanoid then
-			humanoid.Died:Connect(function()
-				endCharge(false)
-			end)
+			humanoid.Died:Connect(cancelKnife)
 		end
 	end
 	if player.Character then

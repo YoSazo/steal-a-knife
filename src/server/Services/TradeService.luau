@@ -109,14 +109,14 @@ local function swap(session: Session)
 		for _, item in give do
 			local index = table.find(profile.Knives, item)
 			if index then
-				table.remove(profile.Knives, index)
+				DataService.RemoveKnife(profile, index)
 				if profile.Equipped == item and not table.find(profile.Knives, item) then
 					profile.Equipped = ""
 				end
 			end
 		end
 		for _, item in get do
-			table.insert(profile.Knives, item)
+			DataService.AddKnife(profile, item)
 			local parsed = Items.Parse(item)
 			if parsed and not table.find(profile.Discovered, parsed.Name) then
 				table.insert(profile.Discovered, parsed.Name)

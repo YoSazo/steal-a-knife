@@ -110,7 +110,8 @@ local rng = Random.new()
 local updateDread: (Round) -> ()
 local onMurderKill: (Round, Vector3) -> ()
 
--- Hellfire's burst of click-throws (SpamUntil is a player attribute the client reads too)
+-- Click-throw mode: all round for Spam Knife, a few seconds after Q for Hellfire (SpamUntil is a
+-- player attribute the client reads too)
 local function spamActive(player: Player): boolean
 	local until_ = player:GetAttribute("SpamUntil")
 	return type(until_) == "number" and workspace:GetServerTimeNow() < until_
@@ -135,6 +136,11 @@ local OWN_FIELDS = {
 	LatestAim = true,
 	StabHint = true,
 }
+-- Is this the live round? The second Murderer's partnerView counts as the round it mirrors
+local function isLive(round: Round): boolean
+	return current ~= nil and (current == round or (current :: Round).PartnerRound == round)
+end
+
 local function partnerView(round: Round, partner: Player, knife: string): Round
 	local own: { [string]: any } = {
 		Murderer = partner,
@@ -403,7 +409,7 @@ local function lootKnife(round: Round, victim: Player)
 		end
 		local name = profile.Knives[index]
 		DataService.Update(victim, function(p)
-			table.remove(p.Knives, index)
+			DataService.RemoveKnife(p, index)
 		end)
 		BaseService.RefreshRack(victim)
 		table.insert(round.Loot, { Owner = victim, Knife = name, Killer = round.Murderer })
@@ -425,7 +431,7 @@ local function giveKnife(player: Player, item: string)
 	end
 	if #profile.Knives < profile.Slots then
 		DataService.Update(player, function(p)
-			table.insert(p.Knives, item)
+			DataService.AddKnife(p, item)
 			if not table.find(p.Discovered, parsed.Name) then
 				table.insert(p.Discovered, parsed.Name)
 			end
@@ -641,7 +647,7 @@ local function onAttack(round: Round)
 	Net.Animate(character, clipName, murderer)
 	task.wait(AnimLibrary.Clips[clipName].Impact or 0.15)
 	murdererRoot = rootOf(murderer) :: BasePart
-	if current ~= round or not murdererRoot or not round.Alive[murderer] then
+	if not isLive(round) or not murdererRoot or not round.Alive[murderer] then
 		return
 	end
 	local weapon = round.Weapon
@@ -852,7 +858,7 @@ local function throwKnife(
 		return pierceLeft <= 0
 	end
 	connection = RunService.Heartbeat:Connect(function(dt)
-		if current ~= round then
+		if not isLive(round) then
 			finish(false)
 			return
 		end
@@ -938,7 +944,7 @@ local function throwFromHand(
 	Net.Animate(character, "Throw", murderer)
 	task.delay(AnimLibrary.Clips.Throw.Release or 0.07, function()
 		local from = CombatService.HandPosition(murderer)
-		if from and current == round then
+		if from and isLive(round) then
 			throwKnife(round, from, direction, charge, flaming, range, speed)
 		end
 	end)
@@ -990,10 +996,7 @@ local function usePerk(round: Round, direction: Vector3)
 	Net.Remotes.AbilityState:FireClient(murderer, perk.DisplayName, workspace:GetServerTimeNow() + perk.Cooldown)
 	round.LatestAim = direction
 
-	if perkId == "SpamKnife" then
-		murderer:SetAttribute("SpamUntil", workspace:GetServerTimeNow() + perk.Duration)
-		Net.Notify(murderer, "SPAM KNIFE! Click to throw!", "bad")
-	elseif perkId == "Hellfire" then
+	if perkId == "Hellfire" then
 		-- For a few seconds every click throws a flaming knife
 		murderer:SetAttribute("SpamUntil", workspace:GetServerTimeNow() + perk.Duration)
 		Net.Remotes.Effect:FireAllClients("Hellfire", root.Position)
@@ -1147,6 +1150,8 @@ end
 local function buildCoin(at: CFrame): (Model, BasePart)
 	local coin = Props.Build("Coin", true)
 	coin.Name = "Coin"
+	-- Streams in whole: clients spin it, and a rim arriving after the spin started sat crooked
+	coin.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	coin:PivotTo(at)
 	local hitbox = Instance.new("Part")
 	hitbox.Name = "Hitbox"
@@ -1634,8 +1639,11 @@ local function murdererBrain(round: Round, bot: Bot, now: number)
 	local bestDist = math.huge
 	for player in round.Alive do
 		local root = rootOf(player)
-		if root and not player:GetAttribute("Invisible") and not player:GetAttribute("Mimic") then
-			local dist = (root.Position - bot.Root.Position).Magnitude
+		local dist = if root then (root.Position - bot.Root.Position).Magnitude else math.huge
+		-- (a walking Mimic disguise fools them from a distance, not up close)
+		local hidden = player:GetAttribute("Invisible")
+			or (player:GetAttribute("Mimic") and dist > GameConfig.MimicSpotRange)
+		if root and not hidden then
 			if dist < bestDist then
 				target, targetPlayer, targetBot, bestDist = root, player, nil, dist
 			end
@@ -1791,10 +1799,17 @@ local function giveWeapon(round: Round)
 			onAttack(round)
 		end)
 	)
-	local _, perk = perkOf(round)
+	local perkId, perk = perkOf(round)
+	-- Spam Knife: click = throw for the whole round (the same mode Hellfire's Q turns on briefly)
+	local spam = perkId == "SpamKnife"
+	if spam then
+		murderer:SetAttribute("SpamUntil", workspace:GetServerTimeNow() + GameConfig.RoundTime + 60)
+	end
 	Net.Notify(
 		murderer,
-		`{Items.DisplayName(round.WeaponKnife)} is in your hotbar. Pull it out when you're ready - everyone will see it! Click = stab, hold = throw.`,
+		`{Items.DisplayName(round.WeaponKnife)} is in your hotbar. Pull it out when you're ready - everyone will see it! {if spam
+			then "Click = throw!"
+			else "Click = stab, hold = throw."}`,
 		"bad"
 	)
 	if perk then
@@ -1912,7 +1927,8 @@ local function startRound(participants: { Player })
 		GunnerBot = nil,
 		ShotByBot = false,
 		HeroBot = nil,
-		Classic = rng:NextNumber() < GameConfig.ClassicChance,
+		-- (never for a Studio bot round: those are for testing perks and powers)
+		Classic = plan == nil and rng:NextNumber() < GameConfig.ClassicChance,
 		AtRisk = {},
 		PayScale = if #participants >= 2 then 1 else GameConfig.BotRoundPay,
 		HumanKills = 0,
@@ -1990,6 +2006,13 @@ local function startRound(participants: { Player })
 			p.Luck = if isMurderer then 0 else p.Luck + GameConfig.Fuel.MeterPerRound
 		end)
 
+		-- Back to exactly this spot when the round is over (BaseService.TeleportHome)
+		local here = character:GetPivot()
+		local facing = here.LookVector * Vector3.new(1, 0, 1)
+		BaseService.SetReturnSpot(
+			player,
+			if facing.Magnitude > 0.1 then CFrame.lookAt(here.Position, here.Position + facing) else here
+		)
 		character:PivotTo(spawns[(i - 1) % #spawns + 1])
 		BaseService.RefreshWalkSpeed(player)
 		Net.Remotes.Role:FireClient(player, if isMurderer then "Murderer" else "Innocent", round.Names[player])

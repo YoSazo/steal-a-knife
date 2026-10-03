@@ -71,7 +71,7 @@ victim's rack (returned if the Murderer is shot); survivors get 2x vault income 
   luck; "PowerRoll" reveal + server announce for rare ones. A Sheriff who shoots the Murderer steals the power onto
   their own fighting knife (RoundService.stealPower); the robbed Murderer gets RevengeUntil luck.
 - Hotbar knives show an icon (Tool.TextureId from Config/KnifeIcons, rendered by blender/scripts/render_knife_icons.py).
-- Rounds: one innocent power per round (Loadout[1], GameConfig.RoundPowerLevel for everyone); Spam Knife is a Q burst;
+- Rounds: one innocent power per round (Loadout[1], GameConfig.RoundPowerLevel for everyone); Spam Knife is always on (passive: click = throw all round, giveWeapon sets SpamUntil);
   ~20% CLASSIC rounds (no powers/perks, ClassicPay); Radar only finds a Murderer whose knife is out (KnifeOut), the
   Murderer's speed boost only applies with the knife out; HUD shows "Your chance to be the Murderer" (MurdererChance);
   end-of-round VS card (Effect "RoundCard" -> client/Transitions).
@@ -105,6 +105,16 @@ victim's rack (returned if the Murderer is shot); survivors get 2x vault income 
   client/RoundIntro (10 s countdown card before your first round of the session), and a first-time player (attribute
   FirstVisit) pulls the next round in to GameConfig.NewcomerRoundIn (not during a Thief Moon). `src/first/LoadingScreen`
   covers the screen until character + HUD exist.
+- Vault plates: profile.Plates[i] = the plate Knives[i] sits on; ALWAYS add/remove knives with
+  DataService.AddKnife / RemoveKnife (never table.insert/remove on Knives). Any empty plate takes a carried knife
+  ("Place Knife" on every free plate). One owner prompt per knife (Equip); selling is the thin Tsunami-style
+  "SELL" sign by each plate (BaseService.sellSign, ClickDetector, precious knives need a second tap).
+- Rule: a murder round never moves you in the hub. RoundService saves your spot (BaseService.SetReturnSpot) and
+  the next TeleportHome (surviving, or respawning after dying in the round) puts you back there.
+- Boss hits throw you like a ragdoll (Ragdoll.Tumble: server goes limp + sets player TumblePush/Tumbling, the
+  owning client applies the fling in client/Tumble; the carry speed check skips Tumbling). Bosses are
+  GameConfig.BossScale big, grab and throw without stopping, and search (not quit) when you Mimic/Vanish
+  (MimicSpotRange). Mimic props move with you.
 - `RoundService` phase loop; state is attributes on ReplicatedStorage (Phase, PhaseEndsAt, Status, Alive, MapName,
   Revolver, Loot). Melee from `Tool.Activated`; perks via `Remotes.Ability`, gun via `Remotes.Shoot` - all validated server-side.
 - Client modules (`src/client`): Ui, Hud, Menus (Knives/Shop panels), Abilities (knife input: click combo,

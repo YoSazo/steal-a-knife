@@ -1,7 +1,7 @@
 --!strict
 -- Studio-only test hooks (never created in a live server). Command-bar / MCP code runs in its own
 -- module instances, so it reaches the real game state through this BindableFunction:
---   game.ServerStorage.Debug:Invoke("Give", player, { "Katana", ... })
+--   game.ServerStorage.Debug:Invoke("Give", player, { "Katana", ... }, equip?)
 --   game.ServerStorage.Debug:Invoke("Cash", player, 5000)
 --   game.ServerStorage.Debug:Invoke("Data", player) -> profile
 --   game.ServerStorage.Debug:Invoke("StartRound", player) -> starts/skips to a one-player round
@@ -24,14 +24,18 @@ local RaidService = require(script.Parent.RaidService)
 local DebugService = {}
 
 local commands: { [string]: (Player, ...any) -> any } = {
-	Give = function(player: Player, names: { string })
+	-- equip = true also makes the last one given your fighting / Murderer knife
+	Give = function(player: Player, names: { string }, equip: boolean?)
 		DataService.Update(player, function(p)
 			for _, item in names do
-				table.insert(p.Knives, item)
+				DataService.AddKnife(p, item)
 				local name = Items.Name(item)
 				if not table.find(p.Discovered, name) then
 					table.insert(p.Discovered, name)
 				end
+			end
+			if equip and #names > 0 then
+				p.Equipped = names[#names]
 			end
 		end)
 		BaseService.RefreshRack(player)

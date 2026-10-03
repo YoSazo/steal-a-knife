@@ -16,6 +16,7 @@ local Net = require(script.Parent.Parent.Remotes)
 export type Profile = {
 	Cash: number,
 	Knives: { string }, -- item strings (Items): "Katana", "Katana|Gold|Huge"
+	Plates: { number }, -- Plates[i] = the vault plate Knives[i] sits on (DataService.AddKnife/RemoveKnife)
 	Slots: number,
 	Luck: number,
 	Tickets: number,
@@ -50,7 +51,7 @@ export type Profile = {
 	RevengeUntil: number, -- os.time() until which a robbed Murderer gets revenge luck
 }
 
-local STORE_NAME = "PlayerData_v1"
+local STORE_NAME = "PlayerData_v2" -- v1 = saves before the 2026-10-03 reset (kept, not deleted)
 local LOCK_TIMEOUT = 600 -- a lock older than this belongs to a server that died
 local AUTOSAVE_INTERVAL = 120
 local MAX_ATTEMPTS = 5
@@ -78,6 +79,7 @@ local function defaultProfile(): Profile
 	return {
 		Cash = GameConfig.StartingCash,
 		Knives = {},
+		Plates = {},
 		Slots = GameConfig.StartingSlots,
 		Luck = 0,
 		Tickets = 0,
@@ -151,13 +153,36 @@ local function reconcile(data: any): Profile
 	profile.TrailLevel = math.clamp(math.floor(profile.TrailLevel), 0, #GameConfig.Trails)
 	profile.HealthLevel = math.clamp(math.floor(profile.HealthLevel), 0, GameConfig.Health.MaxLevel)
 	-- Drop knives that were removed from the catalog so nothing downstream sees an unknown name
-	local items = {}
-	for _, item in profile.Knives do
+	-- Each kept knife keeps its plate (older saves: plates in list order); duplicates or bad plates
+	-- get the first free one
+	local items, plates, used = {}, {}, {}
+	for i, item in profile.Knives do
 		if Items.Valid(item) then
 			table.insert(items, item)
+			local plate = profile.Plates[i]
+			if type(plate) == "number" and plate >= 1 and plate <= GameConfig.MaxSlots and not used[plate] then
+				plate = math.floor(plate)
+			else
+				plate = 0
+			end
+			table.insert(plates, plate)
+			if plate > 0 then
+				used[plate] = true
+			end
+		end
+	end
+	for i, plate in plates do
+		if plate == 0 then
+			local free = 1
+			while used[free] do
+				free += 1
+			end
+			plates[i] = free
+			used[free] = true
 		end
 	end
 	profile.Knives = items
+	profile.Plates = plates
 	local discovered = {}
 	for _, name in profile.Discovered do
 		local base = if type(name) == "string" then Items.Name(name) else ""
@@ -190,6 +215,54 @@ local function reconcile(data: any): Profile
 	end
 	profile.Loadout = loadout
 	return profile
+end
+
+-- Knives and the plates they sit on --------------------------------------------------------------
+-- Every change to a profile's Knives goes through these, so Plates stays lined up with it.
+
+-- The first empty plate (1..), or nil when every unlocked plate is taken
+function DataService.FreePlate(profile: Profile): number?
+	for plate = 1, profile.Slots do
+		if not table.find(profile.Plates, plate) then
+			return plate
+		end
+	end
+	return nil
+end
+
+-- Adds a knife, on `plate` if that one is free, else on the first free plate (or past the
+-- unlocked ones if the wall is full - it shows up once a new floor is bought). Returns the plate.
+function DataService.AddKnife(profile: Profile, item: string, plate: number?): number
+	local target = if plate and plate >= 1 and not table.find(profile.Plates, plate) then plate else nil
+	if not target then
+		target = DataService.FreePlate(profile)
+	end
+	if not target then
+		local n = profile.Slots + 1
+		while table.find(profile.Plates, n) do
+			n += 1
+		end
+		target = n
+	end
+	table.insert(profile.Knives, item)
+	table.insert(profile.Plates, target :: number)
+	return target :: number
+end
+
+-- Removes the knife at list index `index` (and its plate); returns the item
+function DataService.RemoveKnife(profile: Profile, index: number): string?
+	local item = table.remove(profile.Knives, index)
+	table.remove(profile.Plates, index)
+	return item
+end
+
+function DataService.PlateOf(profile: Profile, index: number): number
+	return profile.Plates[index] or index
+end
+
+-- Which knife (list index) sits on `plate`, if any
+function DataService.IndexOnPlate(profile: Profile, plate: number): number?
+	return table.find(profile.Plates, plate)
 end
 
 local function key(player: Player): string

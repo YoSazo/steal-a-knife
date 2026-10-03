@@ -9,12 +9,14 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Props = require(ReplicatedStorage.Shared.Props)
+local CharacterFaces = require(script.Parent.CharacterFaces)
+local CharacterDetails = require(script.Parent.CharacterDetails)
 
 local Disguises = {}
 
 -- One accessory: a PropMeshes key, recoloured. Color paints the Hair / Hat / Frame parts, Trim the
 -- Trim / Tie parts (hat bands, brims, ponytail ties, headphone cups).
-type Wear = { Prop: string, Color: Color3?, Trim: Color3?, On: string? } -- On: body part (default Head)
+export type Wear = { Prop: string, Color: Color3?, Trim: Color3?, On: string? } -- On: body part (default Head)
 
 type Outfit = {
 	Name: string,
@@ -402,9 +404,15 @@ local function wearOn(head: BasePart, model: Model, wear: Wear, overHair: boolea
 			end
 			-- Glasses lenses and the space helmet's bubble are see-through
 			if d.Name == "Lens" then
-				d.Transparency = if wear.Prop == "SpaceHelmet" then 0.7 else 0.45
-				d.Reflectance = 0.2
+				d.Transparency = if wear.Prop == "SpaceHelmet" then 0.82 else 0.78
+				d.Reflectance = 0.03
 				d.CastShadow = false
+			end
+			if d.Name == "Hair" then
+				d.Material = Enum.Material.SmoothPlastic
+				d.Reflectance = 0
+			elseif d.Name == "Frame" or d.Name == "Trim" then
+				d.Reflectance = 0.05
 			end
 		end
 	end
@@ -483,19 +491,9 @@ local function dress(character: Model, outfit: Outfit)
 	if not head then
 		return
 	end
-	local face = head:FindFirstChild("face")
-	if not (face and face:IsA("Decal")) then
-		if face then
-			face:Destroy()
-		end
-		local decal = Instance.new("Decal")
-		decal.Name = "face"
-		decal.Face = Enum.NormalId.Front
-		decal.Parent = head
-		face = decal
-	end
-	(face :: Decal).Texture = outfit.Face
+	head = CharacterFaces.Apply(head, outfit.Face)
 	buildWear(head, outfit.Wear)
+	CharacterDetails.Apply(character, outfit.Name)
 end
 
 local function putOn(player: Player, outfit: Outfit)
@@ -510,7 +508,7 @@ local function putOn(player: Player, outfit: Outfit)
 			originals[player] = current
 		end
 	end
-	local ok, err = pcall(humanoid.ApplyDescriptionAsync, humanoid, describe(outfit))
+	local ok, err = pcall(humanoid.ApplyDescriptionResetAsync, humanoid, describe(outfit))
 	if not ok then
 		warn(`[Disguises] couldn't dress {player.Name}: {err}`)
 	end
@@ -581,7 +579,7 @@ function Disguises.Remove(player: Player)
 	if hat then
 		hat:Destroy()
 	end
-	for _, name in { "DisguiseShirt", "DisguisePants" } do
+	for _, name in { "DisguiseShirt", "DisguisePants", "DisguiseDetails" } do
 		local item = character:FindFirstChild(name)
 		if item then
 			item:Destroy()
@@ -590,7 +588,7 @@ function Disguises.Remove(player: Player)
 	humanoid.DisplayName = player.DisplayName
 	if original then
 		task.spawn(function()
-			pcall(humanoid.ApplyDescriptionAsync, humanoid, original)
+			pcall(humanoid.ApplyDescriptionResetAsync, humanoid, original)
 		end)
 	end
 end
@@ -602,6 +600,11 @@ function Disguises.AddHat(head: BasePart, hat: string, color: Color3, shades: bo
 	if shades then
 		table.insert(wears, { Prop = "ShutterShades", Color = Color3.new(0.05, 0.05, 0.05) })
 	end
+	return buildWear(head, wears)
+end
+
+-- Build a complete accessory set at once; AddHat replaces the set rather than appending to it.
+function Disguises.AddAccessories(head: BasePart, wears: { Wear }): Model
 	return buildWear(head, wears)
 end
 

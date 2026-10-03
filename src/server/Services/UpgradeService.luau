@@ -124,6 +124,7 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			p.Rebirths += 1
 			p.Cash = 0
 			p.Knives = {}
+			p.Plates = {}
 			p.Equipped = ""
 			p.Slots = GameConfig.StartingSlots
 			p.Speed = 0

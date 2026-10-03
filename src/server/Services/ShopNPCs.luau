@@ -13,6 +13,8 @@ local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local Props = require(ReplicatedStorage.Shared.Props)
 local Toy = require(ReplicatedStorage.Shared.Toy)
 local Disguises = require(script.Parent.Disguises)
+local CharacterFaces = require(script.Parent.CharacterFaces)
+local CharacterDetails = require(script.Parent.CharacterDetails)
 
 local ShopNPCs = {}
 
@@ -26,7 +28,7 @@ type Spec = {
 	Skin: Color3,
 	Coat: Color3,
 	Pants: Color3,
-	Wear: { { Prop: string, Color: Color3 } },
+	Wear: { Disguises.Wear },
 	Lines: { string }, -- greetings (the client picks one)
 }
 
@@ -108,6 +110,7 @@ local function buildStall(folder: Instance, spec: Spec, frame: CFrame)
 	local counter = block(folder, "Counter", Vector3.new(10, 3.4, 2.4), at(0, 1.7, -3), wood)
 	Toy.Dress(counter, Toy.Sides, 1, 0)
 	block(folder, "CounterTop", Vector3.new(10.6, 0.4, 3), at(0, 3.6, -3), wood:Lerp(Color3.new(0, 0, 0), 0.3))
+	block(folder, "KeeperStep", Vector3.new(7, 0.45, 2.4), at(0, 0.225, 0.2), wood)
 	for _, x in { -5, 5 } do
 		for _, z in { -4, 2.5 } do
 			block(folder, "Post", Vector3.new(0.6, 10, 0.6), at(x, 5, z), wood)
@@ -148,6 +151,8 @@ local function buildStall(folder: Instance, spec: Spec, frame: CFrame)
 	anchor.CanQuery = false
 	local gui = Instance.new("BillboardGui")
 	gui.Size = UDim2.fromOffset(280, 54)
+	gui:SetAttribute("LabelCategory", "Shop")
+	gui:AddTag("ResponsiveWorldLabel")
 	gui.MaxDistance = 140
 	gui.LightInfluence = 0
 	gui.Brightness = 0.85 -- full-bright signs, a touch softer than pure white
@@ -171,10 +176,11 @@ local function buildStall(folder: Instance, spec: Spec, frame: CFrame)
 	stroke.Parent = text
 	-- Wares
 	if spec.Panel == "Shop" then
+		local casePositions = { -3.5, -1.8, 3.3 } -- leave the merchant's face clear in the middle
 		for i, rarity in { "Common", "Epic", "Godly" } do
 			local case = KnifeModel.BuildCase(rarity, true)
-			case:ScaleTo(0.6)
-			case:PivotTo(at(-3.2 + (i - 1) * 3.2, 4.4, -3) * CFrame.Angles(0, math.rad(180 + (i - 2) * 15), 0))
+			case:ScaleTo(0.5)
+			case:PivotTo(at(casePositions[i], 4.4, -3) * CFrame.Angles(0, math.rad(180 + (i - 2) * 15), 0))
 			for _, d in case:GetDescendants() do
 				if d:IsA("BasePart") then
 					d.CanCollide = false
@@ -199,8 +205,9 @@ local function buildStall(folder: Instance, spec: Spec, frame: CFrame)
 		end
 	else
 		-- A glowing crystal ball on a stand, candles, floating sparkles
-		block(folder, "BallStand", Vector3.new(1, 0.6, 1), at(0, 4.1, -3), rgb(200, 160, 70), Enum.Material.Metal)
-		local ball = block(folder, "CrystalBall", Vector3.one * 1.8, at(0, 5.2, -3), spec.Color, Enum.Material.Glass)
+		block(folder, "BallStand", Vector3.new(1, 0.6, 1), at(-2.4, 4.1, -3), rgb(200, 160, 70), Enum.Material.Metal)
+		local ball =
+			block(folder, "CrystalBall", Vector3.one * 1.6, at(-2.4, 5.05, -3), spec.Color, Enum.Material.Glass)
 		ball.Shape = Enum.PartType.Ball
 		ball.Transparency = 0.25
 		ball.CanCollide = false
@@ -261,15 +268,14 @@ local function buildKeeper(folder: Instance, spec: Spec, frame: CFrame)
 	rig.PrimaryPart = root
 	local height = humanoid.HipHeight + root.Size.Y / 2
 	-- Stands behind the counter (local +Z), facing the customers (-Z)
-	rig:PivotTo(frame * CFrame.new(0, height, 0.2))
+	rig:PivotTo(frame * CFrame.new(0, height + 0.45, 0.2))
 	local head = rig:FindFirstChild("Head") :: BasePart
-	local face = Instance.new("Decal")
-	face.Name = "face"
-	face.Texture = "rbxassetid://126198856889552" -- Happy (tools/make_clothing.py faces)
-	face.Parent = head
-	for _, wear in spec.Wear do
-		Disguises.AddHat(head, wear.Prop, wear.Color)
-	end
+	head = CharacterFaces.Apply(
+		head,
+		if spec.Panel == "Shop" then "rbxassetid://93391310013128" else "rbxassetid://137483136763270"
+	)
+	Disguises.AddAccessories(head, spec.Wear)
+	CharacterDetails.Apply(rig, spec.Name)
 	rig:AddTag("ShopNPC") -- clients fidget them (Moves) on top of the idle animation
 	rig.Parent = folder
 	local animator: Animator = humanoid:FindFirstChildOfClass("Animator")

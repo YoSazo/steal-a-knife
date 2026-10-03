@@ -32,6 +32,7 @@ local ManorDecor = require(script.Parent.ManorDecor)
 local Disguises = require(script.Parent.Disguises)
 local MapService = require(script.Parent.MapService)
 local Obstacles = require(script.Parent.Obstacles)
+local Ragdoll = require(script.Parent.Ragdoll)
 local StealService = require(script.Parent.StealService)
 local ServerEvents = require(script.Parent.ServerEvents)
 local StuckKnives = require(script.Parent.StuckKnives)
@@ -110,7 +111,8 @@ type Projectile = {
 
 local GuardService = {}
 
-local HEIGHT = 3 -- HumanoidRootPart centre above the floor (set from a probe rig in Init)
+local HEIGHT = 3 -- a boss's HumanoidRootPart centre above the floor (probe rig at BossScale, Init)
+local PERSON_HEIGHT = 3 -- the same for a normal-size rig (burglars use it: RootHeight)
 local PLATFORM = 0.8 -- lair floor height
 local ANIMATIONS: { [string]: string } = {
 	Idle = "rbxassetid://507766388",
@@ -230,6 +232,8 @@ end
 -- a glow in the zone's colour, and their name over their head
 local function buildRig(config: ZoneConfig, shadow: boolean): Model
 	local rig = Disguises.BuildCharacter(config.Boss, config.BossWear)
+	-- Big enough to spot across the runway on a phone (HEIGHT is measured on a rig this size)
+	rig:ScaleTo(GameConfig.BossScale)
 	rig.Name = if shadow then `{config.Boss}Shadow` else config.Boss
 	rig.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	rig:AddTag("Guard") -- clients animate these (fidgets, stabs, throws)
@@ -386,11 +390,12 @@ local function setSlot(boss: Boss, slot: Slot, item: string)
 		return
 	end
 	local model = KnifeModel.Build(item, true)
-	KnifeModel.FitLength(model, 6 * (1 + (parsed.Size.Scale - 1) * 0.6))
+	KnifeModel.FitLength(model, 6)
 	model:PivotTo(slot.Spot)
 	local box = model:GetBoundingBox()
 	model:PivotTo(model:GetPivot() + (slot.Spot.Position - box.Position))
 	model:AddTag("Spin")
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- spun whole on clients
 	model.Parent = boss.Folder
 	slot.Display = model
 	-- No labels: the knife itself shows what it is (walk up and the prompt names it). A soft glow
@@ -613,9 +618,6 @@ local function chaseTarget(guard: Guard): BasePart?
 	if root.Position.Z < -2 or BaseService.IsInAnyBase(root.Position) then
 		return nil
 	end
-	if player:GetAttribute("Mimic") then
-		return nil -- disguised as furniture: they lose you
-	end
 	return root
 end
 
@@ -709,11 +711,10 @@ local function snatch(guard: Guard, thief: Player)
 		Net.Notify(thief, `{guard.Boss.Name} caught you and took the {Items.DisplayName(item)} back!`, "bad")
 		Net.Remotes.Effect:FireClient(thief, "Damage", root.Position + Vector3.new(0, 3, 0), "CAUGHT!")
 	end
-	-- Shoved away
+	-- Thrown through the air like a rag doll (Steal An Egg style)
 	local away = (root.Position - guard.Position) * Vector3.new(1, 0, 1)
-	if away.Magnitude > 0.1 then
-		root.AssemblyLinearVelocity = away.Unit * 45 + Vector3.new(0, 25, 0)
-	end
+	local push = (if away.Magnitude > 0.1 then away.Unit else -root.CFrame.LookVector) * 50 + Vector3.new(0, 50, 0)
+	Ragdoll.Tumble(thief, push, 1.6)
 	stopChase(guard, false)
 end
 
@@ -790,7 +791,10 @@ local function stepProjectiles(dt: number)
 			local ab = nextPosition - p.Position
 			local t = math.clamp((root.Position - p.Position):Dot(ab) / math.max(ab:Dot(ab), 1e-6), 0, 1)
 			if (root.Position - (p.Position + ab * t)).Magnitude < config.HitRadius + 1 then
-				hurt(p.Target, p.Damage, p.Position)
+				-- A knife in the back knocks you flying (and costs you ground, not the knife)
+				if hurt(p.Target, p.Damage, p.Position) then
+					Ragdoll.Tumble(p.Target, p.Direction * 45 + Vector3.new(0, 40, 0), 1)
+				end
 				done = true
 			end
 		end
@@ -909,8 +913,10 @@ local function step(guard: Guard, dt: number)
 		return
 	end
 
-	-- Vanished: they've lost sight of you and stand there searching until you reappear
-	if thief:GetAttribute("Invisible") then
+	-- Vanished: they've lost sight of you and stand there searching until you reappear. Disguised
+	-- as furniture (Mimic) works the same, unless you come close enough for them to see through it.
+	local gap = ((targetRoot.Position - guard.Position) * Vector3.new(1, 0, 1)).Magnitude
+	if thief:GetAttribute("Invisible") or (thief:GetAttribute("Mimic") and gap > GameConfig.MimicSpotRange) then
 		guard.Alert.Enabled = false
 		animate(guard, "Idle")
 		return
@@ -924,52 +930,49 @@ local function step(guard: Guard, dt: number)
 	end
 	guard.Alert.Enabled = false
 
-	-- Winding up a throw
-	if guard.WindupUntil > 0 then
-		if t < guard.WindupUntil then
-			face(guard, targetRoot.Position)
-			animate(guard, "Idle")
-			return
-		end
+	-- Winding up a throw: they keep running at you while the arm cranks back, and let go
+	-- mid-stride (never stopping, so throwing never costs them ground)
+	if guard.WindupUntil > 0 and t >= guard.WindupUntil then
 		guard.WindupUntil = 0
 		guard.Model:SetAttribute("ChargeStart", nil)
 		local aim = targetRoot.Position
 		Net.Animate(guard.Model, "Throw")
-		guard.BusyUntil = t + 0.3
 		task.delay(AnimLibrary.Clips.Throw.Release or 0.07, function()
 			if not guard.Dead then
 				throwAt(guard, aim, thief)
 			end
 		end)
-		return
 	end
 
 	local distance = ((targetRoot.Position - guard.Position) * Vector3.new(1, 0, 1)).Magnitude
 	if distance <= GameConfig.CatchRadius then
-		-- Grab!
-		face(guard, targetRoot.Position)
-		animate(guard, "Idle")
+		-- Grab! They swing without stopping (stopping let a runner slip away every time) and it
+		-- counts if you're still within arm's reach when the blow lands
 		if t - guard.LastAttack >= GameConfig.GuardAttackCooldown * 0.6 then
 			guard.LastAttack = t
 			local clip = AnimLibrary.Clips.GuardStab
 			Net.Animate(guard.Model, "GuardStab")
-			guard.BusyUntil = t + clip.Length * 0.6
 			local model = guard.Model
 			task.delay(clip.Impact or 0.3, function()
 				if guard.Dead or guard.Model ~= model or guard.Target ~= thief then
 					return
 				end
 				local root = chaseTarget(guard)
-				if root and (root.Position - guard.Position).Magnitude <= GameConfig.CatchRadius + 2.5 then
+				local reach = if root
+					then ((root.Position - guard.Position) * Vector3.new(1, 0, 1)).Magnitude
+					else math.huge
+				if root and reach <= GameConfig.CatchRadius + 4 then
 					snatch(guard, thief)
 				end
 			end)
 		end
+		moveTowards(guard, targetRoot.Position, guard.Config.GuardSpeed, dt)
 		return
 	end
 	local throwConfig = GameConfig.GuardThrow
 	if
 		guard.Config.Throws
+		and guard.WindupUntil == 0
 		and t >= guard.ThrowReadyAt
 		and distance > throwConfig.MinRange
 		and distance < throwConfig.MaxRange
@@ -978,7 +981,6 @@ local function step(guard: Guard, dt: number)
 		guard.ThrowReadyAt = guard.WindupUntil + throwConfig.Cooldown
 		guard.Model:SetAttribute("ChargeTime", throwConfig.Windup)
 		guard.Model:SetAttribute("ChargeStart", workspace:GetServerTimeNow())
-		return
 	end
 	moveTowards(guard, targetRoot.Position, guard.Config.GuardSpeed, dt)
 end
@@ -1028,7 +1030,7 @@ end
 -- API used by powers, combat and raids ------------------------------------------------------------
 
 function GuardService.RootHeight(): number
-	return HEIGHT
+	return PERSON_HEIGHT
 end
 
 -- Every boss and every chasing shadow (Radar, traps, Flash and Decoy look through these)
@@ -1095,6 +1097,26 @@ end
 
 -- Hit by a hub knife (swing or throw). A chaser staggers - longer for better knives, with a short
 -- immunity after so nobody can lock one down forever. A boss at their post just ignores you.
+-- What a boss shouts when you hit them (floating text over their head, for the attacker)
+local QUIPS = {
+	Idle = { "Ow! Rude!", "That tickles!", "HEY!", "Not the face!", "Is that all?", "Go steal something!" },
+	Stagger = { "OOF!", "ARGH!", "Lucky shot!", "You'll pay for that!", "Grr...!", "OUCH!", "My knees!" },
+	Resist = { "Ha! Too slow!", "Nice try!", "Missed me!", "Not again!" },
+}
+local function quip(guard: Guard, attacker: Player?, kind: string, extra: string?)
+	if not attacker then
+		return
+	end
+	local lines = QUIPS[kind]
+	local line = lines[rng:NextInteger(1, #lines)]
+	Net.Remotes.Effect:FireClient(
+		attacker,
+		"Damage",
+		guard.Position + Vector3.new(0, 3 * GameConfig.BossScale, 0),
+		if extra then `{line} {extra}` else line
+	)
+end
+
 function GuardService.Damage(guard: Guard, amount: number, attacker: Player?)
 	if guard.Dead then
 		return
@@ -1102,7 +1124,8 @@ function GuardService.Damage(guard: Guard, amount: number, attacker: Player?)
 	local head = guard.Model:FindFirstChild("Head") :: BasePart?
 	Net.Remotes.Effect:FireAllClients("Hit", if head then head.Position else guard.Position)
 	if not guard.Target then
-		if attacker and now() - (idleHitNotice[attacker] or 0) > 4 then
+		quip(guard, attacker, "Idle")
+		if attacker and now() - (idleHitNotice[attacker] or 0) > 20 then
 			idleHitNotice[attacker] = now()
 			Net.Notify(attacker, `{guard.Boss.Name} doesn't care. Steal a knife off the wall... if you dare!`, "info")
 		end
@@ -1110,9 +1133,7 @@ function GuardService.Damage(guard: Guard, amount: number, attacker: Player?)
 	end
 	local t = now()
 	if t < guard.StaggerImmuneUntil then
-		if attacker then
-			Net.Remotes.Effect:FireClient(attacker, "Damage", guard.Position + Vector3.new(0, 3, 0), "RESIST")
-		end
+		quip(guard, attacker, "Resist")
 		return
 	end
 	local seconds = math.clamp(amount / guard.Config.Health * 3, 0.3, 2.2)
@@ -1122,12 +1143,7 @@ function GuardService.Damage(guard: Guard, amount: number, attacker: Player?)
 	guard.Model:SetAttribute("ChargeStart", nil)
 	Net.Animate(guard.Model, "GuardHurt")
 	if attacker then
-		Net.Remotes.Effect:FireClient(
-			attacker,
-			"Damage",
-			guard.Position + Vector3.new(0, 3, 0),
-			string.format("STAGGER %.1fs", seconds)
-		)
+		quip(guard, attacker, "Stagger", string.format("(%.1fs)", seconds))
 		-- Knocked back a step, away from whoever hit them
 		local attackerRoot = rootOf(attacker)
 		if attackerRoot then
@@ -1152,8 +1168,13 @@ function GuardService.Init()
 
 	-- How high a rig's root sits so feet touch the floor
 	local probe = Disguises.BuildCharacter("Frank")
-	local probeHumanoid = probe:FindFirstChildOfClass("Humanoid") :: Humanoid
-	HEIGHT = probeHumanoid.HipHeight + (probe:FindFirstChild("HumanoidRootPart") :: BasePart).Size.Y / 2
+	local function rootHeight(): number
+		local probeHumanoid = probe:FindFirstChildOfClass("Humanoid") :: Humanoid
+		return probeHumanoid.HipHeight + (probe:FindFirstChild("HumanoidRootPart") :: BasePart).Size.Y / 2
+	end
+	PERSON_HEIGHT = rootHeight()
+	probe:ScaleTo(GameConfig.BossScale)
+	HEIGHT = rootHeight()
 	probe:Destroy()
 
 	for i, config in GameConfig.Zones do

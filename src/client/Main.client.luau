@@ -20,6 +20,9 @@ local KnifeTrails = require(script.Parent.KnifeTrails)
 local Transitions = require(script.Parent.Transitions)
 local Overheads = require(script.Parent.Overheads)
 local RoundIntro = require(script.Parent.RoundIntro)
+local Tumble = require(script.Parent.Tumble)
+local WorldLabels = require(script.Parent.WorldLabels)
+local KnifeOutlines = require(script.Parent.KnifeOutlines)
 
 -- Timed, so slow starts show up in the output (the summary prints once everything is up)
 local clientTimings: { string } = {}
@@ -44,6 +47,9 @@ timed("KnifeTrails", KnifeTrails.Init)
 timed("Transitions", Transitions.Init)
 timed("Overheads", Overheads.Init)
 timed("RoundIntro", RoundIntro.Init)
+timed("Tumble", Tumble.Init)
+timed("WorldLabels", WorldLabels.Init)
+timed("KnifeOutlines", KnifeOutlines.Init)
 task.spawn(Tutorial.Init)
 print(
 	string.format(

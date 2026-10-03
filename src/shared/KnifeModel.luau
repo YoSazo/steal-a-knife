@@ -16,6 +16,8 @@ local KnifeIcons = require(script.Parent.Config.KnifeIcons)
 local Props = require(script.Parent.Props)
 local Knives = require(script.Parent.Config.Knives)
 local KnifeMeshes = require(script.Parent.Config.KnifeMeshes)
+local KnifeDetailMeshes = require(script.Parent.Config.KnifeDetailMeshes)
+local KnifeAppearance = require(script.Parent.Config.KnifeAppearance)
 
 local KnifeModel = {}
 
@@ -24,6 +26,7 @@ local MESH_SCALE = 1.35 -- Blender units -> studs, tuned to match the part knive
 local MESH_TO_KNIFE = CFrame.Angles(0, 0, -math.pi / 2)
 local TEMPLATE_FOLDER = "KnifeTemplates"
 local TOOL_LENGTH = 2.4 -- studs, pommel to tip, for the knife the Murderer holds
+local SILHOUETTE = "GoldenDagger" -- every skin uses the same blade, crossguard and grip
 
 local function part(parent: Instance, name: string, size: Vector3, offset: CFrame, color: Color3): Part
 	local p = Instance.new("Part")
@@ -54,7 +57,8 @@ local function weldAll(parent: Instance, root: BasePart)
 end
 
 local function assembleParts(parent: Instance, knife: Knives.Knife): BasePart
-	local length, width = knife.BladeLength, knife.BladeWidth
+	local standard = Knives.ByName[SILHOUETTE]
+	local length, width = standard.BladeLength, standard.BladeWidth
 	local handle = part(parent, "Handle", Vector3.new(0.35, 1.1, 0.35), CFrame.new(), knife.HandleColor)
 	local pommel = part(parent, "Pommel", Vector3.new(0.5, 0.5, 0.5), CFrame.new(0, -0.65, 0), knife.GuardColor)
 	pommel.Shape = Enum.PartType.Ball
@@ -87,16 +91,29 @@ local function assembleParts(parent: Instance, knife: Knives.Knife): BasePart
 	return handle
 end
 
-local function colorFor(knife: Knives.Knife, partName: string): Color3
-	if partName == "Blade" then
-		return knife.BladeColor
-	elseif partName == "Handle" then
-		return knife.HandleColor
-	elseif partName == "Extra" then
-		-- gems, crystals and flames glow in the blade colour; rivets/rings match the guard
-		return if knife.Neon or knife.Name == "GoldenDagger" then knife.BladeColor else knife.GuardColor
+local function finishPart(p: BasePart, knife: Knives.Knife, role: string)
+	local styles = KnifeAppearance[knife.Name]
+	local finish = styles and styles[role]
+	p:SetAttribute("KnifeRole", role)
+	if finish then
+		p.Color = finish.Color
+		p.Material = finish.Material
 	end
-	return knife.GuardColor
+	p.Reflectance = if p.Material == Enum.Material.Metal then 0.06 else 0
+	p.CastShadow = p.Material ~= Enum.Material.Neon
+end
+
+local function addBladeLight(model: Model, knife: Knives.Knife)
+	if not knife.Neon then
+		return
+	end
+	local light = Instance.new("PointLight")
+	light.Name = "BladeGlow"
+	light.Color = KnifeAppearance[knife.Name].CuttingEdge.Color
+	light.Range = 5
+	light.Brightness = 0.45
+	light.Shadows = false
+	light.Parent = model:FindFirstChild("Blade")
 end
 
 -- Server only: create one template per knife from the mesh ids. Yields (a few seconds).
@@ -108,11 +125,10 @@ function KnifeModel.Preload()
 	local folder = Instance.new("Folder")
 	folder.Name = TEMPLATE_FOLDER
 	local pending = 0
-	-- Every catalog knife gets a template: its own Blender mesh, or (Knife.Mesh) another knife's
-	-- mesh worn in its own colours
+	-- Skins differ by finish and shallow relief, never by blade shape or size.
 	for _, knife in Knives.List do
 		local name = knife.Name
-		local specs = KnifeMeshes[knife.Mesh or name]
+		local specs = KnifeMeshes[SILHOUETTE]
 		if not specs then
 			continue
 		end
@@ -124,37 +140,47 @@ function KnifeModel.Preload()
 			root.Transparency = 1
 			local ok, err = pcall(function()
 				for _, spec in specs do
+					if spec.Name == "Extra" then
+						continue
+					end
 					local mesh = AssetService:CreateMeshPartAsync(Content.fromUri(spec.MeshId))
 					mesh.Name = if spec.Name == "Handle" then "Grip" else spec.Name
 					mesh.Size = spec.Size * MESH_SCALE
 					mesh.CFrame = MESH_TO_KNIFE * CFrame.new(spec.Offset * MESH_SCALE)
-					mesh.Color = colorFor(knife, spec.Name)
-					mesh.Material = Enum.Material.SmoothPlastic
+					local role = if spec.Name == "Handle"
+						then "Grip"
+						else if spec.Name == "Pommel" then "Guard" else spec.Name
+					finishPart(mesh, knife, role)
 					mesh.CanCollide = false
 					mesh.CanQuery = false
 					mesh.CanTouch = false
 					mesh.Massless = true
-					mesh.CastShadow = spec.Name ~= "Extra"
-					if spec.Name == "Blade" then
-						mesh.Reflectance = 0.12
-					end
-					if knife.Neon and (spec.Name == "Blade" or spec.Name == "Extra") then
-						mesh.Material = Enum.Material.Neon
-					end
 					mesh.Parent = model
 				end
 			end)
 			if ok then
-				if knife.Neon then
-					local light = Instance.new("PointLight")
-					light.Color = knife.BladeColor
-					light.Range = 10
-					light.Parent = model:FindFirstChild("Blade")
+				-- Detail failures leave the complete original silhouette usable.
+				local detailsOk, detailsError = pcall(function()
+					local details: { KnifeMeshes.MeshPartSpec } = KnifeDetailMeshes[name] or {}
+					for _, spec in details do
+						local mesh = AssetService:CreateMeshPartAsync(Content.fromUri(spec.MeshId))
+						mesh.Name = spec.Name
+						mesh.Size = spec.Size * MESH_SCALE
+						mesh.CFrame = MESH_TO_KNIFE * CFrame.new(spec.Offset * MESH_SCALE)
+						mesh.CanCollide, mesh.CanQuery, mesh.CanTouch, mesh.Massless = false, false, false, true
+						finishPart(mesh, knife, spec.Name)
+						mesh.Parent = model
+					end
+				end)
+				if not detailsOk then
+					warn(`[KnifeModel] details for {name} unavailable: {detailsError}`)
 				end
+				addBladeLight(model, knife)
 				weldAll(model, root)
 				model.PrimaryPart = root
 				model.Parent = folder
 			else
+				model:Destroy()
 				warn(`[KnifeModel] mesh knife {name} failed, using parts: {err}`)
 			end
 			pending -= 1
@@ -227,7 +253,7 @@ local function sparkles(parent: BasePart, color: ColorSequence, rate: number, si
 	emitter.Parent = parent
 end
 
--- Mutations restyle the whole knife. Rainbow cycles its colours on clients (Effects, tag "RainbowKnife").
+-- Mutations preserve the grip, the edge/body contrast and the raised detailing.
 function KnifeModel.ApplyMutation(model: Model, mutation: string)
 	if mutation == "" then
 		return
@@ -237,31 +263,52 @@ function KnifeModel.ApplyMutation(model: Model, mutation: string)
 		if not d:IsA("BasePart") or d.Transparency >= 1 then
 			continue
 		end
-		local isBlade = d.Name == "Blade" or d.Name == "Tip" or d.Name == "Extra"
+		local role = d:GetAttribute("KnifeRole")
+		local isGrip = role == "Grip" or role == "GripDetail"
+		local isBlade = role == "Blade" or role == "Tip"
+		local isAccent = role == "Inlay" or role == "CuttingEdge" or role == "Extra"
 		if mutation == "Gold" then
-			d.Color = if isBlade then Color3.fromRGB(255, 214, 70) else Color3.fromRGB(205, 150, 30)
-			d.Material = Enum.Material.Metal
-			d.Reflectance = 0.25
+			d.Color = if isGrip
+				then d.Color:Lerp(Color3.fromRGB(76, 40, 25), 0.45)
+				else if isAccent
+					then Color3.fromRGB(255, 232, 139)
+					else if isBlade then Color3.fromRGB(211, 157, 42) else Color3.fromRGB(168, 109, 30)
+			if not isGrip then
+				d.Material = Enum.Material.Metal
+				d.Reflectance = 0.08
+			end
 		elseif mutation == "Diamond" then
-			if isBlade then
-				d.Color = Color3.fromRGB(170, 240, 255)
-				d.Material = Enum.Material.Glass
-				d.Transparency = 0.15
-				d.Reflectance = 0.45
-			else
-				d.Color = Color3.fromRGB(225, 245, 255)
-				d.Material = Enum.Material.Ice
+			d.Color = if isGrip
+				then d.Color:Lerp(Color3.fromRGB(39, 89, 124), 0.55)
+				else if isAccent
+					then Color3.fromRGB(218, 253, 255)
+					else if isBlade then Color3.fromRGB(96, 179, 205) else Color3.fromRGB(62, 118, 153)
+			if not isGrip then
+				d.Material = if isAccent then Enum.Material.Glass else Enum.Material.Metal
+				d.Reflectance = 0.12
 			end
 		elseif mutation == "Rainbow" then
-			d.Material = if isBlade then Enum.Material.Neon else Enum.Material.SmoothPlastic
-			d.Color = Color3.fromHSV(math.random(), 0.8, 1)
+			if not isGrip then
+				local value = if isAccent then 1 else if isBlade then 0.55 else 0.32
+				d:SetAttribute("RainbowValue", value)
+				d.Material = if isAccent then Enum.Material.Neon else Enum.Material.Metal
+				d.Color = Color3.fromHSV(0.55, 0.65, value)
+			end
 		elseif mutation == "Void" then
-			d.Color = if isBlade then Color3.fromRGB(130, 40, 255) else Color3.fromRGB(14, 8, 24)
-			d.Material = if isBlade then Enum.Material.Neon else Enum.Material.SmoothPlastic
+			d.Color = if isAccent
+				then Color3.fromRGB(180, 111, 255)
+				else if isBlade then Color3.fromRGB(48, 29, 76) else Color3.fromRGB(24, 15, 37)
+			if not isGrip then
+				d.Material = if isAccent then Enum.Material.Neon else Enum.Material.Metal
+			end
 		end
 	end
 	if not blade then
 		return
+	end
+	local glow = blade:FindFirstChild("BladeGlow") :: PointLight?
+	if glow then
+		glow.Color = Items.MutationById[mutation].Color
 	end
 	if mutation == "Gold" then
 		sparkles(blade, ColorSequence.new(Color3.fromRGB(255, 230, 120)), 4, 0.35)
@@ -284,8 +331,9 @@ function KnifeModel.ApplyMutation(model: Model, mutation: string)
 		sparkles(blade, ColorSequence.new(Color3.fromRGB(170, 90, 255), Color3.fromRGB(20, 0, 40)), 9, 0.55)
 		local light = Instance.new("PointLight")
 		light.Color = Color3.fromRGB(140, 60, 255)
-		light.Range = 12
-		light.Brightness = 2
+		light.Name = "MutationGlow"
+		light.Range = 5
+		light.Brightness = 0.6
 		light.Parent = blade
 	end
 end
@@ -304,12 +352,29 @@ function KnifeModel.Build(item: string, anchored: boolean?): Model
 		model = Instance.new("Model")
 		model.Name = name
 		model.PrimaryPart = assembleParts(model, knife)
+		for _, p in model:GetChildren() do
+			if p:IsA("BasePart") then
+				local role = if p.Name == "Handle"
+					then "Grip"
+					else if p.Name == "Pommel" then "Guard" else if p.Name == "Tip" then "Blade" else p.Name
+				finishPart(p, knife, role)
+			end
+		end
+		local blade = model:FindFirstChild("Blade")
+		if blade then
+			local light = blade:FindFirstChildOfClass("PointLight")
+			if light then
+				light:Destroy()
+			end
+		end
+		addBladeLight(model, knife)
 	end
 	local root = model.PrimaryPart :: BasePart
 	root.Massless = false
 	addTrail(model, knife)
 	KnifeModel.ApplyMutation(model, parsed.Mutation.Id)
 	model:SetAttribute("Item", item)
+	model:SetAttribute("Silhouette", SILHOUETTE)
 	if anchored then
 		for _, p in model:GetDescendants() do
 			if p:IsA("BasePart") then
@@ -453,10 +518,9 @@ function KnifeModel.FitLength(model: Model, length: number)
 	model:ScaleTo(model:GetScale() * length / math.max(size.X, size.Y, size.Z))
 end
 
--- Like FitLength, but a Big / Huge / Colossal item comes out that much bigger
-function KnifeModel.FitItem(model: Model, item: string, length: number)
-	local parsed = Items.Parse(item)
-	KnifeModel.FitLength(model, length * (if parsed then parsed.Size.Scale else 1))
+-- Size rolls still carry their bonuses and aura strength, not a different visual size.
+function KnifeModel.FitItem(model: Model, _item: string, length: number)
+	KnifeModel.FitLength(model, length)
 end
 
 -- Tool version, wielded in the hub and by the Murderer. The PrimaryPart is already called "Handle".
@@ -475,11 +539,12 @@ function KnifeModel.BuildTool(name: string): Tool
 	-- RightGripAttachment is already turned -90 on X, so a plain grip stands the blade straight up.)
 	tool.Grip = CFrame.new()
 	local model = KnifeModel.Build(name, false)
-	-- In the hand every knife is about the same small size, like the classic murder games (a
-	-- Colossal one is a little bigger); the big versions are for racks and menus
-	KnifeModel.FitLength(model, TOOL_LENGTH * (1 + (parsed.Size.Scale - 1) * 0.35))
+	KnifeModel.FitLength(model, TOOL_LENGTH)
 	for _, child in model:GetChildren() do
 		child.Parent = tool
+	end
+	if model:HasTag("RainbowKnife") then
+		tool:AddTag("RainbowKnife")
 	end
 	model:Destroy()
 	return tool

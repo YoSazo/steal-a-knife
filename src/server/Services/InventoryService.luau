@@ -47,7 +47,8 @@ local function equip(player: Player, name: unknown): boolean
 	end)
 	-- The knife flies off its plate into your hand, with a flourish (client Effects "Equipped")
 	local base = BaseService.GetBase(player)
-	local slot = if name ~= "" then table.find(profile.Knives, name) else nil
+	local index = if name ~= "" then table.find(profile.Knives, name) else nil
+	local slot = if index then DataService.PlateOf(profile, index) else nil
 	local from = if base and slot and base.SlotCFrames[slot] then base.SlotCFrames[slot].Position else nil
 	if name ~= "" then
 		Net.Remotes.Effect:FireAllClients("Equipped", player, name, from)
@@ -80,7 +81,7 @@ local function sell(player: Player, index: unknown): boolean
 	end
 	local price = InventoryService.SellPrice(name)
 	DataService.Update(player, function(p)
-		table.remove(p.Knives, index)
+		DataService.RemoveKnife(p, index)
 		p.Cash += price
 		if p.Equipped == name and not table.find(p.Knives, name) then
 			p.Equipped = ""

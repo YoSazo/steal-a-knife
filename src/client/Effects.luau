@@ -19,6 +19,7 @@ local Format = require(ReplicatedStorage.Shared:WaitForChild("Format"))
 local Items = require(ReplicatedStorage.Shared:WaitForChild("Items"))
 local KnifeModel = require(ReplicatedStorage.Shared:WaitForChild("KnifeModel"))
 local Lod = require(script.Parent.Lod)
+local Ui = require(script.Parent.Ui)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
 
@@ -252,7 +253,7 @@ local function flash(text: string?, strength: number, duration: number)
 		label.Position = UDim2.fromScale(0.5, 0.45)
 		label.Size = UDim2.fromScale(0.6, 0.16)
 		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.Creepster
+		label.Font = Enum.Font.FredokaOne
 		label.TextScaled = true
 		label.TextColor3 = Color3.new(1, 1, 1)
 		label.TextStrokeTransparency = 0
@@ -384,6 +385,7 @@ local handlers: { [string]: (...any) -> () } = {
 		local perk = GameConfig.Perks[power]
 		local gui = Instance.new("ScreenGui")
 		gui.Name = "PowerRoll"
+		Ui.fitPhone(gui)
 		gui.ResetOnSpawn = false
 		gui.DisplayOrder = 45
 		gui.Parent = player:WaitForChild("PlayerGui")
@@ -473,6 +475,7 @@ local handlers: { [string]: (...any) -> () } = {
 		-- Your own screen: the knife's name, big, in its colour, and its Murderer power
 		local gui = Instance.new("ScreenGui")
 		gui.Name = "EquipBanner"
+		Ui.fitPhone(gui)
 		gui.ResetOnSpawn = false
 		gui.DisplayOrder = 40
 		gui.Parent = player:WaitForChild("PlayerGui")
@@ -856,7 +859,11 @@ function Effects.Init()
 	local function trackRainbow(model: Instance)
 		local parts = {}
 		for _, d in model:GetDescendants() do
-			if d:IsA("BasePart") and d.Transparency < 1 then
+			if
+				d:IsA("BasePart")
+				and d.Transparency < 1
+				and (d:GetAttribute("KnifeRole") == nil or d:GetAttribute("RainbowValue") ~= nil)
+			then
 				table.insert(parts, d)
 			end
 		end
@@ -891,7 +898,9 @@ function Effects.Init()
 				continue
 			end
 			for i, part in parts do
-				part.Color = Color3.fromHSV((t * 0.35 + i * 0.08) % 1, 0.75, 1)
+				local value = part:GetAttribute("RainbowValue")
+				part.Color =
+					Color3.fromHSV((t * 0.35 + i * 0.08) % 1, 0.65, if type(value) == "number" then value else 1)
 			end
 		end
 		for ring, size in rings do

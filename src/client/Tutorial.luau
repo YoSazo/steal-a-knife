@@ -106,7 +106,9 @@ function Tutorial.Init()
 	local stepShownAt = os.clock()
 	local steps: { Step } = {
 		{
-			Text = "Frank guards a wall of knives in the Courtyard. Walk up and hold E on one to steal it!",
+			Text = if Ui.Phone
+				then "Frank guards knives in the Courtyard. Walk up and hold the Steal prompt on one!"
+				else "Frank guards a wall of knives in the Courtyard. Walk up and hold E on one to steal it!",
 			Target = nearestGuard,
 			Done = function()
 				return carriedOnce
@@ -139,7 +141,9 @@ function Tutorial.Init()
 			end,
 		},
 		{
-			Text = "Rivals can break your gate and steal knives! Go to it: R repairs it, G upgrades your walls.",
+			Text = if Ui.Phone
+				then "Rivals can break your gate! Use Repair beside your gate, or buy stronger walls in Upgrades."
+				else "Rivals can break your gate and steal knives! Go to it: R repairs it, G upgrades your walls.",
 			Target = gate,
 			Done = function()
 				local at = gate()
@@ -157,7 +161,7 @@ function Tutorial.Init()
 		Size = UDim2.new(0.5, 0, 0, 64),
 		BackgroundColor3 = Color3.fromRGB(255, 200, 60),
 	}, Ui.gui)
-	new("UISizeConstraint", { MaxSize = Vector2.new(if Ui.Phone then 540 else 640, 64) }, banner)
+	new("UISizeConstraint", { MaxSize = Vector2.new(640, 100) }, banner)
 	Ui.corner(banner, 16)
 	Ui.gradient(banner, Color3.fromRGB(255, 220, 90), Color3.fromRGB(230, 150, 30))
 	new("UIStroke", { Thickness = 4, Color = Color3.fromRGB(20, 16, 28) }, banner)
@@ -171,10 +175,18 @@ function Tutorial.Init()
 	local skip = Ui.button({
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -10, 0.5, 0),
-		Size = UDim2.fromOffset(90, 40),
+		Size = UDim2.fromOffset(90, 44),
 		BackgroundColor3 = Color3.fromRGB(90, 90, 110),
 		Text = "Skip",
 	}, banner)
+	stepLabel.TextScaled, stepLabel.TextSize, stepLabel.TextWrapped = false, 14, true
+	local function layout()
+		local _, bounds = Ui.bounds()
+		banner.Size = UDim2.fromOffset(math.min(540, math.max(260, bounds.X - 280)), 80)
+		banner.Position = UDim2.new(0.5, 0, 0, 104)
+	end
+	Ui.Layout.Changed:Connect(layout)
+	layout()
 
 	-- The trail: a beam from you to the target, and an arrow bouncing over it
 	local targetPart = new("Part", {
@@ -239,7 +251,15 @@ function Tutorial.Init()
 
 	local function showStep()
 		stepShownAt = os.clock()
-		stepLabel.Text = `{current}/{#steps}  {steps[current].Text}`
+		local compact = {
+			"Hold Steal on a Courtyard knife.",
+			"Run home and use Place Knife.",
+			"Collect cash, then run in your wheel.",
+			"Watch the Murder Round timer!",
+			"Use Repair or buy stronger walls.",
+		}
+		stepLabel.Text =
+			`{current}/{#steps}  {if Ui.Layout.get().Compact then compact[current] else steps[current].Text}`
 		local scale = banner:FindFirstChildOfClass("UIScale") or new("UIScale", {}, banner)
 		scale.Scale = 1.1
 		TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
@@ -253,7 +273,7 @@ function Tutorial.Init()
 			return
 		end
 		-- Hide during rounds
-		banner.Visible = not player:GetAttribute("InRound")
+		banner.Visible = not player:GetAttribute("InRound") and not Ui.menuOpen()
 		local step = steps[current]
 		if step.Done() then
 			Effects.Sound(Sounds.Coin, nil, 0.6)

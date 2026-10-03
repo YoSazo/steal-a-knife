@@ -1,6 +1,6 @@
 --!strict
--- The look of the hub: Blackwood Manor at night, laid out as one long runway. Each zone is its own
--- biome with a strong colour of its own - moonlit, but vivid and easy to read on a phone:
+-- Blackwood Manor's toy island, laid out as one long runway. Each zone has a distinct
+-- palette and small square-built scenery, with clear routes and readable landmarks:
 --   The Courtyard (green)  hedges, a fountain, benches, lanterns
 --   The Gardens   (blue)   glowing flowers, a pond, a gazebo, topiary
 --   The Crypts    (purple) gravestones, mausoleums, dead trees
@@ -102,6 +102,15 @@ local function prop(name: string, cframe: CFrame, scale: number?, recolor: { [st
 	return model
 end
 
+local function detail(name: string, cframe: CFrame, scale: number?, recolor: { [string]: Color3 }?): Model?
+	if not Props.Has(name) then
+		return nil
+	end
+	local model = prop(name, cframe, scale, recolor)
+	model:SetAttribute("MapDetail", true)
+	return model
+end
+
 -- A blocky cartoon bush (Steal An Egg style): a couple of stacked stud-covered green blocks
 local function bush(position: Vector3, scale: number?)
 	local k = scale or 1
@@ -146,7 +155,25 @@ local function torch(position: Vector3, color: Color3?)
 end
 
 local function streetLamp(position: Vector3)
-	bush(position)
+	local model = detail("DetailLamp", CFrame.new(position))
+	if model then
+		local glass = model:FindFirstChild("Glass")
+		if glass and glass:IsA("BasePart") then
+			glow(glass, WINDOW, 18, 0.6)
+		end
+		return
+	end
+	ghost(block("LampPost", Vector3.new(0.45, 8, 0.45), CFrame.new(position + Vector3.new(0, 4, 0)), IRON))
+	local lamp = ghost(
+		block(
+			"Lantern",
+			Vector3.new(1.2, 1.6, 1.2),
+			CFrame.new(position + Vector3.new(0, 8.3, 0)),
+			WINDOW,
+			Enum.Material.Neon
+		)
+	)
+	glow(lamp, WINDOW, 18, 0.6)
 end
 
 -- Fireflies drifting over a stretch of ground, and a low mist rolling along it
@@ -167,11 +194,42 @@ local function hedge(position: Vector3, length: number)
 end
 
 local function fountain(position: Vector3)
-	bush(position, 1.4)
+	if detail("DetailFountain", CFrame.new(position)) then
+		return
+	end
+	ghost(
+		block(
+			"FountainBasin",
+			Vector3.new(12, 0.8, 12),
+			CFrame.new(position + Vector3.new(0, 0.4, 0)),
+			Color3.fromRGB(184, 199, 213)
+		)
+	)
+	ghost(
+		block(
+			"FountainWater",
+			Vector3.new(10, 0.12, 10),
+			CFrame.new(position + Vector3.new(0, 0.87, 0)),
+			Color3.fromRGB(82, 211, 242)
+		)
+	)
+	ghost(
+		block(
+			"FountainColumn",
+			Vector3.new(1, 5, 1),
+			CFrame.new(position + Vector3.new(0, 3, 0)),
+			Color3.fromRGB(239, 247, 251)
+		)
+	)
 end
 
-local function bench(position: Vector3, _rotation: number)
-	bush(position)
+local function bench(position: Vector3, rotation: number)
+	local cf = CFrame.new(position) * CFrame.Angles(0, rotation, 0)
+	if detail("DetailBench", cf) then
+		return
+	end
+	ghost(block("BenchSeat", Vector3.new(6.5, 0.3, 1.8), cf * CFrame.new(0, 1.7, 0), Color3.fromRGB(181, 99, 56)))
+	ghost(block("BenchBack", Vector3.new(6.5, 1.4, 0.3), cf * CFrame.new(0, 2.7, 0.8), Color3.fromRGB(181, 99, 56)))
 end
 
 local function glowFlower(position: Vector3, color: Color3)
@@ -191,6 +249,9 @@ local function glowFlower(position: Vector3, color: Color3)
 end
 
 local function topiary(position: Vector3)
+	if detail("DetailTopiary", CFrame.new(position)) then
+		return
+	end
 	cylinderUp(
 		block(
 			"TopiaryPot",
@@ -213,6 +274,9 @@ local function topiary(position: Vector3)
 end
 
 local function gazebo(position: Vector3)
+	if detail("DetailGazebo", CFrame.new(position)) then
+		return
+	end
 	local white = Color3.fromRGB(225, 225, 235)
 	cylinderUp(
 		block(
@@ -287,6 +351,9 @@ end
 local function gravestone(position: Vector3)
 	local tilt = CFrame.Angles(rng:NextNumber(-0.12, 0.12), rng:NextNumber(-0.4, 0.4), rng:NextNumber(-0.1, 0.1))
 	local base = CFrame.new(position) * tilt
+	if detail("DetailGravestone", base) then
+		return
+	end
 	local color = Color3.fromRGB(120, 110, 140)
 	block("Gravestone", Vector3.new(2.4, 3, 0.6), base * CFrame.new(0, 1.5, 0), color, Enum.Material.Slate)
 	local top = block(
@@ -301,6 +368,9 @@ end
 
 local function mausoleum(position: Vector3, facing: number)
 	local cf = CFrame.new(position) * CFrame.Angles(0, facing, 0)
+	if detail("DetailMausoleum", cf) then
+		return
+	end
 	block(
 		"Mausoleum",
 		Vector3.new(10, 9, 10),
@@ -345,6 +415,16 @@ local function deadTree(position: Vector3)
 end
 
 local function pillar(position: Vector3)
+	if
+		detail(
+			"DetailColumn",
+			CFrame.new(position),
+			nil,
+			{ Stone = Color3.fromRGB(188, 165, 119), Flutes = Color3.fromRGB(222, 204, 158) }
+		)
+	then
+		return
+	end
 	local gold = Color3.fromRGB(200, 160, 70)
 	block(
 		"Pillar",
@@ -477,6 +557,9 @@ end
 local function obsidianSpire(position: Vector3)
 	local height = rng:NextNumber(8, 18)
 	local cf = CFrame.new(position) * CFrame.Angles(0, rng:NextNumber(0, math.pi), math.rad(rng:NextNumber(-8, 8)))
+	if detail("DetailSpire", cf, height / 14) then
+		return
+	end
 	block("Spire", Vector3.new(4, height, 4), cf * CFrame.new(0, height / 2, 0), OBSIDIAN, Enum.Material.Basalt)
 	block(
 		"SpireTip",
@@ -522,6 +605,9 @@ local GOLD = Color3.fromRGB(255, 205, 70)
 
 -- A tall white temple column with gold bands
 local function olympusColumn(position: Vector3, height: number)
+	if detail("DetailColumn", CFrame.new(position), height / 22.175) then
+		return
+	end
 	cylinderUp(
 		block(
 			"Column",
@@ -673,6 +759,9 @@ end
 -- An angel statue: white body, gold halo, two big wings
 local function angelStatue(position: Vector3, facing: number)
 	local cf = CFrame.new(position) * CFrame.Angles(0, facing, 0)
+	if detail("DetailAngel", cf) then
+		return
+	end
 	block("AngelPlinth", Vector3.new(5, 3, 5), cf * CFrame.new(0, 1.5, 0), MARBLE, Enum.Material.Marble)
 	block("AngelRobe", Vector3.new(2.8, 6, 1.8), cf * CFrame.new(0, 6, 0), MARBLE, Enum.Material.Marble)
 	block("AngelHead", Vector3.new(1.8, 1.8, 1.8), cf * CFrame.new(0, 10, 0), MARBLE, Enum.Material.Marble)
@@ -908,6 +997,7 @@ local function manor(center: Vector3)
 			if lit and i % 3 == 0 then
 				glow(window, WINDOW, 16, 0.8)
 			end
+			detail("DetailManorWindow", CFrame.new(center + Vector3.new(x, 5 + row * 11, -0.45)))
 		end
 	end
 	-- The grand door, glowing red: the deepest point of the runway
@@ -999,10 +1089,25 @@ function ManorDecor.ClearArea(center: Vector3, halfX: number, halfZ: number)
 			then child.Position
 			elseif child:IsA("Model") then child:GetPivot().Position
 			else nil
+		local extentX, extentZ = 0, 0
+		if child:IsA("Model") and child:GetAttribute("MapDetail") then
+			local cf, size = child:GetBoundingBox()
+			position = cf.Position
+			extentX = (
+				math.abs(cf.RightVector.X) * size.X
+				+ math.abs(cf.UpVector.X) * size.Y
+				+ math.abs(cf.LookVector.X) * size.Z
+			) / 2
+			extentZ = (
+				math.abs(cf.RightVector.Z) * size.X
+				+ math.abs(cf.UpVector.Z) * size.Y
+				+ math.abs(cf.LookVector.Z) * size.Z
+			) / 2
+		end
 		if
 			position
-			and math.abs(position.X - center.X) < halfX
-			and math.abs(position.Z - center.Z) < halfZ
+			and math.abs(position.X - center.X) < halfX + extentX
+			and math.abs(position.Z - center.Z) < halfZ + extentZ
 			and position.Y < 60
 		then
 			child:Destroy()
@@ -1053,15 +1158,24 @@ function ManorDecor.Build(root: Instance, arena: Bounds, _hideaways: { Bounds })
 				hedge(Vector3.new(-half + 6, 0, z), 14)
 				hedge(Vector3.new(half - 6, 0, z + 20), 14)
 			end
-			fountain(Vector3.new(0, 0, z0 + depth * 0.5))
-			for _ = 1, 4 do
-				bench(spot(), rng:NextNumber(0, math.pi * 2))
-			end
-			for _ = 1, 4 do
-				streetLamp(spot())
+			local garden = Vector3.new(35, 0, z0 + depth * 0.5)
+			fountain(garden)
+			for _, side in { -1, 1 } do
+				for _, x in { -8, 8 } do
+					bench(garden + Vector3.new(x, 0, side * 12), if side == 1 then 0 else math.pi)
+					streetLamp(garden + Vector3.new(x * 1.5, 0, side * 9))
+				end
+				detail(
+					"DetailFlowerBed",
+					CFrame.new(garden + Vector3.new(side * 10, 0, 0)) * CFrame.Angles(0, math.pi / 2, 0)
+				)
 			end
 		elseif zone.Rarity == "Rare" then
-			gazebo(Vector3.new(-half + 14, 0, z0 + depth * 0.4))
+			local garden = Vector3.new(-half + 14, 0, z0 + depth * 0.4)
+			gazebo(garden)
+			for _, side in { -1, 1 } do
+				detail("DetailFlowerBed", CFrame.new(garden + Vector3.new(0, 0, side * 10)))
+			end
 			pond(Vector3.new(half - 14, 0, z0 + depth * 0.65), 18, 26)
 			for _ = 1, 6 do
 				topiary(spot())
@@ -1141,13 +1255,16 @@ function ManorDecor.Build(root: Instance, arena: Bounds, _hideaways: { Bounds })
 				)
 			end
 			for z = z0 + 40, z0 + depth - 25, 45 do
-				angelStatue(Vector3.new(-half + 8, 0, z), math.rad(90))
-				angelStatue(Vector3.new(half - 8, 0, z + 20), math.rad(-90))
+				angelStatue(Vector3.new(-half + 8, 0, z), math.rad(-90))
+				angelStatue(Vector3.new(half - 8, 0, z + 20), math.rad(90))
 			end
 			for _ = 1, 6 do
 				lightPillar(spot())
 			end
 		elseif zone.Rarity == "Cosmic" then
+			for _, x in { -half + 16, half - 16 } do
+				detail("DetailOrrery", CFrame.new(x, 0, z0 + 35))
+			end
 			starfield(Vector3.new(0, 14, z0 + depth / 2), Vector3.new(width - 6, 24, depth - 6))
 			for _ = 1, 14 do
 				asteroid(spot())
