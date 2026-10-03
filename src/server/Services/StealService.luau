@@ -25,6 +25,7 @@ local ServerEvents = require(script.Parent.ServerEvents)
 local Social = require(script.Parent.Social)
 local MapService = require(script.Parent.MapService)
 local Offers = require(script.Parent.Offers)
+local Analytics = require(script.Parent.Analytics)
 
 type Carry = {
 	Kind: string, -- "Case" | "Knife"
@@ -426,6 +427,24 @@ startCarry = function(
 	end
 end
 
+-- Telemetry labels: where a knife came from ("boss3", "raid", "case") and how rare it is
+local function stealSource(kind: string, stolenFrom: number?, boss: { Zone: number, Slot: number }?): string
+	if boss then
+		return `boss{boss.Zone}`
+	elseif stolenFrom then
+		return "raid"
+	end
+	return if kind == "Case" then "case" else "other"
+end
+
+local function stealRarity(kind: string, item: string): string
+	if kind == "Case" then
+		return item
+	end
+	local parsed = Items.Parse(item)
+	return if parsed then parsed.Knife.Rarity else "?"
+end
+
 function StealService.StartCarry(
 	player: Player,
 	kind: string,
@@ -437,6 +456,7 @@ function StealService.StartCarry(
 		return
 	end
 	startCarry(player, kind, item, stolenFrom, boss)
+	Analytics.Steal(player, "started", stealSource(kind, stolenFrom, boss), stealRarity(kind, item))
 end
 
 -- A boss caught their thief: the knife goes back on the wall (OnBossCarryEnded, not delivered)
@@ -446,6 +466,7 @@ function StealService.ReturnToBoss(player: Player): string?
 		return nil
 	end
 	local item = carry.Item
+	Analytics.Steal(player, "caught", `boss{carry.Boss.Zone}`, stealRarity(carry.Kind, item))
 	endCarry(player, false, nil)
 	Fuel.AddHeat(player, -1, "Caught by the boss!")
 	Fuel.AddMeter(player, -1)
@@ -588,6 +609,8 @@ local function deposit(player: Player)
 		end
 	end)
 	local stolenFrom = carry.StolenFrom
+	Analytics.Steal(player, "deposited", stealSource(carry.Kind, carry.StolenFrom, carry.Boss), parsed.Knife.Rarity)
+	Analytics.Step(player, "placed_knife")
 	endCarry(player, true)
 	local name = Items.DisplayName(item)
 	BaseService.RefreshRack(player)

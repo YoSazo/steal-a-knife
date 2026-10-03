@@ -36,6 +36,7 @@ local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local CombatService = require(script.Parent.CombatService)
 local DataService = require(script.Parent.DataService)
+local Analytics = require(script.Parent.Analytics)
 local Fuel = require(script.Parent.Fuel)
 local ServerEvents = require(script.Parent.ServerEvents)
 local Social = require(script.Parent.Social)
@@ -2186,6 +2187,14 @@ local function endRound(round: Round)
 		end
 	end
 	local innocentsWon = #survivors > 0 or botsSurvived or round.Hero ~= nil
+	Analytics.RoundEnded({
+		Innocents = round.Innocents,
+		Killers = round.Killers,
+		Alive = round.Alive,
+		InnocentsWon = innocentsWon,
+		Classic = round.Classic,
+		Double = round.Double,
+	})
 
 	-- Loot goes back to its owners if the Murderer was shot (or quit); otherwise they keep it
 	local hero = round.Hero
@@ -2197,6 +2206,7 @@ local function endRound(round: Round)
 			or not killer.Parent
 			or round.ShotKillers[killer]
 			or (not round.Double and (hero ~= nil or not murdererPresent))
+		Analytics.Looted(entry.Owner, (returned or not killer) == true)
 		if returned or not killer then
 			if entry.Owner.Parent then
 				giveKnife(entry.Owner, entry.Knife)

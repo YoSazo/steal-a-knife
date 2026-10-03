@@ -11,15 +11,18 @@ local Net = require(script.Parent.Parent.Remotes)
 local DataService = require(script.Parent.DataService)
 local BaseService = require(script.Parent.BaseService)
 local Offers = require(script.Parent.Offers)
+local Analytics = require(script.Parent.Analytics)
 local Rewards = require(script.Parent.Rewards)
 
 local UpgradeService = {}
 
 local lastRequest: { [Player]: number } = {}
+local asking = "" -- what the purchase being handled right now is (for the telemetry in short)
 -- Not enough cash for something: offer the cash pack that would cover it
 local function short(player: Player, cost: number): (boolean, string)
 	local profile = DataService.Get(player)
 	if profile then
+		Analytics.Blocked(player, asking, cost, profile.Cash)
 		Offers.Cash(player, cost - profile.Cash, BaseService.RackIncome(player))
 	end
 	return false, "Not enough cash"
@@ -37,6 +40,7 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 		return false, "Not ready yet"
 	end
 
+	asking = kind
 	local caseRarity = kind:match("^Case:(%a+)$")
 	if caseRarity then
 		return Rewards.BuyCase(player, caseRarity)
@@ -175,6 +179,9 @@ end
 function UpgradeService.Init()
 	local function buy(player: Player, kind: unknown): (boolean, string)
 		local ok, message = purchase(player, kind)
+		if ok and type(kind) == "string" then
+			Analytics.Upgrade(player, kind)
+		end
 		Net.Notify(player, message, if ok then "good" else "bad")
 		return ok, message
 	end

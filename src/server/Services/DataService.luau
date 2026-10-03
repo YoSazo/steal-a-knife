@@ -49,6 +49,7 @@ export type Profile = {
 	Heat: number, -- 0-10, boosts income and power luck (server Fuel)
 	PowerPity: number, -- knives in a row without a Murderer power (bad-luck protection)
 	RevengeUntil: number, -- os.time() until which a robbed Murderer gets revenge luck
+	Funnel: { string }, -- first-session funnel steps ever reached (Analytics), each logged once per player
 }
 
 local STORE_NAME = "PlayerData_v2" -- v1 = saves before the 2026-10-03 reset (kept, not deleted)
@@ -112,6 +113,7 @@ local function defaultProfile(): Profile
 		Heat = 0,
 		PowerPity = 0,
 		RevengeUntil = 0,
+		Funnel = {},
 	}
 end
 

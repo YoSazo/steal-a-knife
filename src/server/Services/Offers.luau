@@ -12,6 +12,7 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
 local Net = require(script.Parent.Parent.Remotes)
+local Analytics = require(script.Parent.Analytics)
 
 local Offers = {}
 
@@ -53,6 +54,7 @@ function Offers.Show(player: Player, key: string, reason: string, early: boolean
 	lastAny[player] = now
 	byKey[key] = now
 	Net.Remotes.Offer:FireClient(player, key, reason)
+	Analytics.Offer(player, key, reason)
 end
 
 -- Short on cash: offer the smallest cash pack that covers the gap

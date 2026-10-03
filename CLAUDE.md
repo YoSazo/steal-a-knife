@@ -126,6 +126,10 @@ victim's rack (returned if the Murderer is shot); survivors get 2x vault income 
   (character `ChargeStart`/`ChargeTime`, player `Carrying`, a held Revolver) and guards tagged `Guard`.
   Damage waits for a clip's `Impact`, thrown knives leave the hand at `Release`.
   The HUD reads player attributes; clients only send requests.
+- Analytics (`Analytics` service, `docs/ANALYTICS.md`): the nine-step first-session funnel (`profile.Funnel`, each step once per
+  player) and custom events on Roblox's AnalyticsService (steals, round results, robbed, offers, Robux purchases/cancels,
+  `session_end` with the last bad event). Anything new that matters to a player's first hour or to churn should call
+  `Analytics.Step` / `Analytics.Event` at its key moment. Studio: `ReplicatedStorage` attribute `DebugAnalytics = true` prints events.
 - Tunables: `src/shared/Config/GameConfig.luau`. Knife catalog: `Config/Knives.luau`. Sound ids: `Config/Sounds.luau`.
 - Knives: Blender meshes (`Config/KnifeMeshes.luau`, generated from the uploaded models) turned into templates at
   startup by `KnifeModel.Preload`; part-built fallback if meshes fail. Held knives are normalised to 2.4 studs.
@@ -220,6 +224,7 @@ victim's rack (returned if the Murderer is shot); survivors get 2x vault income 
 ## Checks (run after changes)
 - `selene src` · `stylua src` · `rojo sourcemap default.project.json -o sourcemap.json && luau-lsp analyze --defs=globalTypes.d.luau --sourcemap=sourcemap.json src`
 - `globalTypes.d.luau` is gitignored; fetch from https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/main/scripts/globalTypes.None.d.luau
+- `python tools/analytics_smoke.py [path/to/luau]` smoke-tests the Analytics module without Roblox (needs the standalone `luau` binary).
 - Solo play starts bot-filled rounds; for real PvP use Studio Test → Clients and Servers with 2 players.
 
 ## Conventions

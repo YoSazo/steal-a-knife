@@ -14,6 +14,7 @@ local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local KnifeAura = require(ReplicatedStorage.Shared.KnifeAura)
 local Net = require(script.Parent.Parent.Remotes)
 local DataService = require(script.Parent.DataService)
+local Analytics = require(script.Parent.Analytics)
 local Fuel = require(script.Parent.Fuel)
 local ServerEvents = require(script.Parent.ServerEvents)
 local Social = require(script.Parent.Social)
@@ -891,6 +892,7 @@ function BaseService.Init()
 							p.Pending[slot] = 0
 						end)
 						DataService.AddCash(player, waiting)
+						Analytics.Step(player, "collected_cash")
 						base.CashLabels[slot].Text = ""
 						Net.Remotes.Effect:FireClient(player, "CashBurst", pad.Position, waiting)
 					end

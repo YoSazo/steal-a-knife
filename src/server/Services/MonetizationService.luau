@@ -22,6 +22,7 @@ local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local Offers = require(script.Parent.Offers)
+local Analytics = require(script.Parent.Analytics)
 local RaidService = require(script.Parent.RaidService)
 local StealService = require(script.Parent.StealService)
 
@@ -250,6 +251,7 @@ local function processReceipt(info: { [string]: any }): Enum.ProductPurchaseDeci
 			table.remove(p.Receipts, 1)
 		end
 	end)
+	Analytics.Purchased(player, product.Key, product.Price, "product")
 	if not DataService.SaveNow(player) then
 		-- Roblox will retry; the PurchaseId is already recorded, so it won't be granted twice
 		return Enum.ProductPurchaseDecision.NotProcessedYet
@@ -283,6 +285,7 @@ function MonetizationService.Init()
 			local pass = passById[passId]
 			if purchased and pass then
 				grantPass(player, pass.Key, true)
+				Analytics.Purchased(player, pass.Key, pass.Price, "pass")
 			end
 		end
 	)
