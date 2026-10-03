@@ -29,6 +29,7 @@ local ServerEvents = require(Services.ServerEvents)
 local Social = require(Services.Social)
 local TradeService = require(Services.TradeService)
 local DataService = require(Services.DataService)
+local Analytics = require(Services.Analytics)
 local DebugService = require(Services.DebugService)
 
 -- Each step is timed; the summary prints once the server is ready (startup time is how long the
@@ -74,6 +75,7 @@ timed("Monetization", MonetizationService.Init)
 timed("Round", RoundService.Init)
 timed("Trade", TradeService.Init)
 timed("Debug", DebugService.Init)
+timed("Analytics", Analytics.Init)
 
 -- BaseService claims the vault on PlayerLoaded before this deferred initial spawn.
 DataService.PlayerLoaded:Connect(function(player: Player)
