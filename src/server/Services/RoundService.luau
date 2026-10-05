@@ -52,6 +52,7 @@ local StealService = require(script.Parent.StealService)
 local RoundBots = require(script.Parent.RoundBots)
 local Ragdoll = require(script.Parent.Ragdoll)
 local Analytics = require(script.Parent.Analytics)
+local SurpriseGifts = require(script.Parent.SurpriseGifts)
 
 local RoundService = {}
 
@@ -422,7 +423,11 @@ end
 
 -- The Murderer takes a random knife off the victim's rack. It's held in the round's loot until
 -- the round ends, so leaving or dying can't duplicate or lose it.
+-- What the Murderer took off each victim (for their death card: killCard)
+local deathLoss: { [Player]: { Lost: string?, Insured: boolean } } = {}
+
 local function lootKnife(round: Round, victim: Player)
+	deathLoss[victim] = { Lost = nil, Insured = false }
 	local profile = DataService.Get(victim)
 	if not profile then
 		return
@@ -439,7 +444,7 @@ local function lootKnife(round: Round, victim: Player)
 		end
 	end
 	if hasLoot and DataService.UseCharge(victim, "Insurance") then
-		Net.Notify(victim, "🛡️ Your insurance saved your knife!", "good")
+		deathLoss[victim] = { Lost = nil, Insured = true }
 		round.AtRisk[victim] = nil
 		Analytics.Track(victim, "round.insured_save", roundProps(round, victim))
 		return
@@ -482,12 +487,8 @@ local function lootKnife(round: Round, victim: Player)
 		if round.Murderer then
 			Analytics.Track(round.Murderer, "round.knife_looted", roundProps(round, round.Murderer, lootProps))
 		end
-		Net.Notify(victim, `The Murderer took your {Items.DisplayName(name)}!`, "bad")
-		Offers.Later(
-			victim,
-			"Insurance3",
-			`The Murderer took your {Items.DisplayName(name)}. Knife Insurance stops that happening again.`
-		)
+		-- (the victim's death card shows it, with the insurance offer: killCard)
+		deathLoss[victim] = { Lost = name, Insured = false }
 		if round.Murderer then
 			Net.Notify(round.Murderer, `You took their {Items.DisplayName(name)}!`, "good")
 		end
@@ -673,8 +674,8 @@ local function strike(round: Round, victim: Player)
 		end
 	end
 	revealPower(round)
-	killCard(round, victim)
 	eliminate(round, victim, round.Murderer, true)
+	killCard(round, victim) -- (after: it shows what the Murderer just took)
 end
 
 -- Bots --------------------------------------------------------------------------------------
@@ -967,7 +968,14 @@ end
 -- that knife comes from (client/Transitions "KillCard")
 killCard = function(round: Round, victim: Player)
 	local id, perk = perkOf(round)
+	local loss = deathLoss[victim]
+	deathLoss[victim] = nil
+	-- A free gift a minute later: dying isn't the end of your fun
+	SurpriseGifts.Soon(victim, 60)
 	Net.Remotes.Effect:FireClient(victim, "KillCard", {
+		Lost = loss and loss.Lost,
+		Insured = loss ~= nil and loss.Insured,
+		New = DataService.IsNewPlayer(victim),
 		Name = if round.Murderer
 			then round.Names[round.Murderer] or "The Murderer"
 			elseif round.MurdererBot then round.MurdererBot.Name

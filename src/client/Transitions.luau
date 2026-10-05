@@ -12,7 +12,6 @@ local TweenService = game:GetService("TweenService")
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Items = require(ReplicatedStorage.Shared.Items)
-local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 
 local Ui = require(script.Parent.Ui)
 local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
@@ -178,198 +177,90 @@ function Transitions.Init()
 		TextTransparency = 1,
 		ZIndex = 11,
 	})
-	-- At-risk reel ---------------------------------------------------------------------------------
-	-- At the start of a round a reel of your knives spins and lands on the one the Murderer takes if
-	-- they get you; then it shrinks to a reminder in the corner for the rest of the round.
-	local riskPanel = Instance.new("Frame")
-	riskPanel.AnchorPoint = Vector2.new(0.5, 0)
-	riskPanel.Position = UDim2.fromScale(0.5, 0.6)
-	riskPanel.Size = UDim2.fromOffset(560, 150)
-	riskPanel.BackgroundColor3 = Color3.fromRGB(24, 18, 30)
-	riskPanel.BackgroundTransparency = 0.1
-	riskPanel.Visible = false
-	riskPanel.ZIndex = 20
-	riskPanel.Parent = gui
-	local riskCorner = Instance.new("UICorner")
-	riskCorner.CornerRadius = UDim.new(0, 16)
-	riskCorner.Parent = riskPanel
-	local riskStroke = Instance.new("UIStroke")
-	riskStroke.Thickness = 4
-	riskStroke.Color = Color3.fromRGB(255, 80, 90)
-	riskStroke.Parent = riskPanel
-	label(riskPanel, {
-		Position = UDim2.fromOffset(10, 6),
-		Size = UDim2.new(1, -20, 0, 30),
-		Text = "IF THE MURDERER GETS YOU, THEY TAKE...",
-		TextColor3 = Color3.fromRGB(255, 110, 110),
-		ZIndex = 21,
-	})
-	local window = Instance.new("Frame")
-	window.Position = UDim2.fromOffset(10, 42)
-	window.Size = UDim2.new(1, -20, 0, 70)
-	window.BackgroundColor3 = Color3.fromRGB(12, 10, 16)
-	window.ClipsDescendants = true
-	window.ZIndex = 21
-	window.Parent = riskPanel
-	local strip = Instance.new("Frame")
-	strip.BackgroundTransparency = 1
-	strip.Size = UDim2.fromScale(0, 1)
-	strip.ZIndex = 22
-	strip.Parent = window
-	local pointer = Instance.new("Frame")
-	pointer.AnchorPoint = Vector2.new(0.5, 0)
-	pointer.Position = UDim2.fromScale(0.5, 0)
-	pointer.Size = UDim2.new(0, 4, 1, 0)
-	pointer.BackgroundColor3 = Color3.fromRGB(255, 220, 60)
-	pointer.BorderSizePixel = 0
-	pointer.ZIndex = 25
-	pointer.Parent = window
-	local riskHint = label(riskPanel, {
-		Position = UDim2.fromOffset(10, 118),
-		Size = UDim2.new(1, -20, 0, 24),
-		Text = "",
-		TextColor3 = Color3.fromRGB(230, 230, 240),
-		ZIndex = 21,
-	})
-	local badge = label(gui, {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 108),
-		Size = UDim2.fromOffset(320, 24),
-		Text = "",
-		Visible = false,
-		ZIndex = 3,
-	})
-	local riskIcon = Ui.new("ImageLabel", {
-		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(28, 28),
-		Position = UDim2.fromOffset(-32, 0),
-		Visible = false,
-		ZIndex = 20,
-	}, badge)
-	if Ui.Phone then
-		badge.Name = "AtRisk"
-		badge.Parent = Ui.root
-		badge.TextScaled = false
-		badge.TextSize = 14
-		badge.TextTruncate = Enum.TextTruncate.AtEnd
-		badge.BackgroundTransparency = 0.15
-		badge.BackgroundColor3 = Ui.PANEL
-		Ui.corner(badge, 8)
-	end
-	local TILE = 150
 	local riskToken = 0
-	local riskActive = false
-	Ui.Menu.Changed:Connect(function()
-		badge.Visible = riskActive and player:GetAttribute("InRound") == true and not Ui.menuOpen()
-	end)
-	Ui.Layout.Changed:Connect(function()
-		if Ui.Phone then
-			local _, bounds = Ui.bounds()
-			badge.Size = UDim2.fromOffset(math.min(320, bounds.X * 0.5), 28)
-		end
-	end)
-	local function tile(item: string, index: number)
-		local parsed = Items.Parse(item)
-		local frame = Instance.new("Frame")
-		frame.Position = UDim2.fromOffset((index - 1) * TILE, 0)
-		frame.Size = UDim2.new(0, TILE - 6, 1, 0)
-		frame.BackgroundColor3 = Items.Color(item):Lerp(Color3.fromRGB(20, 16, 26), 0.75)
-		frame.ZIndex = 22
-		frame.Parent = strip
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 10)
-		corner.Parent = frame
-		label(frame, {
-			Position = UDim2.fromOffset(6, 6),
-			Size = UDim2.new(1, -12, 0.55, 0),
-			Text = Items.DisplayName(item),
-			TextColor3 = Items.Color(item),
-			ZIndex = 23,
-		})
-		label(frame, {
-			Position = UDim2.new(0, 6, 0.6, 0),
-			Size = UDim2.new(1, -12, 0.32, 0),
-			Text = if parsed then parsed.Knife.Rarity else "",
-			TextColor3 = if parsed then Knives.RarityColors[parsed.Knife.Rarity] else Color3.new(1, 1, 1),
-			ZIndex = 23,
-		})
-	end
-	local function showRisk(choices: { string }, chosen: string)
-		riskActive = true
+	-- One small card on the right as the round starts, then it's gone: the knife's picture and
+	-- "If the Murderer gets you, they take this!" (a reel and a badge that stayed all round was
+	-- too much to read)
+	local riskCard = Instance.new("Frame")
+	riskCard.Name = "AtRiskCard"
+	riskCard.AnchorPoint = Vector2.new(1, 0.5)
+	riskCard.Position = UDim2.new(1, -16, 0.45, 0)
+	riskCard.Size = UDim2.fromOffset(220, 236)
+	riskCard.BackgroundColor3 = Color3.fromRGB(22, 16, 28)
+	riskCard.BackgroundTransparency = 0.15
+	riskCard.Visible = false
+	riskCard.ZIndex = 30
+	riskCard.Parent = Ui.root
+	Instance.new("UICorner", riskCard).CornerRadius = UDim.new(0, 16)
+	local riskStroke = Instance.new("UIStroke")
+	riskStroke.Thickness = 3
+	riskStroke.Parent = riskCard
+	label(riskCard, {
+		Position = UDim2.fromOffset(10, 8),
+		Size = UDim2.new(1, -20, 0, 50),
+		Text = "If the Murderer gets you, they take this!",
+		TextWrapped = true,
+		TextColor3 = Color3.fromRGB(255, 120, 120),
+		ZIndex = 31,
+	})
+	local riskArt = Ui.art(riskCard, "", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 62),
+		Size = UDim2.fromOffset(130, 130),
+		ZIndex = 31,
+	})
+	local riskName = label(riskCard, {
+		Position = UDim2.new(0, 10, 1, -40),
+		Size = UDim2.new(1, -20, 0, 32),
+		ZIndex = 31,
+	})
+	local function showRisk(_choices: { string }, chosen: string)
 		riskToken += 1
 		local token = riskToken
-		if Ui.Phone then
-			local parsed = Items.Parse(chosen)
-			badge.Text = `At risk: {Items.DisplayName(chosen)}`
-			badge.TextColor3 = Items.Color(chosen)
-			local _, bounds = Ui.bounds()
-			badge.Size = UDim2.fromOffset(math.min(320, bounds.X * 0.5), 28)
-			badge.Position = UDim2.new(0.5, 0, 0, 90)
-			riskIcon.Image = if parsed
-				then VoxelKnives[parsed.Knife.Name] or KnifeIcons[parsed.Knife.Name] or ""
-				else ""
-			riskIcon.Visible = true
-			badge.Visible = player:GetAttribute("InRound") == true and not Ui.menuOpen()
-			return
-		end
-		strip:ClearAllChildren()
-		local count = 34
-		local landAt = count - 3
-		for i = 1, count do
-			tile(if i == landAt then chosen else choices[math.random(1, #choices)], i)
-		end
-		strip.Size = UDim2.new(0, count * TILE, 1, 0)
-		strip.Position = UDim2.fromOffset(0, 0)
-		riskHint.Text = ""
-		badge.Visible = false
+		local parsed = Items.Parse(chosen)
+		riskArt.Image = if parsed then (VoxelKnives[parsed.Knife.Name] or KnifeIcons[parsed.Knife.Name] or "") else ""
+		riskName.Text = Items.DisplayName(chosen)
+		riskName.TextColor3 = Items.Color(chosen)
+		riskStroke.Color = Items.Color(chosen)
 		task.wait(1.4) -- after the fade and the role reveal
 		if token ~= riskToken or not player:GetAttribute("InRound") then
 			return
 		end
-		riskPanel.Visible = true
-		local centre = window.AbsoluteSize.X / 2 - (TILE - 6) / 2
-		local target = -((landAt - 1) * TILE) + centre + math.random(-30, 30)
-		local spin = TweenService:Create(strip, TweenInfo.new(3.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-			Position = UDim2.fromOffset(target, 0),
-		})
-		spin:Play()
-		spin.Completed:Wait()
+		riskCard.Position = UDim2.new(1, 260, 0.45, 0)
+		riskCard.Visible = true
+		TweenService:Create(riskCard, TweenInfo.new(0.35, Enum.EasingStyle.Back), {
+			Position = UDim2.new(1, -16, 0.45, 0),
+		}):Play()
+		task.wait(4.5)
 		if token ~= riskToken then
 			return
 		end
-		riskHint.Text = `Survive - or shoot the Murderer - to keep your {Items.DisplayName(chosen)}!`
-		task.wait(3)
-		if token ~= riskToken then
-			return
+		TweenService:Create(riskCard, TweenInfo.new(0.3), { Position = UDim2.new(1, 260, 0.45, 0) }):Play()
+		task.wait(0.3)
+		if token == riskToken then
+			riskCard.Visible = false
 		end
-		riskPanel.Visible = false -- (no badge left on screen for the round: the reel said it)
 	end
 	player:GetAttributeChangedSignal("InRound"):Connect(function()
 		if not player:GetAttribute("InRound") then
-			riskActive = false
 			riskToken += 1
-			riskPanel.Visible = false
-			badge.Visible = false
+			riskCard.Visible = false
 		end
 	end)
 
 	player.CharacterAdded:Connect(function(character)
 		local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 		humanoid.Died:Connect(function()
-			riskActive = false
 			riskToken += 1
-			badge.Visible = false
-			riskPanel.Visible = false
+			riskCard.Visible = false
 		end)
 	end)
 	if player.Character then
 		local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
 		if humanoid then
 			humanoid.Died:Connect(function()
-				riskActive = false
 				riskToken += 1
-				badge.Visible = false
-				riskPanel.Visible = false
+				riskCard.Visible = false
 			end)
 		end
 	end
@@ -647,37 +538,63 @@ function Transitions.Init()
 		TextWrapped = true,
 		ZIndex = 41,
 	})
+	-- The death card, in plain words: the Murderer got you, and what they took (or that your knives
+	-- are safe). If they took one, the fix is right there: Knife Insurance.
+	killPower.Visible = false
+	killRarity.Visible = false
+	local insureButton = Ui.button(
+		{
+			Name = "Insure",
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -12),
+			Size = UDim2.new(1, -40, 0, 46),
+			BackgroundColor3 = Color3.fromRGB(0, 176, 111),
+			Text = "🛡️ Never lose a knife again",
+			ZIndex = 42,
+			Visible = false,
+		},
+		kill,
+		function()
+			if Ui.Buy then
+				Ui.Buy("Product", "Insurance3")
+			end
+		end
+	)
 	local killToken = 0
 	local function showKill(info: { [string]: any })
 		killToken += 1
 		local token = killToken
-		local knife = if type(info.Knife) == "string" then info.Knife else ""
-		local parsed = Items.Parse(knife)
-		killTitle.Text = `Killed by {tostring(info.Name or "the Murderer")}`
-		killArt.Image = if parsed then (VoxelKnives[parsed.Name] or KnifeIcons[parsed.Name] or "") else ""
-		killKnife.Text = if parsed then Items.DisplayName(knife) else "A knife"
-		killKnife.TextColor3 = if parsed then Items.Color(knife) else Color3.new(1, 1, 1)
-		local rarity = if parsed then parsed.Knife.Rarity else ""
-		killRarity.Text = string.upper(rarity)
-		killRarity.TextColor3 = Knives.RarityColors[rarity] or Color3.new(1, 1, 1)
-		killPower.Text = if type(info.PerkName) == "string"
-			then `⚡ {info.PerkName}  Lv {tonumber(info.Level) or 1}`
-			else "No power"
-		-- Where to get one: the biome that knife's rarity lives in
-		local biome = nil
-		for _, zone in GameConfig.Zones do
-			if zone.Rarity == rarity then
-				biome = zone.Title
-			end
+		local lost = if type(info.Lost) == "string" then info.Lost else nil
+		local parsed = if lost then Items.Parse(lost) else nil
+		killTitle.Text = "The Murderer got you!"
+		if parsed and lost then
+			killArt.Image = VoxelKnives[parsed.Name] or KnifeIcons[parsed.Name] or ""
+			killArt.Visible = true
+			killKnife.Text = "They took your"
+			killKnife.TextColor3 = Color3.new(1, 1, 1)
+			killWhere.Text = `{Items.DisplayName(lost)}!`
+			killWhere.TextColor3 = Items.Color(lost)
+			insureButton.Visible = true
+			killWhere.Position = UDim2.fromOffset(12, 196)
+			kill.Size = UDim2.fromOffset(480, 300)
+		else
+			killArt.Visible = false
+			killKnife.Text = ""
+			killWhere.Text = if info.Insured == true
+				then "🛡️ Your insurance kept your knives safe!"
+				else "Your knives are safe. Try again next round!"
+			killWhere.TextColor3 = Color3.fromRGB(140, 240, 150)
+			insureButton.Visible = false
+			killWhere.Position = UDim2.fromOffset(12, 64) -- (inside the short card)
+			kill.Size = UDim2.fromOffset(480, 120)
 		end
-		killWhere.Text = if biome then `Want one? Steal it from {biome}!` else ""
 		kill.Visible = true
 		local scale = kill:FindFirstChild("Pop") :: UIScale? or Instance.new("UIScale")
 		scale.Name = "Pop"
 		scale.Parent = kill
 		scale.Scale = 0.7
 		TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-		task.delay(5, function()
+		task.delay(if lost then 7 else 4, function()
 			if token == killToken then
 				kill.Visible = false
 			end

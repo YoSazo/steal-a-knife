@@ -194,6 +194,14 @@ local function schedule(player: Player)
 	nextAt[player] = rng:NextNumber(CONFIG.MinGap, CONFIG.MaxGap)
 end
 
+-- Bring the next gift forward to `seconds` from now (after dying to the Murderer)
+function SurpriseGifts.Soon(player: Player, seconds: number)
+	local left = nextAt[player]
+	if left and left > seconds then
+		nextAt[player] = seconds
+	end
+end
+
 -- Studio: drop one now (DebugService "Gift")
 function SurpriseGifts.DebugDrop(player: Player)
 	clear(player)

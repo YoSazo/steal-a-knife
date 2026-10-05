@@ -618,7 +618,7 @@ local handlers: { [string]: (...any) -> () } = {
 		Effects.Burst(position, Color3.fromRGB(200, 170, 255), 15, 8, 0.4)
 	end,
 	Died = function()
-		flash("YOU DIED", 0.7, 3)
+		flash(nil, 0.5, 0.6) -- (no words: the death card says what happened)
 	end,
 	Hurt = function()
 		flash(nil, 0.35, 0.35)
