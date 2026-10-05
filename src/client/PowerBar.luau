@@ -10,6 +10,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Ui = require(script.Parent.Ui)
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("GameConfig"))
+local PowerIcons = require(ReplicatedStorage.Shared.Config.VoxelPowerIcons)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
 local new = Ui.new
@@ -44,7 +45,8 @@ function PowerBar.Init()
 		Padding = UDim.new(0, 10),
 	}, bar)
 
-	type Slot = { Button: TextButton, Name: TextLabel, Key: TextLabel, Shade: Frame, Count: TextLabel }
+	type Slot =
+		{ Button: TextButton, Name: TextLabel, Icon: ImageLabel, Key: TextLabel, Shade: Frame, Count: TextLabel }
 	local slots: { Slot } = {}
 	local loadout: { string } = {}
 
@@ -75,6 +77,16 @@ function PowerBar.Init()
 			TextTruncate = Enum.TextTruncate.AtEnd,
 		}, button)
 		Ui.textStroke(name, 1.5)
+		-- Codex's voxel picture of the power (the name only shows if there's no picture)
+		local icon = new("ImageLabel", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(0.9, 0.9),
+			SizeConstraint = Enum.SizeConstraint.RelativeYY,
+			BackgroundTransparency = 1,
+			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = 2,
+		}, button)
 		local key = Ui.label({
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromOffset(4, 4),
@@ -105,7 +117,7 @@ function PowerBar.Init()
 		button.Activated:Connect(function()
 			use(i)
 		end)
-		slots[i] = { Button = button, Name = name, Key = key, Shade = shade, Count = count }
+		slots[i] = { Button = button, Name = name, Icon = icon, Key = key, Shade = shade, Count = count }
 	end
 
 	local function refresh()
@@ -116,7 +128,9 @@ function PowerBar.Init()
 			local power = byId[loadout[i]]
 			slot.Button.Visible = power ~= nil
 			if power then
-				slot.Name.Text = power.DisplayName
+				local image = PowerIcons.Innocent[power.Id] or ""
+				slot.Icon.Image = image
+				slot.Name.Text = if image ~= "" then "" else power.DisplayName
 				slot.Name.TextColor3 = power.Color
 				slot.Button.BackgroundColor3 = power.Color:Lerp(Color3.fromRGB(20, 18, 28), 0.72);
 				(slot.Button:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = power.Color

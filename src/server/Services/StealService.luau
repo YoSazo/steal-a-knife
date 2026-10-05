@@ -680,8 +680,13 @@ local function deposit(player: Player)
 	if parsed.Perk then
 		revealPower(player, item)
 	end
+	local placedPlate: number? = nil
 	DataService.Update(player, function(p)
-		DataService.AddKnife(p, item, carry.Plate)
+		placedPlate = DataService.AddKnife(p, item, carry.Plate)
+		-- Save placement with the inventory change, even if the client leaves before step 3 appears.
+		if not p.TutorialDone then
+			p.TutorialStep = math.max(p.TutorialStep, 3)
+		end
 		if isNew then
 			table.insert(p.Discovered, parsed.Name)
 		end
@@ -689,6 +694,13 @@ local function deposit(player: Player)
 			p.KnivesStolen += 1
 		end
 	end)
+	-- Only this successful carried-knife deposit confirms placement. Unboxes use the cosmetic
+	-- Deposit effect too, so the tutorial must not infer success from that effect or inventory size.
+	-- Publish the exact mounted item/plate before confirmation, so the guide can point at it.
+	player:SetAttribute("LastPlacedKnife", item)
+	player:SetAttribute("LastPlacedKnifePlate", placedPlate)
+	local placementSerial = (player:GetAttribute("KnifePlacementSerial") or 0) :: number
+	player:SetAttribute("KnifePlacementSerial", placementSerial + 1)
 	local stolenFrom = carry.StolenFrom
 	Analytics.Track(player, "knife.mounted", {
 		knife = parsed.Name,
@@ -710,8 +722,10 @@ local function deposit(player: Player)
 	endCarry(player, true)
 	local name = Items.DisplayName(item)
 	BaseService.RefreshRack(player)
-	-- One short line (the plate's own label already shows the rest)
-	Net.Notify(player, `{if isNew then "NEW! " else ""}{name} +{Format.Cash(Items.Income(item))}/s`, "good")
+	-- The plate already labels name/income. Let a Murderer-power reveal have the screen to itself.
+	if not parsed.Perk then
+		Net.Notify(player, `{if isNew then "NEW! " else ""}{name} +{Format.Cash(Items.Income(item))}/s`, "good")
+	end
 	Net.Remotes.Effect:FireAllClients("Deposit", player, parsed.Knife.Rarity)
 	if stolenFrom then
 		local victim = ownerName(stolenFrom) or "someone"

@@ -374,10 +374,10 @@ function Rewards.Init()
 			DataService.Update(player, function(p)
 				p.TutorialDone = true
 			end)
-		elseif step == "Step" and profile and type(at) == "number" and at == at then
-			-- how far the guide got, so leaving midway resumes there
+		elseif step == "Step" and profile and not profile.TutorialDone and type(at) == "number" and at == at then
+			-- A delayed client step must not undo a server-confirmed placement or later progress.
 			DataService.Update(player, function(p)
-				p.TutorialStep = math.clamp(math.floor(at), 1, 10)
+				p.TutorialStep = math.max(p.TutorialStep, math.clamp(math.floor(at), 1, 10))
 			end)
 		elseif step == "Tip" and profile and type(at) == "string" and #at <= 24 and #profile.Tips < 60 then
 			-- a one-time tip was shown (client/Tips): never again

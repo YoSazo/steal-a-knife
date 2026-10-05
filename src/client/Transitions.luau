@@ -615,6 +615,9 @@ function Transitions.Init()
 			return
 		end
 		if kind == "RoundCard" then
+			-- the round is over: the VS card takes the middle, the death card makes way
+			killToken += 1
+			kill.Visible = false
 			if type(text) == "table" then
 				showCard(text)
 			end

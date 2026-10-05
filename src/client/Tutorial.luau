@@ -7,10 +7,8 @@
 --   5. open Upgrades (the button pulses)  6. equip your best knife (your Murderer weapon)
 -- Progress is saved (player TutorialStep), so leaving midway resumes there. More > How to play
 -- replays it (Ui.ReplayTutorial). The murder rounds and everything later are taught by one-time
--- tips at the moment they happen (client/Tips). Steps advance on their own as you do them:
---   1. take down a watchman in the Courtyard   2. grab the case it drops
---   3. carry it home, place it on a plate             4. run in your Haunted Wheel
---   5. the Murder Mystery rounds (just read it)       6. your vault gate
+-- tips at the moment they happen (client/Tips). Placement is confirmed by the server, rather
+-- than inferred from the timing of inventory and carrying attribute changes.
 -- Finishing (or skipping) tells the server, which pays a small reward once (Rewards).
 
 local CollectionService = game:GetService("CollectionService")
@@ -192,51 +190,116 @@ local function knifeOver(pad: BasePart): Instance?
 	return pad.Parent
 end
 
+-- Restrict the equip target to this player's rack. The server records the actual rolled item
+-- and its plate, so duplicate knives and refreshed display models still point to the right one.
+local function myEquipKnife(): Model?
+	local map = workspace:FindFirstChild("Map")
+	local rack = map and map:FindFirstChild(`Rack_{player.Name}`)
+	if not rack then
+		return nil
+	end
+	local item = player:GetAttribute("LastPlacedKnife")
+	local slot = player:GetAttribute("LastPlacedKnifePlate")
+	local vault = myVault()
+	local pad = if vault and type(slot) == "number" then vault:FindFirstChild(`Pedestal{slot}`, true) else nil
+	local plateAt = if pad and pad:IsA("BasePart") then pad.Position else nil
+	local best: Model? = nil
+	local bestDistance = math.huge
+	for _, model in rack:GetChildren() do
+		if model:IsA("Model") and model:GetAttribute("Item") then
+			if type(item) == "string" and model:GetAttribute("Item") ~= item then
+				continue
+			end
+			local distance = if plateAt then (model:GetPivot().Position - plateAt).Magnitude else 0
+			-- Rejoining has no session placement metadata: guide an existing owned knife instead.
+			if not item and model:GetAttribute("Item") == player:GetAttribute("Equipped") then
+				return model
+			end
+			if not best or distance < bestDistance then
+				best, bestDistance = model, distance
+			end
+		end
+	end
+	return best
+end
+
+-- One arrow design for world targets and the Upgrades button.
+local function guideArrow(parent: Instance): TextLabel
+	local arrow = Ui.label({
+		Name = "GuideArrow",
+		Size = UDim2.fromScale(1, 1),
+		Text = "⬇",
+		TextColor3 = Color3.fromRGB(255, 220, 80),
+	}, parent)
+	Ui.textStroke(arrow, 4)
+	return arrow
+end
+
 local function run(startAt: number, replay: boolean)
 	if running then
 		return
 	end
 	running = true
-	local carriedOnce = false
+	local connections: { RBXScriptConnection } = {}
+	local function own(connection: RBXScriptConnection)
+		table.insert(connections, connection)
+	end
+	local function carryingKnife(): boolean
+		local carrying = player:GetAttribute("Carrying")
+		return type(carrying) == "string" and carrying ~= "" and not carrying:match("^Case:")
+	end
+	local placementBaseline = (player:GetAttribute("KnifePlacementSerial") or 0) :: number
+	local carriedOnce = carryingKnife()
 	local banked = false
-	player:GetAttributeChangedSignal("Carrying"):Connect(function()
-		if player:GetAttribute("Carrying") then
+	own(player:GetAttributeChangedSignal("Carrying"):Connect(function()
+		if carryingKnife() then
 			carriedOnce = true
 		end
-	end)
-	-- Banked = the knife you carried home landed on a plate: the count goes up while you're carrying,
-	-- or within a few seconds of the carry ending (the knife flies onto the plate). A knife from the
-	-- free chest or the daily reward doesn't count, or the guide would skip the run home.
-	local lastCount = (player:GetAttribute("KnifeCount") or 0) :: number
-	local carryEndedAt = -math.huge
-	player:GetAttributeChangedSignal("Carrying"):Connect(function()
-		if not player:GetAttribute("Carrying") then
-			carryEndedAt = os.clock()
-		end
-	end)
-	player:GetAttributeChangedSignal("KnifeCount"):Connect(function()
-		local count = (player:GetAttribute("KnifeCount") or 0) :: number
-		local fromCarry = player:GetAttribute("Carrying") ~= nil or os.clock() - carryEndedAt < 4
-		if count > lastCount and fromCarry and carriedOnce then
+	end))
+	local function confirmPlacement()
+		local placed = (player:GetAttribute("KnifePlacementSerial") or 0) :: number
+		local savedPlacement = not replay and ((player:GetAttribute("TutorialStep") or 1) :: number) >= 3
+		if placed > placementBaseline or savedPlacement then
+			-- A confirmed placement also proves the carry, even if its callbacks were missed.
+			carriedOnce = true
 			banked = true
 		end
-		lastCount = count
-	end)
+	end
+	own(player:GetAttributeChangedSignal("KnifePlacementSerial"):Connect(confirmPlacement))
+	if not replay then
+		own(player:GetAttributeChangedSignal("TutorialStep"):Connect(confirmPlacement))
+	end
+	confirmPlacement()
 	local collected = false
 	local stepShownAt = os.clock()
 	local equippedChanged = false
-	Remotes.Effect.OnClientEvent:Connect(function(kind: string, who: any)
+	local equipModel: Model? = nil
+	local lastEquipScan = -math.huge
+	local function equipTarget(): Model?
+		if not equipModel or not equipModel.Parent or os.clock() - lastEquipScan > 1 then
+			lastEquipScan = os.clock()
+			equipModel = myEquipKnife()
+		end
+		return equipModel
+	end
+	local function matchesEquipTarget(item: unknown): boolean
+		local model = equipTarget()
+		return model ~= nil and item == model:GetAttribute("Item")
+	end
+	own(Remotes.Effect.OnClientEvent:Connect(function(kind: string, who: any, item: unknown)
 		if kind == "CashBurst" then
 			collected = true
-		elseif kind == "Equipped" and who == player then
+		elseif kind == "Equipped" and who == player and matchesEquipTarget(item) then
 			-- (the equip itself, not the Equipped attribute: re-equipping the knife you already had -
 			-- every replay of the guide - doesn't change the attribute, and the step never finished)
 			equippedChanged = true
 		end
-	end)
-	player:GetAttributeChangedSignal("Equipped"):Connect(function()
-		equippedChanged = true
-	end)
+	end))
+	own(player:GetAttributeChangedSignal("Equipped"):Connect(function()
+		if matchesEquipTarget(player:GetAttribute("Equipped")) then
+			equippedChanged = true
+		end
+	end))
 	local function menuOpen(name: string): boolean
 		return Ui.gui:GetAttribute("ActiveMenu") == name
 	end
@@ -247,11 +310,11 @@ local function run(startAt: number, replay: boolean)
 	-- Caught (or knocked loose) is a real signal from the server, not "the carry ended": placing a
 	-- knife also ends the carry a moment before it lands on the plate
 	local lostIt = false
-	Remotes.Effect.OnClientEvent:Connect(function(kind: string, id: unknown)
+	own(Remotes.Effect.OnClientEvent:Connect(function(kind: string, id: unknown)
 		if kind == "Tip" and (id == "Caught" or id == "Knocked") then
 			lostIt = true
 		end
-	end)
+	end))
 	local chosenPad: BasePart? = nil
 	local lastScan = 0
 	local steps: { Step } = {
@@ -314,12 +377,13 @@ local function run(startAt: number, replay: boolean)
 		},
 		{
 			-- The link between the two halves: the knife you equip is the one you fight with as Murderer
-			Text = if Ui.Phone
-				then "Your best knife is your Murderer weapon! Tap Equip on it."
-				else "Your best knife is your Murderer weapon! Press E on it to equip it.",
-			Target = vaultDoor,
+			Text = if Ui.Phone then "Tap Equip on the glowing knife!" else "Press E on the glowing knife to equip it!",
+			Target = function(): Vector3?
+				local model = equipTarget()
+				return if model then model:GetPivot().Position else nil
+			end,
 			Done = function()
-				return equippedChanged or os.clock() - stepShownAt > 20
+				return equippedChanged
 			end,
 		},
 	}
@@ -337,25 +401,10 @@ local function run(startAt: number, replay: boolean)
 	}, player:WaitForChild("PlayerGui")) :: ScreenGui
 	local pointer = new("Frame", {
 		AnchorPoint = Vector2.new(1, 0.5),
-		Size = UDim2.fromOffset(78, 50),
+		Size = UDim2.fromOffset(80, 80),
 		BackgroundTransparency = 1,
 	}, pointerGui)
-	local YELLOW = Color3.fromRGB(255, 220, 60)
-	local function bar(size: UDim2, position: UDim2, rotation: number)
-		local piece = new("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Size = size,
-			Position = position,
-			Rotation = rotation,
-			BackgroundColor3 = YELLOW,
-		}, pointer)
-		Ui.corner(piece, 6)
-		new("UIStroke", { Color = Color3.fromRGB(30, 22, 6), Thickness = 3 }, piece)
-	end
-	-- a shaft and a ">" head, pointing right at the button
-	bar(UDim2.fromOffset(46, 14), UDim2.new(0, 28, 0.5, 0), 0)
-	bar(UDim2.fromOffset(32, 14), UDim2.new(1, -18, 0.5, -9), 40)
-	bar(UDim2.fromOffset(32, 14), UDim2.new(1, -18, 0.5, 9), -40)
+	guideArrow(pointer).Rotation = -90 -- the same down arrow, turned toward Upgrades
 
 	-- The instruction: one line in a slim see-through bar under the timer
 	local banner = new("Frame", {
@@ -394,7 +443,7 @@ local function run(startAt: number, replay: boolean)
 		stepLabel.Size = UDim2.new(1, -84, 1, 0)
 		stepLabel.TextSize = if phone then 21 else 19
 	end
-	Ui.Layout.Changed:Connect(layout)
+	own(Ui.Layout.Changed:Connect(layout))
 	layout()
 
 	-- The trail: red chevrons lying on the ground from you towards the target, sliding forwards
@@ -507,13 +556,14 @@ local function run(startAt: number, replay: boolean)
 		AlwaysOnTop = true,
 		Adornee = targetPart,
 	}, targetPart)
-	local arrow =
-		Ui.label({ Size = UDim2.fromScale(1, 1), Text = "⬇", TextColor3 = Color3.fromRGB(255, 220, 80) }, arrowGui)
-	Ui.textStroke(arrow, 4)
+	guideArrow(arrowGui)
 
-	local current = math.clamp(startAt, 1, #steps)
+	local savedStep = if replay
+		then startAt
+		else math.max(startAt, (player:GetAttribute("TutorialStep") or 1) :: number)
+	local current = math.clamp(savedStep, 1, #steps)
 	-- Resuming mid-run but not carrying anything any more: start that steal again
-	if current == 2 and not player:GetAttribute("Carrying") then
+	if current == 2 and not carryingKnife() and not banked then
 		current = 1
 	end
 	local finished = false
@@ -523,6 +573,15 @@ local function run(startAt: number, replay: boolean)
 		end
 		finished = true
 		running = false
+		for _, connection in connections do
+			connection:Disconnect()
+		end
+		table.clear(connections)
+		local upgrades = Ui.gui:FindFirstChild("UpgradesButton", true)
+		local pulseRing = upgrades and upgrades:FindFirstChild("TutorialRing")
+		if pulseRing then
+			pulseRing:Destroy()
+		end
 		Ui.gui:SetAttribute("TutorialBar", false)
 		if not replay then
 			Remotes.Tutorial:FireServer(if skipped then "Skip" else "Done")
@@ -543,9 +602,9 @@ local function run(startAt: number, replay: boolean)
 			banner:Destroy()
 		end)
 	end
-	skip.Activated:Connect(function()
+	own(skip.Activated:Connect(function()
 		finish(true)
-	end)
+	end))
 
 	local function showStep()
 		stepShownAt = os.clock()
@@ -558,7 +617,7 @@ local function run(startAt: number, replay: boolean)
 			"Walk over the green cash pad.",
 			"Run in your wheel to train Speed.",
 			"Open Upgrades!",
-			"Equip your best knife: your Murderer weapon!",
+			if Ui.Phone then "Tap Equip on the glowing knife!" else "Press E on the glowing knife!",
 		}
 
 		stepLabel.Text =
@@ -572,12 +631,12 @@ local function run(startAt: number, replay: boolean)
 	end
 	showStep()
 
-	local connection: RBXScriptConnection
-	connection = RunService.RenderStepped:Connect(function()
+	own(RunService.RenderStepped:Connect(function()
 		if finished then
-			connection:Disconnect()
 			return
 		end
+		-- Poll as well as listening: confirmation cannot depend on callback order or timing.
+		confirmPlacement()
 		-- Hide during rounds
 		-- (out of the way while a biome's name pops up in the same spot)
 		banner.Visible = not player:GetAttribute("InRound")
@@ -687,6 +746,8 @@ local function run(startAt: number, replay: boolean)
 			end
 		elseif onStep2 and atHome then
 			glowTarget = plateModel
+		elseif current == 6 and not inRound then
+			glowTarget = equipTarget()
 		end
 		knifeGlow.Adornee = glowTarget
 		knifeGlow.Enabled = glowTarget ~= nil
@@ -711,9 +772,11 @@ local function run(startAt: number, replay: boolean)
 		if show and here and target then
 			targetPart.Position = target
 			drawTrail(here.Position - Vector3.new(0, 2.5, 0), target)
-			arrowGui.StudsOffsetWorldSpace = Vector3.new(0, 7 + math.sin(os.clock() * 5) * 1, 0)
+			-- Keep the equip arrow close to the blade, below its floating name/income labels.
+			arrowGui.StudsOffsetWorldSpace =
+				Vector3.new(0, (if current == 6 then 4 else 7) + math.sin(os.clock() * 5), 0)
 		end
-	end)
+	end))
 end
 
 function Tutorial.Init()

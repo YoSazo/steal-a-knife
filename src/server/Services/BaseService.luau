@@ -947,7 +947,7 @@ function BaseService.Init()
 						Analytics.Milestone(player, "cash_collected")
 						Analytics.Count(player, if auto then "pad_auto" else "pad_walks")
 						base.CashLabels[slot].Text = ""
-						Net.Remotes.Effect:FireClient(player, "CashBurst", pad.Position, waiting)
+						Net.Remotes.Effect:FireClient(player, "CashBurst", pad.Position, waiting, auto)
 						-- Lots of pad-walking this visit: offer to do it for them
 						if not auto then
 							padWalks[player] = (padWalks[player] or 0) + 1

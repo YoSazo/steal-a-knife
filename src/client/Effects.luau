@@ -789,16 +789,21 @@ local handlers: { [string]: (...any) -> () } = {
 		Effects.Burst(position + Vector3.new(0, 2, 0), Color3.fromRGB(255, 220, 90), 60, 25, 0.9)
 		Effects.Sound(Sounds.Reveal, position, 0.8)
 	end,
-	CashBurst = function(at: Vector3?, cash: number)
+	CashBurst = function(at: Vector3?, cash: number, automatic: boolean?)
 		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local position = at or (if root then root.Position else nil)
 		if not position then
-			Effects.Sound(Sounds.Cash, nil, 0.9)
+			if not automatic then
+				Effects.Sound(Sounds.Cash, nil, 0.9)
+			end
 			return
 		end
 		Effects.Burst(position + Vector3.new(0, 2, 0), Color3.fromRGB(110, 255, 110), 70, 30, 1)
 		Effects.FloatText(position + Vector3.new(0, 6, 0), `+${Format.Short(cash)}`, Color3.fromRGB(110, 255, 110))
-		Effects.Sound(Sounds.Cash, nil, 0.9)
+		-- Auto Collect repeats for every occupied plate each tick; income stays visible but quiet.
+		if not automatic then
+			Effects.Sound(Sounds.Cash, nil, 0.9)
+		end
 	end,
 	IndexClaim = function(cash: number, speed: number)
 		Effects.Sound(Sounds.Reveal, nil, 0.7)

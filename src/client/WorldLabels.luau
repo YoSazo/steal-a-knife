@@ -12,7 +12,8 @@ local function resize(gui: BillboardGui)
 	local _, bounds = Ui.bounds()
 	local shop = gui:GetAttribute("LabelCategory") == "Shop"
 	local width = if shop then math.min(220, bounds.X * 0.28) else 160
-	local height = if shop then 42 else 32
+	-- (a label with two lines - VIP over cash - sets Lines = 2 and gets room for both)
+	local height = (if shop then 42 else 32) * ((gui:GetAttribute("Lines") or 1) :: number)
 	local original = originals[gui]
 	gui.Size = UDim2.fromOffset(math.min(width, original.X.Offset), math.min(height, original.Y.Offset))
 end

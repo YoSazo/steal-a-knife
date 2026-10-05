@@ -1,6 +1,7 @@
 --!strict
--- How much money everyone has, floating over their head in the hub (Tsunami style). Drawn on each
--- client from the player's Cash attribute; hidden in rounds so it can't give a disguise away.
+-- How much money everyone has, floating over their head (Tsunami style), with a gold "VIP" above it
+-- for VIP pass owners. One tag, so the two never overlap. Shown in rounds too: the rich ones are the
+-- juicy targets. Drawn on each client from the player's Cash and Pass_VIP attributes.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,14 +18,30 @@ local function attach(owner: Player, character: Model)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "CashTag"
 	gui:SetAttribute("LabelCategory", "Utility")
+	gui:SetAttribute("Lines", 2)
 	gui:AddTag("ResponsiveWorldLabel")
-	gui.Size = UDim2.fromOffset(160, 34)
-	gui.StudsOffset = Vector3.new(0, 2.6, 0)
+	gui.Size = UDim2.fromOffset(160, 64)
+	gui.StudsOffset = Vector3.new(0, 3.4, 0)
 	gui.MaxDistance = 80
 	gui.LightInfluence = 0
 	gui.Adornee = head
+	-- VIP on top, cash underneath (close to the head)
+	local vip = Instance.new("TextLabel")
+	vip.Size = UDim2.fromScale(1, 0.45)
+	vip.BackgroundTransparency = 1
+	vip.Font = Enum.Font.FredokaOne
+	vip.TextScaled = true
+	vip.Text = "👑 VIP"
+	vip.TextColor3 = Color3.fromRGB(255, 205, 60)
+	vip.Parent = gui
+	local vipStroke = Instance.new("UIStroke")
+	vipStroke.Thickness = 2.5
+	vipStroke.Color = Color3.fromRGB(70, 45, 0)
+	vipStroke.Parent = vip
 	local text = Instance.new("TextLabel")
-	text.Size = UDim2.fromScale(1, 1)
+	text.AnchorPoint = Vector2.new(0, 1)
+	text.Position = UDim2.fromScale(0, 1)
+	text.Size = UDim2.fromScale(1, 0.53)
 	text.BackgroundTransparency = 1
 	text.Font = Enum.Font.FredokaOne
 	text.TextScaled = true
@@ -37,12 +54,12 @@ local function attach(owner: Player, character: Model)
 	local function refresh()
 		local cash = (owner:GetAttribute("Cash") or 0) :: number
 		text.Text = `${Format.Short(cash)}`
-		gui.Enabled = not owner:GetAttribute("InRound")
+		vip.Visible = owner:GetAttribute("Pass_VIP") == true
 	end
 	refresh()
 	local connections = {
 		owner:GetAttributeChangedSignal("Cash"):Connect(refresh),
-		owner:GetAttributeChangedSignal("InRound"):Connect(refresh),
+		owner:GetAttributeChangedSignal("Pass_VIP"):Connect(refresh),
 	}
 	gui.Destroying:Connect(function()
 		for _, connection in connections do

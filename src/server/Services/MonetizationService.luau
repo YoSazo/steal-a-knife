@@ -47,37 +47,7 @@ for _, product in Monetization.Products do
 	end
 end
 
--- VIP tag ------------------------------------------------------------------------------------
-
--- A gold "VIP" over the head in the hub (hidden in rounds: disguises must stay anonymous)
-local function refreshTag(player: Player)
-	local character = player.Character
-	local head = character and character:FindFirstChild("Head")
-	if not head then
-		return
-	end
-	local tag = head:FindFirstChild("VIPTag") :: BillboardGui?
-	local show = player:GetAttribute("Pass_VIP") == true and not player:GetAttribute("InRound")
-	if show and not tag then
-		local gui = Instance.new("BillboardGui")
-		gui.Name = "VIPTag"
-		gui.Size = UDim2.fromOffset(90, 30)
-		gui.StudsOffsetWorldSpace = Vector3.new(0, 2.6, 0)
-		gui.MaxDistance = 90
-		gui.Parent = head
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.fromScale(1, 1)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.FredokaOne
-		label.TextScaled = true
-		label.Text = "👑 VIP"
-		label.TextColor3 = Color3.fromRGB(255, 205, 60)
-		label.TextStrokeTransparency = 0
-		label.Parent = gui
-	elseif tag then
-		tag.Enabled = show
-	end
-end
+-- (the VIP tag over the head is drawn with the cash by client/Overheads, from Pass_VIP)
 
 -- Passes -------------------------------------------------------------------------------------
 
@@ -99,9 +69,6 @@ local function grantPass(player: Player, key: string, announce: boolean)
 		end
 	elseif key == "DoubleCash" or key == "VIP" then
 		BaseService.RefreshRack(player) -- income readouts
-	end
-	if key == "VIP" then
-		refreshTag(player)
 	end
 	if announce and pass then
 		Net.Notify(player, `{pass.Icon} {pass.Name} unlocked! Thank you!`, "good")
@@ -397,13 +364,6 @@ function MonetizationService.Init()
 			player:SetAttribute("PaidRandomRestricted", not ok or (info :: any).ArePaidRandomItemsRestricted == true)
 		end)
 		task.spawn(checkPasses, player)
-		player.CharacterAdded:Connect(function()
-			task.wait(0.5)
-			refreshTag(player)
-		end)
-		player:GetAttributeChangedSignal("InRound"):Connect(function()
-			refreshTag(player)
-		end)
 	end
 	for _, player in Players:GetPlayers() do
 		setup(player)

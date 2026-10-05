@@ -25,6 +25,7 @@ local GameConfig = require(ReplicatedStorage.Shared:WaitForChild("Config"):WaitF
 local Textures = require(ReplicatedStorage.Shared.Config:WaitForChild("Textures"))
 local Items = require(ReplicatedStorage.Shared.Items)
 local Artwork = require(ReplicatedStorage.Shared.Config.UiArtwork)
+local PowerIcons = require(ReplicatedStorage.Shared.Config.VoxelPowerIcons)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
 
@@ -222,7 +223,8 @@ function Abilities.Init()
 	local function refreshPerk()
 		local id = player:GetAttribute("Perk")
 		local perk = type(id) == "string" and GameConfig.Perks[id] or nil
-		local icon = if type(id) == "string" then Textures.PerkIcons[id] else nil
+		-- Codex's voxel power icon, else the old Blender render
+		local icon = if type(id) == "string" then PowerIcons.KnifePowers[id] or Textures.PerkIcons[id] else nil
 		perkCard.Visible = not Ui.Phone and not Ui.menuOpen() and perk ~= nil and player:GetAttribute("InRound") == true
 		buttonIcon.Visible = icon ~= nil
 		if perk then
