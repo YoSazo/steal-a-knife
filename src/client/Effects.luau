@@ -485,6 +485,12 @@ local handlers: { [string]: (...any) -> () } = {
 			Effects.Sound(Sounds.Cash, to, 0.8)
 		end)
 	end,
+	-- A knife leaves someone's hand (hub or round): a swish where it was thrown from
+	KnifeThrow = function(from: Vector3)
+		if Lod.Near(from, 120) then
+			Effects.Sound(Sounds.Throw, from, 0.9)
+		end
+	end,
 	-- Equipping a knife: it flies off its plate into your hand, a ring of light, a big banner
 	Equipped = function(who: Player, item: string, from: Vector3?)
 		local character = who.Character

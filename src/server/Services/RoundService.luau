@@ -1048,6 +1048,7 @@ local function throwKnife(
 		fire.Parent = primary
 	end
 	model.Parent = workspace
+	Net.Remotes.Effect:FireAllClients("KnifeThrow", origin)
 	if laser then
 		Net.Remotes.Effect:FireAllClients("Laser", origin, origin + direction * config.Range)
 	end

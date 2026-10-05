@@ -595,7 +595,8 @@ local function run(startAt: number, replay: boolean)
 		end
 		stepLabel.Text =
 			"You've got it! Steal better knives - the best one you equip is your Murderer weapon. Good luck!"
-		Effects.Sound(Sounds.Reveal, nil, 0.7)
+		-- (its own sound: the power-reveal sting here made equipping sound like the steal again)
+		Effects.Sound(Sounds.Cheer, nil, 0.5)
 		task.delay(4, function()
 			TweenService:Create(banner, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
 			task.wait(0.5)

@@ -4,8 +4,9 @@
 
 return {
 	Slash = "rbxassetid://9116197039", -- Knife Shing, Metal Swipe (PSE)
-	Lunge = "rbxassetid://9126283272", -- Wood Swish, Fast Movement in Air (PSE): throws and dashes
-	Unsheath = "rbxassetid://12222225", -- classic sword unsheath (Murderer gets the knife)
+	Lunge = "rbxassetid://9126047581", -- Synth Air Whoosh, karate swish (PSE): dashes and blinks
+	Unsheath = "rbxassetid://9116197252", -- Knife Shing, remove from scabbard (PSE): equipping / drawing
+	Throw = "rbxassetid://9126283272", -- Wood Swish, Fast Movement in Air (PSE): every thrown knife
 	Gunshot = "rbxassetid://120771468205926",
 	Coin = "rbxassetid://4612374807",
 	Cash = "rbxassetid://134810204798705",
@@ -14,7 +15,7 @@ return {
 	Death = "rbxasset://sounds/uuhhh.mp3", -- Roblox's own death sound (it was a screaming death cry)
 
 	-- Music
-	HubMusic = "rbxassetid://9043824232", -- "Happy Island" (APM): sunny, loops under the hub
+	HubMusic = "rbxassetid://1845444990", -- "Coffee Break" (APM, Manfred Paulsen): light jazz under the hub
 	RaidMusic = "rbxassetid://9048541013", -- "Battleground" (APM), during the Blood Moon
 
 	-- Raids

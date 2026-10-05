@@ -257,6 +257,7 @@ local function throw(player: Player, aim: unknown)
 			end
 		end
 		model.Parent = flyingFolder
+		Net.Remotes.Effect:FireAllClients("KnifeThrow", from)
 		table.insert(flying, {
 			Model = model,
 			Owner = player,

@@ -90,7 +90,7 @@ function Atmosphere.Init()
 	end)
 
 	-- Music ---------------------------------------------------------------------------------------
-	local hubMusic = track(Sounds.HubMusic, if Sounds.HubMusic ~= "" then 0.22 else 0)
+	local hubMusic = track(Sounds.HubMusic, if Sounds.HubMusic ~= "" then 0.12 else 0) -- (quiet: under everything)
 	local raidMusic = track(Sounds.RaidMusic, 0.3)
 	if Sounds.HubMusic ~= "" then
 		hubMusic:Play()
