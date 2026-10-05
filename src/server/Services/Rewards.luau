@@ -317,7 +317,7 @@ local function claimIndex(player: Player, which: unknown): boolean
 		end
 	end
 	if #names == 0 then
-		Net.Notify(player, "Nothing to claim yet - discover new knives first!", "info")
+		Net.Notify(player, "Find new knives to get rewards!", "info")
 		return false
 	end
 	local cash, speed = 0, 0
@@ -369,7 +369,7 @@ function Rewards.Init()
 				p.Cash += GameConfig.TutorialReward
 			end)
 			DataService.CashFlow(player, GameConfig.TutorialReward, "tutorial")
-			Net.Notify(player, `Guide complete! +{Format.Cash(GameConfig.TutorialReward)}`, "good")
+			Net.Notify(player, `You did it! +{Format.Cash(GameConfig.TutorialReward)}`, "good")
 		elseif step == "Skip" and profile then
 			DataService.Update(player, function(p)
 				p.TutorialDone = true

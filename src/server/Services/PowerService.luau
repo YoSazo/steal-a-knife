@@ -193,11 +193,7 @@ local function handlePower(player: Player, action: unknown, id: unknown): boolea
 	if action == "Enchant" then
 		local ok, message = enchant(player, id)
 		if message then
-			Net.Notify(
-				player,
-				if ok then `🔮 Your knife now has {message}!` else message,
-				if ok then "good" else "bad"
-			)
+			Net.Notify(player, if ok then `🔮 New power: {message}!` else message, if ok then "good" else "bad")
 		end
 		return ok
 	end
@@ -341,7 +337,7 @@ local function radar(player: Player, duration: number)
 		end
 	end
 	if player:GetAttribute("InRound") and #entries == 0 then
-		Net.Notify(player, "No knife drawn... the Murderer is hiding among you.", "info")
+		Net.Notify(player, "The Murderer is hiding. Try again soon!", "info")
 	end
 	Net.Remotes.Effect:FireClient(player, "Radar", entries, duration)
 end
@@ -406,7 +402,7 @@ local function placeTrap(player: Player, stun: number)
 				table.remove(traps, i)
 			end
 		end
-		Net.Notify(player, "Trap set in your vault - it waits for intruders", "good")
+		Net.Notify(player, "Trap set!", "good")
 	end
 	table.insert(traps, {
 		Model = model,
@@ -453,7 +449,7 @@ local function stepTraps()
 						if other.Character then
 							Net.Animate(other.Character, "Hurt")
 						end
-						Net.Notify(other, "SNAP! You stepped in a bear trap!", "bad")
+						Net.Notify(other, "SNAP! You're stuck in a trap!", "bad")
 						task.delay(trap.Stun, function()
 							BaseService.RefreshWalkSpeed(other)
 						end)
@@ -1028,7 +1024,7 @@ local function usePower(player: Player, id: unknown, aim: unknown)
 			return -- the Murderer has their knife; powers are for innocents
 		end
 		if ReplicatedStorage:GetAttribute("Classic") then
-			Net.Notify(player, "CLASSIC round: no powers this time!", "bad")
+			Net.Notify(player, "No powers this round!", "bad")
 			return
 		end
 		-- The same base strength for everyone; the power's level adds a little (<= +20%)
@@ -1039,7 +1035,7 @@ local function usePower(player: Player, id: unknown, aim: unknown)
 			return
 		end
 		if have < cost then
-			Net.Notify(player, `{power.DisplayName} needs {cost} Energy - grab coins!`, "bad")
+			Net.Notify(player, `Grab coins to use {power.DisplayName}!`, "bad")
 			Net.Remotes.Effect:FireClient(player, "NoEnergy", id)
 			return
 		end
@@ -1047,7 +1043,7 @@ local function usePower(player: Player, id: unknown, aim: unknown)
 		local uses = roundUses[player] or {}
 		roundUses[player] = uses
 		if power.RoundUses and (uses[id] or 0) >= power.RoundUses then
-			Net.Notify(player, `{power.DisplayName} is used up for this round!`, "bad")
+			Net.Notify(player, `No more {power.DisplayName} this round`, "bad")
 			return
 		end
 		uses[id] = (uses[id] or 0) + 1
@@ -1229,11 +1225,7 @@ local function onLoaded(player: Player, profile: DataService.Profile)
 		if refund > 0 then
 			task.delay(8, function()
 				if player.Parent then
-					Net.Notify(
-						player,
-						`Powers now live on your knives! Your old powers were refunded: +{Format.Cash(refund)}`,
-						"good"
-					)
+					Net.Notify(player, `Powers come from knives now! You got +{Format.Cash(refund)} back.`, "good")
 				end
 			end)
 		end

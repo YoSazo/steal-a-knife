@@ -140,15 +140,15 @@ function PowerBar.Init()
 
 	RunService.RenderStepped:Connect(function()
 		if Ui.Phone then
-			local _, bounds = Ui.bounds()
+			-- In a round (the only place powers show) an innocent has no knife, so the power takes the
+			-- knife button's spot by the right thumb, above Jump - not in the middle of the screen
 			local knife = Ui.Layout.knifePosition()
-			local right = math.min(bounds.X / 2 + 112, knife.X - 88)
-			local left = math.max(152, right - 224)
-			local width = math.max(140, right - left)
-			bar.Position = UDim2.fromOffset((left + right) / 2, math.max(172, bounds.Y - 162) + 52)
-			bar.Size = UDim2.fromOffset(width, 52)
+			local size = Ui.Layout.KnifeSize
+			local factor = Ui.Scale.Scale -- (knifePosition is in screen pixels, this gui is scaled)
+			bar.Position = UDim2.fromOffset((knife.X + size / 2) / factor, (knife.Y + size) / factor)
+			bar.Size = UDim2.fromOffset(size / factor, size * 0.8 / factor)
 			for _, slot in slots do
-				slot.Button.Size = UDim2.fromOffset((width - 20) / 3, 52)
+				slot.Button.Size = UDim2.fromOffset(size / factor, size * 0.8 / factor)
 			end
 		end
 		-- The Murderer fights with their knife; powers are for innocents

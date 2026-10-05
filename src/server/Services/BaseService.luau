@@ -229,10 +229,8 @@ function BaseService.TeleportHome(player: Player)
 		destination = spot
 		restored = true
 	end
-	if restored then
-		-- Straight there (no frame at the vault spawn first); the stream below still loads it
-		character:PivotTo(destination)
-	end
+	-- (no early jump to the spot: arriving before it has streamed in is what showed Roblox's
+	-- loading spinner on the way back from a round; the screen fade covers the short wait)
 	task.spawn(function()
 		-- Load the vault on their client first so StreamingEnabled doesn't pause them on arrival,
 		-- but never wait long: a slow stream must not leave them stranded

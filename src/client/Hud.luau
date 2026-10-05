@@ -1152,21 +1152,24 @@ function Hud.Init()
 		end
 	end)
 
-	-- Notifications (stack at the bottom middle) -------------------------------------------------
+	-- Notifications: small outlined words at the top under the timer, no box (big solid bars across
+	-- the middle of the screen hid what you were doing) --------------------------------------------
 	local toasts = new("Frame", {
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -230), -- above the power bar and the Energy bar
-		Size = UDim2.fromOffset(560, 220),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, if Ui.Phone then 176 else 196), -- under the timer and status
+		Size = UDim2.fromOffset(if Ui.Phone then 520 else 600, 70),
 		BackgroundTransparency = 1,
 		-- On the Feedback layer, above every menu and screen: a toast (what you bought, why you
 		-- can't) must never be hidden behind the window you clicked in
 		ZIndex = 60,
 	}, Ui.feedback)
 	new("UIListLayout", {
-		Padding = UDim.new(0, 6),
-		VerticalAlignment = Enum.VerticalAlignment.Bottom,
+		VerticalAlignment = Enum.VerticalAlignment.Top,
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Padding = UDim.new(0, 2),
 	}, toasts)
+	local toastOrder = 0
 
 	local function toast(text: string, kind: string)
 		for _, child in toasts:GetChildren() do
@@ -1174,24 +1177,24 @@ function Hud.Init()
 				return -- already on screen
 			end
 		end
-		-- (phones: big enough to read at arm's length - 12 px was unreadable on a real phone)
+		local tint = KIND_COLORS[kind] or KIND_COLORS.info
+		toastOrder += 1
 		local bubble = Ui.label({
-			Size = UDim2.new(1, 0, 0, if Ui.Phone then 40 else 44),
-			AutomaticSize = Enum.AutomaticSize.Y,
-			BackgroundTransparency = if Ui.Phone then 0.1 else 0,
-			BackgroundColor3 = KIND_COLORS[kind] or KIND_COLORS.info,
+			LayoutOrder = -toastOrder, -- newest on top
+			Size = UDim2.fromOffset(0, 0),
+			AutomaticSize = Enum.AutomaticSize.XY,
+			BackgroundTransparency = 1,
 			TextScaled = false,
-			TextSize = if Ui.Phone then 22 else 16,
+			TextSize = if Ui.Phone then 27 else 21, -- (the feedback layer is scaled down on phones)
 			TextWrapped = true,
+			TextColor3 = tint:Lerp(Color3.new(1, 1, 1), 0.3),
 			Text = text,
 		}, toasts)
-		Ui.corner(bubble, 12)
-		Ui.stroke(bubble, 2)
-		Ui.textStroke(bubble, 1.5)
-		Ui.padding(bubble, if Ui.Phone then 12 else 14, if Ui.Phone then 4 else 4)
+		new("UISizeConstraint", { MaxSize = Vector2.new(if Ui.Phone then 520 else 600, math.huge) }, bubble)
+		Ui.textStroke(bubble, 2)
 		local scale = new("UIScale", { Scale = 0.6 }, bubble)
 		TweenService:Create(scale, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-		task.delay(if Ui.Phone then 3 else 4, function()
+		task.delay(if Ui.Phone then 2.5 else 3.5, function()
 			local fade = TweenService:Create(
 				bubble,
 				TweenInfo.new(0.4),
@@ -1207,7 +1210,10 @@ function Hud.Init()
 				table.insert(labels, child)
 			end
 		end
-		while #labels > (if Ui.Phone then 2 else 3) do
+		table.sort(labels, function(a, b)
+			return a.LayoutOrder > b.LayoutOrder -- oldest first
+		end)
+		while #labels > 2 do
 			local oldest = table.remove(labels, 1) :: TextLabel
 			oldest:Destroy()
 		end

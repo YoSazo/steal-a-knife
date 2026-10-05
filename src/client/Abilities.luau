@@ -640,7 +640,7 @@ function Abilities.Init()
 				padding:Destroy()
 			end
 			button.AnchorPoint = Vector2.zero
-			button.Position = UDim2.fromOffset((x - 76) / factor, (y + 8) / factor)
+			button.Position = UDim2.fromOffset((x - 96) / factor, (y + 14) / factor)
 			button.Size = UDim2.fromOffset(64 / factor, 64 / factor)
 			buttonIcon.Position, buttonIcon.Size =
 				UDim2.fromOffset(4 / factor, 4 / factor), UDim2.fromOffset(56 / factor, 40 / factor)
@@ -944,8 +944,9 @@ function Abilities.Init()
 		end
 	end)
 
-	-- Phones, MM2 style: a big THROW button while the Murderer's knife is out. It throws at the
-	-- middle of the screen, where a small dot sits; hold it to throw harder.
+	-- Phones: a big red THROW button while the Murderer's knife is out. It works like the hub's knife
+	-- stick: press and drag to aim (the camera turns with your thumb, the knife goes where the dot in
+	-- the middle of the screen is), let go to throw. A quick tap throws straight ahead.
 	local throwButton = Ui.button({
 		Name = "ThrowButton",
 		Text = "THROW",
@@ -1046,15 +1047,27 @@ function Abilities.Init()
 			return
 		end
 		throwInput = input
+		lastPointer = Vector2.new(input.Position.X, input.Position.Y)
+		takeCameraHook()
 		beginCharge("basic")
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if input ~= throwInput then
+			return
+		end
+		local at = Vector2.new(input.Position.X, input.Position.Y)
+		aimDelta += at - lastPointer
+		lastPointer = at
 	end)
 	throwButton.InputEnded:Connect(function(input)
 		if input ~= throwInput then
 			return
 		end
 		throwInput = nil
+		applyKnifeAim() -- (the last bit of the drag counts)
 		local started = chargingSince
 		if not started then
+			releaseCamera()
 			return
 		end
 		local left = MIN_WINDUP - (os.clock() - started)
@@ -1063,9 +1076,11 @@ function Abilities.Init()
 				if chargingSince == started then
 					endCharge(true)
 				end
+				releaseCamera()
 			end)
 		else
 			endCharge(true)
+			releaseCamera()
 		end
 	end)
 	RunService.RenderStepped:Connect(function()
@@ -1077,6 +1092,14 @@ function Abilities.Init()
 		throwButton.Visible = show
 		centerDot.Visible = show and not chargingSince
 		if show then
+			-- Where the knife stick is in the hub (same thumb, same spot), a little bigger
+			local at = Ui.Layout.knifePosition()
+			local size = Ui.Layout.KnifeSize + 18
+			local factor = Ui.Scale.Scale
+			throwButton.AnchorPoint = Vector2.new(0.5, 0.5)
+			throwButton.Position =
+				UDim2.fromOffset((at.X + Ui.Layout.KnifeSize / 2) / factor, (at.Y + Ui.Layout.KnifeSize / 2) / factor)
+			throwButton.Size = UDim2.fromOffset(size / factor, size / factor)
 			local isReady = os.clock() >= basicThrowReadyAt or spamMode()
 			throwButton.BackgroundTransparency = if isReady then 0.15 else 0.6
 			throwButton.Text = if chargingSince

@@ -223,13 +223,17 @@ local function run(startAt: number, replay: boolean)
 		lastCount = count
 	end)
 	local collected = false
-	Remotes.Effect.OnClientEvent:Connect(function(kind: string)
-		if kind == "CashBurst" then
-			collected = true
-		end
-	end)
 	local stepShownAt = os.clock()
 	local equippedChanged = false
+	Remotes.Effect.OnClientEvent:Connect(function(kind: string, who: any)
+		if kind == "CashBurst" then
+			collected = true
+		elseif kind == "Equipped" and who == player then
+			-- (the equip itself, not the Equipped attribute: re-equipping the knife you already had -
+			-- every replay of the guide - doesn't change the attribute, and the step never finished)
+			equippedChanged = true
+		end
+	end)
 	player:GetAttributeChangedSignal("Equipped"):Connect(function()
 		equippedChanged = true
 	end)
@@ -545,6 +549,7 @@ local function run(startAt: number, replay: boolean)
 
 	local function showStep()
 		stepShownAt = os.clock()
+		equippedChanged = false -- (an equip from before this step doesn't count)
 		-- The first steal and placing it can't be skipped: that's the whole game in 60 seconds
 		skip.Visible = current > 2
 		local compact = {

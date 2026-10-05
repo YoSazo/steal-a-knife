@@ -676,7 +676,7 @@ local function stopChase(guard: Guard, escaped: boolean)
 	guard.WindupUntil = 0
 	guard.Model:SetAttribute("ChargeStart", nil)
 	if thief and escaped and thief.Parent then
-		Net.Notify(thief, `You got away from {guard.Boss.Name}!`, "good")
+		Net.Notify(thief, "You got away!", "good")
 		Analytics.Track(thief, "boss.escaped", { zone = guard.Boss.Index, shadow = guard.IsShadow == true })
 	end
 	if guard.IsShadow then
@@ -728,7 +728,7 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 		boss_speed = guard.Config.GuardSpeed,
 	})
 	Net.Remotes.Effect:FireClient(thief, "Alarm")
-	Net.Notify(thief, `{boss.Name:upper()} IS COMING FOR YOU! Get it home!`, "bad")
+	Net.Notify(thief, `{boss.Name:upper()} IS COMING! RUN HOME!`, "bad")
 end
 
 -- Hurt a thief (throws, and the snatch). Shields block it.
@@ -781,7 +781,7 @@ local function snatch(guard: Guard, thief: Player)
 		shadow = guard.IsShadow == true,
 	}
 	if not hurt(thief, guard.Config.Damage * 2, guard.Position) then
-		Net.Notify(thief, "Your Shield saved you - keep running!", "good")
+		Net.Notify(thief, "Your shield saved you! Keep running!", "good")
 		Analytics.Track(thief, "boss.shield_saved", snatchProps)
 		return
 	end
@@ -789,12 +789,7 @@ local function snatch(guard: Guard, thief: Player)
 	-- Escape Token (Robux charge): break free with the knife, the boss reels
 	if StealService.BossCarry(thief) and DataService.UseCharge(thief, "Escape") then
 		GuardService.Stun(guard, GameConfig.Consumables.EscapeStun)
-		local left = DataService.Get(thief)
-		Net.Notify(
-			thief,
-			`🗝️ ESCAPE TOKEN! You broke free with the knife - RUN! ({left and left.Charges.Escape or 0} left)`,
-			"good"
-		)
+		Net.Notify(thief, "🗝️ You broke free! RUN!", "good")
 		Net.Remotes.Effect:FireAllClients("Shield", root.Position)
 		Analytics.Track(thief, "boss.escape_token", snatchProps)
 		return
@@ -814,7 +809,7 @@ local function snatch(guard: Guard, thief: Player)
 		else
 			Offers.Show(thief, "Escape3", "Caught at the last second? An Escape Token breaks you free WITH the knife.")
 		end
-		Net.Notify(thief, `{guard.Boss.Name} caught you and took the {Items.DisplayName(item)} back!`, "bad")
+		Net.Notify(thief, `{guard.Boss.Name} caught you! The knife went back.`, "bad")
 		Net.Remotes.Effect:FireClient(thief, "Tip", "Caught")
 		Net.Remotes.Effect:FireClient(thief, "Damage", root.Position + Vector3.new(0, 3, 0), "CAUGHT!")
 	end
@@ -1116,7 +1111,7 @@ local function onSteal(player: Player, boss: Boss, slot: Slot)
 		return
 	end
 	if #profile.Knives >= profile.Slots then
-		Net.Notify(player, "Your vault wall is full! Sell a knife or add a mount first.", "bad")
+		Net.Notify(player, "Your vault is full! Sell a knife first.", "bad")
 		return
 	end
 	slot.Item = nil
@@ -1245,7 +1240,7 @@ function GuardService.Damage(guard: Guard, amount: number, attacker: Player?)
 		quip(guard, attacker, "Idle")
 		if attacker and now() - (idleHitNotice[attacker] or 0) > 20 then
 			idleHitNotice[attacker] = now()
-			Net.Notify(attacker, `{guard.Boss.Name} doesn't care. Steal a knife off the wall... if you dare!`, "info")
+			Net.Notify(attacker, `Hitting {guard.Boss.Name} does nothing. Steal a knife instead!`, "info")
 		end
 		return
 	end

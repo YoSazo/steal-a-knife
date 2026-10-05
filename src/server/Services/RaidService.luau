@@ -73,7 +73,7 @@ local function steal(thief: Player, owner: Player, item: string)
 		return
 	end
 	if (stolenFrom[owner] or 0) >= CONFIG.StealsPerVault then
-		Net.Notify(thief, `{owner.DisplayName}'s vault has been robbed enough this moon!`, "bad")
+		Net.Notify(thief, "That vault can't lose any more knives tonight.", "bad")
 		return
 	end
 	local index = table.find(profile.Knives, item)
@@ -88,7 +88,7 @@ local function steal(thief: Player, owner: Player, item: string)
 	StealService.StartCarry(thief, "Knife", item, owner.UserId)
 	Analytics.Track(owner, "moon.robbed", { knife = Items.Name(item), value = Items.Income(item) })
 	local name = Items.DisplayName(item)
-	Net.Notify(owner, `🌕 {thief.DisplayName} is stealing your {name}! Hit them to knock it loose!`, "bad")
+	Net.Notify(owner, `🌕 {thief.DisplayName} is stealing your {name}! Hit them!`, "bad")
 	Net.Announce(`🌕 {thief.DisplayName} stole {owner.DisplayName}'s {name}!`, Color3.fromRGB(255, 80, 80), 2)
 end
 
@@ -175,7 +175,7 @@ function RaidService.Summon(player: Player)
 		return
 	end
 	pendingSummon = player.DisplayName
-	Net.Notify(player, "The Blood Moon will rise as soon as the next intermission allows", "info")
+	Net.Notify(player, "The Blood Moon is coming soon!", "info")
 end
 
 -- Moons rise near the end of every CONFIG.Every-th intermission (StartBefore before the round)

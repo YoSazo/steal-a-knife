@@ -665,7 +665,7 @@ function DataService.Init()
 				elseif wasNew then
 					player:SetAttribute("Shielded", nil)
 					player:SetAttribute("ShieldLeft", nil)
-					Net.Notify(player, "Your new-player shield is gone - guard your vault!", "info")
+					Net.Notify(player, "Your safe time is over. Protect your vault!", "info")
 				end
 			end
 		end

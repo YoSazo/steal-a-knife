@@ -186,11 +186,11 @@ local function canPickUp(player: Player, anchor: BasePart, prompt: ProximityProm
 		return false -- fired from too far away: exploit or lag, ignore either way
 	end
 	if not BaseService.GetBase(player) then
-		Net.Notify(player, "No free vault on this server, you can't store knives.", "bad")
+		Net.Notify(player, "No free vault here, sorry!", "bad")
 		return false
 	end
 	if #profile.Knives >= profile.Slots then
-		Net.Notify(player, "Your vault wall is full! Sell a knife or buy another mount.", "bad")
+		Net.Notify(player, "Your vault is full! Sell a knife first.", "bad")
 		Offers.Show(player, "Mount", "Your wall is full! Add another mount instantly.")
 		return false
 	end
@@ -278,7 +278,7 @@ function StealService.DropKnife(item: string, position: Vector3, stolenFrom: num
 					DataService.AddKnife(p, item)
 				end)
 				BaseService.RefreshRack(owner)
-				Net.Notify(owner, `Your {Items.DisplayName(item)} found its way home.`, "good")
+				Net.Notify(owner, `Your {Items.DisplayName(item)} came back home!`, "good")
 			end
 		end
 	end)
@@ -480,13 +480,13 @@ startCarry = function(
 	player:SetAttribute("StolenFrom", stolenFrom) -- the UserId it was taken from, if anyone
 	BaseService.RefreshWalkSpeed(player)
 	if kind == "Case" then
-		Net.Notify(player, `You grabbed a {item} Case! Get it home!`, "good")
+		Net.Notify(player, `You got a {item} Case! RUN HOME!`, "good")
 	elseif boss then
-		Net.Notify(player, `You stole a {Items.DisplayName(item)}! RUN home before you're caught!`, "good")
+		Net.Notify(player, `You got it! RUN HOME!`, "good")
 	elseif stolenFrom then
-		Net.Notify(player, `You stole a {Items.DisplayName(item)}! Get it home before they catch you!`, "good")
+		Net.Notify(player, `You took a {Items.DisplayName(item)}! RUN HOME!`, "good")
 	else
-		Net.Notify(player, `You grabbed a {Items.DisplayName(item)}! RUN!`, "good")
+		Net.Notify(player, `You got a {Items.DisplayName(item)}! RUN HOME!`, "good")
 	end
 end
 
@@ -640,7 +640,7 @@ local function deposit(player: Player)
 	end
 	local profile = DataService.Get(player)
 	if not profile or #profile.Knives >= profile.Slots then
-		Net.Notify(player, "Your vault wall is full! Sell a knife to make room.", "bad")
+		Net.Notify(player, "Your vault is full! Sell a knife first.", "bad")
 		Offers.Show(player, "Mount", "Your wall is full! Add another mount instantly.")
 		endCarry(player, false, nil, "vault_full")
 		return
@@ -784,10 +784,10 @@ local function tick()
 				player:SetAttribute("PlaceReady", true)
 				local profile = DataService.Get(player)
 				if profile and #profile.Knives >= profile.Slots then
-					Net.Notify(player, "Your vault is full! Sell a knife or add a floor to make room.", "bad")
+					Net.Notify(player, "Your vault is full! Sell a knife first.", "bad")
 					Offers.Show(player, "Mount", "Your vault is full! Add the next floor instantly.")
 				else
-					Net.Notify(player, "Walk to the glowing plate and press E to place your knife!", "good")
+					Net.Notify(player, "Walk to a glowing plate to put it down!", "good")
 				end
 			end
 		elseif player:GetAttribute("PlaceReady") then
@@ -807,7 +807,7 @@ local function tick()
 				warn(
 					`[StealService] {player.Name} moved {math.floor(flat)} studs in {elapsed}s while carrying, dropping it`
 				)
-				Net.Notify(player, "Whoa, too fast! It slipped out of your hands.", "bad")
+				Net.Notify(player, "Oops! You dropped it.", "bad")
 				endCarry(player, false, carry.LastPos, "slipped")
 				continue
 			end
@@ -925,7 +925,7 @@ function StealService.Resume(player: Player)
 		release(player)
 		return
 	end
-	Net.Notify(player, "Back from the round - you're still holding it! RUN!", "good")
+	Net.Notify(player, "You still have it! RUN HOME!", "good")
 	-- The boss picks the chase back up (no free escapes by waiting out a round)
 	if held.Boss and StealService.OnResumeBoss then
 		StealService.OnResumeBoss(player, held.Boss.Zone, held.ChaserAt, held.Chasing)
@@ -969,7 +969,7 @@ function StealService.KnockLoose(victim: Player, attacker: Player, from: Vector3
 		return
 	end
 	local at = root.Position
-	local item, kind, boss = carry.Item, carry.Kind, carry.Boss
+	local item, boss = carry.Item, carry.Boss
 	if boss then
 		endCarry(victim, true, nil, "knocked")
 		StealService.DropKnife(item, at)
@@ -981,10 +981,9 @@ function StealService.KnockLoose(victim: Player, attacker: Player, from: Vector3
 	local push = (if away.Magnitude > 0.1 then away.Unit else -root.CFrame.LookVector) * 50 + Vector3.new(0, 45, 0)
 	Ragdoll.Tumble(victim, push, 1.4)
 	Net.Remotes.Effect:FireAllClients("Hit", at)
-	local what = if kind == "Case" then `{item} Case` else Items.DisplayName(item)
-	Net.Notify(victim, `{attacker.DisplayName} knocked the {what} out of your hands!`, "bad")
+	Net.Notify(victim, `{attacker.DisplayName} made you drop it!`, "bad")
 	Net.Remotes.Effect:FireClient(victim, "Tip", "Knocked")
-	Net.Notify(attacker, `You knocked {victim.DisplayName}'s {what} loose - grab it!`, "good")
+	Net.Notify(attacker, "They dropped it! Grab it!", "good")
 end
 
 -- A boss's knife being carried goes straight back on its wall (no penalty: the Blood Moon closing

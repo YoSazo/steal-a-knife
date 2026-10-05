@@ -383,6 +383,7 @@ local function buildBases()
 	local half = GameConfig.ArenaWidth / 2
 
 	for i = 1, MapService.MaxBases do
+		task.wait() -- (one vault a frame: never trips the script timeout)
 		-- 1-6 down the left side, 7-12 down the right, 13-16 across the back of the plaza
 		local center: Vector3, frame: CFrame
 		local sideways = i <= COLUMN * 2
@@ -963,17 +964,24 @@ function MapService.Init()
 	spawn.Duration = 0
 	spawn.Parent = root
 
+	-- A breath between the big steps: Roblox stops a script that runs ~10 s without yielding
+	-- ("Script timeout"), and on a busy server the whole map can take that long
 	buildLighting()
 	buildArena()
+	task.wait()
 	buildBases()
+	task.wait()
 	buildIsland()
+	task.wait()
 	ManorDecor.ShellZones = BIOME_SHELLS
 	ManorDecor.Build(root, MapService.Arena :: Bounds, MapService.Hideaways)
+	task.wait()
 	-- Nothing from the plaza decor in the way of the wheels outside the vault gates
 	for _, base in MapService.Bases do
 		ManorDecor.ClearArea((base.Wheel.PrimaryPart :: BasePart).Position, 9, 9)
 		MapService.SetFloors(base, 1)
 	end
+	task.wait()
 	MapService.BuildRoundMap("Office")
 	noLights()
 end

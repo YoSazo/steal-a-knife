@@ -41,7 +41,7 @@ local function equip(player: Player, name: unknown): boolean
 		return false
 	end
 	if name ~= "" and not table.find(profile.Knives, name) then
-		Net.Notify(player, "That knife isn't in your vault any more", "bad")
+		Net.Notify(player, "That knife is gone", "bad")
 		return false
 	end
 	DataService.Update(player, function(p)
@@ -73,7 +73,7 @@ local function sell(player: Player, index: unknown): boolean
 	end
 	local name = profile.Knives[index]
 	if not name or index % 1 ~= 0 then
-		Net.Notify(player, "That knife isn't on your plates any more", "bad")
+		Net.Notify(player, "That knife is gone", "bad")
 		return false
 	end
 	local price = InventoryService.SellPrice(name)

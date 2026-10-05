@@ -189,7 +189,7 @@ function Fuel.GivePowerXP(player: Player, amount: number)
 				)
 		)
 		local name = Items.PowerName(id)
-		Net.Notify(player, `⚡ {name} reached Lv {after}!`, "good")
+		Net.Notify(player, `⚡ {name} is now level {after}!`, "good")
 		if after % 25 == 0 then
 			Net.Announce(
 				`⚡ {player.DisplayName}'s {name} reached Lv {after}!`,

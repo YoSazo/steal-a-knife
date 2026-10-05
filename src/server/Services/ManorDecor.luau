@@ -1125,6 +1125,7 @@ function ManorDecor.Build(root: Instance, arena: Bounds, _hideaways: { Bounds })
 
 	-- Every zone (its name pops up on screen as you walk in: client/Transitions): sconces down both walls, its own biome inside
 	for i, zone in GameConfig.Zones do
+		task.wait() -- (one biome a frame)
 		local z0 = (i - 1) * depth
 		local color: Color3 = zone.Color
 		-- Fireflies in the zone's colour, and mist creeping along the ground

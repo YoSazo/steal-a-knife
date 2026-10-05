@@ -428,9 +428,6 @@ local function lootKnife(round: Round, victim: Player)
 		return
 	end
 	if DataService.IsNewPlayer(victim, profile) then
-		if round.Murderer then
-			Net.Notify(round.Murderer, `{round.Names[victim] or "They"} is new here - nothing to loot.`, "info")
-		end
 		return
 	end
 	-- Knife Insurance (Robux charge): the Murderer gets nothing
@@ -442,15 +439,7 @@ local function lootKnife(round: Round, victim: Player)
 		end
 	end
 	if hasLoot and DataService.UseCharge(victim, "Insurance") then
-		local left = DataService.Get(victim)
-		Net.Notify(
-			victim,
-			`🛡️ Knife Insurance kept your knives safe! ({left and left.Charges.Insurance or 0} left)`,
-			"good"
-		)
-		if round.Murderer then
-			Net.Notify(round.Murderer, `{round.Names[victim] or "They"} had Knife Insurance - nothing to loot.`, "info")
-		end
+		Net.Notify(victim, "🛡️ Your insurance saved your knife!", "good")
 		round.AtRisk[victim] = nil
 		Analytics.Track(victim, "round.insured_save", roundProps(round, victim))
 		return
@@ -493,14 +482,14 @@ local function lootKnife(round: Round, victim: Player)
 		if round.Murderer then
 			Analytics.Track(round.Murderer, "round.knife_looted", roundProps(round, round.Murderer, lootProps))
 		end
-		Net.Notify(victim, `The Murderer took your {Items.DisplayName(name)}! Shoot them to get it back.`, "bad")
+		Net.Notify(victim, `The Murderer took your {Items.DisplayName(name)}!`, "bad")
 		Offers.Later(
 			victim,
 			"Insurance3",
 			`The Murderer took your {Items.DisplayName(name)}. Knife Insurance stops that happening again.`
 		)
 		if round.Murderer then
-			Net.Notify(round.Murderer, `Looted a {Items.DisplayName(name)} ({parsed.Knife.Rarity})!`, "good")
+			Net.Notify(round.Murderer, `You took their {Items.DisplayName(name)}!`, "good")
 		end
 		ReplicatedStorage:SetAttribute("Loot", #round.Loot)
 	end
@@ -524,7 +513,7 @@ local function giveKnife(player: Player, item: string)
 	else
 		local value = math.floor(Items.Income(item) * GameConfig.SellSeconds)
 		DataService.AddCash(player, value, "round_loot_sold")
-		Net.Notify(player, `Rack full - {Items.DisplayName(item)} sold for {Format.Cash(value)}`, "info")
+		Net.Notify(player, `Your vault is full, so you got {Format.Cash(value)} instead`, "info")
 	end
 end
 
@@ -613,10 +602,9 @@ local function eliminate(round: Round, victim: Player, killer: Player?, fatal: b
 		DataService.Update(killer, function(p)
 			p.TotalKills += 1
 		end)
-		Net.Notify(killer, `Eliminated {round.Names[victim] or victim.DisplayName}! +{Format.Cash(amount)}`, "good")
+		Net.Notify(killer, `Got one! +{Format.Cash(amount)}`, "good")
 	end
 	if killer or fatal then
-		Net.Notify(victim, "You were killed! You'll respawn at your vault.", "bad")
 		if root then
 			Net.Remotes.Effect:FireAllClients("Hit", root.Position)
 		end
@@ -649,9 +637,9 @@ local function strike(round: Round, victim: Player)
 		if root then
 			Net.Remotes.Effect:FireAllClients("Shield", root.Position)
 		end
-		Net.Notify(victim, "Your Shield blocked the hit! RUN!", "good")
+		Net.Notify(victim, "Your shield saved you! RUN!", "good")
 		if round.Murderer then
-			Net.Notify(round.Murderer, `{round.Names[victim] or "Their"}'s Shield blocked you!`, "bad")
+			Net.Notify(round.Murderer, "They had a shield!", "bad")
 		end
 		return
 	end
@@ -676,9 +664,9 @@ local function strike(round: Round, victim: Player)
 					Stealth.Vanish(victim, 1.5 * (1 + 0.2 * GameConfig.PowerProgress(level)))
 				end
 			end)
-			Net.Notify(victim, "SECOND LIFE! You got back up - RUN!", "good")
+			Net.Notify(victim, "Second life! You got back up - RUN!", "good")
 			if round.Murderer then
-				Net.Notify(round.Murderer, "They had a Second Life - they're back up!", "bad")
+				Net.Notify(round.Murderer, "They got back up!", "bad")
 			end
 			revealPower(round)
 			return
@@ -735,7 +723,7 @@ local function killBot(round: Round, bot: Bot, killer: Player?)
 		round.Kills += 1
 		if killer then
 			local amount = pay(round, killer, GameConfig.RoundPay.Kill, GameConfig.BotKillPay)
-			Net.Notify(killer, `Eliminated {bot.Name}! +{Format.Cash(amount)}`, "good")
+			Net.Notify(killer, `Got one! +{Format.Cash(amount)}`, "good")
 			if killer == round.Murderer then
 				onMurderKill(round, bot.Root.Position)
 				-- (a bot is worth half a player: solo rounds still level you, they just can't be farmed)
@@ -1208,7 +1196,7 @@ local function usePerk(round: Round, direction: Vector3)
 	end
 	if perk.Uses then
 		if round.PerkUses >= perk.Uses then
-			Net.Notify(murderer, `No {perk.DisplayName} left this round`, "bad")
+			Net.Notify(murderer, `No more {perk.DisplayName} this round`, "bad")
 			return
 		end
 		round.PerkUses += 1
@@ -1225,12 +1213,12 @@ local function usePerk(round: Round, direction: Vector3)
 	if perkId == "SpamKnife" then
 		-- A burst of click-throwing (Lv 100 never gets here: it's on all round)
 		murderer:SetAttribute("SpamUntil", workspace:GetServerTimeNow() + perk.Duration)
-		Net.Notify(murderer, `SPAM KNIFE! {math.floor(perk.Duration)}s of throwing`, "good")
+		Net.Notify(murderer, `SPAM KNIFE! Throw for {math.floor(perk.Duration)} seconds!`, "good")
 	elseif perkId == "Hellfire" then
 		-- For a few seconds every click throws a flaming knife
 		murderer:SetAttribute("SpamUntil", workspace:GetServerTimeNow() + perk.Duration)
 		Net.Remotes.Effect:FireAllClients("Hellfire", root.Position)
-		Net.Notify(murderer, "HELLFIRE! Click to throw flaming knives!", "bad")
+		Net.Notify(murderer, "HELLFIRE! Throw fire knives!", "bad")
 	elseif perkId == "Identifier" then
 		-- Who has the Revolver? Outlined through walls for a few seconds, on the Murderer's screen only
 		local gunner = round.Gunner
@@ -1238,11 +1226,10 @@ local function usePerk(round: Round, direction: Vector3)
 			Net.Remotes.Effect:FireClient(murderer, "Radar", {
 				{ Model = gunner.Character, Color = Color3.fromRGB(255, 220, 60) },
 			}, perk.Duration)
-			Net.Notify(murderer, `{round.Names[gunner] or "Someone"} has the Revolver!`, "bad")
+			Net.Notify(murderer, `{round.Names[gunner] or "Someone"} has the gun!`, "bad")
 		else
-			Net.Notify(murderer, "Nobody has the Revolver yet...", "info")
+			Net.Notify(murderer, "Nobody has the gun yet", "info")
 		end
-		Net.Notify(murderer, `Identifier: {perk.Uses - round.PerkUses} left`, "info")
 	elseif perkId == "ShapeShifter" then
 		local taken: { [string]: boolean } = {}
 		for _, name in round.Names do
@@ -1273,10 +1260,10 @@ local function usePerk(round: Round, direction: Vector3)
 		local snares = round.Snares or {}
 		round.Snares = snares
 		table.insert(snares, { Part = snare, Stun = perk.Duration })
-		Net.Notify(murderer, "Snare set!", "good")
+		Net.Notify(murderer, "Trap set!", "good")
 	elseif perkId == "DecoyKnife" then
 		PowerService.Decoy(murderer, perk.Duration)
-		Net.Notify(murderer, "A fake you runs off - let the Sheriff chase it!", "good")
+		Net.Notify(murderer, "A fake you runs off!", "good")
 	elseif perkId == "FlashKnife" then
 		local look = Vector3.new(direction.X, 0, direction.Z)
 		look = if look.Magnitude > 0.01 then look.Unit else root.CFrame.LookVector
@@ -1327,7 +1314,7 @@ local function stepSnares(round: Round)
 			if r and not isKiller(round, other) and near(r.Position) then
 				other:SetAttribute("StunnedUntil", now + snare.Stun)
 				BaseService.RefreshWalkSpeed(other)
-				Net.Notify(other, "SNARED! You're stuck!", "bad")
+				Net.Notify(other, "You're stuck in a trap!", "bad")
 				task.delay(snare.Stun, function()
 					BaseService.RefreshWalkSpeed(other)
 				end)
@@ -1365,11 +1352,6 @@ onMurderKill = function(round: Round, _at: Vector3)
 		if root then
 			Net.Remotes.Effect:FireAllClients("Fury", root.Position, round.FuryKills)
 		end
-		Net.Notify(
-			murderer,
-			`FURY x{round.FuryKills}: throws +{math.floor(round.FuryKills * perk.PerKill * 100)}% faster`,
-			"bad"
-		)
 	elseif perkId == "Invisiknife" then
 		Stealth.Vanish(murderer, perk.Duration)
 	end
@@ -1552,7 +1534,7 @@ giveRevolver = function(round: Round, player: Player)
 	ReplicatedStorage:SetAttribute("Revolver", "Taken")
 	-- The role card said Innocent a moment ago: show the real role now
 	Net.Remotes.Role:FireClient(player, "Sheriff", round.Names[player])
-	Net.Notify(player, "You're the SHERIFF! Shoot the Murderer - but hit an innocent and you're out too.", "good")
+	Net.Notify(player, "You're the SHERIFF! Shoot the Murderer. Don't hit anyone else!", "good")
 end
 giveRevolverToBot = function(round: Round, bot: Bot)
 	local tool = Revolver.BuildTool()
@@ -1597,12 +1579,7 @@ spawnRevolver = function(round: Round, position: Vector3?)
 		round.Gunner = player
 		ReplicatedStorage:SetAttribute("Revolver", "Taken")
 		Analytics.Track(player, "round.revolver_pickup", roundProps(round, player))
-		Net.Notify(player, "You have the Revolver! Shoot the Murderer, but don't hit an innocent!", "good")
-		for other_ in round.Alive do
-			if other_ ~= player then
-				Net.Notify(other_, "Someone picked up the Revolver...", "info")
-			end
-		end
+		Net.Notify(player, "You got the gun! Shoot the Murderer!", "good")
 	end)
 end
 
@@ -1632,7 +1609,7 @@ local function stealPower(round: Round, hero: Player?)
 	BaseService.RefreshRack(murderer)
 	local perk = GameConfig.Perks[power]
 	local powerName = if perk then perk.DisplayName else power
-	Net.Notify(murderer, `Your {powerName} was stolen! Revenge luck: 3x power odds for 30 minutes.`, "bad")
+	Net.Notify(murderer, `The Sheriff took your {powerName}! You get extra luck for a while.`, "bad")
 	local heroProfile = hero and DataService.Get(hero)
 	local target = hero and BaseService.ProtectedItem(hero)
 	if hero and heroProfile and target then
@@ -1711,7 +1688,7 @@ local function onShoot(player: Player, aim: unknown)
 	local hitBot = botAt(round, hit.Instance)
 	if hitBot then
 		if hitBot ~= round.MurdererBot then
-			Net.Notify(player, "You shot an innocent! That costs you your life.", "bad")
+			Net.Notify(player, "Oops! That wasn't the Murderer.", "bad")
 			eliminate(round, player, nil, true)
 		end
 		killBot(round, hitBot, if hitBot == round.MurdererBot then player else nil)
@@ -1738,8 +1715,8 @@ local function onShoot(player: Player, aim: unknown)
 		if victimRoot then
 			Net.Remotes.Effect:FireAllClients("Shield", victimRoot.Position)
 		end
-		Net.Notify(victim, "BULLETPROOF! That shot bounced off. Next one counts!", "good")
-		Net.Notify(player, "They're BULLETPROOF! Shoot again!", "bad")
+		Net.Notify(victim, "Bulletproof! That shot bounced off!", "good")
+		Net.Notify(player, "It bounced off! Shoot again!", "bad")
 		return
 	end
 	if shotKiller then
@@ -1765,10 +1742,10 @@ local function onShoot(player: Player, aim: unknown)
 		and workspace:GetServerTimeNow() < victim.Character:GetAttribute("ShieldUntil") :: number
 	then
 		victim.Character:SetAttribute("ShieldUntil", nil)
-		Net.Notify(victim, "Your Shield stopped a bullet!", "good")
+		Net.Notify(victim, "Your shield stopped a bullet!", "good")
 	else
 		-- Shot an innocent: both go down, and the Revolver drops where the shooter stood
-		Net.Notify(player, "You shot an innocent! That costs you your life.", "bad")
+		Net.Notify(player, "Oops! That wasn't the Murderer.", "bad")
 		eliminate(round, victim, nil, true)
 		eliminate(round, player, nil, true)
 	end
@@ -1862,7 +1839,7 @@ local function botShoot(round: Round, bot: Bot, target: BasePart)
 		round.BulletproofUsed = true
 		revealPower(round)
 		Net.Remotes.Effect:FireAllClients("Shield", target.Position)
-		Net.Notify(murderer, "BULLETPROOF! That shot bounced off. Next one counts!", "good")
+		Net.Notify(murderer, "Bulletproof! That shot bounced off!", "good")
 		return
 	end
 	round.ShotByBot = true
@@ -1916,9 +1893,6 @@ local function innocentBrain(round: Round, bot: Bot, now: number)
 				pickup:Destroy()
 				round.Revolver = nil
 				giveRevolverToBot(round, bot)
-				for other in round.Alive do
-					Net.Notify(other, "Someone picked up the Revolver...", "info")
-				end
 			end
 			return
 		end
@@ -2155,11 +2129,6 @@ local function giveWeapon(round: Round)
 		"bad"
 	)
 	if perk then
-		Net.Notify(
-			murderer,
-			`Perk: {perk.DisplayName} - {perk.Description}{if perk.Passive then "" else " (Q)"}`,
-			"bad"
-		)
 		-- Only active perks get a button
 		Net.Remotes.AbilityState:FireClient(murderer, if perk.Passive then nil else perk.DisplayName, 0)
 		murderer:SetAttribute("Perk", knifePerkId(round))
@@ -2478,7 +2447,7 @@ local function startRound(participants: { Player })
 				local tool = Revolver.BuildTool()
 				tool.Parent = player:FindFirstChildOfClass("Backpack")
 				round.Gunner2, round.GunTool2 = player, tool
-				Net.Notify(player, "You're the second SHERIFF! Two Murderers this round - shoot carefully.", "good")
+				Net.Notify(player, "You're a SHERIFF too! There are 2 Murderers!", "good")
 			else
 				giveRevolverToBot(round, second)
 			end
@@ -2498,13 +2467,8 @@ local function startRound(participants: { Player })
 				table.insert(choices, item)
 			end
 		end
-		if #choices > 0 and (profile.Charges.Insurance or 0) > 0 then
-			Net.Notify(
-				player,
-				`🛡️ Your knives are insured this round ({profile.Charges.Insurance} Knife Insurance left)`,
-				"good"
-			)
-		elseif #choices > 0 then
+		-- (insured players aren't shown a knife at risk: there isn't one)
+		if #choices > 0 and (profile.Charges.Insurance or 0) == 0 then
 			local chosen = choices[rng:NextInteger(1, #choices)]
 			round.AtRisk[player] = chosen
 			Net.Remotes.Effect:FireClient(player, "AtRisk", choices, chosen)
@@ -2516,7 +2480,7 @@ local function startRound(participants: { Player })
 		if current == round and not round.Gunner and not round.GunnerBot and not round.Revolver then
 			spawnRevolver(round, nil)
 			for player in round.Alive do
-				Net.Notify(player, "A Revolver appeared somewhere in the building!", "info")
+				Net.Notify(player, "A gun dropped somewhere. Find it!", "info")
 			end
 		end
 	end)
@@ -2615,11 +2579,11 @@ local function endRound(round: Round)
 		end
 	end
 	for killer, count in kept do
-		Net.Notify(killer, `{count} looted knife(s) added to your vault!`, "good")
+		Net.Notify(killer, `You kept {count} knife(s)!`, "good")
 	end
 	if hero and hero.Parent then
 		local amount = pay(round, hero, GameConfig.RoundPay.Hero)
-		Net.Notify(hero, `HERO! You stopped the Murderer! +{Format.Cash(amount)}`, "good")
+		Net.Notify(hero, `HERO! +{Format.Cash(amount)}`, "good")
 	end
 	ReplicatedStorage:SetAttribute("Loot", nil)
 	if round.Partner and round.Partner.Parent and not innocentsWon then
@@ -2659,15 +2623,11 @@ local function endRound(round: Round)
 			Net.Animate(player.Character, "Cheer")
 		end
 		player:SetAttribute("BoostUntil", workspace:GetServerTimeNow() + GameConfig.BoostDuration)
-		Net.Notify(
-			player,
-			`Survivor boost: {GameConfig.BoostMultiplier}x vault income for {GameConfig.BoostDuration}s!`,
-			"info"
-		)
+		Net.Notify(player, `{GameConfig.BoostMultiplier}x money for {GameConfig.BoostDuration} seconds!`, "info")
 	end
 	if murderer and murdererPresent then
 		if hero then
-			Net.Notify(murderer, "You were shot! Your loot went back to its owners.", "bad")
+			Net.Notify(murderer, "You got shot! The knives you took went back.", "bad")
 		elseif not innocentsWon and round.Kills > 0 then -- no bonus when everyone just left
 			-- One against the whole lobby: the prize grows with every real player they got
 			local bonus = pay(round, murderer, GameConfig.RoundPay.Wipe)
@@ -2677,7 +2637,7 @@ local function endRound(round: Round)
 			DataService.Update(murderer, function(p)
 				p.RoundsWon += 1
 			end)
-			Net.Notify(murderer, `You got everyone! Bonus +{Format.Cash(bonus)}`, "good")
+			Net.Notify(murderer, `You got everyone! +{Format.Cash(bonus)}`, "good")
 			if round.HumanKills > 0 then
 				local config = GameConfig.WipeCase
 				local rarity = if #round.Innocents >= config.BigLobby then config.Big else config.Small
@@ -2686,7 +2646,7 @@ local function endRound(round: Round)
 						return
 					end
 					if StealService.OpenCase(murderer, rarity) then
-						Net.Notify(murderer, `Wipe prize: a {rarity} Case!`, "good")
+						Net.Notify(murderer, `You won a {rarity} Case!`, "good")
 					else
 						local value = 0
 						for _, entry in GameConfig.CaseShop do
@@ -2695,16 +2655,12 @@ local function endRound(round: Round)
 							end
 						end
 						DataService.AddCash(murderer, value, "round_wipe")
-						Net.Notify(
-							murderer,
-							`Wipe prize: your wall is full, so +{Format.Cash(value)} instead of a {rarity} Case`,
-							"good"
-						)
+						Net.Notify(murderer, `Your vault is full, so +{Format.Cash(value)} instead`, "good")
 					end
 				end)
 			end
 		else
-			Net.Notify(murderer, `Time's up! {round.Kills} eliminated.`, "info")
+			Net.Notify(murderer, "Time's up!", "info")
 		end
 	end
 
