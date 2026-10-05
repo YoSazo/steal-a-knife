@@ -15,6 +15,7 @@ local RunService = game:GetService("RunService")
 local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
+local KnifePowers = require(ReplicatedStorage.Shared.Config.KnifePowers)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local Net = require(script.Parent.Parent.Remotes)
@@ -658,7 +659,12 @@ local function deposit(player: Player)
 	elseif carry.StolenFrom then
 		Fuel.GivePowerXP(player, GameConfig.PowerXP.MoonSteal)
 	end
-	local item = Fuel.RollPower(player, carry.Item)
+	-- The tutorial's first knife always gets the starter power (Shadow: vanish), so every new player
+	-- starts with the same simple, easy-to-show power; after that it's luck
+	local starter = not profile.TutorialDone and profile.TutorialStep <= 2 and #profile.Knives <= 1
+	local item = if starter
+		then Items.WithPower(carry.Item, KnifePowers.Starter)
+		else Fuel.RollPower(player, carry.Item)
 	local parsed = Items.Parse(item) :: Items.Item
 	local isNew = not table.find(profile.Discovered, parsed.Name)
 	if carry.Boss then

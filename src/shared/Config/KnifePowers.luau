@@ -91,6 +91,27 @@ KnifePowers.List = {
 	},
 } :: { KnifePower }
 
+-- A few kid-simple words each: { Murderer power, Innocent power } (menus, the tutorial showcase;
+-- the long descriptions live in GameConfig)
+KnifePowers.Short = {
+	Invisiknife = { "Vanish after every kill", "Turn invisible!" },
+	Identifier = { "See who has the gun", "See the Murderer through walls" },
+	Snare = { "Hide a trap", "Trap the Murderer" },
+	ShapeShifter = { "Look like someone else", "Turn into furniture" },
+	DecoyKnife = { "A fake you runs off", "A fake you runs off" },
+	FlashKnife = { "Blind them!", "Blind the Murderer!" },
+	Bulletproof = { "Survive one shot", "Block one stab" },
+	GhostKnife = { "Knives fly through people", "Block the way" },
+	Fury = { "Faster throws every kill", "Run super fast!" },
+	LaserKnife = { "Lightning-fast throws", "Blink forward" },
+	ExplodingKnife = { "Kills explode!", "Smoke pushes them back" },
+	SpamKnife = { "Throw knives nonstop!", "Survive one hit" },
+	Hellfire = { "Flaming knives!", "A wall of fire" },
+}
+
+-- The power every new player's first (tutorial) knife gets: simple and fair for everyone
+KnifePowers.Starter = "Invisiknife"
+
 local byId: { [string]: KnifePower } = {}
 for _, power in KnifePowers.List do
 	byId[power.Id] = power

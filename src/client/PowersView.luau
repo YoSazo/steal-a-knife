@@ -26,23 +26,6 @@ local GREY = Color3.fromRGB(110, 115, 130)
 local MURDERER = Color3.fromRGB(255, 130, 130)
 local INNOCENT = Color3.fromRGB(140, 215, 255)
 
--- A few words each side (the long descriptions live in GameConfig)
-local SHORT: { [string]: { string } } = {
-	Invisiknife = { "Vanish after every kill", "Turn invisible!" },
-	Identifier = { "See who has the gun", "See the Murderer through walls" },
-	Snare = { "Hide a trap", "Trap the Murderer" },
-	ShapeShifter = { "Look like someone else", "Turn into furniture" },
-	DecoyKnife = { "A fake you runs off", "A fake you runs off" },
-	FlashKnife = { "Blind them!", "Blind the Murderer!" },
-	Bulletproof = { "Survive one shot", "Block one stab" },
-	GhostKnife = { "Knives fly through people", "Block the way" },
-	Fury = { "Faster throws every kill", "Run super fast!" },
-	LaserKnife = { "Lightning-fast throws", "Blink forward" },
-	ExplodingKnife = { "Kills explode!", "Smoke pushes them back" },
-	SpamKnife = { "Throw knives nonstop!", "Survive one hit" },
-	Hellfire = { "Flaming knives!", "A wall of fire" },
-}
-
 local function levels(): { [string]: number }
 	local out = {}
 	for _, entry in Ui.list(player:GetAttribute("PowerLevels")) do
@@ -86,7 +69,7 @@ function View.Build(): (Frame, () -> ())
 	local equipItem: { [string]: string } = {}
 	for i, power in KnifePowers.List do
 		local tier = KnifePowers.TierById[power.Tier]
-		local short = SHORT[power.Id] or { "", "" }
+		local short = KnifePowers.Short[power.Id] or { "", "" }
 		local row: Frame = Ui.new("Frame", {
 			LayoutOrder = KnifePowers.TierRank(power.Tier) * 100 + i,
 			Size = UDim2.new(1, 0, 0, 110),

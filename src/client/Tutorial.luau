@@ -19,6 +19,7 @@ local TweenService = game:GetService("TweenService")
 
 local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
+local PowerShowcase = require(script.Parent.PowerShowcase)
 local Sounds = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Sounds"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
@@ -597,6 +598,8 @@ local function run(startAt: number, replay: boolean)
 			"You've got it! Steal better knives - the best one you equip is your Murderer weapon. Good luck!"
 		-- (its own sound: the power-reveal sting here made equipping sound like the steal again)
 		Effects.Sound(Sounds.Cheer, nil, 0.5)
+		-- Then what that knife's power actually does, with a one-tap demo
+		task.delay(1.2, PowerShowcase.Show)
 		task.delay(4, function()
 			TweenService:Create(banner, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
 			task.wait(0.5)
