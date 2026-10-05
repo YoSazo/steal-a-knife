@@ -329,17 +329,28 @@ local function buildRig(config: ZoneConfig, shadow: boolean): Model
 	text(alert, "!", Color3.fromRGB(255, 60, 60), UDim2.fromScale(0, 0), UDim2.fromScale(1, 1))
 
 	if shadow then
-		-- A shadow: the same person, see-through and glowing in the zone's colour
+		-- A shadow: the same person as a dark, nearly solid silhouette in the zone's colour with a
+		-- glowing outline (ForceField was so see-through you could miss them chasing you)
+		local dark = config.Color:Lerp(Color3.new(0, 0, 0), 0.55)
 		for _, d in rig:GetDescendants() do
 			if d:IsA("BasePart") and d.Transparency < 1 then
-				d.Material = Enum.Material.ForceField
-				d.Color = config.Color
+				d.Material = Enum.Material.SmoothPlastic
+				d.Color = dark
+				d.Transparency = 0.15
 			elseif d:IsA("Decal") then
-				d.Transparency = 0.5
+				d.Transparency = 0.2
 			elseif d:IsA("Clothing") then
 				d:Destroy()
 			end
 		end
+		local glow = Instance.new("Highlight")
+		glow.Name = "ShadowGlow"
+		glow.FillColor = config.Color
+		glow.FillTransparency = 0.7
+		glow.OutlineColor = config.Color:Lerp(Color3.new(1, 1, 1), 0.3)
+		glow.OutlineTransparency = 0
+		glow.DepthMode = Enum.HighlightDepthMode.Occluded
+		glow.Parent = rig
 	end
 	return rig
 end
