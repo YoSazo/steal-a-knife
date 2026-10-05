@@ -723,8 +723,8 @@ local handlers: { [string]: (...any) -> () } = {
 		Effects.Sound(Sounds.GateHit, position, 0.4)
 		local _ = color
 	end,
+	-- A boss is coming for you: a quick red flash (the alarm bell rang on every steal - too much)
 	Alarm = function()
-		Effects.Sound(Sounds.Alarm, nil, 0.6)
 		flash(nil, 0.25, 0.8)
 	end,
 	Stolen = function(position: Vector3, color: Color3)
