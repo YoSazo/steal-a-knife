@@ -560,6 +560,70 @@ function Transitions.Init()
 			end
 		end
 	)
+	-- The Murderer's haul: "You stole 3 knives!" with every knife's picture and name (up to 5, then
+	-- "+N more"), for a few seconds once you're back in the hub
+	local function showHaul(items: { string })
+		local shown = math.min(#items, 5)
+		local width = math.max(360, shown * 140 + 40)
+		local haul = Instance.new("Frame")
+		haul.Name = "LootHaul"
+		haul.AnchorPoint = Vector2.new(0.5, 0.5)
+		haul.Position = UDim2.fromScale(0.5, 0.42)
+		haul.Size = UDim2.fromOffset(width, if #items > shown then 300 else 270)
+		haul.BackgroundColor3 = Color3.fromRGB(22, 16, 28)
+		haul.BackgroundTransparency = 0.1
+		haul.ZIndex = 45
+		haul.Parent = Ui.root
+		Instance.new("UICorner", haul).CornerRadius = UDim.new(0, 18)
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 4
+		stroke.Color = Color3.fromRGB(255, 90, 90)
+		stroke.Parent = haul
+		label(haul, {
+			Position = UDim2.fromOffset(16, 12),
+			Size = UDim2.new(1, -32, 0, 48),
+			Text = `You stole {#items} {if #items == 1 then "knife" else "knives"}!`,
+			TextColor3 = Color3.fromRGB(255, 110, 110),
+			ZIndex = 46,
+		})
+		for i = 1, shown do
+			local item = items[i]
+			local parsed = Items.Parse(item)
+			local x = 20 + (i - 1) * 140 + (width - 40 - shown * 140) / 2
+			Ui.art(haul, "", {
+				Position = UDim2.fromOffset(x + 10, 70),
+				Size = UDim2.fromOffset(120, 120),
+				Image = if parsed then (VoxelKnives[parsed.Name] or KnifeIcons[parsed.Name] or "") else "",
+				ZIndex = 46,
+			})
+			label(haul, {
+				Position = UDim2.fromOffset(x, 196),
+				Size = UDim2.fromOffset(140, 56),
+				Text = Items.DisplayName(item),
+				TextColor3 = Items.Color(item),
+				TextWrapped = true,
+				ZIndex = 46,
+			})
+		end
+		if #items > shown then
+			label(haul, {
+				Position = UDim2.new(0, 16, 1, -44),
+				Size = UDim2.new(1, -32, 0, 30),
+				Text = `+{#items - shown} more in your vault`,
+				ZIndex = 46,
+			})
+		end
+		local pop = Instance.new("UIScale")
+		pop.Scale = 0.6
+		pop.Parent = haul
+		TweenService:Create(pop, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+		task.delay(5, function()
+			TweenService:Create(pop, TweenInfo.new(0.2), { Scale = 0.8 }):Play()
+			task.wait(0.2)
+			haul:Destroy()
+		end)
+	end
+
 	local killToken = 0
 	local function showKill(info: { [string]: any })
 		killToken += 1
@@ -620,6 +684,12 @@ function Transitions.Init()
 			kill.Visible = false
 			if type(text) == "table" then
 				showCard(text)
+			end
+			return
+		end
+		if kind == "LootHaul" then
+			if type(text) == "table" and #text > 0 then
+				task.spawn(showHaul, text)
 			end
 			return
 		end

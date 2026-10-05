@@ -10,13 +10,11 @@
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 
 local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
-local Raid = require(script.Parent.Raid)
 local Sounds = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Sounds"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
@@ -164,21 +162,14 @@ function Atmosphere.Init()
 	player:GetAttributeChangedSignal("InRound"):Connect(refreshSky)
 	refreshSky()
 
-	-- Dread: a red vignette as the Murderer closes in (no heartbeat any more: too scary) ------------
+	-- (the red "Murderer is close" vignette is gone: it showed even with the knife away, and the
+	-- round reads cleaner without it. This screen layer still carries the Flash white-out.)
 	local dreadGui = new("ScreenGui", {
 		Name = "Dread",
 		IgnoreGuiInset = true,
 		DisplayOrder = 3,
 		ResetOnSpawn = false,
 	}, player:WaitForChild("PlayerGui"))
-	local setDread = Raid.Vignette(dreadGui, Color3.fromRGB(150, 0, 10))
-	RunService.RenderStepped:Connect(function()
-		local dread = player:GetAttribute("Dread")
-		local level = if type(dread) == "number" and player:GetAttribute("InRound") then dread else 0
-		-- Pulse faster the closer they are
-		local pulse = 0.75 + 0.25 * math.abs(math.sin(os.clock() * (2.5 + level * 3)))
-		setDread(level * pulse)
-	end)
 
 	-- Flash blinding: a white-out that fades ---------------------------------------------------------
 	local whiteout = new("Frame", {

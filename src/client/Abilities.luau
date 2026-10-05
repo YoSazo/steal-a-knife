@@ -1216,6 +1216,7 @@ function Abilities.Init()
 		end)
 	end
 
+	local shootAt: (aim: Vector3) -> () -- (below, with the reload bar)
 	-- Revolver: every tool with the Revolver attribute fires at the aim point when activated
 	local function watchTool(tool: Instance)
 		if not tool:IsA("Tool") then
@@ -1228,13 +1229,99 @@ function Abilities.Init()
 			-- A finger fires where it taps (TouchTapInWorld below); a mouse fires at the cursor here
 			tool.Activated:Connect(function()
 				if not Ui.menuOpen() and UserInputService:GetLastInputType() ~= Enum.UserInputType.Touch then
-					Remotes.Shoot:FireServer(aimPoint())
+					shootAt(aimPoint())
 				end
 			end)
 		end
 	end
-	-- Phones, MM2 style: with the gun out, tap anyone on screen to shoot them; with the Murderer's
-	-- knife out, a tap stabs (Spam Knife: throws at the spot you tapped)
+	-- The Revolver's reload, shown on this screen: a shot taken during it would be thrown away
+	-- by the server (GameConfig.RevolverCooldown), so a bar fills under the screen centre instead of
+	-- the tap looking broken
+	local lastShot = -math.huge
+	local reloadBar: Frame = Ui.new("Frame", {
+		Name = "ReloadBar",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0.5, 40),
+		Size = UDim2.fromOffset(120, 12),
+		BackgroundColor3 = Color3.fromRGB(20, 18, 30),
+		BackgroundTransparency = 0.3,
+		Visible = false,
+		ZIndex = 20,
+	}, Ui.gui)
+	Ui.corner(reloadBar, 6)
+	local reloadFill: Frame = Ui.new("Frame", {
+		Size = UDim2.fromScale(0, 1),
+		BackgroundColor3 = Color3.fromRGB(255, 210, 70),
+		ZIndex = 21,
+	}, reloadBar)
+	Ui.corner(reloadFill, 6)
+	shootAt = function(aim: Vector3)
+		local now = os.clock()
+		if now - lastShot < GameConfig.RevolverCooldown then
+			-- still reloading: nudge the bar so the tap visibly registered
+			reloadBar.Size = UDim2.fromOffset(132, 14)
+			task.delay(0.1, function()
+				reloadBar.Size = UDim2.fromOffset(120, 12)
+			end)
+			return
+		end
+		lastShot = now
+		Remotes.Shoot:FireServer(aim)
+		reloadBar.Visible = true
+		reloadFill.Size = UDim2.fromScale(0, 1)
+		local reload = TweenService:Create(
+			reloadFill,
+			TweenInfo.new(GameConfig.RevolverCooldown, Enum.EasingStyle.Linear),
+			{ Size = UDim2.fromScale(1, 1) }
+		)
+		reload:Play()
+		task.delay(GameConfig.RevolverCooldown, function()
+			if lastShot == now then
+				reloadBar.Visible = false
+			end
+		end)
+	end
+
+	-- Phones, MM2 style: with the gun out, a quick tap anywhere shoots there the moment your finger
+	-- lifts. Our own tap check (short and still), because TouchTapInWorld waited and dropped any tap
+	-- with a little finger wobble. Gun still in the hotbar: the first tap pulls it out.
+	local touches: { [InputObject]: { At: number, From: Vector3 } } = {}
+	UserInputService.InputBegan:Connect(function(input: InputObject, processed: boolean)
+		if input.UserInputType == Enum.UserInputType.Touch and not processed then
+			touches[input] = { At = os.clock(), From = input.Position }
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input: InputObject)
+		local start = touches[input]
+		touches[input] = nil
+		if not start or not Ui.Phone or Ui.menuOpen() then
+			return
+		end
+		if os.clock() - start.At > 0.45 or (input.Position - start.From).Magnitude > 40 then
+			return -- a drag (turning the camera), not a tap
+		end
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if not character or not humanoid then
+			return
+		end
+		local held = character:FindFirstChildOfClass("Tool")
+		if held and held:GetAttribute("Revolver") then
+			shootAt(tapAim(Vector2.new(input.Position.X, input.Position.Y)))
+			return
+		end
+		if not held and player:GetAttribute("InRound") then
+			local backpack = player:FindFirstChildOfClass("Backpack")
+			for _, tool in if backpack then backpack:GetChildren() else {} do
+				if tool:IsA("Tool") and tool:GetAttribute("Revolver") then
+					humanoid:EquipTool(tool)
+					return
+				end
+			end
+		end
+	end)
+
+	-- Phones: with the Murderer's knife out, a tap stabs (Spam Knife: throws at the spot you tapped)
 	UserInputService.TouchTapInWorld:Connect(function(position: Vector2, processed: boolean)
 		if processed or not Ui.Phone or Ui.menuOpen() or usingMouse() then
 			return
@@ -1245,8 +1332,7 @@ function Abilities.Init()
 		end
 		local gun = character:FindFirstChildOfClass("Tool")
 		if gun and gun:GetAttribute("Revolver") then
-			Remotes.Shoot:FireServer(tapAim(position))
-			return
+			return -- (the gun's taps are handled above)
 		end
 		local knife = knifeInHand()
 		if knife and knife:GetAttribute("MurderKnife") and allowed() then

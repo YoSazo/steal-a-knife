@@ -122,7 +122,6 @@ type Round = {
 
 local current: Round? = nil
 local rng = Random.new()
-local updateDread: (Round) -> ()
 local onMurderKill: (Round, Vector3) -> ()
 
 -- Click-throw mode: all round for Spam Knife, a few seconds after Q for Hellfire (SpamUntil is a
@@ -2041,41 +2040,6 @@ local function stepBots(round: Round)
 	end
 end
 
--- Dread: how close the Murderer (with the knife out) is to each innocent, 0..1. Clients turn
--- it into a heartbeat and a dark vignette. Nobody is told who the Murderer is.
-updateDread = function(round: Round)
-	local killerRoots: { BasePart } = {}
-	if round.MurdererBot then
-		if round.MurdererBot.Alive and round.MurdererBot.Knife then
-			table.insert(killerRoots, round.MurdererBot.Root)
-		end
-	end
-	for killer in round.Killers do
-		local view = killerRound(round, killer)
-		local root = rootOf(killer)
-		if view and view.Weapon and round.Alive[killer] and root then
-			table.insert(killerRoots, root)
-		end
-	end
-	for player in round.Alive do
-		if isKiller(round, player) then
-			continue
-		end
-		local root = rootOf(player)
-		local dread = 0
-		for _, killerRoot in killerRoots do
-			if root then
-				local distance = (root.Position - killerRoot.Position).Magnitude
-				dread = math.max(dread, math.clamp(1 - (distance - 8) / 45, 0, 1))
-			end
-		end
-		local value = if dread > 0.05 then math.floor(dread * 10 + 0.5) / 10 else nil
-		if player:GetAttribute("Dread") ~= value then
-			player:SetAttribute("Dread", value)
-		end
-	end
-end
-
 -- Round flow --------------------------------------------------------------------------------
 
 local function giveWeapon(round: Round)
@@ -2574,7 +2538,7 @@ local function endRound(round: Round)
 
 	-- Loot goes back to its owners if the Murderer was shot (or quit); otherwise they keep it
 	local hero = round.Hero
-	local kept: { [Player]: number } = {}
+	local kept: { [Player]: { string } } = {}
 	for _, entry in round.Loot do
 		local killer = entry.Killer or murderer
 		local returned = round.ShotByBot
@@ -2589,11 +2553,25 @@ local function endRound(round: Round)
 			end
 		else
 			giveKnife(killer, entry.Knife)
-			kept[killer] = (kept[killer] or 0) + 1
+			kept[killer] = kept[killer] or {}
+			table.insert(kept[killer], entry.Knife)
 		end
 	end
-	for killer, count in kept do
-		Net.Notify(killer, `You kept {count} knife(s)!`, "good")
+	-- The haul, once everyone's back in the hub (after the VS card): the Murderer sees every knife
+	-- they took, and the whole server hears about it
+	for killer, items in kept do
+		task.delay(GameConfig.ResultsTime + 1, function()
+			if not killer.Parent then
+				return
+			end
+			Net.Remotes.Effect:FireClient(killer, "LootHaul", items)
+			local count = #items
+			Net.Announce(
+				`🔪 {killer.DisplayName} the Murderer stole {count} {if count == 1 then "knife" else "knives"}!`,
+				Color3.fromRGB(255, 90, 90),
+				2
+			)
+		end)
 	end
 	if hero and hero.Parent then
 		local amount = pay(round, hero, GameConfig.RoundPay.Hero)
@@ -2894,15 +2872,10 @@ local function loop()
 		end
 		setPhase("Round", GameConfig.RoundTime, "Survive!")
 		local roundEnds = os.clock() + GameConfig.RoundTime
-		local nextDread = 0
 		while os.clock() < roundEnds and not roundOver(round) do
 			task.wait(0.1)
 			stepBots(round)
 			stepSnares(round)
-			if os.clock() >= nextDread then
-				nextDread = os.clock() + 0.4
-				updateDread(round)
-			end
 		end
 		endRound(round)
 		task.wait(GameConfig.ResultsTime)
