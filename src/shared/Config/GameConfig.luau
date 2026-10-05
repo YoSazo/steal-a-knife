@@ -279,6 +279,28 @@ local GameConfig = {
 		Cosmic = 3e12,
 	} :: { [string]: number },
 	-- The Lucky Wheel (Gamble): a free spin a day, one per EarnEvery seconds played, Robux packs
+	-- Surprise gifts (server SurpriseGifts): a present drops near you at random moments while you
+	-- play in the hub. Gaps are seconds of hub play; prizes are weighted (Seconds = of income)
+	SurpriseGift = {
+		FirstMin = 90,
+		FirstMax = 180,
+		MinGap = 180,
+		MaxGap = 540,
+		Lifetime = 60, -- not opened in a minute: it's gone
+		MinCash = 500,
+		Prizes = {
+			{ Kind = "Cash", Seconds = 60, Weight = 30 },
+			{ Kind = "Cash", Seconds = 180, Weight = 20 },
+			{ Kind = "Cash", Seconds = 600, Weight = 8 },
+			{ Kind = "Spin", Count = 1, Weight = 16 },
+			{ Kind = "Spin", Count = 3, Weight = 4 },
+			{ Kind = "Luck", Seconds = 300, Weight = 8 },
+			{ Kind = "Case", Rarity = "Rare", Weight = 8 },
+			{ Kind = "Case", Rarity = "Epic", Weight = 4 },
+			{ Kind = "Case", Rarity = "Legendary", Weight = 1.5, Announce = true },
+			{ Kind = "Case", Rarity = "Mythic", Weight = 0.5, Announce = true },
+		} :: { any },
+	},
 	Spin = {
 		EarnEvery = 900,
 		RevealDelay = 4.2, -- the wheel's spin on the client; the prize lands when it stops

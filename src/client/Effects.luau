@@ -561,6 +561,18 @@ local handlers: { [string]: (...any) -> () } = {
 			gui:Destroy()
 		end)
 	end,
+	-- A surprise gift landed by you: a pop, a chime and a burst of light
+	GiftDrop = function(at: Vector3)
+		Effects.Burst(at, Color3.fromRGB(255, 215, 80), 30, 14, 0.6)
+		Effects.Sound(Sounds.Reveal, at, 0.6)
+	end,
+	-- ...and opened: confetti and the prize floating up
+	GiftOpen = function(at: Vector3, what: string, kind: string)
+		Effects.Burst(at, Color3.fromRGB(255, 120, 200), 40, 18, 0.8)
+		Effects.Burst(at, Color3.fromRGB(255, 215, 80), 30, 14, 0.6)
+		Effects.Sound(if kind == "Case" then Sounds.Cheer else Sounds.Cash, at, 0.8)
+		Effects.FloatText(at + Vector3.new(0, 4, 0), `🎁 {what}`, Color3.fromRGB(255, 230, 120))
+	end,
 	-- (Murderer only) a vanished innocent still leaves a faint shimmer
 	Shimmer = function(character: Model?, duration: number)
 		if not character or not character.Parent then
@@ -841,6 +853,28 @@ function Effects.Init()
 		if handler then
 			handler(...)
 		end
+	end)
+
+	-- Surprise gifts are for one player: everyone else's are hidden on this screen
+	local function hideGift(gift: Instance)
+		if gift:GetAttribute("Owner") == player.UserId then
+			return
+		end
+		for _, d in gift:GetDescendants() do
+			if d:IsA("BasePart") then
+				d.LocalTransparencyModifier = 1
+			elseif d:IsA("ProximityPrompt") then
+				d.Enabled = false
+			elseif d:IsA("Sparkles") then
+				d.Enabled = false
+			end
+		end
+	end
+	for _, gift in CollectionService:GetTagged("SurpriseGift") do
+		hideGift(gift)
+	end
+	CollectionService:GetInstanceAddedSignal("SurpriseGift"):Connect(function(gift)
+		task.defer(hideGift, gift) -- (its parts stream in with it)
 	end)
 
 	-- Coins and the Revolver pickup spin locally (no server traffic)

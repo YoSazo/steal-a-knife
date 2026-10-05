@@ -56,6 +56,11 @@ local commands: { [string]: (Player, ...any) -> any } = {
 		end
 		return out
 	end,
+	-- A surprise gift right now, in front of you
+	Gift = function(player: Player)
+		(require(script.Parent.SurpriseGifts) :: any).DebugDrop(player)
+		return true
+	end,
 	Cash = function(player: Player, amount: number)
 		DataService.AddCash(player, amount, "debug")
 		return true
