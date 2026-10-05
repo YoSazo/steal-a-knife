@@ -881,7 +881,7 @@ function Hud.Init()
 				end
 			end)
 		end
-		Effects.Sound(if entry.Hype >= 2 then Sounds.Sting else Sounds.Coin, nil, if entry.Hype >= 2 then 0.6 else 0.4)
+		Effects.Sound(if entry.Hype >= 2 then Sounds.Announce else Sounds.Coin, nil, 0.4)
 		TweenService:Create(frame, TweenInfo.new(0.4, Enum.EasingStyle.Back), { Position = UDim2.fromScale(0.5, 0) })
 			:Play()
 		task.delay(if Ui.Phone then 2.2 else 2.6 + entry.Hype * 0.5, function()

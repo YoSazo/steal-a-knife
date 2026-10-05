@@ -207,6 +207,9 @@ end
 -- allows; during one already it lasts a minute longer
 local pendingSummon: string? = nil
 function RaidService.Summon(player: Player)
+	if not CONFIG.Enabled then
+		return
+	end
 	Analytics.Track(player, "moon.summon", { during = raiding })
 	if raiding then
 		raidEndsAt += 60
@@ -316,7 +319,9 @@ function RaidService.Init()
 	Players.PlayerRemoving:Connect(function(player)
 		stolenFrom[player] = nil
 	end)
-	task.spawn(schedule)
+	if CONFIG.Enabled then
+		task.spawn(schedule)
+	end
 end
 
 return RaidService

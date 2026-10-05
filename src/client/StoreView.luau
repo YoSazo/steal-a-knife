@@ -438,7 +438,6 @@ function View.Build(actions: any): Frame
 			"CashBig",
 			"Mount",
 			"ChestRefill",
-			"BloodMoon",
 		}
 	do
 		offer(boostGrid, Monetization.ProductByKey[key], i, "Product")

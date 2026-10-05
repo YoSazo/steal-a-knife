@@ -9,6 +9,7 @@ return {
 	Throw = "rbxassetid://9126283272", -- Wood Swish, Fast Movement in Air (PSE): every thrown knife
 	Gunshot = "rbxassetid://120771468205926",
 	Coin = "rbxassetid://4612374807",
+	Announce = "rbxassetid://4612374495", -- a quick sparkly ding when someone in the server rolls something big
 	Cash = "rbxassetid://134810204798705",
 	-- (the old horror sounds are gone: the game is bright and toy-like now, for 9-15 year olds)
 	Sting = "rbxassetid://1843946260", -- role reveal, round intro, big moments (same sting as cases)
@@ -29,7 +30,7 @@ return {
 	-- Cases and rewards
 	DrumRoll = "rbxassetid://1842251033", -- snare roll (APM) while the reel spins
 	ReelTick = "rbxassetid://9120098629", -- a crisp little switch click (PSE) per knife going past
-	Reveal = "rbxassetid://9038314266", -- "Funfair Fun" ukulele + accordion sting (APM): you got it!
+	Reveal = "rbxassetid://4612374036", -- a quick sparkly "big diamond" ding: any reveal (case, power roll, gift)
 	Cheer = "rbxassetid://9112766176", -- crowd cheer (PSE) for the big ones
 	Tick = "rbxasset://sounds/electronicpingshort.wav",
 

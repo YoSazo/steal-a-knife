@@ -221,6 +221,9 @@ local GameConfig = {
 
 	-- The Blood Moon (RaidService): the biomes close and vaults can be robbed for Duration seconds
 	Raid = {
+		-- OFF (2026-10-05): it came too often and players just used it to run on their wheels. The
+		-- moon never rises, can't be summoned, and isn't sold; the code stays for a future event.
+		Enabled = false,
 		Duration = 90,
 		Every = 3, -- every this many intermissions
 		StartBefore = 140, -- rises this many seconds before the murder round
