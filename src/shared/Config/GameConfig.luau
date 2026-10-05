@@ -488,6 +488,7 @@ local GameConfig = {
 	-- them off the steal/vault loop they were enjoying. The hub is where progress happens.)
 	IntermissionTime = 360,
 	NewcomerRoundIn = 100, -- a first-time player joining pulls the next round in to at most this (s)
+	NewcomerMinBreak = 240, -- ...but never to a hub break shorter than this (s) for everyone else
 	RoundTime = 150,
 	ResultsTime = 8,
 	MurdererGrace = 10, -- seconds before the Murderer gets their knife (same as the classic)

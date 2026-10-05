@@ -121,6 +121,26 @@ type Round = {
 }
 
 local current: Round? = nil
+-- Where each player was dropped into the current round (the fall net puts them back here)
+local spawnOf: { [Player]: CFrame } = {}
+
+-- Pins a character in place for a moment while the round map streams in around them: the client
+-- owns its character's physics, so with the floor not loaded yet it fell straight through the sky
+local function holdWhileStreaming(player: Player, character: Model, at: CFrame)
+	local root = character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root then
+		return
+	end
+	root.AssemblyLinearVelocity = Vector3.zero
+	root.Anchored = true
+	task.spawn(function()
+		pcall(player.RequestStreamAroundAsync, player, at.Position, 3)
+		task.wait(0.4) -- (a moment for the parts to land on the client)
+		if root.Parent then
+			root.Anchored = false
+		end
+	end)
+end
 local rng = Random.new()
 local onMurderKill: (Round, Vector3) -> ()
 
@@ -2320,6 +2340,8 @@ local function startRound(participants: { Player })
 			seatWeld:Destroy()
 		end
 		character:PivotTo(target)
+		spawnOf[player] = target
+		holdWhileStreaming(player, character, target)
 		-- Safety net: if anything else held them back (client physics owns your character, so a
 		-- client script snapping you somewhere wins a race), move them again until they're really in
 		task.spawn(function()
@@ -2791,7 +2813,8 @@ local function loop()
 	while true do
 		-- Intermission: steal knives, earn cash, buy upgrades and round items
 		setPhase("Intermission", GameConfig.IntermissionTime, INTERMISSION_STATUS)
-		local endsAt = os.clock() + GameConfig.IntermissionTime
+		local startedAt = os.clock()
+		local endsAt = startedAt + GameConfig.IntermissionTime
 		local insuranceOffered = false
 		while os.clock() < endsAt do
 			task.wait(1)
@@ -2805,14 +2828,16 @@ local function loop()
 				setPhase("Intermission", GameConfig.IntermissionTime, `Waiting for {minPlayers()} players`)
 			elseif
 				newcomerWaiting
-				and endsAt - os.clock() > GameConfig.NewcomerRoundIn
+				-- a newcomer brings the round forward, but the hub break never drops below
+				-- NewcomerMinBreak (every ad player joining kept cutting it to 100 s)
+				and math.max(os.clock() + GameConfig.NewcomerRoundIn, startedAt + GameConfig.NewcomerMinBreak) < endsAt - 5
 				-- never cut a Thief Moon short (it runs out the intermission)
 				and not ReplicatedStorage:GetAttribute("Raid")
 				and ReplicatedStorage:GetAttribute("NextRaidAt") == nil
 			then
 				newcomerWaiting = false
-				endsAt = os.clock() + GameConfig.NewcomerRoundIn
-				setPhase("Intermission", GameConfig.NewcomerRoundIn, INTERMISSION_STATUS)
+				endsAt = math.max(os.clock() + GameConfig.NewcomerRoundIn, startedAt + GameConfig.NewcomerMinBreak)
+				setPhase("Intermission", endsAt - os.clock(), INTERMISSION_STATUS)
 			elseif ReplicatedStorage:GetAttribute("Status") ~= INTERMISSION_STATUS then
 				setPhase("Intermission", endsAt - os.clock(), INTERMISSION_STATUS)
 			end
@@ -2876,6 +2901,17 @@ local function loop()
 			task.wait(0.1)
 			stepBots(round)
 			stepSnares(round)
+			-- The fall net: anyone who drops well below their spawn (fell through a floor that hadn't
+			-- loaded yet, glitched out of the map) goes back to it instead of dying
+			for player in round.Alive do
+				local at = spawnOf[player]
+				local character = player.Character
+				local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if at and character and root and not root.Anchored and root.Position.Y < at.Position.Y - 30 then
+					character:PivotTo(at)
+					holdWhileStreaming(player, character, at)
+				end
+			end
 		end
 		endRound(round)
 		task.wait(GameConfig.ResultsTime)

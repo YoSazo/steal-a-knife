@@ -185,7 +185,7 @@ function Transitions.Init()
 	riskCard.Name = "AtRiskCard"
 	riskCard.AnchorPoint = Vector2.new(1, 0.5)
 	riskCard.Position = UDim2.new(1, -16, 0.45, 0)
-	riskCard.Size = UDim2.fromOffset(220, 236)
+	riskCard.Size = UDim2.fromOffset(220, 266)
 	riskCard.BackgroundColor3 = Color3.fromRGB(22, 16, 28)
 	riskCard.BackgroundTransparency = 0.15
 	riskCard.Visible = false
@@ -210,8 +210,15 @@ function Transitions.Init()
 		ZIndex = 31,
 	})
 	local riskName = label(riskCard, {
-		Position = UDim2.new(0, 10, 1, -40),
+		Position = UDim2.new(0, 10, 1, -68),
 		Size = UDim2.new(1, -20, 0, 32),
+		ZIndex = 31,
+	})
+	-- what it earns in your vault, like the floating label over its plate
+	local riskIncome = label(riskCard, {
+		Position = UDim2.new(0, 10, 1, -36),
+		Size = UDim2.new(1, -20, 0, 28),
+		TextColor3 = Color3.fromRGB(110, 255, 110),
 		ZIndex = 31,
 	})
 	local function showRisk(_choices: { string }, chosen: string)
@@ -221,6 +228,7 @@ function Transitions.Init()
 		riskArt.Image = if parsed then (VoxelKnives[parsed.Knife.Name] or KnifeIcons[parsed.Knife.Name] or "") else ""
 		riskName.Text = Items.DisplayName(chosen)
 		riskName.TextColor3 = Items.Color(chosen)
+		riskIncome.Text = `+${Format.Short(Items.Income(chosen))}/s`
 		riskStroke.Color = Items.Color(chosen)
 		task.wait(1.4) -- after the fade and the role reveal
 		if token ~= riskToken or not player:GetAttribute("InRound") then

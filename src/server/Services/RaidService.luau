@@ -61,14 +61,13 @@ function RaidService.CanAttackPlayer(_attacker: Player, _victim: Player): boolea
 	return false
 end
 
--- Blood Moon knockdowns: while the moon is up, a hub knife hit on ANY player sends them tumbling
+-- Knockdowns: a hub knife hit on ANY player sends them tumbling, like a boss hit
 -- (ragdoll + fling) - never a kill, no knife lost (carriers are StealService's: they drop it too).
 -- Not inside their own vault, not mid-tumble, not twice within KNOCK_IMMUNITY seconds.
 local KNOCK_IMMUNITY = 3
 local function canKnock(attacker: Player, victim: Player): boolean
 	if
-		not raiding
-		or attacker == victim
+		attacker == victim
 		or attacker:GetAttribute("InRound")
 		or victim:GetAttribute("InRound")
 		or victim:GetAttribute("Tumbling")
@@ -277,12 +276,9 @@ end
 function RaidService.Init()
 	BaseService.OnStealPrompt = steal
 	PowerService.CanRaidPlayer = RaidService.CanAttackPlayer
-	-- Everyone out and about is a hub-knife target while the moon is up
+	-- Everyone out and about is a hub-knife target (knocked over, never hurt)
 	Targets.AddProvider(function()
 		local list = {}
-		if not raiding then
-			return list
-		end
 		for _, victim in Players:GetPlayers() do
 			local root = rootOf(victim)
 			if root and victim.Character and not StealService.IsCarrying(victim) then

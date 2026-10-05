@@ -83,6 +83,20 @@ function Overheads.Init()
 		track(owner)
 	end
 	Players.PlayerAdded:Connect(track)
+	-- Round disguises rebuild the head (and the tag with it) without a new character: put the tag
+	-- back on whoever's missing one
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			for _, owner in Players:GetPlayers() do
+				local character = owner.Character
+				local head = character and character:FindFirstChild("Head")
+				if head and not head:FindFirstChild("CashTag") then
+					task.spawn(attach, owner, character :: Model)
+				end
+			end
+		end
+	end)
 end
 
 return Overheads
