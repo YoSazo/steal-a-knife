@@ -328,7 +328,8 @@ function Hud.Init()
 			healthText.Text = `❤️ {math.ceil(humanoid.Health)} / {math.floor(humanoid.MaxHealth)}`
 			-- Only on screen while it means something: hurt, or in a round. Full health in the hub
 			-- hides it a moment later.
-			if (fraction < 0.999 or player:GetAttribute("InRound")) and not Ui.menuOpen() then
+			-- (never in a round: one stab and you're out, a bar says nothing)
+			if fraction < 0.999 and not player:GetAttribute("InRound") and not Ui.menuOpen() then
 				healthFrame.Visible = true
 				hideToken += 1
 			else
@@ -1050,27 +1051,12 @@ function Hud.Init()
 		timerFrame.Visible = not Ui.menuOpen() and Ui.gui:GetAttribute("ZoneNotice") ~= true
 		if phase == "Round" then
 			local map = ReplicatedStorage:GetAttribute("MapName") or ""
-			timerLabel.Text = `{map}  {clock}  ·  {ReplicatedStorage:GetAttribute("Alive") or 0} alive`
+			-- In a round the screen is for the game: just the time and who's left (MM2 shows less)
+			timerLabel.Text = if inRound
+				then `{clock}  ·  {ReplicatedStorage:GetAttribute("Alive") or 0} alive`
+				else `{map}  {clock}  ·  {ReplicatedStorage:GetAttribute("Alive") or 0} alive`
 			timerFrame.BackgroundColor3 = Color3.fromRGB(150, 30, 50)
-			local bits = {}
-			local disguise = player:GetAttribute("Disguise")
-			if inRound and disguise then
-				local role = player:GetAttribute("Role")
-				table.insert(bits, `You are {disguise} ({role})`)
-			elseif not inRound then
-				table.insert(bits, "Round in progress - steal while they're busy!")
-			end
-			local revolver = ReplicatedStorage:GetAttribute("Revolver")
-			if revolver == "Dropped" then
-				table.insert(bits, "Revolver on the floor!")
-			elseif revolver == "Taken" then
-				table.insert(bits, "Someone has the Revolver")
-			end
-			local loot = ReplicatedStorage:GetAttribute("Loot")
-			if loot then
-				table.insert(bits, `Murderer loot: {loot}`)
-			end
-			subLabel.Text = table.concat(bits, "   ·   ")
+			subLabel.Text = if inRound then "" else "Round on - steal while they're busy!"
 		elseif type(raidEnds) == "number" then
 			-- The raid takes over the top of the screen, pulsing red
 			local pulse = (math.sin(os.clock() * 6) + 1) / 2
@@ -1102,7 +1088,7 @@ function Hud.Init()
 		end
 		-- (not hidden while the knife is held: they never overlap, and taps made it flicker)
 		upgradesButton.Visible = Ui.inHub() -- (stays with a menu open: tap it to switch menus)
-		stats.Visible = not Ui.menuOpen()
+		stats.Visible = not Ui.menuOpen() and not player:GetAttribute("InRound") -- (speed / cash: hub things)
 		timers.Visible = Ui.inHub()
 
 		-- Event pills
@@ -1218,7 +1204,12 @@ function Hud.Init()
 			oldest:Destroy()
 		end
 	end
-	Remotes.Notify.OnClientEvent:Connect(toast)
+	-- In a round nothing pops up at all: the game speaks for itself (a vanished Murderer, a body)
+	Remotes.Notify.OnClientEvent:Connect(function(text: string, kind: string)
+		if not player:GetAttribute("InRound") then
+			toast(text, kind)
+		end
+	end)
 	-- (client-side answers use the same toast: a click must always say something)
 	Ui.Toast = toast
 
@@ -1493,7 +1484,8 @@ function Hud.Init()
 			local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 			healthFrame.Visible = hum ~= nil
 				and hum.Health > 0
-				and (hum.Health < hum.MaxHealth or player:GetAttribute("InRound") == true)
+				and hum.Health < hum.MaxHealth
+				and not player:GetAttribute("InRound")
 			refreshEnergy()
 		end
 	end)

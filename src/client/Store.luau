@@ -108,7 +108,38 @@ local function text(parent: Instance, props: { [string]: any }): TextLabel
 	return label
 end
 
+-- Roblox's buy popup fetches the item's picture only when it opens (a blank square for a while on
+-- a phone). Warm it up in the background after joining: ask Roblox for every product's info (the
+-- same lookup the popup makes) and preload its icon, so it's already on the device.
+local function preloadIcons()
+	task.wait(8) -- (after the game has loaded: never slow the join)
+	local ContentProvider = game:GetService("ContentProvider")
+	local images: { string } = {}
+	local entries: { { Id: number, Kind: Enum.InfoType } } = {}
+	for _, pass in Monetization.Passes do
+		if pass.Id > 0 then
+			table.insert(entries, { Id = pass.Id, Kind = Enum.InfoType.GamePass })
+		end
+	end
+	for _, product in Monetization.Products do
+		if product.Id > 0 then
+			table.insert(entries, { Id = product.Id, Kind = Enum.InfoType.Product })
+		end
+	end
+	for _, entry in entries do
+		local ok, info = pcall(MarketplaceService.GetProductInfo, MarketplaceService, entry.Id, entry.Kind)
+		local icon = ok and (info :: any).IconImageAssetId
+		if type(icon) == "number" and icon > 0 then
+			table.insert(images, `rbxassetid://{icon}`)
+			table.insert(images, `rbxthumb://type=Asset&id={icon}&w=150&h=150`)
+		end
+		task.wait(0.15) -- (gentle on the web API)
+	end
+	pcall(ContentProvider.PreloadAsync, ContentProvider, images)
+end
+
 function Store.Init()
+	task.spawn(preloadIcons)
 	local gui = Ui.gui
 
 	StoreView.Build({ buy = buy, owned = owned, cash = cashFor, odds = CaseOdds.Text, price = priceButton })

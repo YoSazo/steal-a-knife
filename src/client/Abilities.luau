@@ -947,14 +947,16 @@ function Abilities.Init()
 	-- Phones: a big red THROW button while the Murderer's knife is out. It works like the hub's knife
 	-- stick: press and drag to aim (the camera turns with your thumb, the knife goes where the dot in
 	-- the middle of the screen is), let go to throw. A quick tap throws straight ahead.
+	-- Looks like the hub's knife stick (see-through red disc, dotted spokes), with a THROW knob
+	-- that follows your thumb
 	local throwButton = Ui.button({
 		Name = "ThrowButton",
-		Text = "THROW",
+		Text = "",
 		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(1, -24, 1, -170),
-		Size = UDim2.fromOffset(120, 120),
+		Position = UDim2.new(1, -60, 1, -150), -- above Jump, in from the edge
+		Size = UDim2.fromOffset(170, 170),
 		BackgroundColor3 = Color3.fromRGB(218, 56, 77),
-		BackgroundTransparency = 0.15,
+		BackgroundTransparency = 0.6,
 		Visible = false,
 		ZIndex = 4,
 	}, gui)
@@ -966,6 +968,44 @@ function Abilities.Init()
 	if throwPadding then
 		throwPadding:Destroy()
 	end
+	local throwBorder = throwButton:FindFirstChildOfClass("UIStroke")
+	if throwBorder then
+		throwBorder.Color, throwBorder.Transparency = Color3.fromRGB(240, 250, 255), 0.2
+	end
+	for spoke = 0, 7 do
+		local angle = spoke / 8 * math.pi * 2
+		for step, radius in { 0.62, 0.76, 0.9 } do
+			local guideDot = Ui.new("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5 + math.cos(angle) * radius * 0.5, 0.5 + math.sin(angle) * radius * 0.5),
+				Size = UDim2.fromScale(0.07 - step * 0.01, 0.07 - step * 0.01),
+				BackgroundColor3 = Color3.new(1, 1, 1),
+				BackgroundTransparency = 0.25 + step * 0.12,
+				ZIndex = 4,
+			}, throwButton)
+			Ui.new("UICorner", { CornerRadius = UDim.new(1, 0) }, guideDot)
+		end
+	end
+	local throwKnob = Ui.label({
+		Name = "Knob",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(0.6, 0.6),
+		BackgroundTransparency = 0.1,
+		BackgroundColor3 = Color3.fromRGB(218, 56, 77),
+		Text = "THROW",
+		TextScaled = true,
+		ZIndex = 5,
+	}, throwButton)
+	Ui.new("UICorner", { CornerRadius = UDim.new(1, 0) }, throwKnob)
+	Ui.new("UIStroke", { Color = Color3.fromRGB(240, 250, 255), Thickness = 2.5 }, throwKnob)
+	Ui.new("UIPadding", {
+		PaddingLeft = UDim.new(0.07, 0),
+		PaddingRight = UDim.new(0.07, 0),
+		PaddingTop = UDim.new(0.27, 0),
+		PaddingBottom = UDim.new(0.27, 0),
+	}, throwKnob)
+	local throwStart = Vector2.zero
 	-- The Mad Murderer crosshair: with a mouse, the pointer is a plain grey "+" while you're in a
 	-- round or holding a knife / the Revolver (menus get the normal cursor back)
 	local cursorGui = Instance.new("ScreenGui")
@@ -1048,6 +1088,7 @@ function Abilities.Init()
 		end
 		throwInput = input
 		lastPointer = Vector2.new(input.Position.X, input.Position.Y)
+		throwStart = lastPointer
 		takeCameraHook()
 		beginCharge("basic")
 	end)
@@ -1058,12 +1099,19 @@ function Abilities.Init()
 		local at = Vector2.new(input.Position.X, input.Position.Y)
 		aimDelta += at - lastPointer
 		lastPointer = at
+		-- the knob follows the thumb a little, like the hub stick
+		local pull = at - throwStart
+		if pull.Magnitude > 1 then
+			pull = pull.Unit * math.min(pull.Magnitude, throwButton.AbsoluteSize.X * 0.25)
+		end
+		throwKnob.Position = UDim2.new(0.5, pull.X / Ui.Scale.Scale, 0.5, pull.Y / Ui.Scale.Scale)
 	end)
 	throwButton.InputEnded:Connect(function(input)
 		if input ~= throwInput then
 			return
 		end
 		throwInput = nil
+		throwKnob.Position = UDim2.fromScale(0.5, 0.5)
 		applyKnifeAim() -- (the last bit of the drag counts)
 		local started = chargingSince
 		if not started then
@@ -1092,18 +1140,10 @@ function Abilities.Init()
 		throwButton.Visible = show
 		centerDot.Visible = show and not chargingSince
 		if show then
-			-- Where the knife stick is in the hub (same thumb, same spot), a little bigger
-			local at = Ui.Layout.knifePosition()
-			local size = Ui.Layout.KnifeSize + 18
-			local factor = Ui.Scale.Scale
-			throwButton.AnchorPoint = Vector2.new(0.5, 0.5)
-			throwButton.Position =
-				UDim2.fromOffset((at.X + Ui.Layout.KnifeSize / 2) / factor, (at.Y + Ui.Layout.KnifeSize / 2) / factor)
-			throwButton.Size = UDim2.fromOffset(size / factor, size / factor)
 			local isReady = os.clock() >= basicThrowReadyAt or spamMode()
-			throwButton.BackgroundTransparency = if isReady then 0.15 else 0.6
-			throwButton.Text = if chargingSince
-				then "RELEASE"
+			throwKnob.BackgroundTransparency = if isReady then 0.1 else 0.55
+			throwKnob.Text = if chargingSince
+				then "LET GO"
 				elseif isReady then "THROW"
 				else `{math.ceil(basicThrowReadyAt - os.clock())}`
 		end

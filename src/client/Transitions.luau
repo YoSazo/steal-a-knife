@@ -342,12 +342,7 @@ function Transitions.Init()
 		if token ~= riskToken then
 			return
 		end
-		riskPanel.Visible = false
-		if player:GetAttribute("InRound") then
-			badge.Text = `⚠ At risk: {Items.DisplayName(chosen)}`
-			badge.TextColor3 = Items.Color(chosen)
-			badge.Visible = true
-		end
+		riskPanel.Visible = false -- (no badge left on screen for the round: the reel said it)
 	end
 	player:GetAttributeChangedSignal("InRound"):Connect(function()
 		if not player:GetAttribute("InRound") then

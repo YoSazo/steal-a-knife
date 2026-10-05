@@ -863,10 +863,8 @@ function Effects.Init()
 		for _, d in gift:GetDescendants() do
 			if d:IsA("BasePart") then
 				d.LocalTransparencyModifier = 1
-			elseif d:IsA("ProximityPrompt") then
-				d.Enabled = false
-			elseif d:IsA("Sparkles") then
-				d.Enabled = false
+			elseif d:IsA("ProximityPrompt") or d:IsA("Sparkles") then
+				(d :: any).Enabled = false
 			end
 		end
 	end
