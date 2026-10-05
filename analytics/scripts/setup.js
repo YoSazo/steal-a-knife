@@ -2,7 +2,7 @@
 // Reads the repo's root .env (see .env.example). Safe to run again: it only fills in what's missing.
 //
 //   1. Roblox: finds the universe from ROBLOX_PLACE_ID
-//   2. Database: connects to DATABASE_URL and creates the tables
+//   2. Database: checks DATABASE_URL (the Render service creates the tables on start)
 //   3. Ingest server: /health + a test event signed with INGEST_KEY (flagged as Studio, so it never
 //      shows up in the numbers)
 //   4. Game: points Analytics.luau at INGEST_URL
@@ -14,7 +14,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import sodium from "libsodium-wrappers";
-import pg from "pg";
+import { neon } from "@neondatabase/serverless";
 import { env } from "../src/env.js";
 import { client } from "../src/roblox.js";
 
@@ -53,19 +53,17 @@ if (rb && !universeId) {
 }
 
 // 2. Database ------------------------------------------------------------------------------------
-const databaseUrl = need("DATABASE_URL", "Neon > your project > Connection string (pooled)");
+const databaseUrl = need("DATABASE_URL", "Neon > your project > Connection string");
 if (databaseUrl) {
-  const db = new pg.Client({ connectionString: databaseUrl, ssl: { rejectUnauthorized: true } });
+  // Over HTTPS (Neon's serverless driver): works even where Postgres' own port is blocked. The
+  // server creates the tables itself on start (src/schema.sql), so this only checks.
   try {
-    await db.connect();
-    if (!CHECK_ONLY) await db.query(readFileSync(new URL("../src/schema.sql", import.meta.url), "utf8"));
-    const { rows } = await db.query("select to_regclass('events') is not null as ready");
-    const count = rows[0].ready ? (await db.query("select count(*)::int as n from events where not studio")).rows[0].n : 0;
-    report(rows[0].ready ? "ok" : "warn", `Database ready (${count} real events so far)`, rows[0].ready ? "" : "tables missing: run without --check");
+    const sql = neon(databaseUrl);
+    const [{ ready }] = await sql.query("select to_regclass('events') is not null as ready");
+    const count = ready ? (await sql.query("select count(*)::int as n from events where not studio"))[0].n : 0;
+    report(ready ? "ok" : "warn", `Database ready (${count} real events so far)`, ready ? "" : "no tables yet: deploy the Render service (it creates them on start)");
   } catch (err) {
     report("fail", "Can't use DATABASE_URL", err.message);
-  } finally {
-    await db.end().catch(() => {});
   }
 }
 

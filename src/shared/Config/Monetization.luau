@@ -47,7 +47,7 @@ end
 Monetization.Passes = {
 	{
 		Key = "DoubleCash",
-		Id = 0,
+		Id = 2006121392,
 		Price = 399,
 		Name = "2x Cash",
 		Description = "Your vault earns double cash, forever (rounds and offline earnings too).",
@@ -56,7 +56,7 @@ Monetization.Passes = {
 	},
 	{
 		Key = "VIP",
-		Id = 0,
+		Id = 2005917480,
 		Price = 199,
 		Name = "VIP",
 		Description = "+10% income, a gold VIP tag over your head and in chat, and the free chest twice as often.",
@@ -65,7 +65,7 @@ Monetization.Passes = {
 	},
 	{
 		Key = "FastWheel",
-		Id = 0,
+		Id = 2005863459,
 		Price = 299,
 		Name = "2x Speed Training",
 		Description = "Your Haunted Wheel trains Speed twice as fast. Reach the deep zones sooner.",
@@ -74,7 +74,7 @@ Monetization.Passes = {
 	},
 	{
 		Key = "PhantomTrail",
-		Id = 0,
+		Id = 2006913350,
 		Price = 349,
 		Name = "Phantom Trail",
 		Description = "A stream of glowing Void Edges follows you, and your wheel trains Speed x10.",
@@ -83,7 +83,7 @@ Monetization.Passes = {
 	},
 	{
 		Key = "AutoCollect",
-		Id = 0,
+		Id = 2005113417,
 		Price = 199,
 		Name = "Auto Collect",
 		Description = "Your cash pads empty themselves into your cash. Never walk the vault again.",
@@ -92,7 +92,7 @@ Monetization.Passes = {
 	},
 	{
 		Key = "Luck",
-		Id = 0,
+		Id = 2005341434,
 		Price = 299,
 		Name = "2x Luck",
 		Description = "Double luck on every case, Lucky Block and wheel case, forever. Stacks with potions.",
@@ -101,7 +101,7 @@ Monetization.Passes = {
 	},
 	{
 		Key = "OfflinePlus",
-		Id = 0,
+		Id = 2005983403,
 		Price = 149,
 		Name = "Offline Earnings+",
 		Description = "Earn your full income while you're away (not half), for up to 24 hours.",
@@ -110,7 +110,7 @@ Monetization.Passes = {
 	},
 	{
 		Key = "ExtraFloor",
-		Id = 0,
+		Id = 2005371425,
 		Price = 249,
 		Name = "Vault Floor",
 		Description = "An extra vault floor (10 more plates) the moment you buy it.",
@@ -119,7 +119,7 @@ Monetization.Passes = {
 	},
 	{
 		Key = "Titan",
-		Id = 0,
+		Id = 2004975371,
 		Price = 299,
 		Name = "Titan Health",
 		Description = "Double max health in the hub, forever. Bosses and vault owners need twice the hits.",
@@ -131,7 +131,7 @@ Monetization.Passes = {
 Monetization.Products = {
 	{
 		Key = "Starter",
-		Id = 0,
+		Id = 3716624495,
 		Price = 79,
 		Name = "Starter Pack",
 		Description = "A head start: a pile of cash and a Rare Case. Once per player.",
@@ -143,7 +143,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "CashSmall",
-		Id = 0,
+		Id = 3716624498,
 		Price = 29,
 		Name = "Pile of Cash",
 		Description = "10 minutes of your vault's income, right now.",
@@ -153,7 +153,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "CashMedium",
-		Id = 0,
+		Id = 3716624500,
 		Price = 99,
 		Name = "Bag of Cash",
 		Description = "An hour of your vault's income, right now.",
@@ -163,7 +163,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "CashBig",
-		Id = 0,
+		Id = 3716624502,
 		Price = 299,
 		Name = "Vault of Cash",
 		Description = "Four hours of your vault's income, right now.",
@@ -173,7 +173,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "CaseEpic",
-		Id = 0,
+		Id = 3716624504,
 		Price = 49,
 		Name = "Epic Case",
 		Description = "Opens on the spot. Odds are shown in the Store.",
@@ -183,7 +183,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "CaseLegendary",
-		Id = 0,
+		Id = 3716624507,
 		Price = 149,
 		Name = "Legendary Case",
 		Description = "Opens on the spot. Odds are shown in the Store.",
@@ -193,7 +193,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "CaseGodly",
-		Id = 0,
+		Id = 3716624511,
 		Price = 449,
 		Name = "Godly Case",
 		Description = "Opens on the spot. Odds are shown in the Store.",
@@ -204,7 +204,7 @@ Monetization.Products = {
 	-- Lucky Blocks (Steal a Brainrot style): wide odds, every knife's chance shown in the Store
 	{
 		Key = "LuckyMythic",
-		Id = 0,
+		Id = 3716624512,
 		Price = 175,
 		Name = "Mythic Lucky Block",
 		Description = "Legendary to Celestial. Every knife's odds are on the block.",
@@ -214,7 +214,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "LuckyGodly",
-		Id = 0,
+		Id = 3716624517,
 		Price = 399,
 		Name = "Godly Lucky Block",
 		Description = "Mythic to Cosmic. Every knife's odds are on the block.",
@@ -224,7 +224,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "LuckyCosmic",
-		Id = 0,
+		Id = 3716624519,
 		Price = 1499,
 		Name = "Cosmic Lucky Block",
 		Description = "Godly to Cosmic. Every knife's odds are on the block.",
@@ -235,7 +235,7 @@ Monetization.Products = {
 	-- Lucky Wheel spins and luck potions
 	{
 		Key = "Spins3",
-		Id = 0,
+		Id = 3716624520,
 		Price = 49,
 		Name = "3 Wheel Spins",
 		Description = "Three spins of the Lucky Wheel.",
@@ -245,7 +245,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "Spins10",
-		Id = 0,
+		Id = 3716624522,
 		Price = 129,
 		Name = "10 Wheel Spins",
 		Description = "Ten spins of the Lucky Wheel.",
@@ -255,7 +255,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "LuckPotion",
-		Id = 0,
+		Id = 3716624527,
 		Price = 39,
 		Name = "Luck Potion (15 min)",
 		Description = "2x luck on cases, Lucky Blocks and the wheel for 15 minutes. Stacks up time.",
@@ -265,7 +265,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "LuckPotionBig",
-		Id = 0,
+		Id = 3716624530,
 		Price = 119,
 		Name = "Luck Potion (1 hour)",
 		Description = "2x luck on cases, Lucky Blocks and the wheel for a whole hour.",
@@ -276,7 +276,7 @@ Monetization.Products = {
 	-- Gifts (bought from the gift picker for another player in the server)
 	{
 		Key = "GiftLuckyMythic",
-		Id = 0,
+		Id = 3716624534,
 		Price = 175,
 		Name = "Gift: Mythic Lucky Block",
 		Description = "A Mythic Lucky Block for a friend.",
@@ -287,7 +287,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "GiftLuckyGodly",
-		Id = 0,
+		Id = 3716624539,
 		Price = 399,
 		Name = "Gift: Godly Lucky Block",
 		Description = "A Godly Lucky Block for a friend.",
@@ -298,7 +298,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "GiftSpins10",
-		Id = 0,
+		Id = 3716624540,
 		Price = 129,
 		Name = "Gift: 10 Wheel Spins",
 		Description = "Ten Lucky Wheel spins for a friend.",
@@ -309,7 +309,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "GiftLuckPotion",
-		Id = 0,
+		Id = 3716624541,
 		Price = 39,
 		Name = "Gift: Luck Potion",
 		Description = "15 minutes of 2x luck for a friend.",
@@ -321,7 +321,7 @@ Monetization.Products = {
 	-- Consumables: each fixes a friction you run into every session (GameConfig.Consumables)
 	{
 		Key = "SpeedPotion",
-		Id = 0,
+		Id = 3716624543,
 		Price = 29,
 		Name = "Speed Potion (10 min)",
 		Description = "Run 25% faster in the hub for 10 minutes. Outrun bosses a zone deeper! Stacks up time.",
@@ -331,7 +331,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "SpeedPotionBig",
-		Id = 0,
+		Id = 3716624546,
 		Price = 99,
 		Name = "Speed Potion (1 hour)",
 		Description = "Run 25% faster in the hub for a whole hour.",
@@ -341,7 +341,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "CashPotion",
-		Id = 0,
+		Id = 3716624548,
 		Price = 49,
 		Name = "2x Cash Potion (15 min)",
 		Description = "Your vault earns double for 15 minutes. Stacks with everything else.",
@@ -351,7 +351,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "CashPotionBig",
-		Id = 0,
+		Id = 3716624549,
 		Price = 149,
 		Name = "2x Cash Potion (1 hour)",
 		Description = "Your vault earns double for a whole hour.",
@@ -361,7 +361,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "TrainingPotion",
-		Id = 0,
+		Id = 3716624552,
 		Price = 39,
 		Name = "Training Potion (15 min)",
 		Description = "3x Speed from your Haunted Wheel for 15 minutes.",
@@ -371,7 +371,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "Reroll3",
-		Id = 0,
+		Id = 3716624556,
 		Price = 49,
 		Name = "3 Reroll Tokens",
 		Description = "The Enchanter re-rolls the power on the knife you fight with - one token each, no cash.",
@@ -381,7 +381,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "Reroll10",
-		Id = 0,
+		Id = 3716624560,
 		Price = 129,
 		Name = "10 Reroll Tokens",
 		Description = "Ten re-rolls at the Enchanter. Chase that Mythic power!",
@@ -391,7 +391,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "CollectSession",
-		Id = 0,
+		Id = 3716624561,
 		Price = 25,
 		Name = "Auto Collect (this visit)",
 		Description = "Every cash pad pays straight into your cash, wherever you are - until you leave. (The Auto Collect pass keeps it forever.)",
@@ -400,7 +400,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "Escape3",
-		Id = 0,
+		Id = 3716624564,
 		Price = 49,
 		Name = "3 Escape Tokens",
 		Description = "When a boss catches you, a token breaks you free WITH the knife (and stuns the boss).",
@@ -410,7 +410,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "Escape10",
-		Id = 0,
+		Id = 3716624565,
 		Price = 129,
 		Name = "10 Escape Tokens",
 		Description = "Ten boss escapes. Never lose a steal at the last second again.",
@@ -420,7 +420,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "Insurance3",
-		Id = 0,
+		Id = 3716624566,
 		Price = 39,
 		Name = "Knife Insurance x3",
 		Description = "If the Murderer gets you, they can't loot your knife. Three rounds of protection.",
@@ -430,7 +430,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "Insurance10",
-		Id = 0,
+		Id = 3716624568,
 		Price = 99,
 		Name = "Knife Insurance x10",
 		Description = "Ten rounds where the Murderer can't take your knife.",
@@ -440,7 +440,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "HeatRefill",
-		Id = 0,
+		Id = 3716624573,
 		Price = 25,
 		Name = "Full Heat",
 		Description = "Your 🔥 Heat jumps to max: more vault income and better power luck.",
@@ -449,7 +449,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "BossRestock",
-		Id = 0,
+		Id = 3716624574,
 		Price = 35,
 		Name = "Restock the Boss",
 		Description = "The nearest boss's empty wall fills up with new knives right now. Everyone sees who did it.",
@@ -458,7 +458,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "OfflineDouble",
-		Id = 0,
+		Id = 3716624577,
 		Price = 29,
 		Name = "Double Offline Earnings",
 		Description = "Get what your vault earned while you were away, again.",
@@ -468,7 +468,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "StreakSave",
-		Id = 0,
+		Id = 3716624582,
 		Price = 19,
 		Name = "Save My Streak",
 		Description = "Missed a day? Keep your daily streak going.",
@@ -478,7 +478,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "HealthBoost",
-		Id = 0,
+		Id = 3716624585,
 		Price = 49,
 		Name = "+3 Health Levels",
 		Description = "Three Health upgrades right now (+75 max health).",
@@ -487,7 +487,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "Mount",
-		Id = 0,
+		Id = 3716624587,
 		Price = 149,
 		Name = "Next Floor",
 		Description = "Your vault grows a floor: 10 more knife plates, instantly.",
@@ -496,7 +496,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "ServerLuck",
-		Id = 0,
+		Id = 3716624588,
 		Price = 249,
 		Name = "2x Server Luck",
 		Description = "Double mutation and size luck on every case opened in this server for 15 minutes. Everyone gets it, and everyone sees who bought it. Buying again adds time.",
@@ -505,7 +505,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "ChestRefill",
-		Id = 0,
+		Id = 3716624592,
 		Price = 25,
 		Name = "Refill Free Chest",
 		Description = "Your plaza chest is ready to open again, right now.",
@@ -514,7 +514,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "BloodMoon",
-		Id = 0,
+		Id = 3716624594,
 		Price = 99,
 		Name = "Summon the Blood Moon",
 		Description = "Raise the Blood Moon for the whole server: the biomes close and everyone can steal from each other's vaults. Everyone sees who did it.",

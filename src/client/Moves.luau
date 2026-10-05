@@ -224,21 +224,28 @@ local function step(dt: number)
 				carry.LeftShoulder += Vector3.new(-bob, 0, 0)
 				loop = carry
 			elseif player and player:GetAttribute("Training") then
-				-- Running up the rungs of the Haunted Wheel: legs and arms pump faster on better wheels
+				-- Running up the rungs of the Haunted Wheel: legs and arms pump faster on better wheels,
+				-- steeply (x1.3 a tier) so the top wheels are a blur - past ~10 strides a second the
+				-- frame rate makes the legs look like they run backwards (Steal An Egg's top treadmill).
+				-- Better wheels also lean you further into it and swing the limbs wider.
 				local level = (player:GetAttribute("TreadmillLevel") or 1) :: number
-				local phase = now * (9 + level * 1.6) + rig.Seed
+				local t = math.clamp((level - 1) / 12, 0, 1)
+				local phase = now * 11 * 1.3 ^ (level - 1) + rig.Seed
 				local swing = math.sin(phase)
+				local legs = 45 + t * 20
+				local arms = 50 + t * 25
 				loop = {
-					RightHip = Vector3.new(swing * 45, 0, 0),
-					LeftHip = Vector3.new(-swing * 45, 0, 0),
-					RightKnee = Vector3.new(-25 - math.max(0, swing) * 45, 0, 0),
-					LeftKnee = Vector3.new(-25 - math.max(0, -swing) * 45, 0, 0),
-					RightShoulder = Vector3.new(-swing * 50, 0, 0),
-					LeftShoulder = Vector3.new(swing * 50, 0, 0),
-					RightElbow = Vector3.new(60, 0, 0),
-					LeftElbow = Vector3.new(60, 0, 0),
-					Waist = Vector3.new(8, 0, 0),
-					RootMove = Vector3.new(0, math.abs(math.cos(phase)) * 0.3, 0),
+					RightHip = Vector3.new(swing * legs, 0, 0),
+					LeftHip = Vector3.new(-swing * legs, 0, 0),
+					RightKnee = Vector3.new(-25 - math.max(0, swing) * legs, 0, 0),
+					LeftKnee = Vector3.new(-25 - math.max(0, -swing) * legs, 0, 0),
+					RightShoulder = Vector3.new(-swing * arms, 0, 0),
+					LeftShoulder = Vector3.new(swing * arms, 0, 0),
+					RightElbow = Vector3.new(60 + t * 25, 0, 0),
+					LeftElbow = Vector3.new(60 + t * 25, 0, 0),
+					Waist = Vector3.new(8 + t * 22, 0, 0),
+					Neck = Vector3.new(-t * 12, 0, 0), -- head up, looking ahead while leaning in
+					RootMove = Vector3.new(0, math.abs(math.cos(phase)) * (0.3 - t * 0.15), 0),
 				}
 			else
 				local tool = heldTool(model)

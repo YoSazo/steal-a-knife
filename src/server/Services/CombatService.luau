@@ -282,6 +282,22 @@ local function stepFlying(dt: number)
 		end
 		params.FilterDescendantsInstances = ignore
 		local hit = workspace:Raycast(f.Position, f.Direction * stepLength, params)
+		-- Invisible blockers (vault gates and side walls, trusses...) aren't walls you can see: fly
+		-- through them, unless they're something you can actually hit (a gate during a break-in)
+		for _ = 1, 4 do
+			local part = hit and hit.Instance
+			if
+				not part
+				or part.Transparency < 0.99
+				or GuardService.FromPart(part)
+				or Targets.FromPart(f.Owner, part)
+			then
+				break
+			end
+			table.insert(ignore, part)
+			params.FilterDescendantsInstances = ignore
+			hit = workspace:Raycast(f.Position, f.Direction * stepLength, params)
+		end
 		local done = false
 		-- Knockable players and other soft targets along the way (the ray passes through characters)
 		local passed = Targets.AlongPath(f.Owner, f.Position, f.Position + f.Direction * stepLength, 2.2)

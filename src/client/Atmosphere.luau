@@ -89,13 +89,14 @@ function Atmosphere.Init()
 	end)
 
 	-- Music ---------------------------------------------------------------------------------------
-	local hubMusic = track(Sounds.HubMusic, 0.22)
+	local hubMusic = track(Sounds.HubMusic, if Sounds.HubMusic ~= "" then 0.22 else 0)
 	local raidMusic = track(Sounds.RaidMusic, 0.3)
-	local heartbeat = track(Sounds.Heartbeat, 0)
-	hubMusic:Play()
+	if Sounds.HubMusic ~= "" then
+		hubMusic:Play()
+	end
 	local function fade(sound: Sound, volume: number)
 		TweenService:Create(sound, TweenInfo.new(1.5), { Volume = volume }):Play()
-		if volume > 0 and not sound.IsPlaying then
+		if volume > 0 and not sound.IsPlaying and sound.SoundId ~= "" then
 			sound:Play()
 		end
 	end
@@ -151,15 +152,12 @@ function Atmosphere.Init()
 			skyTween = nextSky
 			nextSky:Play()
 		end
-		if raid then
-			Effects.Sound(Sounds.Alarm, nil, 0.35)
-		end
 	end
 	ReplicatedStorage:GetAttributeChangedSignal("Raid"):Connect(refreshSky)
 	player:GetAttributeChangedSignal("InRound"):Connect(refreshSky)
 	refreshSky()
 
-	-- Dread: heartbeat + red vignette as the Murderer closes in ---------------------------------
+	-- Dread: a red vignette as the Murderer closes in (no heartbeat any more: too scary) ------------
 	local dreadGui = new("ScreenGui", {
 		Name = "Dread",
 		IgnoreGuiInset = true,
@@ -170,16 +168,9 @@ function Atmosphere.Init()
 	RunService.RenderStepped:Connect(function()
 		local dread = player:GetAttribute("Dread")
 		local level = if type(dread) == "number" and player:GetAttribute("InRound") then dread else 0
-		-- Pulse with the heartbeat
+		-- Pulse faster the closer they are
 		local pulse = 0.75 + 0.25 * math.abs(math.sin(os.clock() * (2.5 + level * 3)))
 		setDread(level * pulse)
-		heartbeat.Volume += ((level * 0.9) - heartbeat.Volume) * 0.05
-		heartbeat.PlaybackSpeed = 0.9 + level * 0.5
-		if level > 0.05 and not heartbeat.IsPlaying then
-			heartbeat:Play()
-		elseif level <= 0.01 and heartbeat.IsPlaying and heartbeat.Volume < 0.02 then
-			heartbeat:Stop()
-		end
 	end)
 
 	-- Flash blinding: a white-out that fades ---------------------------------------------------------

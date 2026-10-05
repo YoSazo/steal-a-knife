@@ -929,18 +929,79 @@ function Effects.Init()
 	end
 	CollectionService:GetInstanceAddedSignal("HauntedWheel"):Connect(trackWheel)
 	local wheelAngles: { [Model]: number } = {}
+	local WHEEL_SEGMENT = math.pi * 2 / 24 -- the repeating rim / tread pattern (WheelTiers)
+	-- Segments turned per frame, by wheel tier. Up to ~0.45 the eye follows it forwards (that's as
+	-- fast as a wheel can LOOK); around 0.5 it strobes; past that it reads as rolling backwards,
+	-- faster the further below 1 it is (0.7 = a fast backwards roll). Per frame, not per second, so
+	-- it reads the same on a 30 fps phone and a 144 Hz PC.
+	local WHEEL_STEPS = { 0.12, 0.17, 0.22, 0.27, 0.32, 0.36, 0.40, 0.43, 0.46, 0.5, 0.55, 0.64, 0.7 }
+	-- Sparks spraying off the tread under the runner's feet: none on the first wheels, a fountain on
+	-- the top ones (an invisible anchored emitter part per wheel, at the inside bottom of the rim)
+	local sparks: { [Model]: ParticleEmitter } = {}
+	local sparkFolder = Instance.new("Folder")
+	sparkFolder.Name = "WheelSparks"
+	sparkFolder.Parent = workspace
+	local function sparksFor(wheel: Model, base: CFrame): ParticleEmitter
+		local existing = sparks[wheel]
+		if existing then
+			return existing
+		end
+		local anchor = Instance.new("Part")
+		anchor.Name = "Sparks"
+		anchor.Anchored, anchor.CanCollide, anchor.CanQuery, anchor.CanTouch = true, false, false, false
+		anchor.Transparency = 1
+		anchor.Size = Vector3.new(2.5, 0.2, 0.6)
+		anchor.CFrame = base * CFrame.new(0, -5.1, 0)
+		anchor.Parent = sparkFolder
+		local p = Instance.new("ParticleEmitter")
+		p.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		p.Color = ColorSequence.new(Color3.fromRGB(255, 250, 210), Color3.fromRGB(255, 170, 60))
+		p.LightEmission = 1
+		p.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0) })
+		p.Lifetime = NumberRange.new(0.25, 0.55)
+		p.Speed = NumberRange.new(14, 26)
+		p.SpreadAngle = Vector2.new(35, 35)
+		p.Acceleration = Vector3.new(0, -60, 0)
+		p.EmissionDirection = Enum.NormalId.Top
+		p.Drag = 2
+		p.Rate = 0
+		p.Parent = anchor
+		sparks[wheel] = p
+		wheel.Destroying:Once(function()
+			sparks[wheel] = nil
+			anchor:Destroy()
+		end)
+		return p
+	end
+	local rumbleAt = 0
 	RunService.RenderStepped:Connect(function(dt: number)
+		for wheel, spark in sparks do
+			if not wheel.Parent or not wheel:GetAttribute("Spinning") then
+				spark.Rate = 0
+			end
+		end
 		for wheel, base in wheels do
 			if not wheel.Parent then
 				wheels[wheel] = nil
 				wheelAngles[wheel] = nil
 			elseif wheel:GetAttribute("Spinning") and wheel.PrimaryPart and Lod.Near(base.Position) then
-				-- Faster wheel tiers spin faster; the rungs roll back under the runner's feet
-				local rate = (wheel:GetAttribute("SpinRate") or 2) :: number
-				local angle = (wheelAngles[wheel] or 0) + dt * rate
+				-- Faster wheel tiers spin faster; the rungs roll back under the runner's feet. Steal An
+				-- Egg's trick at the top: every wheel has 24 identical segments, so turning by just under
+				-- one segment a frame reads as the wheel rolling BACKWARDS (it's really flying round),
+				-- and a bit less than that reads as a strobing blur - at any frame rate
+				local tier = math.clamp((wheel:GetAttribute("Tier") or 1) :: number, 1, #WHEEL_STEPS)
+				local step = WHEEL_SEGMENT * WHEEL_STEPS[tier]
+				local angle = (wheelAngles[wheel] or 0) + step
 				wheelAngles[wheel] = angle
 				wheel:PivotTo(base * CFrame.Angles(angle, 0, 0))
+				sparksFor(wheel, base).Rate = math.max(0, tier - 2) * 9
 			end
+		end
+		-- Your own wheel, top tiers: the camera rumbles like the wheel is shaking under you
+		local level = (player:GetAttribute("TreadmillLevel") or 1) :: number
+		if player:GetAttribute("Training") and level >= 7 and os.clock() >= rumbleAt then
+			rumbleAt = os.clock() + 0.12
+			Effects.Shake(0.4 + (level - 7) * 0.15, 0.2) -- degrees: ~0.4 on wheel 7, ~1.3 on the Cosmic Wheel
 		end
 	end)
 
@@ -949,7 +1010,7 @@ function Effects.Init()
 	local function roundLighting()
 		local inRound = player:GetAttribute("InRound") == true
 		local info = TweenInfo.new(1.2, Enum.EasingStyle.Quad)
-		Lighting.ExposureCompensation = 0
+		-- (exposure, bloom and the rest of the mood: client/ZoneLighting)
 		-- Round maps are indoors with no lamps: rounds get warm, neutral room light, and the hub's
 		-- own values (published by the server as Lighting attributes, MapService) come back after.
 		-- Never cache Lighting here: the client can start before the server has set it up.
@@ -962,10 +1023,6 @@ function Effects.Init()
 			}):Play()
 		elseif typeof(hubAmbient) == "Color3" and typeof(hubOutdoor) == "Color3" then
 			TweenService:Create(Lighting, info, { Ambient = hubAmbient, OutdoorAmbient = hubOutdoor }):Play()
-		end
-		local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
-		if bloom then
-			TweenService:Create(bloom, info, { Intensity = if inRound then 0.25 else 1 }):Play()
 		end
 	end
 	player:GetAttributeChangedSignal("InRound"):Connect(roundLighting)

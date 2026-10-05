@@ -28,7 +28,7 @@ local MapService = require(script.Parent.MapService)
 -- Where events go: our ingest server (analytics/, e.g. "https://stats.yourdomain.com/ingest").
 -- The key: Creator Hub > your experience > Secrets, named "ingest_key" (never in the repo). KEY below
 -- is only a fallback for Studio tests. Server-only module: clients never see either.
-local URL = ""
+local URL = "https://steal-and-murder-analytics.onrender.com/ingest"
 local KEY = ""
 local SECRET_NAME = "ingest_key"
 local SALT = "steal-a-knife:7f3c" -- changing it splits every player into a new id: don't

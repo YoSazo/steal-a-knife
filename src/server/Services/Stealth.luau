@@ -17,10 +17,16 @@ function Stealth.Hide(player: Player): (() -> ())?
 		return nil
 	end
 	local saved: { [Instance]: number } = {}
+	local effects: { ParticleEmitter } = {}
 	for _, d in character:GetDescendants() do
 		if (d:IsA("BasePart") and d.Name ~= "HumanoidRootPart") or d:IsA("Decal") then
 			saved[d] = (d :: any).Transparency;
 			(d :: any).Transparency = 1
+		elseif d:IsA("ParticleEmitter") and d.Enabled then
+			-- the aura on the knife in hand would give them away
+			d.Enabled = false
+			d:Clear()
+			table.insert(effects, d)
 		end
 	end
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -31,6 +37,11 @@ function Stealth.Hide(player: Player): (() -> ())?
 		for instance, transparency in saved do
 			if instance.Parent then
 				(instance :: any).Transparency = transparency
+			end
+		end
+		for _, effect in effects do
+			if effect.Parent then
+				effect.Enabled = true
 			end
 		end
 		if humanoid and humanoid.Parent then

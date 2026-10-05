@@ -10,16 +10,16 @@ return {
 	Gunshot = "rbxassetid://120771468205926",
 	Coin = "rbxassetid://4612374807",
 	Cash = "rbxassetid://134810204798705",
-	Sting = "rbxassetid://9042321568", -- role reveal
-	Death = "rbxassetid://9125652443", -- short death cry (Pro Sound Effects), players and guards
+	-- (the old horror sounds are gone: the game is bright and toy-like now, for 9-15 year olds)
+	Sting = "rbxassetid://1843946260", -- role reveal, round intro, big moments (same sting as cases)
+	Death = "rbxasset://sounds/uuhhh.mp3", -- Roblox's own death sound (it was a screaming death cry)
 
-	-- Music
-	HubMusic = "rbxassetid://77171316401592", -- dark ambient, the hub at night
-	RaidMusic = "rbxassetid://9048541013", -- "Battleground" (APM), during raids
-	Heartbeat = "rbxassetid://9043365842", -- "Heartbeat 96BPM" (APM), the Murderer is near
+	-- Music. HubMusic: put a cheerful looping track's id here ("" = no hub music); it was horror ambience
+	HubMusic = "",
+	RaidMusic = "rbxassetid://9048541013", -- "Battleground" (APM), during the Blood Moon
 
 	-- Raids
-	Alarm = "rbxassetid://9125544285", -- alarm bell (PSE): your gate is under attack
+	Alarm = "rbxassetid://9125544285", -- alarm bell (PSE): someone is robbing YOUR vault
 	GateHit = "rbxassetid://9116502787", -- metal drum bang (PSE)
 	GateBreak = "rbxassetid://9116635188", -- metal grate crash (PSE)
 	WoodBreak = "rbxassetid://9120801590", -- wood snap (PSE): barricades

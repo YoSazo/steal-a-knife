@@ -320,6 +320,39 @@ local function run(startAt: number, replay: boolean)
 		},
 	}
 
+	-- Step 5: a big yellow arrow beside the Upgrades button, bouncing at it (the button's pulse
+	-- ring alone was easy to miss). Its own ScreenGui with no UIScale, so it can sit at the
+	-- button's on-screen position wherever the layout (or a phone) put it.
+	local pointerGui = new("ScreenGui", {
+		Name = "TutorialArrow",
+		ResetOnSpawn = false,
+		DisplayOrder = 60,
+		IgnoreGuiInset = Ui.gui.IgnoreGuiInset,
+		ScreenInsets = Ui.gui.ScreenInsets,
+		Enabled = false,
+	}, player:WaitForChild("PlayerGui")) :: ScreenGui
+	local pointer = new("Frame", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Size = UDim2.fromOffset(78, 50),
+		BackgroundTransparency = 1,
+	}, pointerGui)
+	local YELLOW = Color3.fromRGB(255, 220, 60)
+	local function bar(size: UDim2, position: UDim2, rotation: number)
+		local piece = new("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Size = size,
+			Position = position,
+			Rotation = rotation,
+			BackgroundColor3 = YELLOW,
+		}, pointer)
+		Ui.corner(piece, 6)
+		new("UIStroke", { Color = Color3.fromRGB(30, 22, 6), Thickness = 3 }, piece)
+	end
+	-- a shaft and a ">" head, pointing right at the button
+	bar(UDim2.fromOffset(46, 14), UDim2.new(0, 28, 0.5, 0), 0)
+	bar(UDim2.fromOffset(32, 14), UDim2.new(1, -18, 0.5, -9), 40)
+	bar(UDim2.fromOffset(32, 14), UDim2.new(1, -18, 0.5, 9), -40)
+
 	-- The instruction: one line in a slim see-through bar under the timer
 	local banner = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -491,6 +524,7 @@ local function run(startAt: number, replay: boolean)
 		end
 		targetPart:Destroy()
 		trail:Destroy()
+		pointerGui:Destroy()
 		if skipped then
 			banner:Destroy()
 			return
@@ -578,6 +612,18 @@ local function run(startAt: number, replay: boolean)
 					pulseRing:Destroy()
 				end
 			end
+		end
+		local pointAt = current == 5
+			and upgrades ~= nil
+			and upgrades.Visible
+			and upgrades.AbsoluteSize.X > 0
+			and not Ui.menuOpen()
+			and not player:GetAttribute("InRound")
+		pointerGui.Enabled = pointAt == true
+		if pointAt and upgrades then
+			local bounce = math.abs(math.sin(os.clock() * 5)) * 14
+			local at = upgrades.AbsolutePosition
+			pointer.Position = UDim2.fromOffset(at.X - 8 - bounce, at.Y + upgrades.AbsoluteSize.Y / 2)
 		end
 		-- The glowing ring: Frank's stash (step 1), then outside your vault (step 2); standing on it
 		-- switches the target to the knife / the free plate, which glows

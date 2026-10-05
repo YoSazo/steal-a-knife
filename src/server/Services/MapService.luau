@@ -79,6 +79,7 @@ local BIOME_SHELLS: { [number]: string } = {
 	[3] = "CryptsShell",
 	[4] = "CatacombsShell",
 	[5] = "InfernoShell",
+	[6] = "OlympusShell",
 }
 MapService.BiomeShells = BIOME_SHELLS
 

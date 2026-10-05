@@ -13,6 +13,7 @@
     "setup": "node scripts/setup.js"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
     "libsodium-wrappers": "^0.8.4",
     "pg": "^8.13.0"
   },

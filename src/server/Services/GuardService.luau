@@ -432,8 +432,8 @@ local function setSlot(boss: Boss, slot: Slot, item: string)
 	glow.Brightness = 1.2
 	glow.Shadows = false
 	glow.Parent = model.PrimaryPart
-	-- The same flame the vault knives wear, hotter the deeper the zone: each step into the arena
-	-- adds aura power on top of the knife's own, so the far bosses' walls blaze
+	-- The same fire as a knife in hand (KnifeAura.Hug): it hugs the blade, scaled up to the 4-stud
+	-- display size, and grows with the knife's own rarity / mutation / size
 	local blade = model:FindFirstChild("Blade", true)
 	local guardPart = model:FindFirstChild("Guard", true)
 	if blade and blade:IsA("BasePart") then
@@ -447,8 +447,7 @@ local function setSlot(boss: Boss, slot: Slot, item: string)
 		anchor.Size = Vector3.new(0.2, 0.2, 0.2)
 		anchor.CFrame = CFrame.new(if guardPart and guardPart:IsA("BasePart") then guardPart.Position else box.Position)
 		anchor.Parent = model
-		local depth = (table.find(Knives.Rarities, parsed.Knife.Rarity) or 1) - 1
-		KnifeAura.Mount(anchor, KnifeAura.Power(item) + depth * 0.8, nil, KnifeAura.Variation(item), blade)
+		KnifeAura.Hug(anchor, item, blade, 4)
 	end
 	-- Brainrot label over the knife: name, rarity, money per second (the prompt just says Steal)
 	SignTheme.knifeLabel(

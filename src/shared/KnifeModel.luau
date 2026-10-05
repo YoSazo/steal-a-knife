@@ -8,6 +8,7 @@ local Items = require(script.Parent.Items)
 local KnifeIcons = require(script.Parent.Config.KnifeIcons)
 local Props = require(script.Parent.Props)
 local Knives = require(script.Parent.Config.Knives)
+local KnifeAura = require(script.Parent.KnifeAura)
 
 local ToyBlockModel = require(script.Parent.ToyBlockModel)
 
@@ -407,6 +408,7 @@ function KnifeModel.BuildTool(name: string): Tool
 		tool:AddTag("RainbowKnife")
 	end
 	model:Destroy()
+	KnifeAura.Held(tool, name) -- the flex: the knife's aura, in your hand
 	return tool
 end
 

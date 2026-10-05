@@ -91,7 +91,15 @@ end
 -- so the steel stays clean and fire licks off its outline (no flame standing on the floor).
 -- `blade` is the knife's Blade part; without one (old callers) it falls back to `anchor`.
 -- Effects that must stay upright (smoke, glow light) live on `anchor`.
-function KnifeAura.Mount(anchor: BasePart, power: number, clearance: number?, style: Variants.Style?, blade: BasePart?)
+-- `held` = the knife in someone's hand (KnifeAura.Held): same fire, fewer particles, no light.
+function KnifeAura.Mount(
+	anchor: BasePart,
+	power: number,
+	clearance: number?,
+	style: Variants.Style?,
+	blade: BasePart?,
+	held: boolean?
+)
 	local recipe = style or Variants.List[1]
 	local motion = recipe.Motion
 	local strength = math.clamp(power, 0, 15)
@@ -415,6 +423,22 @@ function KnifeAura.Mount(anchor: BasePart, power: number, clearance: number?, st
 		effect.FlipbookFramerate =
 			NumberRange.new(math.min(30, frames.Min * motion.Tempo), math.min(30, frames.Max * motion.Tempo))
 	end
+	if held then
+		-- A knife in hand is seen up close and by everyone at once: about half the particles
+		for _, holder in holders do
+			for _, d in holder:GetDescendants() do
+				if d:IsA("ParticleEmitter") and d:HasTag("KnifeAuraEmitter") then
+					d.Rate *= 0.55
+					d:SetAttribute("BaseRate", d.Rate)
+					local minimum = d:GetAttribute("AuraMinRate")
+					if type(minimum) == "number" then
+						d:SetAttribute("AuraMinRate", minimum * 0.55)
+					end
+				end
+			end
+		end
+		return
+	end
 	local light = Instance.new("PointLight")
 	light.Name = "AuraGlow"
 	light:SetAttribute("KnifeAuraOwned", true)
@@ -423,6 +447,32 @@ function KnifeAura.Mount(anchor: BasePart, power: number, clearance: number?, st
 	light.Brightness = 0.55 + strength * 0.045
 	light.Shadows = false
 	light.Parent = anchor
+end
+
+-- Below this power a knife in hand stays plain (a plain Common), so the fire in your hand is a flex:
+-- Rare and up, or any mutation / size
+KnifeAura.HeldMinPower = 1
+
+-- The fire that hugs the blade (the held-knife look): ~1 stud of flame for a Rare up to ~2 for the
+-- very best on a 2.4-stud knife, scaled with `length` for bigger displays (boss walls). Fewer
+-- particles and no light. False when the knife is too plain for one (KnifeAura.HeldMinPower).
+function KnifeAura.Hug(anchor: BasePart, item: string, blade: BasePart?, length: number): boolean
+	local power = KnifeAura.Power(item)
+	if power < KnifeAura.HeldMinPower then
+		return false
+	end
+	KnifeAura.Mount(anchor, power, (0.9 + power * 0.075) * length / 2.4, KnifeAura.Variation(item), blade, true)
+	return true
+end
+
+-- The aura on a knife being held (hub knife, the Murderer's knife), hugging the blade. Tools in a
+-- Backpack aren't in the world, so it only shows once it's out.
+function KnifeAura.Held(tool: Tool, item: string)
+	local handle = tool:FindFirstChild("Handle")
+	local blade = tool:FindFirstChild("Blade", true)
+	if handle and handle:IsA("BasePart") then
+		KnifeAura.Hug(handle, item, if blade and blade:IsA("BasePart") then blade else nil, 2.4)
+	end
 end
 
 return KnifeAura

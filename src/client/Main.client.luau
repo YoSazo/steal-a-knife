@@ -32,6 +32,7 @@ local BiomeShells = require(script.Parent.BiomeShells)
 local PhoneHud = require(script.Parent.PhoneHud)
 local HudSkin = require(script.Parent.HudSkin)
 local Telemetry = require(script.Parent.Telemetry)
+local ZoneLighting = require(script.Parent.ZoneLighting)
 
 -- Timed, so slow starts show up in the output (the summary prints once everything is up)
 local clientTimings: { string } = {}
@@ -66,6 +67,7 @@ timed("ShiftLock", ShiftLock.Init)
 timed("Spectate", Spectate.Init)
 timed("Tips", Tips.Init)
 timed("BiomeShells", BiomeShells.Init)
+timed("ZoneLighting", ZoneLighting.Init)
 timed("HudSkin", HudSkin.Init)
 timed("PhoneHud", PhoneHud.Init) -- last: lays out what the others built
 task.spawn(Tutorial.Init)
