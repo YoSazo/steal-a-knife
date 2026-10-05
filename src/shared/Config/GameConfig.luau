@@ -484,7 +484,9 @@ local GameConfig = {
 	BossLair = { At = 0.6, Width = 42, Depth = 14 },
 
 	-- Rounds
-	IntermissionTime = 180,
+	-- (was 180: the first real players reset out of 5 rounds within seconds - every ~3.5 min pulled
+	-- them off the steal/vault loop they were enjoying. The hub is where progress happens.)
+	IntermissionTime = 360,
 	NewcomerRoundIn = 100, -- a first-time player joining pulls the next round in to at most this (s)
 	RoundTime = 150,
 	ResultsTime = 8,
