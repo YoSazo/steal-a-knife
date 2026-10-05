@@ -2,7 +2,7 @@
 -- Powers, Tsunami-simple (the Power Mystic north star): one big row per power (Codex's voxel icon,
 -- name, a few words, ONE big button that says what tapping it does), and your power as a big bar
 -- along the bottom. One power system (docs/POWERS.md): every knife carries a power with a Murderer
--- side (🔪) and an Innocent side (😇); the knife you fight with is the power you bring to rounds.
+-- power and an Innocent power (spelled out on every row); the knife you fight with is the power you bring to rounds.
 -- Powers come from stealing knives, levels from playing: the row button equips your best knife
 -- with that power; the bottom bar re-rolls yours (cash or a Re-roll Token).
 local Players = game:GetService("Players")
@@ -111,14 +111,14 @@ function View.Build(): (Frame, () -> ())
 			RichText = true,
 			Max = 38,
 		})
-		SimpleUi.text(row, `🔪 {short[1]}`, {
+		SimpleUi.text(row, `Murderer power: {short[1]}`, {
 			Position = UDim2.fromOffset(116, 50),
 			Size = UDim2.new(1, -380, 0, 26),
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextColor3 = MURDERER,
 			Max = 22,
 		})
-		SimpleUi.text(row, `😇 {short[2]}`, {
+		SimpleUi.text(row, `Innocent power: {short[2]}`, {
 			Position = UDim2.fromOffset(116, 78),
 			Size = UDim2.new(1, -380, 0, 26),
 			TextXAlignment = Enum.TextXAlignment.Left,
