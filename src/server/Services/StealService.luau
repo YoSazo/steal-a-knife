@@ -578,7 +578,7 @@ function StealService.OpenCase(player: Player, rarity: string, force: boolean?, 
 			p.BestPull = item
 		end
 	end)
-	Net.Remotes.Effect:FireClient(player, "Unbox", rarity, item, upgraded, isNew)
+	Net.Remotes.Effect:FireClient(player, "Unbox", rarity, item, upgraded, isNew, lucky == true)
 	Analytics.Track(player, if lucky then "case.lucky_block" else "case.open", {
 		case = rarity,
 		knife = parsed.Name,

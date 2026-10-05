@@ -54,29 +54,32 @@ local function timed(name: string, fn: () -> ())
 	table.insert(timings, string.format("%s %.0fms", name, (os.clock() - t) * 1000))
 end
 
--- Blender mesh knives and props download side by side (both before anything uses them): the
--- slowest part of a server start, and the first players are waiting on it
+-- (Knives build on demand and Blender props stream in behind: neither holds up the first spawn)
 timed("Meshes", function()
-	local done = 0
-	task.spawn(function()
-		KnifeModel.Preload()
-		done += 1
-	end)
-	task.spawn(function()
-		Props.Preload()
-		done += 1
-	end)
-	while done < 2 do
-		task.wait()
-	end
+	KnifeModel.Preload()
+	task.spawn(Props.Preload)
 end)
 timed("Social", Social.Init)
 timed("Events", ServerEvents.Init)
 timed("Map", MapService.Init)
 timed("Base", BaseService.Init)
 timed("Steal", StealService.Init)
-timed("Guard", GuardService.Init)
-timed("Shells", MapService.BuildBiomeShells) -- after the lairs
+-- The bosses and the biome art are out in the arena, far from the vaults: they build while the
+-- first players are already spawning (a fresh server used to make everyone wait for them)
+task.spawn(function()
+	local t = os.clock()
+	Props.WaitReady(5) -- the bosses wear Blender hair and hats (Frank is the tutorial's first stop: not long)
+	GuardService.Init()
+	local guards = os.clock() - t
+	MapService.BuildBiomeShells() -- after the lairs
+	print(
+		string.format(
+			"[Steal and Murder] bosses %.1fs, biomes %.1fs (built after spawning)",
+			guards,
+			os.clock() - t - guards
+		)
+	)
+end)
 timed("Upgrade", UpgradeService.Init)
 timed("Inventory", InventoryService.Init)
 timed("Combat", CombatService.Init)
@@ -95,7 +98,7 @@ timed("Analytics", Analytics.Init) -- before DataService: it listens for PlayerL
 DataService.PlayerLoaded:Connect(function(player: Player)
 	task.defer(function()
 		if player.Parent and not player.Character then
-			player:LoadCharacterAsync()
+			BaseService.LoadCharacter(player) -- (streams the vault in first)
 		end
 	end)
 end)

@@ -11,7 +11,7 @@ local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local Sounds = require(ReplicatedStorage.Shared.Config.Sounds)
 local View = {}
 
-function View.Play(rarity: string, item: string, upgraded: boolean, isNew: boolean)
+function View.Play(rarity: string, item: string, upgraded: boolean, isNew: boolean, lucky: boolean?)
 	local parsed = Items.Parse(item)
 	if not parsed then
 		return
@@ -30,13 +30,14 @@ function View.Play(rarity: string, item: string, upgraded: boolean, isNew: boole
 	}, Ui.gui)
 	Ui.corner(frame, 16)
 	Theme.outline(frame, Theme.Black, 4)
-	Ui.fitMenu(frame, Vector2.new(900, 520))
+	-- (just tall enough for the reel and the reward card under it)
+	Ui.fitMenu(frame, Vector2.new(900, 380))
 	Ui.registerMenu(frame)
 	local header = Theme.surface(frame, { Size = UDim2.new(1, 0, 0, 64), ZIndex = 31 }, rarityColor)
 	local headerCorner = header:FindFirstChildOfClass("UICorner") :: UICorner
 	headerCorner.CornerRadius = UDim.new(0, 16)
 	Theme.image(header, "Case" .. rarity, { Position = UDim2.fromOffset(6, 2), Size = UDim2.fromOffset(60, 60) })
-	local title = Theme.text(header, "Opening " .. rarity .. " Case", {
+	local title = Theme.text(header, "Opening " .. rarity .. (if lucky then " Lucky Block" else " Case"), {
 		Position = UDim2.fromOffset(74, 2),
 		Size = UDim2.new(1, -150, 1, -4),
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -141,7 +142,7 @@ function View.Play(rarity: string, item: string, upgraded: boolean, isNew: boole
 	tick:Disconnect()
 	strip.Position = UDim2.fromOffset(endX, 3)
 	if not dismissed then
-		title.Text = "Case Reward"
+		title.Text = if lucky then "Lucky Block Reward" else "Case Reward"
 		Theme.enabled(close, true, "X")
 		skipped = true
 		Effects.Sound(Sounds.Reveal, nil, 0.7)

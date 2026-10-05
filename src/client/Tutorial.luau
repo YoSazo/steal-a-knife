@@ -381,13 +381,14 @@ local function run(startAt: number, replay: boolean)
 		local _, bounds = Ui.bounds()
 		local phone = Ui.Phone
 		-- between the left and right button columns, under the timer lines
+		-- (phones: the most important words a new player reads, so big - 14 px was too small)
 		local width =
-			math.min(if phone then 460 else 620, math.max(240, bounds.X - (if phone then 2 * 140 else 2 * 190)))
-		local height = if phone then 34 else 40
+			math.min(if phone then 600 else 640, math.max(240, bounds.X - (if phone then 2 * 130 else 2 * 190)))
+		local height = if phone then 56 else 44
 		banner.Size = UDim2.fromOffset(width, height)
-		banner.Position = UDim2.new(0.5, 0, 0, if phone then 92 else 116)
+		banner.Position = UDim2.new(0.5, 0, 0, if phone then 88 else 116)
 		stepLabel.Size = UDim2.new(1, -84, 1, 0)
-		stepLabel.TextSize = if phone then 14 else 18
+		stepLabel.TextSize = if phone then 21 else 19
 	end
 	Ui.Layout.Changed:Connect(layout)
 	layout()

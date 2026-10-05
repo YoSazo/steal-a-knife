@@ -233,14 +233,37 @@ function Props.Preload()
 	end
 	local folder = Instance.new("Folder")
 	folder.Name = TEMPLATE_FOLDER
+	folder.Parent = ReplicatedStorage -- (filled as meshes arrive; Build falls back to parts till then)
 	local pending = 0
 	for name, specs in PropMeshes do
 		pending += 1
 		task.spawn(function()
 			local model, root = newModel(name)
 			local ok, err = pcall(function()
-				for _, spec in specs do
-					local mesh = AssetService:CreateMeshPartAsync(Content.fromUri(spec.MeshId))
+				-- All of this prop's meshes download side by side, not one after another
+				local meshes: { MeshPart? } = {}
+				local failed: string? = nil
+				local left = #specs
+				for index, spec in specs do
+					task.spawn(function()
+						local fine, result =
+							pcall(AssetService.CreateMeshPartAsync, AssetService, Content.fromUri(spec.MeshId))
+						if fine then
+							meshes[index] = result
+						else
+							failed = tostring(result)
+						end
+						left -= 1
+					end)
+				end
+				while left > 0 do
+					task.wait()
+				end
+				if failed then
+					error(failed)
+				end
+				for index, spec in specs do
+					local mesh = meshes[index] :: MeshPart
 					mesh.Name = spec.Name
 					mesh.Size = spec.Size
 					mesh.CFrame = CFrame.new(spec.Offset)
@@ -266,7 +289,20 @@ function Props.Preload()
 	while pending > 0 and os.clock() - started < 15 do
 		task.wait(0.1)
 	end
-	folder.Parent = ReplicatedStorage
+	folder:SetAttribute("Ready", true)
+end
+
+-- Waits (up to `timeout` s) until Props.Preload has finished: for things that should wear the
+-- Blender meshes rather than the part fallbacks (the bosses' hair and hats)
+function Props.WaitReady(timeout: number?)
+	local started = os.clock()
+	while os.clock() - started < (timeout or 20) do
+		local folder = ReplicatedStorage:FindFirstChild(TEMPLATE_FOLDER)
+		if folder and folder:GetAttribute("Ready") then
+			return
+		end
+		task.wait(0.2)
+	end
 end
 
 -- Whether the Blender mesh version of a prop is loaded

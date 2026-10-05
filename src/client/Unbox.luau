@@ -6,7 +6,7 @@ local Ui = require(script.Parent.Ui)
 local Items = require(ReplicatedStorage.Shared.Items)
 local View = require(script.Parent.UnboxView)
 local Unbox = {}
-local queue: { { Rarity: string, Item: string, Upgraded: boolean, IsNew: boolean } } = {}
+local queue: { { Rarity: string, Item: string, Upgraded: boolean, IsNew: boolean, Lucky: boolean } } = {}
 local playing = false
 local function drain()
 	if playing then
@@ -19,7 +19,7 @@ local function drain()
 	while #queue > 0 do
 		local reward = table.remove(queue, 1)
 		if reward then
-			View.Play(reward.Rarity, reward.Item, reward.Upgraded, reward.IsNew)
+			View.Play(reward.Rarity, reward.Item, reward.Upgraded, reward.IsNew, reward.Lucky)
 		end
 	end
 	playing = false
@@ -41,11 +41,14 @@ function Unbox.Init()
 		if kind ~= "Unbox" then
 			return
 		end
-		local rarity, item, upgraded, isNew = ...
+		local rarity, item, upgraded, isNew, lucky = ...
 		if type(rarity) ~= "string" or type(item) ~= "string" or not Items.Parse(item) then
 			return
 		end
-		table.insert(queue, { Rarity = rarity, Item = item, Upgraded = upgraded == true, IsNew = isNew == true })
+		table.insert(
+			queue,
+			{ Rarity = rarity, Item = item, Upgraded = upgraded == true, IsNew = isNew == true, Lucky = lucky == true }
+		)
 		task.spawn(drain)
 	end)
 end

@@ -203,6 +203,18 @@ end)
 -- Set by StealService: called once someone is back at their pre-round spot (hands back a carry)
 BaseService.OnReturnedHome = nil :: ((player: Player) -> ())?
 
+-- Spawning: stream the area round the spawn to the player's client FIRST, so they never drop into
+-- a map that hasn't loaded yet (falling out of the sky, Roblox's "Gameplay Paused" box)
+function BaseService.LoadCharacter(player: Player)
+	local spawnAt = player.RespawnLocation
+	if spawnAt then
+		pcall(player.RequestStreamAroundAsync, player, spawnAt.Position, 6)
+	end
+	if player.Parent then
+		player:LoadCharacterAsync()
+	end
+end
+
 function BaseService.TeleportHome(player: Player)
 	local character = player.Character
 	if not character then

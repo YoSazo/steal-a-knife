@@ -56,14 +56,26 @@ function KnifeModel.Preload()
 	if old then
 		old:Destroy()
 	end
+	-- Building all 24 block knives up front kept every first player waiting on a fresh server: the
+	-- folder goes up empty, each knife is built the first time it's needed (template below), and
+	-- the rest are warmed in the background, one a frame
 	local folder = Instance.new("Folder")
 	folder.Name = TEMPLATE_FOLDER
 	folder:SetAttribute("ToyBlockVersion", BLOCK_VERSION)
-	for _, knife in Knives.List do
-		local model = ToyBlockModel.Build(knife.Name, false, "Handle")
-		model.Parent = folder
-	end
 	folder.Parent = ReplicatedStorage
+	task.spawn(function()
+		for _, knife in Knives.List do
+			if folder.Parent and not folder:FindFirstChild(knife.Name) then
+				local model = ToyBlockModel.Build(knife.Name, false, "Handle")
+				if folder:FindFirstChild(knife.Name) then
+					model:Destroy() -- (built on demand meanwhile)
+				else
+					model.Parent = folder
+				end
+			end
+			task.wait()
+		end
+	end)
 end
 
 local function template(name: string): Model?
@@ -71,7 +83,14 @@ local function template(name: string): Model?
 	if not folder or folder:GetAttribute("ToyBlockVersion") ~= BLOCK_VERSION then
 		return nil
 	end
-	return folder:FindFirstChild(name) :: Model?
+	local found = folder:FindFirstChild(name) :: Model?
+	if not found and RunService:IsServer() and Knives.ByName[name] then
+		-- first time this knife is needed on this server: build it once, keep it
+		local model = ToyBlockModel.Build(name, false, "Handle")
+		model.Parent = folder
+		found = model
+	end
+	return found
 end
 
 -- A motion trail along the blade, off by default; the client's animation engine (Moves) turns it

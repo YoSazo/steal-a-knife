@@ -58,16 +58,10 @@ local function equip(player: Player, name: unknown): boolean
 			Net.Animate(player.Character, "Draw")
 		end
 	end
-	Net.Notify(
-		player,
-		if name ~= "" then `{Items.DisplayName(name)} equipped!` else "Auto-equip: your best knife",
-		"good"
-	)
-	-- ...and what it gives you when you're the Murderer
-	local parsed = if name ~= "" then Items.Parse(name) else nil
-	local perk = parsed and parsed.Perk and GameConfig.Perks[parsed.Perk]
-	if perk then
-		Net.Notify(player, `🔪 As the Murderer: {perk.DisplayName} - {perk.Description}`, "info")
+	-- (a picked knife gets the big "EQUIPPED" banner with its name and Murderer power from the
+	-- Equipped effect above; toasts on top of it were the same words twice more)
+	if name == "" then
+		Net.Notify(player, "Auto-equip: your best knife", "good")
 	end
 	return true
 end

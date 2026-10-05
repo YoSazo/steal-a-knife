@@ -67,10 +67,18 @@ local function refresh()
 	end
 	changed:Fire(active)
 end
--- A menu soaks up touches on itself: scrolling a list must never also drive the thumbstick or
--- turn the camera behind it
+-- A menu soaks up touches on its own background and panels, so a finger on it never also drives
+-- the thumbstick or turns the camera behind it. NEVER anything inside a button (a label or icon on
+-- top of a button that sinks the touch means the button never hears the tap - every menu button
+-- was dead on phones) or inside a scrolling list (rows that sink touches stop the list scrolling).
 local function sink(instance: Instance)
-	if instance:IsA("GuiObject") and not instance:IsA("GuiButton") and not instance:IsA("ScrollingFrame") then
+	if
+		instance:IsA("GuiObject")
+		and not instance:IsA("GuiButton")
+		and not instance:IsA("ScrollingFrame")
+		and not instance:FindFirstAncestorWhichIsA("GuiButton")
+		and not instance:FindFirstAncestorWhichIsA("ScrollingFrame")
+	then
 		instance.Active = true
 	end
 end

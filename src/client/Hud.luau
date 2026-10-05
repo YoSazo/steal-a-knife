@@ -1174,31 +1174,32 @@ function Hud.Init()
 				return -- already on screen
 			end
 		end
-		local toast = Ui.label({
-			Size = UDim2.new(1, 0, 0, if Ui.Phone then 26 else 44),
+		-- (phones: big enough to read at arm's length - 12 px was unreadable on a real phone)
+		local bubble = Ui.label({
+			Size = UDim2.new(1, 0, 0, if Ui.Phone then 40 else 44),
 			AutomaticSize = Enum.AutomaticSize.Y,
-			BackgroundTransparency = if Ui.Phone then 0.15 else 0,
+			BackgroundTransparency = if Ui.Phone then 0.1 else 0,
 			BackgroundColor3 = KIND_COLORS[kind] or KIND_COLORS.info,
 			TextScaled = false,
-			TextSize = if Ui.Phone then 12 else 14,
+			TextSize = if Ui.Phone then 22 else 16,
 			TextWrapped = true,
 			Text = text,
 		}, toasts)
-		Ui.corner(toast, 12)
-		Ui.stroke(toast, 2)
-		Ui.textStroke(toast, 1.5)
-		Ui.padding(toast, if Ui.Phone then 8 else 14, if Ui.Phone then 2 else 4)
-		local scale = new("UIScale", { Scale = 0.6 }, toast)
+		Ui.corner(bubble, 12)
+		Ui.stroke(bubble, 2)
+		Ui.textStroke(bubble, 1.5)
+		Ui.padding(bubble, if Ui.Phone then 12 else 14, if Ui.Phone then 4 else 4)
+		local scale = new("UIScale", { Scale = 0.6 }, bubble)
 		TweenService:Create(scale, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Scale = 1 }):Play()
 		task.delay(if Ui.Phone then 3 else 4, function()
 			local fade = TweenService:Create(
-				toast,
+				bubble,
 				TweenInfo.new(0.4),
 				{ BackgroundTransparency = 1, TextTransparency = 1, TextStrokeTransparency = 1 }
 			)
 			fade:Play()
 			fade.Completed:Wait()
-			toast:Destroy()
+			bubble:Destroy()
 		end)
 		local labels = {}
 		for _, child in toasts:GetChildren() do

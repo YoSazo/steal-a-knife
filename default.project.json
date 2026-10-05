@@ -26,6 +26,12 @@
           "$path": "src/client"
         }
       }
+    },
+    "Workspace": {
+      "$className": "Workspace",
+      "$properties": {
+        "StreamingIntegrityMode": "Disabled"
+      }
     }
   }
 }

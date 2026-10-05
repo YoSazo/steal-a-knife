@@ -142,23 +142,39 @@ local function perkBadge(parent: Instance, perkId: string)
 	if not icon or not perk then
 		return
 	end
-	new("ImageLabel", {
+	-- A small dark pill in the corner (it used to sit big across the knife picture)
+	local pill = new("Frame", {
 		Name = "Perk",
 		Position = UDim2.fromOffset(4, 4),
-		Size = UDim2.fromOffset(34, 34),
+		Size = UDim2.fromOffset(0, 22),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundColor3 = Color3.fromRGB(20, 16, 30),
+		BackgroundTransparency = 0.25,
+		ZIndex = 8,
+	}, parent)
+	Ui.corner(pill, 11)
+	new("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Padding = UDim.new(0, 3),
+	}, pill)
+	new("UIPadding", { PaddingLeft = UDim.new(0, 3), PaddingRight = UDim.new(0, 7) }, pill)
+	new("ImageLabel", {
+		Size = UDim2.fromOffset(18, 18),
 		BackgroundTransparency = 1,
 		Image = icon,
-		ZIndex = 8,
-	}, parent)
+		ZIndex = 9,
+	}, pill)
 	local name = Ui.label({
-		Position = UDim2.fromOffset(40, 10),
-		Size = UDim2.new(1, -44, 0, 20),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = Color3.fromRGB(255, 120, 120),
+		Size = UDim2.fromOffset(0, 18),
+		AutomaticSize = Enum.AutomaticSize.X,
+		TextScaled = false,
+		TextSize = 13,
+		TextColor3 = Color3.fromRGB(255, 140, 140),
 		Text = perk.DisplayName,
-		ZIndex = 8,
-	}, parent)
-	Ui.textStroke(name, 1.5)
+		ZIndex = 9,
+	}, pill)
+	Ui.textStroke(name, 1.2)
 end
 
 local function smallButton(
@@ -345,6 +361,7 @@ function Menus.Init()
 			cardText(empty, 20, 120, "Steal knives off the bosses' walls on the runway and carry them home!")
 			return
 		end
+		local equippedShown = false -- two copies of the same knife: only one says "Equipped"
 		for index, item in owned do
 			local parsed = Items.Parse(item)
 			if not parsed then
@@ -378,7 +395,8 @@ function Menus.Init()
 			if parsed.Perk then
 				perkBadge(c, parsed.Perk)
 			end
-			local isEquipped = item == equipped
+			local isEquipped = item == equipped and not equippedShown
+			equippedShown = equippedShown or isEquipped
 			smallButton(
 				c,
 				UDim.new(1, -98),
@@ -749,63 +767,114 @@ function Menus.Init()
 	moreButton("Players", "Players", playersFrame, refreshPlayers)
 	local statsFrame, statsBody = Theme.shell("Stats", "Stats", Color3.fromRGB(87, 202, 150), "Stats", 650, 960)
 	table.insert(panels, statsFrame)
+	-- Stat tiles (big number, small label), like the rest of the menus - it used to be a plain text
+	-- list floating over the world
 	local detailsScroll = new("ScrollingFrame", {
-		Size = UDim2.new(1, 0, 1, -56),
+		Size = UDim2.fromScale(1, 1),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		CanvasSize = UDim2.new(),
 		BackgroundTransparency = 1,
 		ScrollBarThickness = 4,
 		ZIndex = 5,
 	}, statsBody)
-	local statsText = Ui.label({
-		Size = UDim2.new(1, -8, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		TextScaled = false,
-		TextSize = 18,
-		TextWrapped = true,
-		TextYAlignment = Enum.TextYAlignment.Top,
-		ZIndex = 6,
+	new("UIGridLayout", {
+		CellSize = UDim2.new(0.5, -6, 0, 92),
+		CellPadding = UDim2.fromOffset(8, 8),
+		SortOrder = Enum.SortOrder.LayoutOrder,
 	}, detailsScroll)
-	local blurButton = Ui.button(
-		{
-			Name = "MenuBlur",
-			Text = "Menu blur: OFF",
-			Position = UDim2.new(0, 0, 1, -48),
-			Size = UDim2.new(1, -8, 0, 44),
+	new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingRight = UDim.new(0, 8) }, detailsScroll)
+	type Tile = { Frame: Frame, Value: TextLabel }
+	local tiles: { [string]: Tile } = {}
+	local function tile(key: string, order: number, icon: string, label: string, color: Color3)
+		local frame = new("Frame", {
+			Name = key,
+			LayoutOrder = order,
+			BackgroundColor3 = Color3.fromRGB(30, 34, 52),
+			BackgroundTransparency = 0.1,
 			ZIndex = 6,
-		},
-		statsBody,
-		function()
-			if Ui.Menu.CanBlur() then
-				Ui.gui:SetAttribute("MenuBlurEnabled", not Ui.gui:GetAttribute("MenuBlurEnabled"))
+		}, detailsScroll)
+		Ui.corner(frame, 12)
+		new("UIStroke", { Color = color, Thickness = 2 }, frame)
+		local value = Ui.label({
+			Position = UDim2.fromOffset(10, 6),
+			Size = UDim2.new(1, -20, 0, 48),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = color,
+			Text = "",
+			ZIndex = 7,
+		}, frame)
+		Ui.textStroke(value, 2)
+		local name = Ui.label({
+			Position = UDim2.new(0, 10, 1, -34),
+			Size = UDim2.new(1, -20, 0, 28),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = Color3.fromRGB(220, 222, 235),
+			Text = `{icon}  {label}`,
+			ZIndex = 7,
+		}, frame)
+		Ui.textStroke(name, 1.5)
+		tiles[key] = { Frame = frame, Value = value }
+	end
+	tile("Income", 1, "💰", "Income per second", Color3.fromRGB(120, 255, 140))
+	tile("Speed", 2, "👟", "Walk speed", Color3.fromRGB(120, 200, 255))
+	tile("Rebirths", 3, "🔁", "Rebirths", Color3.fromRGB(200, 140, 255))
+	tile("Heat", 4, "🔥", "Heat", Color3.fromRGB(255, 160, 80))
+	tile("Kills", 5, "🔪", "Murderer kills", Color3.fromRGB(255, 110, 120))
+	tile("Wins", 6, "🏆", "Rounds won", Color3.fromRGB(255, 215, 80))
+	tile("Stolen", 7, "🌕", "Knives stolen", Color3.fromRGB(255, 120, 120))
+	tile("Cases", 8, "🎁", "Cases opened", Color3.fromRGB(255, 200, 120))
+	tile("Wall", 9, "🧱", "Wall level", Color3.fromRGB(170, 190, 255))
+	tile("Friends", 10, "👥", "Friend boost", Color3.fromRGB(120, 230, 200))
+	tile("Goal", 11, "🎯", "Server goal", Color3.fromRGB(255, 230, 120))
+	tile("Shield", 12, "🛡️", "New-player shield", Color3.fromRGB(140, 220, 255))
+	tile("Boost", 13, "⚡", "Cash boost", Color3.fromRGB(120, 255, 140))
+	tile("Luck", 14, "🍀", "Server luck", Color3.fromRGB(150, 255, 150))
+	local function refreshDetails()
+		local function set(key: string, text: string, show: boolean?)
+			tiles[key].Value.Text = text
+			tiles[key].Frame.Visible = show ~= false
+		end
+		local now = workspace:GetServerTimeNow()
+		set("Income", `${Ui.abbreviate(player:GetAttribute("Income") or 0)}/s`)
+		set("Speed", tostring(math.floor(GameConfig.WalkSpeedFor((player:GetAttribute("Speed") or 0) :: number))))
+		set("Rebirths", tostring(player:GetAttribute("Rebirths") or 0))
+		set("Heat", `{player:GetAttribute("Heat") or 0}/10`)
+		set("Kills", Ui.abbreviate(player:GetAttribute("Kills") or 0))
+		set("Wins", Ui.abbreviate(player:GetAttribute("Wins") or 0))
+		set("Stolen", Ui.abbreviate(player:GetAttribute("KnivesStolen") or 0))
+		set("Cases", Ui.abbreviate(player:GetAttribute("CasesOpened") or 0))
+		set("Wall", tostring(player:GetAttribute("WallLevel") or 1))
+		set("Friends", `+{(player:GetAttribute("FriendsHere") or 0) * 10}%`)
+		local goal = ReplicatedStorage:GetAttribute("GoalText")
+		set(
+			"Goal",
+			`{ReplicatedStorage:GetAttribute("GoalProgress") or 0}/{ReplicatedStorage:GetAttribute("GoalNeed") or 1}`,
+			goal ~= nil
+		)
+		if goal then
+			local nameLabel = tiles.Goal.Frame:FindFirstChildWhichIsA("TextLabel", false)
+			for _, child in tiles.Goal.Frame:GetChildren() do
+				if child:IsA("TextLabel") and child ~= tiles.Goal.Value then
+					nameLabel = child
+				end
+			end
+			if nameLabel then
+				nameLabel.Text = `🎯  {goal}`
 			end
 		end
-	)
-	local function refreshDetails()
-		statsText.Text = `Income: ${Ui.abbreviate(player:GetAttribute("Income") or 0)}/s\nHeat: {player:GetAttribute(
-			"Heat"
-		) or 0}/10\nWalk speed: {math.floor(GameConfig.WalkSpeedFor((player:GetAttribute("Speed") or 0) :: number))}\nWall level: {player:GetAttribute(
-			"WallLevel"
-		) or 0}\nLuck: {player:GetAttribute("Luck") or 0}\nRebirths: {player:GetAttribute("Rebirths") or 0}\nFriend boost: +{(player:GetAttribute(
-			"FriendsHere"
-		) or 0) * 10}%\n\nServer goal: {ReplicatedStorage:GetAttribute("GoalText") or "None"} ({ReplicatedStorage:GetAttribute(
-			"GoalProgress"
-		) or 0}/{ReplicatedStorage:GetAttribute("GoalNeed") or 1})`
-		local now = workspace:GetServerTimeNow()
+		set("Shield", Ui.clock(player:GetAttribute("ShieldLeft") or 0), player:GetAttribute("Shielded") == true)
 		local boost = player:GetAttribute("BoostUntil")
+		set(
+			"Boost",
+			if type(boost) == "number" and boost > now then Ui.clock(boost - now) else "",
+			type(boost) == "number" and boost > now
+		)
 		local luck = ReplicatedStorage:GetAttribute("ServerLuckUntil")
-		statsText.Text ..= `\nShield: {if player:GetAttribute("Shielded")
-			then Ui.clock(player:GetAttribute("ShieldLeft") or 0)
-			else "None"}\nCash boost: {if type(boost) == "number" and boost > now then Ui.clock(boost - now) else "None"}\nServer luck: {if type(
-				luck
-			)
-					== "number"
-				and luck > now
-			then Ui.clock(luck - now)
-			else "None"}`
-		blurButton.Text = if Ui.Menu.CanBlur()
-			then (if Ui.gui:GetAttribute("MenuBlurEnabled") then "Menu blur: ON" else "Menu blur: OFF")
-			else "Menu blur: requires High graphics"
+		set(
+			"Luck",
+			if type(luck) == "number" and luck > now then Ui.clock(luck - now) else "",
+			type(luck) == "number" and luck > now
+		)
 	end
 	moreButton("Stats", "Trophy", statsFrame, refreshDetails)
 	-- How to play: the first-minutes guide again (client/Tutorial)
@@ -822,7 +891,6 @@ function Menus.Init()
 			Ui.ReplayTutorial()
 		end
 	end)
-	Ui.gui:GetAttributeChangedSignal("MenuBlurEnabled"):Connect(refreshDetails)
 	player.AttributeChanged:Connect(function()
 		if statsFrame.Visible then
 			refreshDetails()

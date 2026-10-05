@@ -117,8 +117,14 @@ function Atmosphere.Init()
 	}, Lighting)
 	local tintTween: Tween? = nil
 	local skyTween: Tween? = nil
+	local wasRaid = false
 	local function refreshSky()
 		local raid = ReplicatedStorage:GetAttribute("Raid") == true and not player:GetAttribute("InRound")
+		-- The sky is client/ZoneLighting's (biome moods, rounds): this only takes it over while the
+		-- moon is up and hands it back as it sets. Fading "back to the hub sky" on every round
+		-- teleport painted the last biome's haze over the round maps.
+		local touchSky = raid or wasRaid
+		wasRaid = raid
 		if tintTween then
 			tintTween:Cancel()
 		end
@@ -130,7 +136,7 @@ function Atmosphere.Init()
 		tintTween = nextTint
 		nextTint:Play()
 		local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-		if atmosphere then
+		if atmosphere and touchSky then
 			if skyTween then
 				skyTween:Cancel()
 			end

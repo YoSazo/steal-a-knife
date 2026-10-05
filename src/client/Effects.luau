@@ -214,6 +214,35 @@ end
 
 -- Short camera shake (hits you land and hits you take)
 local shakeUntil, shakeStrength = 0, 0
+-- A dark rounded card behind a big banner's lines, so they read over a menu or a bright sky
+-- (bare text on top of a menu was unreadable). Spans screen heights fromY..toY; returns a fade.
+local function bannerCard(gui: ScreenGui, fromY: number, toY: number, width: number, edge: Color3): () -> ()
+	local card = Instance.new("Frame")
+	card.Name = "Card"
+	card.AnchorPoint = Vector2.new(0.5, 0)
+	card.Position = UDim2.fromScale(0.5, fromY)
+	card.Size = UDim2.new(0, width, toY - fromY, 0)
+	card.BackgroundColor3 = Color3.fromRGB(22, 18, 34)
+	card.BackgroundTransparency = 0.12
+	card.ZIndex = 0
+	card.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 18)
+	corner.Parent = card
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = 3
+	stroke.Color = edge
+	stroke.Parent = card
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0.4
+	scale.Parent = card
+	TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+	return function()
+		TweenService:Create(card, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(stroke, TweenInfo.new(0.5), { Transparency = 1 }):Play()
+	end
+end
+
 function Effects.Shake(strength: number, duration: number)
 	shakeUntil = math.max(shakeUntil, os.clock() + duration)
 	shakeStrength = math.max(if os.clock() < shakeUntil then shakeStrength else 0, strength)
@@ -404,6 +433,7 @@ local handlers: { [string]: (...any) -> () } = {
 			label.TextScaled = true
 			label.TextColor3 = c
 			label.Text = text
+			label.ZIndex = 2
 			label.Parent = gui
 			local stroke = Instance.new("UIStroke")
 			stroke.Thickness = 3
@@ -411,6 +441,7 @@ local handlers: { [string]: (...any) -> () } = {
 			stroke.Parent = label
 			return label
 		end
+		local fadeCard = bannerCard(gui, 0.2, if perk then 0.465 else 0.415, 820, color)
 		local labels = {
 			line("✨ MURDERER POWER! ✨", 0.24, 36, Color3.new(1, 1, 1)),
 			line(if perk then perk.DisplayName else power, 0.31, 70, color),
@@ -430,6 +461,7 @@ local handlers: { [string]: (...any) -> () } = {
 			Effects.Sound(Sounds.Cheer, nil, 0.8)
 		end
 		task.delay(if rare then 4 else 2.6, function()
+			fadeCard()
 			for _, label in labels do
 				TweenService:Create(label, TweenInfo.new(0.5), { TextTransparency = 1 }):Play()
 				local stroke = label:FindFirstChildOfClass("UIStroke")
@@ -489,6 +521,7 @@ local handlers: { [string]: (...any) -> () } = {
 			label.TextScaled = true
 			label.TextColor3 = color
 			label.Text = text
+			label.ZIndex = 2
 			label.Parent = gui
 			local stroke = Instance.new("UIStroke")
 			stroke.Thickness = 3
@@ -498,6 +531,7 @@ local handlers: { [string]: (...any) -> () } = {
 		end
 		local parsed = Items.Parse(item)
 		local perk = parsed and parsed.Perk and GameConfig.Perks[parsed.Perk]
+		local fadeCard = bannerCard(gui, 0.265, if perk then 0.45 else 0.4, 740, Items.Color(item))
 		local labels = {
 			line("EQUIPPED", 0.3, 34, Color3.fromRGB(255, 230, 120)),
 			line(Items.DisplayName(item), 0.36, 56, Items.Color(item)),
@@ -515,6 +549,7 @@ local handlers: { [string]: (...any) -> () } = {
 			TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
 		end
 		task.delay(2.2, function()
+			fadeCard()
 			for _, label in labels do
 				TweenService:Create(label, TweenInfo.new(0.5), { TextTransparency = 1 }):Play()
 				local stroke = label:FindFirstChildOfClass("UIStroke")
@@ -974,7 +1009,7 @@ function Effects.Init()
 		return p
 	end
 	local rumbleAt = 0
-	RunService.RenderStepped:Connect(function(dt: number)
+	RunService.RenderStepped:Connect(function(_dt: number)
 		for wheel, spark in sparks do
 			if not wheel.Parent or not wheel:GetAttribute("Spinning") then
 				spark.Rate = 0

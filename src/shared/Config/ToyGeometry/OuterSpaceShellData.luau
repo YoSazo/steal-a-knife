@@ -1,0 +1,48 @@
+--!strict
+-- Zone 8 entrance is world (0,0,1540); block offsets are local.
+return {
+	Version = 1,
+	Name = "OuterSpaceShell",
+	BiomeIndex = 8,
+	Rarity = "Cosmic",
+	Boss = "Nick",
+	BossTitle = "The Void Walker",
+	BossWear = { "SpaceHelmet" },
+	Origin = { 0, 0, 1540 },
+	LocalOrigin = { 0, 0, 0 },
+	FrontAxis = "-Z; +Z goes deeper",
+	PartCount = 1363,
+	LowPartCount = 715,
+	FlowFaces = 17,
+	Bounds = { MinX = -80, MaxX = 80, MinZ = 0, MaxZ = 220, WallHeight = 120, FloorTop = 0.2 },
+	ClearLane = { MinX = -56, MaxX = 56, OverheadClearance = 70 },
+	ReservedLair = {
+		LocalCenter = { 73, 0, 132 },
+		WorldCenter = { 73, 0, 1672 },
+		ClearX = { 62, 80 },
+		ClearZ = {
+			105,
+			159,
+		},
+		ClearHeight = 32,
+	},
+	Seam = {
+		Previous = "HeavensShell",
+		PreviousExitWorldZ = 1540,
+		EntranceOverlap = 3,
+		ExactXYProfile = true,
+		ExitCenter = 214,
+		PreviousExitPrefix = "HeavensExit_",
+		ExitProfilePrefix = "OuterSpaceExit_",
+		ExitAccentPrefix = "ExitCosmic",
+		PreviousExitSha256 = "8e866864657eaa15e51e74fc40097e7feb4ef1a83d2b6fbe371ff113a6957bfe",
+	},
+	Groups = {
+		LeftWall = require(script.Parent.OuterSpaceShell.LeftWall),
+		RightWall = require(script.Parent.OuterSpaceShell.RightWall),
+		Entrance = require(script.Parent.OuterSpaceShell.Entrance),
+		Exit = require(script.Parent.OuterSpaceShell.Exit),
+		VoidStargate = require(script.Parent.OuterSpaceShell.VoidStargate),
+		Floor = require(script.Parent.OuterSpaceShell.Floor),
+	},
+}

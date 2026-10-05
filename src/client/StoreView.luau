@@ -366,6 +366,14 @@ function View.Build(actions: any): Frame
 	}
 	local function offer(parent: Frame, entry: any, order: number, kind: string)
 		local item = card(parent, order, entry.Color, 256)
+		-- "Auto Collect (this visit)" is pointless with the Auto Collect pass: hide it for owners
+		if entry.Key == "CollectSession" then
+			local function hideIfOwned()
+				item.Visible = player:GetAttribute("Pass_AutoCollect") ~= true
+			end
+			player:GetAttributeChangedSignal("Pass_AutoCollect"):Connect(hideIfOwned)
+			hideIfOwned()
+		end
 		Theme.image(
 			item,
 			symbols[entry.Key] or "Cash",

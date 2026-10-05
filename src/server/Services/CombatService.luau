@@ -22,6 +22,7 @@ local Ragdoll = require(script.Parent.Ragdoll)
 local Analytics = require(script.Parent.Analytics)
 local Targets = require(script.Parent.Targets)
 local StuckKnives = require(script.Parent.StuckKnives)
+local BaseService = require(script.Parent.BaseService)
 
 local CombatService = {}
 
@@ -383,7 +384,7 @@ local function onCharacterAdded(player: Player, character: Model)
 		-- Auto-loading is off (see Main), so respawn here once the body has had time to fall
 		task.delay(Players.RespawnTime, function()
 			if player.Parent and player.Character == character then
-				player:LoadCharacterAsync()
+				BaseService.LoadCharacter(player) -- (streams the spawn in first)
 			end
 		end)
 	end)

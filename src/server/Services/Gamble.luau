@@ -179,34 +179,48 @@ function Gamble.MerchantStock(player: Player): { Offer }
 	local income = math.max(1, BaseService.RackIncome(player))
 	local seeded = Random.new(index * 7919 + player.UserId % 100000)
 	local stock: { Offer } = {}
+	local used: { [string]: boolean } = {} -- never the same thing twice in one rotation
+	local caseCatalog: { [string]: number } = {}
+	for _, entry in GameConfig.CaseShop do
+		caseCatalog[entry.Rarity] = entry.Cost
+	end
 	for slot = 1, GameConfig.Merchant.Slots do
 		local lucky = seeded:NextNumber() < 0.5
-		local catalog: { [string]: number } = {}
-		if lucky then
-			catalog = GameConfig.LuckyBlockCash
-		else
-			for _, entry in GameConfig.CaseShop do
-				catalog[entry.Rarity] = entry.Cost
-			end
-		end
-		-- The priciest tier that's within ~MaxMinutes of income (at least the cheapest)
-		local best, bestCost = nil :: string?, 0
-		local cheapest, cheapestCost = nil :: string?, math.huge
 		local reach = income * 60 * GameConfig.Merchant.MaxMinutes * (0.4 + 0.3 * slot)
-		for tier, cost in catalog do
-			if cost <= reach and cost > bestCost then
-				best, bestCost = tier, cost
+		-- The priciest tier that's within ~MaxMinutes of income (at least the cheapest) and not on
+		-- the stall already; if that kind is all taken, the other kind
+		local tier: string? = nil
+		for _ = 1, 2 do
+			local catalog: { [string]: number } = if lucky then GameConfig.LuckyBlockCash else caseCatalog
+			local kind = if lucky then "Lucky" else "Case"
+			local best, bestCost = nil :: string?, 0
+			local cheapest, cheapestCost = nil :: string?, math.huge
+			for name, cost in pairs(catalog) do
+				if not used[kind .. name] then
+					if cost <= reach and cost > bestCost then
+						best, bestCost = name, cost
+					end
+					if cost < cheapestCost then
+						cheapest, cheapestCost = name, cost
+					end
+				end
 			end
-			if cost < cheapestCost then
-				cheapest, cheapestCost = tier, cost
+			tier = best or cheapest
+			if tier then
+				used[kind .. tier] = true
+				break
 			end
+			lucky = not lucky
 		end
-		local tier = best or cheapest :: string
-		local full = catalog[tier]
+		if not tier then
+			break
+		end
+		local prices: { [string]: number } = if lucky then GameConfig.LuckyBlockCash else caseCatalog
+		local full = prices[tier :: string]
 		local discount = seeded:NextInteger(GameConfig.Merchant.MinDiscount, GameConfig.Merchant.MaxDiscount)
 		table.insert(stock, {
 			Kind = if lucky then "Lucky" else "Case",
-			Tier = tier,
+			Tier = tier :: string,
 			Full = full,
 			Discount = discount,
 			Price = math.floor(full * (100 - discount) / 100),

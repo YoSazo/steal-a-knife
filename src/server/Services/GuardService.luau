@@ -1362,11 +1362,27 @@ function GuardService.Init()
 	HEIGHT = rootHeight()
 	probe:Destroy()
 
+	-- All eight lairs build side by side (each loads its boss's outfit and knives), not in turn
+	local building = 0
 	for i, config in GameConfig.Zones do
-		local zone = MapService.Zones[i]
-		local boss = buildLair(i, zone, config :: any)
-		boss.Guard = newGuard(boss, false, boss.Post)
-		bosses[i] = boss
+		building += 1
+		task.spawn(function()
+			local ok, err = pcall(function()
+				local zone = MapService.Zones[i]
+				local boss = buildLair(i, zone, config :: any)
+				boss.Guard = newGuard(boss, false, boss.Post)
+				bosses[i] = boss
+			end)
+			if not ok then
+				warn(`[GuardService] lair {i} failed: {err}`)
+			end
+			building -= 1
+		end)
+	end
+	while building > 0 do
+		task.wait()
+	end
+	for _, boss in bosses do
 		for _, slot in boss.Slots do
 			setSlot(boss, slot, rollItem(boss))
 			local thisSlot = slot
