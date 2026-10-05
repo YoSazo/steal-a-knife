@@ -102,10 +102,12 @@ function Spectate.Init()
 	local height = if Ui.Phone then 46 else 54
 	local keyboard = not Ui.Phone
 	local previous = roundButton(bar, if keyboard then "◀ Q" else "<", height)
+	previous.Name = "Previous"
 	previous.AnchorPoint = Vector2.new(0, 0.5)
 	previous.Position = UDim2.fromScale(0, 0.5)
 	previous.Size = UDim2.fromOffset(if keyboard then height * 1.4 else height, height)
 	local nextButton = roundButton(bar, if keyboard then "E ▶" else ">", height)
+	nextButton.Name = "Next"
 	nextButton.AnchorPoint = Vector2.new(1, 0.5)
 	nextButton.Position = UDim2.fromScale(1, 0.5)
 	nextButton.Size = previous.Size
@@ -223,6 +225,20 @@ function Spectate.Init()
 	RunService.Heartbeat:Connect(function()
 		local canWatch = roundOn() and not player:GetAttribute("InRound")
 		eye.Visible = canWatch and not Ui.menuOpen()
+		-- In the left column, right under the last button (More); Slow Mode moves down under it
+		-- (client/Menus). It used to sit in the middle of the left edge, on top of More.
+		local nav = Ui.Navigation :: GuiObject?
+		if eye.Visible and nav and nav.Visible then
+			local bottom = nav.AbsolutePosition.Y
+			for _, child in nav:GetChildren() do
+				if child:IsA("GuiObject") and child.Visible and child.Name ~= "Slow" then
+					bottom = math.max(bottom, child.AbsolutePosition.Y + child.AbsoluteSize.Y)
+				end
+			end
+			eye.AnchorPoint = Vector2.zero
+			eye.Position =
+				UDim2.fromOffset(nav.AbsolutePosition.X - gui.AbsolutePosition.X, bottom - gui.AbsolutePosition.Y + 8)
+		end
 		eye.BackgroundColor3 = if spectating then Color3.fromRGB(40, 110, 200) else DARK
 		if spectating and not canWatch then
 			stop()

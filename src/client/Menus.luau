@@ -1219,6 +1219,12 @@ function Menus.Init()
 			end
 			local factor = Ui.Scale.Scale
 			local bottom = if last then last.AbsolutePosition.Y + last.AbsoluteSize.Y else nav.AbsolutePosition.Y
+			-- The spectate eye sits under More while a round is on: Slow Mode goes under it
+			local spectate = player.PlayerGui:FindFirstChild("Spectate")
+			local eye = spectate and spectate:FindFirstChild("SpectateButton") :: GuiObject?
+			if eye and eye.Visible then
+				bottom = eye.AbsolutePosition.Y + eye.AbsoluteSize.Y
+			end
 			slowToggle.Position = UDim2.fromOffset(
 				(nav.AbsolutePosition.X - holder.AbsolutePosition.X) / factor,
 				(bottom - holder.AbsolutePosition.Y) / factor + 8

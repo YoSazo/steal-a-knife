@@ -1804,6 +1804,9 @@ end
 
 -- A bot Sheriff's shot: good aim up close, worse far away
 local function botShoot(round: Round, bot: Bot, target: BasePart)
+	if RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugCalmBots") then
+		return
+	end
 	local from = bot.Root.Position + Vector3.new(0, 1.5, 0)
 	local dist = (target.Position - from).Magnitude
 	-- Nervous shots: decent point-blank, mostly misses from across a room
@@ -1925,7 +1928,9 @@ local function innocentBrain(round: Round, bot: Bot, now: number)
 end
 
 local function murdererBrain(round: Round, bot: Bot, now: number)
-	if not bot.Knife then
+	-- Studio: ReplicatedStorage DebugCalmBots = true keeps a test round running the full timer
+	-- (the Murderer bot just wanders) - for testing spectate, powers, the HUD
+	if not bot.Knife or (RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugCalmBots")) then
 		wander(bot, now) -- the grace period: blend in
 		return
 	end

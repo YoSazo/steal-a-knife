@@ -43,7 +43,8 @@ function Atmosphere.Init()
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local camera = workspace.CurrentCamera
-		if not humanoid or not root then
+		-- (spectating a round points the camera at someone far away on purpose: client/Spectate)
+		if not humanoid or not root or player:GetAttribute("Spectating") then
 			return
 		end
 		camera.CameraType = Enum.CameraType.Custom
