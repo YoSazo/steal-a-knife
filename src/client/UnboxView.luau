@@ -130,7 +130,7 @@ function View.Play(rarity: string, item: string, upgraded: boolean, isNew: boole
 		local index = math.floor((startX - strip.Position.X.Offset) / 130)
 		if index ~= last then
 			last = index
-			Effects.Sound(Sounds.Tick, nil, 0.25)
+			Effects.Sound(Sounds.ReelTick, nil, 0.35)
 		end
 	end)
 	spin:Play()
