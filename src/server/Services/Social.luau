@@ -26,7 +26,7 @@ local function areFriends(a: Player, b: Player): boolean
 	local key = pairKey(a, b)
 	local cached = friendCache[key]
 	if cached == nil then
-		local ok, result = pcall(a.IsFriendsWith, a, b.UserId)
+		local ok, result = pcall(a.IsFriendsWithAsync, a, b.UserId)
 		cached = ok and result == true
 		friendCache[key] = cached
 	end

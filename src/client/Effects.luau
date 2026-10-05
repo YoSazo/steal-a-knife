@@ -934,7 +934,7 @@ function Effects.Init()
 			if not wheel.Parent then
 				wheels[wheel] = nil
 				wheelAngles[wheel] = nil
-			elseif wheel:GetAttribute("Spinning") and wheel.PrimaryPart then
+			elseif wheel:GetAttribute("Spinning") and wheel.PrimaryPart and Lod.Near(base.Position) then
 				-- Faster wheel tiers spin faster; the rungs roll back under the runner's feet
 				local rate = (wheel:GetAttribute("SpinRate") or 2) :: number
 				local angle = (wheelAngles[wheel] or 0) + dt * rate
@@ -965,7 +965,7 @@ function Effects.Init()
 		end
 		local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
 		if bloom then
-			TweenService:Create(bloom, info, { Intensity = if inRound then 0.25 else 0.3 }):Play()
+			TweenService:Create(bloom, info, { Intensity = if inRound then 0.25 else 1 }):Play()
 		end
 	end
 	player:GetAttributeChangedSignal("InRound"):Connect(roundLighting)
@@ -1000,7 +1000,7 @@ function Effects.Init()
 			local rate = GameConfig.Treadmills[level] and GameConfig.Treadmills[level].Rate or 0
 			local gained = math.max(1, math.floor(rate * stride))
 			local jitter = Vector3.new(math.random(-10, 10) / 10, 2.5, math.random(-10, 10) / 10)
-			Effects.FloatText(head.Position + jitter, `+{gained} ⚡`, Color3.fromRGB(120, 200, 255))
+			Effects.FloatText(head.Position + jitter, `+{Format.Short(gained)} ⚡`, Color3.fromRGB(120, 200, 255))
 			Effects.Sound("rbxasset://sounds/action_footsteps_plastic.mp3", head.Position, 0.25)
 		end
 	end)
@@ -1064,7 +1064,10 @@ function Effects.Init()
 			local seconds = now.sec
 			local minutes = now.min + seconds / 60
 			local hours = now.hour % 12 + minutes / 60
-			for hand, center in hands do
+			for hand, built in hands do
+				-- (read fresh: the server corrects it after scaling the map up)
+				local live = hand:GetAttribute("Center")
+				local center = if typeof(live) == "CFrame" then live else built
 				local kind = hand:GetAttribute("Hand")
 				local turn = if kind == "Hour"
 					then hours / 12
@@ -1090,6 +1093,38 @@ function Effects.Init()
 		filterPrompt(d)
 	end
 	workspace.DescendantAdded:Connect(filterPrompt)
+
+	-- Sell signs are ClickDetectors, which Roblox ignores while you hold a tool (your knife is always
+	-- out): spot the click / tap on one of your own signs here and tell the server
+	local UserInputService = game:GetService("UserInputService")
+	UserInputService.InputBegan:Connect(function(input, processed)
+		if processed then
+			return
+		end
+		local touch = input.UserInputType == Enum.UserInputType.Touch
+		if input.UserInputType ~= Enum.UserInputType.MouseButton1 and not touch then
+			return
+		end
+		local character = player.Character
+		if not character or not character:FindFirstChildOfClass("Tool") then
+			return -- (no tool: the ClickDetector works by itself)
+		end
+		local camera = workspace.CurrentCamera
+		local ray = if touch
+			then camera:ScreenPointToRay(input.Position.X, input.Position.Y)
+			else (function()
+				local at = UserInputService:GetMouseLocation()
+				return camera:ViewportPointToRay(at.X, at.Y)
+			end)()
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = { character }
+		local hit = workspace:Raycast(ray.Origin, ray.Direction * 60, params)
+		local part = hit and hit.Instance
+		if part and part:GetAttribute("SellOwner") == player.UserId then
+			Remotes:WaitForChild("SellSign"):FireServer(part)
+		end
+	end)
 end
 
 return Effects

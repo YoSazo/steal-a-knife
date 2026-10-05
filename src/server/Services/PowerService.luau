@@ -23,6 +23,11 @@ local Obstacles = require(script.Parent.Obstacles)
 local Offers = require(script.Parent.Offers)
 local Stealth = require(script.Parent.Stealth)
 local Targets = require(script.Parent.Targets)
+local Fuel = require(script.Parent.Fuel)
+local Analytics = require(script.Parent.Analytics)
+local Items = require(ReplicatedStorage.Shared.Items)
+local KnifePowers = require(ReplicatedStorage.Shared.Config.KnifePowers)
+local Format = require(ReplicatedStorage.Shared.Format)
 
 type PowerConfig = {
 	Id: string,
@@ -33,6 +38,8 @@ type PowerConfig = {
 	Duration: { number },
 	Energy: { number },
 	Hits: { number }?,
+	Speed: number?, -- Rush: extra walk speed
+	Range: number?, -- Smoke Burst: reach
 	RoundDuration: { number }?, -- rounds use this instead of Duration when set
 	RoundUses: number?, -- most uses per round
 	Cooldown: number,
@@ -76,11 +83,6 @@ local function rootOf(player: Player): BasePart?
 	return character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 end
 
-local function levelOf(player: Player, id: string): number
-	local profile = DataService.Get(player)
-	return if profile then profile.Powers[id] or 0 else 0
-end
-
 local function stat(values: { number }, level: number): number
 	return values[math.clamp(level, 1, #values)]
 end
@@ -119,7 +121,93 @@ end
 
 -- Shop / loadout ----------------------------------------------------------------------------
 
+-- The Enchanter: re-roll the power on the knife you fight with, for cash (that knife's income for
+-- GameConfig.Enchant.CostSeconds) or one Reroll Token. Always lands on a different power; uses your
+-- power luck (Heat etc.). Levels belong to powers, so nothing you've grinded is lost.
+local lastEnchant: { [Player]: number } = {}
+function PowerService.EnchantCost(item: string): number
+	return math.max(GameConfig.Enchant.MinCost, math.floor(Items.Income(item) * GameConfig.Enchant.CostSeconds))
+end
+local function enchant(player: Player, mode: unknown): (boolean, string?)
+	if os.clock() - (lastEnchant[player] or 0) < 0.4 then
+		return false, nil
+	end
+	lastEnchant[player] = os.clock()
+	local profile = DataService.Get(player)
+	local item = BaseService.ProtectedItem(player)
+	local index = profile and item and table.find(profile.Knives, item)
+	if not profile or not item or not index then
+		return false, "You need a knife in your vault first"
+	end
+	if player:GetAttribute("InRound") then
+		return false, "Not during a round!"
+	end
+	local parsed = Items.Parse(item)
+	if not parsed then
+		return false, nil
+	end
+	if mode == "Token" then
+		if not DataService.UseCharge(player, "Reroll") then
+			Offers.Show(player, "Reroll3", "Out of Reroll Tokens? Get more and chase that Mythic power!")
+			return false, "No Reroll Tokens left"
+		end
+	else
+		local cost = PowerService.EnchantCost(item)
+		if not DataService.TrySpend(player, cost, "enchant") then
+			return false, `Re-rolling this knife costs {Format.Cash(cost)}`
+		end
+	end
+	local power = parsed.Perk
+	for _ = 1, 20 do
+		power = Items.RollPower(Random.new(), Fuel.PowerLuck(player))
+		if power ~= parsed.Perk then
+			break
+		end
+	end
+	local rerolled = Items.WithPower(item, power :: string)
+	DataService.Update(player, function(p)
+		p.Knives[index] = rerolled
+		if p.Equipped == item then
+			p.Equipped = rerolled
+		end
+	end)
+	BaseService.RefreshRack(player)
+	Analytics.Track(player, "power.enchant", {
+		mode = if mode == "Token" then "token" else "cash",
+		from = parsed.Perk,
+		to = power,
+		one_in = Items.PowerOneIn(power),
+	})
+	Net.Remotes.Effect:FireClient(player, "PowerRoll", rerolled, power, Items.PowerOneIn(power))
+	if Items.PowerOneIn(power) >= 60 then
+		Net.Announce(
+			`🔮 {player.DisplayName} enchanted a {Items.PowerName(power)} knife!`,
+			Color3.fromRGB(190, 110, 255),
+			3
+		)
+	end
+	return true, Items.PowerName(power)
+end
+
 local function handlePower(player: Player, action: unknown, id: unknown): boolean
+	if action == "Enchant" then
+		local ok, message = enchant(player, id)
+		if message then
+			Net.Notify(
+				player,
+				if ok then `🔮 Your knife now has {message}!` else message,
+				if ok then "good" else "bad"
+			)
+		end
+		return ok
+	end
+	-- Powers aren't bought any more: they live on knives (docs/POWERS.md)
+	if true then
+		local _ = action
+		local _ = id
+		Net.Notify(player, "Powers live on your knives now: equip a knife to use its power!", "info")
+		return false
+	end
 	local now = os.clock()
 	if now - (lastRequest[player] or 0) < 0.25 then
 		return false
@@ -135,7 +223,7 @@ local function handlePower(player: Player, action: unknown, id: unknown): boolea
 			Net.Notify(player, "You already have every power slot!", "bad")
 			return false
 		end
-		if not DataService.TrySpend(player, GameConfig.PowerSlotCost) then
+		if not DataService.TrySpend(player, GameConfig.PowerSlotCost, "power_slot") then
 			Net.Notify(player, "Not enough cash", "bad")
 			return false
 		end
@@ -158,7 +246,7 @@ local function handlePower(player: Player, action: unknown, id: unknown): boolea
 			return false
 		end
 		local cost = GameConfig.PowerCost(power.Cost, level)
-		if not DataService.TrySpend(player, cost) then
+		if not DataService.TrySpend(player, cost, "power_buy") then
 			Net.Notify(player, "Not enough cash", "bad")
 			Offers.Cash(player, cost - profile.Cash, BaseService.RackIncome(player))
 			return false
@@ -908,6 +996,12 @@ function PowerService.AddEnergy(player: Player, amount: number)
 	publishRound(player)
 end
 
+-- Smoke Burst: handler(user, origin, range, push) - RoundService throws the Murderer back
+local smokeHandlers: { (Player, Vector3, number, number) -> () } = {}
+function PowerService.OnSmoke(handler: (Player, Vector3, number, number) -> ())
+	table.insert(smokeHandlers, handler)
+end
+
 -- handler(flasher, origin, look, range, duration, burst): anything within `burst` is caught
 -- whichever way the flasher faces; further out, only inside the cone along `look`
 function PowerService.OnFlash(handler: (Player, Vector3, Vector3, number, number, number) -> ())
@@ -920,14 +1014,15 @@ local function usePower(player: Player, id: unknown, aim: unknown)
 	end
 	local power = byId[id]
 	local profile = DataService.Get(player)
-	if not power or not profile or not table.find(profile.Loadout, id) or not rootOf(player) then
-		return
-	end
-	local level = levelOf(player, id)
-	if level < 1 then
+	if not power or not profile or not rootOf(player) then
 		return
 	end
 	local inRound = player:GetAttribute("InRound") == true
+	-- One power system: in a round your power is the Innocent side of the knife you fight with
+	if not inRound or player:GetAttribute("RoundPower") ~= id then
+		return
+	end
+	local level = 1
 	if inRound then
 		if player:GetAttribute("Role") == "Murderer" then
 			return -- the Murderer has their knife; powers are for innocents
@@ -936,10 +1031,7 @@ local function usePower(player: Player, id: unknown, aim: unknown)
 			Net.Notify(player, "CLASSIC round: no powers this time!", "bad")
 			return
 		end
-		-- One power per round (the first in your loadout), the same strength for everyone
-		if profile.Loadout[1] ~= id then
-			return
-		end
+		-- The same base strength for everyone; the power's level adds a little (<= +20%)
 		level = GameConfig.RoundPowerLevel
 		local have = energy[player]
 		local cost = stat(power.Energy, level)
@@ -962,15 +1054,11 @@ local function usePower(player: Player, id: unknown, aim: unknown)
 		energy[player] = have - cost
 		publishRound(player)
 	else
-		local now = workspace:GetServerTimeNow()
-		local readyAt = player:GetAttribute(`PowerReady_{id}`)
-		if type(readyAt) == "number" and now < readyAt then
-			return
-		end
-		player:SetAttribute(`PowerReady_{id}`, now + power.Cooldown)
+		return -- powers only work in murder rounds
 	end
 
 	local duration = stat(if inRound and power.RoundDuration then power.RoundDuration else power.Duration, level)
+	duration *= 1 + 0.2 * GameConfig.PowerProgress((player:GetAttribute("PowerLevel") or 1) :: number)
 	if id == "Vanish" then
 		Stealth.Vanish(player, duration)
 		if inRound then
@@ -993,6 +1081,53 @@ local function usePower(player: Player, id: unknown, aim: unknown)
 		mimic(player, duration)
 	elseif id == "Flash" then
 		flash(player, duration, aim)
+	elseif id == "Rush" then
+		player:SetAttribute("PowerSpeed", power.Speed or 10)
+		BaseService.RefreshWalkSpeed(player)
+		Net.Remotes.Effect:FireAllClients("Dash", (rootOf(player) :: BasePart).Position)
+		task.delay(duration, function()
+			player:SetAttribute("PowerSpeed", nil)
+			BaseService.RefreshWalkSpeed(player)
+		end)
+	elseif id == "Dash" then
+		-- A short blink forward, stopped by walls
+		local root = rootOf(player) :: BasePart
+		local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+		if look.Magnitude > 0.01 then
+			look = look.Unit
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Exclude
+			params.FilterDescendantsInstances = { player.Character :: any, effectsFolder }
+			local hit = workspace:Raycast(root.Position, look * duration, params)
+			local distance = if hit then math.max(0, hit.Distance - 2) else duration
+			Net.Remotes.Effect:FireAllClients("Dash", root.Position)
+			root.CFrame += look * distance
+		end
+	elseif id == "SmokeBurst" then
+		local root = rootOf(player) :: BasePart
+		Net.Remotes.Effect:FireAllClients("Smoke", root.Position)
+		for _, handler in smokeHandlers do
+			handler(player, root.Position, power.Range or 12, duration)
+		end
+	elseif id == "PhoenixWall" then
+		-- A barricade of fire the Murderer can't smash (it burns out by itself)
+		barricade(player, duration, math.huge)
+		local wall = effectsFolder:FindFirstChild(`Barricade_{player.Name}`)
+		if wall then
+			for _, d in wall:GetDescendants() do
+				if d:IsA("BasePart") and d.Name ~= "Core" then
+					d.Color = Color3.fromRGB(255, 120 + math.random(0, 60), 30)
+					d.Material = Enum.Material.Neon
+				end
+			end
+			local core = wall:FindFirstChild("Core")
+			if core then
+				local fire = Instance.new("Fire")
+				fire.Size, fire.Heat = 12, 14
+				fire.Color, fire.SecondaryColor = Color3.fromRGB(255, 140, 30), Color3.fromRGB(255, 40, 10)
+				fire.Parent = core
+			end
+		end
 	elseif id == "Barricade" then
 		barricade(player, duration, stat(power.Hits or { 3 }, level))
 	end
@@ -1031,12 +1166,100 @@ local function onRoundChanged(player: Player)
 	publishRound(player)
 end
 
+-- The power on the knife you fight with: what you use in rounds (both sides) and its level
+local function publishKnifePower(player: Player)
+	local profile = DataService.Get(player)
+	local item = BaseService.ProtectedItem(player)
+	local parsed = item and Items.Parse(item)
+	local id = parsed and parsed.Perk
+	local entry = id and KnifePowers.ById[id]
+	local xp = if profile and id then profile.PowerXP[id] or 0 else 0
+	local function set(name: string, value: any)
+		if player:GetAttribute(name) ~= value then
+			player:SetAttribute(name, value)
+		end
+	end
+	set("PowerId", id)
+	set("FightingKnife", item)
+	set("PowerName", if entry then entry.Name else nil)
+	set("PowerLevel", GameConfig.PowerLevelFor(xp))
+	set("PowerXP", xp)
+	set("RoundPower", if entry then entry.Innocent else nil)
+	-- Every power's level (the Powers menu shows them all)
+	local levels = {}
+	local xpTable: { [string]: number } = if profile then profile.PowerXP else {}
+	for powerId, amount in xpTable do
+		table.insert(levels, `{powerId}:{GameConfig.PowerLevelFor(amount)}`)
+	end
+	table.sort(levels)
+	set("PowerLevels", table.concat(levels, ","))
+	set("RoundPowerName", if entry then entry.InnocentName else nil)
+end
+PowerService.PublishKnifePower = publishKnifePower
+-- Studio tests (DebugService "UsePower"): the same path as the client's UsePower remote
+PowerService.DebugUse = function(player: Player, id: string, aim: Vector3?)
+	usePower(player, id, aim)
+end
+-- The Murderer's Decoy side uses the same decoy (RoundService)
+PowerService.Decoy = function(player: Player, duration: number)
+	decoy(player, duration)
+end
+
+-- Old saves: powers used to be bought with cash. They live on knives now, so that cash comes back
+-- (once), and every old knife gets a power
+local function onLoaded(player: Player, profile: DataService.Profile)
+	if not table.find(profile.Bought, "PowerRefund") then
+		local refund = 0
+		for id, level in profile.Powers do
+			local power = byId[id]
+			if power then
+				for l = 0, level - 1 do
+					refund += GameConfig.PowerCost(power.Cost, l)
+				end
+			end
+		end
+		refund += math.max(0, profile.PowerSlots - GameConfig.PowerSlots) * GameConfig.PowerSlotCost
+		DataService.CashFlow(player, refund, "power_refund")
+		DataService.Update(player, function(p)
+			table.insert(p.Bought, "PowerRefund")
+			p.Powers = {}
+			p.Loadout = {}
+			p.Cash += refund
+		end)
+		if refund > 0 then
+			task.delay(8, function()
+				if player.Parent then
+					Net.Notify(
+						player,
+						`Powers now live on your knives! Your old powers were refunded: +{Format.Cash(refund)}`,
+						"good"
+					)
+				end
+			end)
+		end
+	end
+	Fuel.EnsurePowers(player)
+	publishKnifePower(player)
+end
+
+-- Studio tests (DebugService "OldPowers"): rerun the old-save migration (refund, powers on knives)
+PowerService.DebugMigrate = function(player: Player)
+	local profile = DataService.Get(player)
+	if profile then
+		onLoaded(player, profile)
+	end
+end
+
 function PowerService.Init()
+	DataService.PlayerLoaded:Connect(onLoaded)
+	DataService.Changed:Connect(function(player: Player)
+		publishKnifePower(player)
+	end)
 	effectsFolder = Instance.new("Folder")
 	effectsFolder.Name = "PowerEffects"
 	effectsFolder.Parent = workspace
 
-	Net.Remotes.Power.OnServerInvoke = handlePower
+	Net.Remotes.Power.OnServerInvoke = Analytics.Remote("Power", handlePower)
 	Net.Remotes.UsePower.OnServerEvent:Connect(usePower)
 
 	local function watch(player: Player)

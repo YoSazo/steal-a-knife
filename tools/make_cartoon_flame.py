@@ -16,6 +16,7 @@ from PIL import Image
 
 GRID, CELL, SS = 8, 128, 2
 FRAMES = GRID * GRID
+BEAM_FRAMES = 8
 OUT = os.path.join(os.path.dirname(__file__), "..", "blender", "textures", "aura", "cartoon_flame_8x8.png")
 
 
@@ -38,8 +39,8 @@ def tongue(u, v, t, x0, base, top, width, sway, phase, speed):
     return np.where(inside, field, -1.0)
 
 
-def frame(t):
-    n = CELL * SS
+def frame(t, cell=CELL):
+    n = cell * SS
     ys, xs = np.mgrid[0:n, 0:n]
     u = (xs + 0.5) / n * 2 - 1  # -1..1 across
     v = 1 - (ys + 0.5) / n  # 0 bottom .. 1 top
@@ -65,8 +66,8 @@ def frame(t):
     value = np.where(body > 0.01, value, 1.0)  # the halo is a pale glow
     gray = (np.clip(value, 0, 1) * 255).astype(np.uint8)
     a = (alpha * 255).astype(np.uint8)
-    image = Image.fromarray(np.dstack([gray, gray, gray, a]), "RGBA")
-    return image.resize((CELL, CELL), Image.LANCZOS)
+    image = Image.fromarray(np.dstack([gray, gray, gray, a]))
+    return image.resize((cell, cell), Image.LANCZOS)
 
 
 def main():
@@ -75,6 +76,15 @@ def main():
         atlas.paste(frame(i / FRAMES), ((i % GRID) * CELL, (i // GRID) * CELL))
     atlas.save(OUT)
     print("wrote", os.path.normpath(OUT))
+    # Beam frames (KnifeAura sews the flame onto the knife with a Beam). A beam lays the image's
+    # height along its length, so these stay upright (KnifeAura picks which end is the guard).
+    # Cycled by client/AuraFlicker.
+    beams = os.path.join(os.path.dirname(OUT), "beam")
+    os.makedirs(beams, exist_ok=True)
+    for i in range(BEAM_FRAMES):
+        image = frame(i / BEAM_FRAMES, 256)
+        image.save(os.path.join(beams, f"flame_beam_{i}.png"))
+    print("wrote", BEAM_FRAMES, "beam frames")
 
 
 if __name__ == "__main__":

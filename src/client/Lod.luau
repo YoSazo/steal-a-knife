@@ -132,6 +132,12 @@ end
 local function add(instance: Instance)
 	if instance:IsA("ParticleEmitter") and instance:HasTag("KnifeAuraEmitter") then
 		applyKnifeAura(instance)
+		-- The flame itself (body, hot core, glow) shows from anywhere; only the small licks,
+		-- tongues and sparks are dropped with distance
+		local layer = instance:GetAttribute("AuraLayer")
+		if layer == "Outer" or layer == "Core" or layer == "Glow" then
+			return
+		end
 	end
 	if instance:IsA("ParticleEmitter") and isStarField(instance) then
 		applyStars(instance)

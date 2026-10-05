@@ -49,9 +49,26 @@ export type Profile = {
 	Heat: number, -- 0-10, boosts income and power luck (server Fuel)
 	PowerPity: number, -- knives in a row without a Murderer power (bad-luck protection)
 	RevengeUntil: number, -- os.time() until which a robbed Murderer gets revenge luck
+	Spins: number, -- Lucky Wheel spins banked (Gamble)
+	FreeSpinDay: number, -- UTC day number the free daily spin was used
+	LuckUntil: number, -- os.time() until which a luck potion doubles case / lucky block luck
+	MerchantBought: { string }, -- "rotation:slot" bought from the Mystery Merchant this rotation
+	Boosts: { [string]: number }, -- Robux timed boosts: name (Speed/Cash/Training) -> os.time() it ends
+	Charges: { [string]: number }, -- Robux charges: name (Escape/Insurance) -> how many left
+	LastOffline: number, -- the last offline payout (Double Offline Earnings pays it again, once)
+	LostStreak: number, -- the daily streak day a missed day broke (Save My Streak restores it)
+	TutorialStep: number, -- how far the first-minutes guide got (resumes there)
+	Tips: { string }, -- one-time tips already shown (client/Tips)
+	PowerXP: { [string]: number }, -- knife power id -> XP (its level: GameConfig.PowerLevelFor)
+	-- Analytics (docs/ANALYTICS.md)
+	FirstSeen: number, -- os.time() of their first ever join
+	Sessions: number, -- visits so far (this one included once loaded)
+	Firsts: { [string]: number }, -- milestone -> PlayTime when first reached (Analytics.Milestone)
+	RobuxSpent: number, -- lifetime Robux spent in the game
+	Source: string, -- first-touch join source (JSON: utm_* from launchData, referred, friend)
 }
 
-local STORE_NAME = "PlayerData_v2" -- v1 = saves before the 2026-10-03 reset (kept, not deleted)
+local STORE_NAME = "PlayerData_v4" -- v1-v3 = saves before the resets (2026-10-03, 2026-10-04: new pacing + knife powers), kept, not deleted
 local LOCK_TIMEOUT = 600 -- a lock older than this belongs to a server that died
 local AUTOSAVE_INTERVAL = 120
 local MAX_ATTEMPTS = 5
@@ -112,6 +129,22 @@ local function defaultProfile(): Profile
 		Heat = 0,
 		PowerPity = 0,
 		RevengeUntil = 0,
+		Spins = 0,
+		FreeSpinDay = 0,
+		LuckUntil = 0,
+		MerchantBought = {},
+		Boosts = {},
+		Charges = {},
+		LastOffline = 0,
+		LostStreak = 0,
+		TutorialStep = 1,
+		Tips = {},
+		PowerXP = {},
+		FirstSeen = 0,
+		Sessions = 0,
+		Firsts = {},
+		RobuxSpent = 0,
+		Source = "",
 	}
 end
 
@@ -143,6 +176,43 @@ local function reconcile(data: any): Profile
 			else 0
 	end
 	profile.Pending = pending
+	local boosts, charges = {}, {}
+	for name, value in profile.Boosts do
+		if type(name) == "string" and type(value) == "number" and value > os.time() then
+			boosts[name] = math.floor(value)
+		end
+	end
+	for name, value in profile.Charges do
+		if type(name) == "string" and type(value) == "number" and value >= 1 then
+			charges[name] = math.floor(value)
+		end
+	end
+	profile.Boosts, profile.Charges = boosts, charges
+	profile.LastOffline = math.max(0, profile.LastOffline)
+	profile.LostStreak = math.max(0, math.floor(profile.LostStreak))
+	profile.TutorialStep = math.clamp(math.floor(profile.TutorialStep), 1, 10)
+	local tips = {}
+	for _, tip in profile.Tips do
+		if type(tip) == "string" and #tip <= 24 and #tips < 60 then
+			table.insert(tips, tip)
+		end
+	end
+	profile.Tips = tips
+	local xp = {}
+	for id, value in profile.PowerXP do
+		if type(id) == "string" and type(value) == "number" and value == value and value >= 0 then
+			xp[id] = math.floor(value)
+		end
+	end
+	profile.PowerXP = xp
+	local firsts = {}
+	for name, at in profile.Firsts do
+		if type(name) == "string" and #name <= 32 and type(at) == "number" and at == at then
+			firsts[name] = math.floor(at)
+		end
+	end
+	profile.Firsts = firsts
+	profile.Source = profile.Source:sub(1, 300)
 	profile.Heat = math.clamp(math.floor(profile.Heat), 0, GameConfig.Fuel.MaxHeat)
 	profile.PowerPity = math.max(0, math.floor(profile.PowerPity))
 	profile.Speed = math.max(0, profile.Speed)
@@ -250,6 +320,54 @@ function DataService.AddKnife(profile: Profile, item: string, plate: number?): n
 end
 
 -- Removes the knife at list index `index` (and its plate); returns the item
+-- Robux consumables ----------------------------------------------------------------------------
+
+-- Whether a timed boost (Speed / Cash / Training) is running for this profile
+function DataService.BoostActive(profile: Profile, name: string): boolean
+	return (profile.Boosts[name] or 0) > os.time()
+end
+
+-- Adds time to a boost (stacks onto what's left)
+function DataService.AddBoost(player: Player, name: string, seconds: number)
+	DataService.Update(player, function(p)
+		p.Boosts[name] = math.max(p.Boosts[name] or 0, os.time()) + seconds
+	end)
+end
+
+function DataService.AddCharge(player: Player, name: string, count: number)
+	DataService.Update(player, function(p)
+		p.Charges[name] = (p.Charges[name] or 0) + count
+	end)
+end
+
+-- Power XP for a knife power id; returns (old level, new level)
+function DataService.AddPowerXP(player: Player, power: string, amount: number): (number, number)
+	local profile = DataService.Get(player)
+	if not profile or amount <= 0 or power == "" then
+		return 1, 1
+	end
+	local before = profile.PowerXP[power] or 0
+	DataService.Update(player, function(p)
+		p.PowerXP[power] = before + amount
+	end)
+	return GameConfig.PowerLevelFor(before), GameConfig.PowerLevelFor(before + amount)
+end
+
+-- Uses one charge if they have any
+function DataService.UseCharge(player: Player, name: string): boolean
+	local profile = DataService.Get(player)
+	if not profile or (profile.Charges[name] or 0) < 1 then
+		return false
+	end
+	DataService.Update(player, function(p)
+		p.Charges[name] = (p.Charges[name] or 0) - 1
+		if p.Charges[name] <= 0 then
+			p.Charges[name] = nil
+		end
+	end)
+	return true
+end
+
 function DataService.RemoveKnife(profile: Profile, index: number): string?
 	local item = table.remove(profile.Knives, index)
 	table.remove(profile.Plates, index)
@@ -350,6 +468,9 @@ local function saveAsync(player: Player, profile: Profile, release: boolean): bo
 	return false
 end
 
+local BOOSTS = { "Speed", "Cash", "Training" }
+local CHARGES = { "Escape", "Insurance", "Reroll" }
+
 -- Mirror the profile onto the player so the HUD and leaderboard can read it (read-only for clients)
 local function publish(player: Player, profile: Profile)
 	local leaderstats = player:FindFirstChild("leaderstats")
@@ -395,6 +516,16 @@ local function publish(player: Player, profile: Profile)
 		player:SetAttribute("Bought_" .. bought, true)
 	end
 	player:SetAttribute("LastDaily", profile.LastDaily)
+	for _, name in BOOSTS do
+		player:SetAttribute("Boost_" .. name, profile.Boosts[name])
+	end
+	for _, name in CHARGES do
+		player:SetAttribute("Charge_" .. name, profile.Charges[name] or 0)
+	end
+	player:SetAttribute("LastOffline", profile.LastOffline)
+	player:SetAttribute("LostStreak", profile.LostStreak)
+	player:SetAttribute("TutorialStep", profile.TutorialStep)
+	player:SetAttribute("TipsSeen", table.concat(profile.Tips, ","))
 	local shielded = DataService.IsNewPlayer(player, profile)
 	player:SetAttribute("Shielded", shielded or nil)
 	player:SetAttribute("ShieldLeft", if shielded then GameConfig.NewPlayerShield - profile.PlayTime else nil)
@@ -469,13 +600,30 @@ function DataService.SaveNow(player: Player): boolean
 	return profile ~= nil and saveAsync(player, profile, false)
 end
 
-function DataService.AddCash(player: Player, amount: number)
+-- Analytics hears about every cash change made here: (player, +in / -out, reason)
+local cashHook: ((Player, number, string?) -> ())? = nil
+function DataService.SetCashHook(hook: (Player, number, string?) -> ())
+	cashHook = hook
+end
+-- For cash changed inside an Update (sells, refunds): tell Analytics where it came from
+function DataService.CashFlow(player: Player, amount: number, reason: string)
+	if cashHook then
+		cashHook(player, amount, reason)
+	end
+end
+
+-- `reason` names the source for analytics ("income", "round_pay", "daily"...)
+function DataService.AddCash(player: Player, amount: number, reason: string?)
 	DataService.Update(player, function(profile)
 		profile.Cash += amount
 	end)
+	if cashHook and profiles[player] then
+		cashHook(player, amount, reason)
+	end
 end
 
-function DataService.TrySpend(player: Player, amount: number): boolean
+-- `reason` names the sink for analytics ("upgrade_speed", "case", "enchant"...)
+function DataService.TrySpend(player: Player, amount: number, reason: string?): boolean
 	local profile = profiles[player]
 	if not profile or amount < 0 or profile.Cash < amount then
 		return false
@@ -483,6 +631,9 @@ function DataService.TrySpend(player: Player, amount: number): boolean
 	DataService.Update(player, function(p)
 		p.Cash -= amount
 	end)
+	if cashHook then
+		cashHook(player, -amount, reason)
+	end
 	return true
 end
 

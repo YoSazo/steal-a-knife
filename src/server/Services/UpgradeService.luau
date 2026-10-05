@@ -7,11 +7,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local Items = require(ReplicatedStorage.Shared.Items)
+local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local Net = require(script.Parent.Parent.Remotes)
 local DataService = require(script.Parent.DataService)
 local BaseService = require(script.Parent.BaseService)
 local Offers = require(script.Parent.Offers)
 local Rewards = require(script.Parent.Rewards)
+local Analytics = require(script.Parent.Analytics)
 
 local UpgradeService = {}
 
@@ -47,7 +50,7 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 		if not nextTier then
 			return false, "Your Haunted Wheel is maxed!"
 		end
-		if not DataService.TrySpend(player, nextTier.Cost) then
+		if not DataService.TrySpend(player, nextTier.Cost, "upgrade_wheel") then
 			return short(player, nextTier.Cost)
 		end
 		DataService.Update(player, function(p)
@@ -60,7 +63,7 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 		if not nextTrail then
 			return false, "You have the best knife trail!"
 		end
-		if not DataService.TrySpend(player, nextTrail.Cost) then
+		if not DataService.TrySpend(player, nextTrail.Cost, "upgrade_trail") then
 			return short(player, nextTrail.Cost)
 		end
 		DataService.Update(player, function(p)
@@ -76,7 +79,7 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			return false, "Your health is maxed!"
 		end
 		local cost = GameConfig.HealthCost(profile.HealthLevel)
-		if not DataService.TrySpend(player, cost) then
+		if not DataService.TrySpend(player, cost, "upgrade_health") then
 			Offers.Show(player, "HealthBoost", "Need more health now? +3 Health levels instantly.")
 			return short(player, cost)
 		end
@@ -97,7 +100,7 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 		if not nextTier then
 			return false, "Your walls are as good as they get!"
 		end
-		if not DataService.TrySpend(player, nextTier.Cost) then
+		if not DataService.TrySpend(player, nextTier.Cost, "upgrade_walls") then
 			return short(player, nextTier.Cost)
 		end
 		DataService.Update(player, function(p)
@@ -119,10 +122,28 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 		if profile.Cash < cost then
 			return false, `Rebirth needs {Format.Cash(cost)}`
 		end
+		-- ...and a knife of the right rarity on your plates (Steal a Brainrot style)
+		local need = GameConfig.RebirthNeeds(profile.Rebirths)
+		local needRank = Knives.Rank(need)
+		local has = false
+		for _, item in profile.Knives do
+			local parsed = Items.Parse(item)
+			if parsed and Knives.Rank(parsed.Knife.Rarity) >= needRank then
+				has = true
+				break
+			end
+		end
+		if not has then
+			return false, `Rebirth needs a {need} knife (or better) in your vault`
+		end
 		-- Start over with a permanent boost: powers, stats, collection and tickets stay
 		DataService.Update(player, function(p)
 			p.Rebirths += 1
 			p.Cash = 0
+			-- uncollected vault money resets too (it used to survive and fund the next run)
+			for slot in p.Pending do
+				p.Pending[slot] = 0
+			end
 			p.Knives = {}
 			p.Plates = {}
 			p.Equipped = ""
@@ -148,7 +169,12 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 		if profile.Slots >= GameConfig.MaxSlots then
 			return false, "Your vault is as tall as it gets!"
 		end
-		if not DataService.TrySpend(player, GameConfig.SlotCost(profile.Slots)) then
+		local floorRebirths = GameConfig.FloorRebirthsFor(profile.Slots)
+		if profile.Rebirths < floorRebirths then
+			Offers.Show(player, "Mount", "Want it now? Add the next floor instantly.")
+			return false, `The next floor needs Rebirth {floorRebirths}`
+		end
+		if not DataService.TrySpend(player, GameConfig.SlotCost(profile.Slots), "upgrade_floor") then
 			Offers.Show(player, "Mount", "Want it now? Add the next floor instantly.")
 			return false, "Not enough cash"
 		end
@@ -161,7 +187,9 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 		if profile.Tickets >= GameConfig.MaxTickets then
 			return false, `You can hold {GameConfig.MaxTickets} tickets at most`
 		end
-		if not DataService.TrySpend(player, GameConfig.TicketPrice(BaseService.RackIncome(player))) then
+		if
+			not DataService.TrySpend(player, GameConfig.TicketPrice(BaseService.RackIncome(player)), "upgrade_ticket")
+		then
 			return false, "Not enough cash"
 		end
 		DataService.Update(player, function(p)
@@ -174,8 +202,24 @@ end
 
 function UpgradeService.Init()
 	local function buy(player: Player, kind: unknown): (boolean, string)
+		local before = DataService.Get(player)
+		local cashBefore = if before then before.Cash else 0
 		local ok, message = purchase(player, kind)
 		Net.Notify(player, message, if ok then "good" else "bad")
+		local what = if type(kind) == "string" then kind:sub(1, 24) else "?"
+		Analytics.Track(player, "upgrade", { kind = what, ok = ok, reply = Analytics.Normalize(message) })
+		if ok then
+			local base = what:match("^(%a+)") or what
+			Analytics.Milestone(player, "upgrade_" .. base)
+			if base ~= "Case" then
+				Analytics.Milestone(player, "first_upgrade")
+			end
+			if what == "Rebirth" then
+				local after = DataService.Get(player)
+				Analytics.Track(player, "rebirth", { cash_lost = cashBefore, rebirths = after and after.Rebirths })
+				Analytics.Milestone(player, "rebirth_" .. (if after then after.Rebirths else 1))
+			end
+		end
 		return ok, message
 	end
 	Net.Remotes.Purchase.OnServerInvoke = buy

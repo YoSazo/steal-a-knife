@@ -1,0 +1,24 @@
+# Render Blueprint: the analytics server (analytics/). Render > New > Blueprint > this repo.
+# Pick the region closest to your Neon database (Neon aws-us-east-2 -> ohio, aws-us-east-1 -> virginia,
+# aws-eu-central-1 -> frankfurt).
+services:
+  - type: web
+    name: sak-analytics
+    runtime: node
+    rootDir: analytics
+    plan: starter
+    region: ohio
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL # Neon > Connection string (pooled), with ?sslmode=require
+        sync: false
+      - key: INGEST_KEY # the game sends this in X-Ingest-Key; copy it into the Roblox secret "ingest_key"
+        generateValue: true
+      - key: DASH_PASSWORD # the dashboard's password (any user name)
+        sync: false
+      - key: ROBLOX_API_KEY # same key as the root .env: pulls Roblox's analytics + Ads Manager status every 6 h
+        sync: false
+      - key: ROBLOX_PLACE_ID
+        value: "119376992331481"

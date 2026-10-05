@@ -67,11 +67,24 @@ local function refresh()
 	end
 	changed:Fire(active)
 end
+-- A menu soaks up touches on itself: scrolling a list must never also drive the thumbstick or
+-- turn the camera behind it
+local function sink(instance: Instance)
+	if instance:IsA("GuiObject") and not instance:IsA("GuiButton") and not instance:IsA("ScrollingFrame") then
+		instance.Active = true
+	end
+end
+
 function Menu.Register(frame: GuiObject)
 	if entries[frame] then
 		return
 	end
 	entries[frame] = true
+	sink(frame)
+	for _, d in frame:GetDescendants() do
+		sink(d)
+	end
+	frame.DescendantAdded:Connect(sink)
 	frame:GetPropertyChangedSignal("Visible"):Connect(function()
 		if frame.Visible and not transitioning then
 			transitioning = true

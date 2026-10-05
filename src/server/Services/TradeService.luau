@@ -15,6 +15,7 @@ local Items = require(ReplicatedStorage.Shared.Items)
 local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
+local Analytics = require(script.Parent.Analytics)
 
 local TradeService = {}
 
@@ -192,6 +193,7 @@ local function handle(player: Player, action: unknown, arg: unknown): boolean
 	end
 
 	if not session then
+		Net.Notify(player, "That trade is over", "info")
 		return false
 	end
 	local mine = sideOf(session, player)
@@ -207,6 +209,7 @@ local function handle(player: Player, action: unknown, arg: unknown): boolean
 			table.insert(offer, item)
 		end
 		if not owns(player, offer) then
+			Net.Notify(player, "You don't own those knives any more", "bad")
 			return false
 		end
 		mine.Offer = offer
@@ -243,7 +246,7 @@ local function handle(player: Player, action: unknown, arg: unknown): boolean
 end
 
 function TradeService.Init()
-	Net.Remotes.Trade.OnServerInvoke = handle
+	Net.Remotes.Trade.OnServerInvoke = Analytics.Remote("Trade", handle, 1)
 	Players.PlayerRemoving:Connect(function(player)
 		local session = sessions[player]
 		if session then

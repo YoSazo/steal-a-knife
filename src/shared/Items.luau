@@ -107,20 +107,14 @@ Items.Sizes = {
 	},
 } :: { Size }
 
--- Murderer powers are rare rolls on top of a knife (not tied to its type): "1 in OneIn" each, with
--- luck (Heat, deeper zones, bad-luck protection) multiplying every chance. Rarest first.
-Items.Powers = {
-	{ Id = "Hellfire", OneIn = 3000 },
-	{ Id = "SpamKnife", OneIn = 1000 },
-	{ Id = "ExplodingKnife", OneIn = 700 },
-	{ Id = "LaserKnife", OneIn = 450 },
-	{ Id = "Invisiknife", OneIn = 300 },
-	{ Id = "GhostKnife", OneIn = 200 },
-	{ Id = "Bulletproof", OneIn = 120 },
-	{ Id = "ShapeShifter", OneIn = 60 },
-	{ Id = "Identifier", OneIn = 40 },
-	{ Id = "Fury", OneIn = 25 },
-} :: { { Id: string, OneIn: number } }
+-- Knife powers (Config/KnifePowers): every knife carries one, with a Murderer side and an Innocent
+-- side. "1 in N" here is the chance of rolling that power at 1x luck (for hype and announcements).
+local KnifePowers = require(script.Parent.Config.KnifePowers)
+Items.Powers = {} :: { { Id: string, OneIn: number } }
+for _, power in KnifePowers.List do
+	local chance = KnifePowers.Chance(power.Id)
+	table.insert(Items.Powers, { Id = power.Id, OneIn = if chance > 0 then math.floor(1 / chance + 0.5) else 0 })
+end
 local powerById: { [string]: { Id: string, OneIn: number } } = {}
 for _, power in Items.Powers do
 	powerById[power.Id] = power
@@ -132,15 +126,15 @@ function Items.PowerOneIn(power: string?): number
 	return if entry then entry.OneIn else 0
 end
 
--- Rolls a power ("" = none). luck multiplies every chance.
+-- Rolls a power: every knife gets one now. luck multiplies the odds of every tier above Common.
 function Items.RollPower(rng: Random, luck: number?): string
-	local boost = math.max(1, luck or 1)
-	for _, power in Items.Powers do
-		if rng:NextNumber() < boost / power.OneIn then
-			return power.Id
-		end
-	end
-	return ""
+	return KnifePowers.Roll(rng, luck)
+end
+
+-- What players see for a power id ("Invisiknife" -> "Shadow")
+function Items.PowerName(power: string?): string
+	local entry = power and KnifePowers.ById[power]
+	return if entry then entry.Name else (power or "")
 end
 
 local mutationById: { [string]: Mutation } = {}
@@ -261,7 +255,7 @@ function Items.Hype(item: string): number
 	end
 	local rarityRank = (table.find(Knives.Rarities, p.Knife.Rarity) or 1) - 1
 	local oneIn = Items.PowerOneIn(p.Perk)
-	local powerRank = if oneIn >= 1000 then 4 elseif oneIn >= 300 then 3 elseif oneIn >= 100 then 2 else 0
+	local powerRank = if oneIn >= 1000 then 4 elseif oneIn >= 60 then 3 elseif oneIn >= 25 then 2 else 0
 	return math.max(rarityRank - 1, p.Mutation.Rank + (if p.Mutation.Rank > 0 then 1 else 0), p.Size.Rank, powerRank)
 end
 
@@ -319,6 +313,62 @@ end
 
 -- What a sealed case of `rarity` holds: a random knife from that rarity (or, rarely, the next one
 -- up), a mutation and a size. Returns the item and whether it jumped a rarity.
+-- Lucky Blocks (Steal a Brainrot style): one block spans several rarities with very lopsided odds,
+-- and inside each rarity the knives are lopsided too (the first knife is the common pull). The
+-- Store shows every knife's exact chance from Items.LuckyBlockOdds.
+Items.LuckyBlocks = {
+	Rare = { Common = 70, Rare = 26, Epic = 3.5, Legendary = 0.5 },
+	Epic = { Rare = 70, Epic = 26, Legendary = 3.5, Mythic = 0.5 },
+	Legendary = { Epic = 68, Legendary = 27, Mythic = 4.5, Godly = 0.5 },
+	Mythic = { Legendary = 70, Mythic = 26, Godly = 3.5, Celestial = 0.5 },
+	Godly = { Mythic = 68, Godly = 27, Celestial = 4.5, Cosmic = 0.5 },
+	Cosmic = { Godly = 74.45, Celestial = 23, Cosmic = 2.55 },
+} :: { [string]: { [string]: number } }
+local LUCKY_SPLIT = { 0.6, 0.3, 0.1 } -- knives within one rarity
+
+export type LuckyOdd = { Knife: string, Rarity: string, Percent: number }
+function Items.LuckyBlockOdds(block: string): { LuckyOdd }
+	local out: { LuckyOdd } = {}
+	local weights = Items.LuckyBlocks[block]
+	if not weights then
+		return out
+	end
+	for _, rarity in Knives.Rarities do
+		local share = weights[rarity]
+		local pool = Knives.ByRarity[rarity]
+		if share and pool then
+			local total = 0
+			for i = 1, #pool do
+				total += LUCKY_SPLIT[i] or LUCKY_SPLIT[#LUCKY_SPLIT]
+			end
+			for i, knife in pool do
+				local part = (LUCKY_SPLIT[i] or LUCKY_SPLIT[#LUCKY_SPLIT]) / total
+				table.insert(out, { Knife = knife.Name, Rarity = rarity, Percent = share * part })
+			end
+		end
+	end
+	-- Most likely first
+	table.sort(out, function(a, b)
+		return a.Percent > b.Percent
+	end)
+	return out
+end
+
+function Items.OpenLuckyBlock(rng: Random, block: string, luck: number?): (string, string)
+	local odds = Items.LuckyBlockOdds(block)
+	local roll = rng:NextNumber() * 100
+	local pick = odds[#odds]
+	for _, entry in odds do
+		roll -= entry.Percent
+		if roll <= 0 then
+			pick = entry
+			break
+		end
+	end
+	local mutation, size = Items.Roll(rng, luck)
+	return Items.Make(pick.Knife, mutation.Id, size.Id, "?"), pick.Rarity
+end
+
 function Items.OpenCase(rng: Random, rarity: string, luck: number?): (string, boolean)
 	local rarityIndex = table.find(Knives.Rarities, rarity) or 1
 	local upgraded = rarityIndex < #Knives.Rarities and rng:NextNumber() < 0.04

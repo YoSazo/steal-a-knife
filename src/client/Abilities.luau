@@ -39,35 +39,86 @@ local COMBO = { "Stab", "Slash" }
 local HOLD_TO_THROW = 0.2 -- seconds holding left click before a tap becomes a throw
 local BASE_FOV = 70
 
--- Mouse/touch aim at whatever is under the pointer; gamepad aims through the screen centre
-local function screenAim(): Vector2
-	local camera = workspace.CurrentCamera
+-- A mouse aims at the cursor (always, even on a touch laptop or Studio's phone preview); touch
+-- screens and gamepads aim through the screen centre (MM2's THROW button)
+local function usingMouse(): boolean
 	local lastInput = UserInputService:GetLastInputType()
-	if lastInput.Name:find("Gamepad") or Ui.Phone or UserInputService.PreferredInput == Enum.PreferredInput.Touch then
-		return camera.ViewportSize / 2
+	return lastInput == Enum.UserInputType.MouseMovement
+		or lastInput == Enum.UserInputType.MouseButton1
+		or lastInput == Enum.UserInputType.MouseButton2
+		or lastInput == Enum.UserInputType.MouseWheel
+		or lastInput == Enum.UserInputType.Keyboard
+end
+local function screenAim(): Vector2
+	if usingMouse() and UserInputService.MouseEnabled then
+		return UserInputService:GetMouseLocation()
 	end
-	return UserInputService:GetMouseLocation()
+	return workspace.CurrentCamera.ViewportSize / 2
 end
 
-local function aimPoint(at: Vector2?): Vector3
+-- `touch` = `at` is a touch position (InputObject / TouchTapInWorld space, under the top bar inset)
+local function aimPoint(at: Vector2?, touch: boolean?): Vector3
 	local camera = workspace.CurrentCamera
 	local screen = at or screenAim()
-	local ray = camera:ViewportPointToRay(screen.X, screen.Y)
+	local ray = if touch
+		then camera:ScreenPointToRay(screen.X, screen.Y)
+		else camera:ViewportPointToRay(screen.X, screen.Y)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = { player.Character :: Instance }
-	local hit = workspace:Raycast(ray.Origin, ray.Direction * 300, params)
-	return if hit then hit.Position else ray.Origin + ray.Direction * 300
+	local hit = workspace:Raycast(ray.Origin, ray.Direction * 2000, params)
+	return if hit then hit.Position else ray.Origin + ray.Direction * 2000
+end
+
+-- Phones, MM2 style: you tap the person you want to shoot. A tap a little beside them still counts
+-- (fingers are fat): if the tap's ray passes within TAP_ASSIST studs of someone in front of what it
+-- hit, aim at their chest instead.
+local TAP_ASSIST = 3
+local function tapAim(at: Vector2): Vector3
+	local camera = workspace.CurrentCamera
+	local ray = camera:ScreenPointToRay(at.X, at.Y)
+	local point = aimPoint(at, true)
+	local reach = (point - ray.Origin).Magnitude + 2
+	local models: { Model } = {}
+	for _, other in Players:GetPlayers() do
+		if other ~= player and other.Character then
+			table.insert(models, other.Character)
+		end
+	end
+	local bots = workspace:FindFirstChild("RoundBots")
+	for _, bot in if bots then bots:GetChildren() else {} do
+		if bot:IsA("Model") then
+			table.insert(models, bot)
+		end
+	end
+	local best: Vector3? = nil
+	local bestGap = TAP_ASSIST
+	for _, model in models do
+		local root = model:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local humanoid = model:FindFirstChildOfClass("Humanoid")
+		if not root or not humanoid or humanoid.Health <= 0 then
+			continue
+		end
+		local along = (root.Position - ray.Origin):Dot(ray.Direction)
+		if along <= 0 or along > reach then
+			continue -- behind the camera, or behind the wall the tap hit
+		end
+		local gap = (ray.Origin + ray.Direction * along - root.Position).Magnitude
+		if gap < bestGap then
+			best, bestGap = root.Position, gap
+		end
+	end
+	return best or point
 end
 
 -- Direction from the character to what's under the cursor / crosshair, like MM2's knife throw
-local function aimDirection(at: Vector2?): Vector3
+local function aimDirection(at: Vector2?, touch: boolean?): Vector3
 	local character = player.Character
 	local head = character and character:FindFirstChild("Head") :: BasePart?
 	if not head then
 		return workspace.CurrentCamera.CFrame.LookVector
 	end
-	local offset = aimPoint(at) - head.Position
+	local offset = (if touch and at then tapAim(at) else aimPoint(at)) - head.Position
 	return if offset.Magnitude > 0.1 then offset.Unit else workspace.CurrentCamera.CFrame.LookVector
 end
 
@@ -259,7 +310,7 @@ function Abilities.Init()
 		local until_ = player:GetAttribute("SpamUntil")
 		return type(until_) == "number" and workspace:GetServerTimeNow() < until_
 	end
-	local function spamThrow(at: Vector2?)
+	local function spamThrow(at: Vector2?, touch: boolean?)
 		local now = os.clock()
 		if now - lastSpam < 0.1 then
 			return
@@ -269,7 +320,7 @@ function Abilities.Init()
 		if character then
 			Moves.Play(character, "Throw")
 		end
-		Remotes.Ability:FireServer(aimDirection(at), "Spam")
+		Remotes.Ability:FireServer(aimDirection(at, touch), "Spam")
 	end
 
 	local function beginCharge(kind: string?)
@@ -430,6 +481,28 @@ function Abilities.Init()
 		Size = UDim2.fromOffset(64, 64),
 		ZIndex = 3,
 	}, knifeButton)
+	-- It's a joystick, and it looks like one before you touch it: dotted spokes from the middle out
+	-- to the rim, with the knife as the knob
+	local joystickGuide = Ui.new("Frame", {
+		Name = "JoystickGuide",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 3,
+	}, knifeButton)
+	for spoke = 0, 7 do
+		local angle = spoke / 8 * math.pi * 2
+		for step, radius in { 0.56, 0.72, 0.88 } do
+			local guideDot = Ui.new("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5 + math.cos(angle) * radius * 0.5, 0.5 + math.sin(angle) * radius * 0.5),
+				Size = UDim2.fromScale(0.075 - step * 0.01, 0.075 - step * 0.01),
+				BackgroundColor3 = Color3.new(1, 1, 1),
+				BackgroundTransparency = 0.25 + step * 0.12,
+				ZIndex = 3,
+			}, joystickGuide)
+			Ui.new("UICorner", { CornerRadius = UDim.new(1, 0) }, guideDot)
+		end
+	end
 	local knifeLabel = Ui.label({
 		Text = "Knife",
 		TextScaled = false,
@@ -448,7 +521,7 @@ function Abilities.Init()
 	}, knifeIcon)
 	local chargeOutline =
 		Ui.new("UIStroke", { Thickness = 3, Color = Color3.fromRGB(255, 219, 89), Enabled = false }, knifeIcon)
-	Ui.corner(knifeIcon, 28)
+	Ui.new("UICorner", { CornerRadius = UDim.new(1, 0) }, knifeIcon)
 	local chargeSegments: { Frame } = {}
 	for i = 1, 24 do
 		local angle = (i / 24) * math.pi * 2 - math.pi / 2
@@ -488,7 +561,6 @@ function Abilities.Init()
 	local aimDelta = Vector2.zero
 	local pointerOrigin = Vector2.zero
 	local lastPointer = Vector2.zero
-	local hasUsedKnife = false
 	local iconTool: Tool? = nil
 	local iconStarted = 0
 	local fallbackImage = ""
@@ -502,7 +574,10 @@ function Abilities.Init()
 			and not player:GetAttribute("Carrying")
 			and (type(stunned) ~= "number" or stunned <= workspace:GetServerTimeNow())
 	end
+	local releaseCamera: () -> () = function() end
+	local takeCameraHook: () -> () = function() end
 	local function cancelKnife()
+		releaseCamera()
 		gui:SetAttribute("KnifeGestureActive", false)
 		KnifeGesture.cancel(gesture)
 		gestureTool = nil
@@ -534,11 +609,12 @@ function Abilities.Init()
 		knifeButton.Size = UDim2.fromOffset(KNIFE_SIZE / factor, KNIFE_SIZE / factor)
 		local aiming = gesture.mode == "charging" or gesture.mode == "spam"
 		local center = KNIFE_SIZE / 2
-		local knob = if aiming then Vector2.new(center, center) + aimAxis * 40 else Vector2.new(center, center - 8)
+		-- The knife is the stick's knob: centred until you drag it
+		local knob = Vector2.new(center, center) + (if aiming then aimAxis * KNIFE_SIZE * 0.28 else Vector2.zero)
 		knifeIcon.Position = UDim2.fromOffset(knob.X / factor, knob.Y / factor)
-		local iconSize = if aiming then 80 else 104
+		local iconSize = KNIFE_SIZE * 0.5
 		knifeIcon.Size = UDim2.fromOffset(iconSize / factor, iconSize / factor)
-		knifeFallback.TextSize = 56 / factor
+		knifeFallback.TextSize = KNIFE_SIZE * 0.3 / factor
 		knifeLabel.Position = UDim2.fromOffset(0, (KNIFE_SIZE - 26) / factor)
 		knifeLabel.Size = UDim2.new(1, 0, 0, 20 / factor)
 		knifeLabel.TextSize = 18 / factor
@@ -572,7 +648,7 @@ function Abilities.Init()
 			button.TextSize, button.TextScaled, button.TextTruncate = 14 / factor, false, Enum.TextTruncate.AtEnd
 		end
 	end
-	knifeButton.InputBegan:Connect(function(input)
+	local function onKnifeTouch(input: InputObject)
 		if
 			input.UserInputType ~= Enum.UserInputType.Touch
 			and not (Ui.Phone and input.UserInputType == Enum.UserInputType.MouseButton1)
@@ -587,13 +663,14 @@ function Abilities.Init()
 			return
 		end
 		if KnifeGesture.press(gesture, input, os.clock()) then
+			takeCameraHook()
 			gui:SetAttribute("KnifeGestureActive", true)
 			gestureTool = tool
 			lastPointer = Vector2.new(input.Position.X, input.Position.Y)
 			pointerOrigin = lastPointer
-			hasUsedKnife = true
 		end
-	end)
+	end
+	knifeButton.InputBegan:Connect(onKnifeTouch)
 	UserInputService.InputChanged:Connect(function(input)
 		local previewMouse = RunService:IsStudio()
 			and gesture.owner ~= nil
@@ -618,18 +695,53 @@ function Abilities.Init()
 		lastPointer = at
 		aimAxis = KnifeAim.Axis(at, pointerOrigin)
 	end)
+	-- While the knife joystick is held we own the camera (Scriptable): it orbits the character at the
+	-- distance it had, turned only by the finger. Roblox's touch camera kept pulling the yaw back
+	-- behind a moving character and fought the aim; with it paused nothing can. On release the
+	-- camera goes back to Custom from exactly where the aim left it.
+	local aimYaw, aimPitch, aimDistance = 0, 0, 12
+	local owningCamera = false
+	local function takeCamera()
+		local camera = workspace.CurrentCamera
+		if owningCamera or camera.CameraType ~= Enum.CameraType.Custom then
+			return
+		end
+		local look = camera.CFrame.LookVector
+		aimYaw = math.atan2(-look.X, -look.Z)
+		aimPitch = math.asin(math.clamp(look.Y, -1, 1))
+		aimDistance = math.max(0.5, (camera.CFrame.Position - camera.Focus.Position).Magnitude)
+		camera.CameraType = Enum.CameraType.Scriptable
+		owningCamera = true
+	end
+	releaseCamera = function()
+		if owningCamera then
+			owningCamera = false
+			workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+		end
+	end
+	takeCameraHook = takeCamera
 	local function applyKnifeAim()
-		if gesture.owner == nil or aimDelta == Vector2.zero then
+		if not owningCamera then
 			return
 		end
 		local camera = workspace.CurrentCamera
-		camera.CFrame = KnifeAim.Rotate(
-			camera.CFrame,
-			camera.Focus.Position,
-			aimDelta,
-			UserSettings().GameSettings:GetCameraYInvertValue()
-		)
-		aimDelta = Vector2.zero
+		local character = player.Character
+		local head = character
+			and (character:FindFirstChild("Head") or character:FindFirstChild("HumanoidRootPart")) :: BasePart?
+		if not head then
+			return
+		end
+		if aimDelta ~= Vector2.zero then
+			local delta =
+				KnifeAim.RotationDelta(camera.CFrame, aimDelta, UserSettings().GameSettings:GetCameraYInvertValue())
+			aimYaw -= delta.X
+			aimPitch = math.clamp(aimPitch - delta.Y, math.rad(-80), math.rad(80))
+			aimDelta = Vector2.zero
+		end
+		local focus = head.Position + Vector3.new(0, 0.5, 0)
+		local rotation = CFrame.fromOrientation(aimPitch, aimYaw, 0)
+		camera.CFrame = CFrame.new(focus - rotation.LookVector * aimDistance) * rotation
+		camera.Focus = CFrame.new(focus)
 	end
 	UserInputService.InputEnded:Connect(function(input)
 		if input ~= gesture.owner then
@@ -682,7 +794,12 @@ function Abilities.Init()
 	RunService:BindToRenderStep("KnifeThumbAim", Enum.RenderPriority.Camera.Value + 1, applyKnifeAim)
 	RunService.RenderStepped:Connect(function()
 		local available = knifeAvailable()
-		knifeButton.Visible = Ui.Phone and allowed() and available ~= nil
+		-- In a round the Murderer's knife works MM2 style once it's out (tap = stab, THROW button), so the
+		-- knife button is only there to pull it out
+		knifeButton.Visible = Ui.Phone
+			and allowed()
+			and available ~= nil
+			and not (player:GetAttribute("InRound") and holdingMurderKnife() and gesture.owner == nil)
 		if gesture.owner ~= nil and (not allowed() or gestureTool ~= knifeInHand()) then
 			cancelKnife()
 		end
@@ -692,7 +809,7 @@ function Abilities.Init()
 			perkCard.Visible = false
 		end
 		if not knifeButton.Visible then
-			if Ui.Phone then
+			if Ui.Phone and gesture.owner ~= nil then
 				cancelKnife()
 			end
 			cancelButton.Visible = false
@@ -719,8 +836,8 @@ function Abilities.Init()
 		elseif action == "spam" then
 			spamThrow(nil)
 		end
-		cancelButton.Visible = gesture.mode == "charging" or gesture.mode == "spam"
-		chargeHint.Visible = gesture.mode == "charging" or gesture.mode == "spam" or not hasUsedKnife
+		cancelButton.Visible = false -- (no cancel: let go to throw, the rest of the screen just looks around)
+		chargeHint.Visible = gesture.mode == "charging" or gesture.mode == "spam"
 		chargeHint.Text = if gesture.mode == "charging"
 			then "Release to throw"
 			elseif gesture.mode == "spam" then "Drag: aim\nHold: throw"
@@ -735,7 +852,11 @@ function Abilities.Init()
 			else Color3.fromRGB(218, 56, 77)
 		knifeButton.BackgroundTransparency = if gesture.owner then 0.4 else 0.65
 		knifeIcon.BackgroundColor3 = Color3.fromRGB(61, 178, 255)
-		knifeIcon.BackgroundTransparency = if gesture.mode == "charging" or gesture.mode == "spam" then 0.35 else 1
+		local aimingNow = gesture.mode == "charging" or gesture.mode == "spam"
+		knifeIcon.BackgroundColor3 = if aimingNow then Color3.fromRGB(61, 178, 255) else Color3.fromRGB(20, 22, 34)
+		knifeIcon.BackgroundTransparency = if aimingNow then 0.25 else 0.35
+		knifeLabel.Visible = gesture.owner ~= nil
+		joystickGuide.Visible = not aimingNow
 		chargeOutline.Enabled = chargingSince ~= nil
 		local fraction = if chargingSince
 			then math.clamp((os.clock() - chargingSince) / AnimLibrary.ChargeTime, 0, 1)
@@ -823,6 +944,148 @@ function Abilities.Init()
 		end
 	end)
 
+	-- Phones, MM2 style: a big THROW button while the Murderer's knife is out. It throws at the
+	-- middle of the screen, where a small dot sits; hold it to throw harder.
+	local throwButton = Ui.button({
+		Name = "ThrowButton",
+		Text = "THROW",
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -24, 1, -170),
+		Size = UDim2.fromOffset(120, 120),
+		BackgroundColor3 = Color3.fromRGB(218, 56, 77),
+		BackgroundTransparency = 0.15,
+		Visible = false,
+		ZIndex = 4,
+	}, gui)
+	local throwCorner = throwButton:FindFirstChildOfClass("UICorner")
+	if throwCorner then
+		throwCorner.CornerRadius = UDim.new(1, 0)
+	end
+	local throwPadding = throwButton:FindFirstChildOfClass("UIPadding")
+	if throwPadding then
+		throwPadding:Destroy()
+	end
+	-- The Mad Murderer crosshair: with a mouse, the pointer is a plain grey "+" while you're in a
+	-- round or holding a knife / the Revolver (menus get the normal cursor back)
+	local cursorGui = Instance.new("ScreenGui")
+	cursorGui.Name = "Cursor"
+	cursorGui.ResetOnSpawn = false
+	cursorGui.IgnoreGuiInset = true
+	cursorGui.DisplayOrder = 50
+	cursorGui.Enabled = false
+	cursorGui.Parent = player:WaitForChild("PlayerGui")
+	local cross = Instance.new("Frame")
+	cross.AnchorPoint = Vector2.new(0.5, 0.5)
+	cross.Size = UDim2.fromOffset(26, 26)
+	cross.BackgroundTransparency = 1
+	cross.Parent = cursorGui
+	for _, size in { Vector2.new(26, 6), Vector2.new(6, 26) } do
+		local bar = Instance.new("Frame")
+		bar.AnchorPoint = Vector2.new(0.5, 0.5)
+		bar.Position = UDim2.fromScale(0.5, 0.5)
+		bar.Size = UDim2.fromOffset(size.X, size.Y)
+		bar.BackgroundColor3 = Color3.fromRGB(70, 70, 76)
+		bar.BorderSizePixel = 0
+		bar.Parent = cross
+		local edge = Instance.new("UIStroke")
+		edge.Color, edge.Thickness = Color3.fromRGB(235, 235, 235), 1.5
+		edge.Parent = bar
+	end
+	local cursorHidden = false
+	RunService.RenderStepped:Connect(function()
+		local character = player.Character
+		local tool = character and character:FindFirstChildOfClass("Tool")
+		local armed = tool ~= nil and (isKnife(tool) or tool:GetAttribute("Revolver") ~= nil)
+		local show = usingMouse()
+			and UserInputService.MouseEnabled
+			and not Ui.menuOpen()
+			and (armed or player:GetAttribute("InRound") == true)
+		cursorGui.Enabled = show
+		if show then
+			local at = UserInputService:GetMouseLocation()
+			cross.Position = UDim2.fromOffset(at.X, at.Y)
+		end
+		if show ~= cursorHidden then
+			cursorHidden = show
+			UserInputService.MouseIconEnabled = not show
+		end
+	end)
+
+	local dotGui = Instance.new("ScreenGui")
+	dotGui.Name = "ThrowDot"
+	dotGui.ResetOnSpawn = false
+	dotGui.IgnoreGuiInset = true
+	dotGui.DisplayOrder = 4
+	dotGui.Parent = player:WaitForChild("PlayerGui")
+	local centerDot = Instance.new("Frame")
+	centerDot.AnchorPoint = Vector2.new(0.5, 0.5)
+	centerDot.Position = UDim2.fromScale(0.5, 0.5)
+	centerDot.Size = UDim2.fromOffset(8, 8)
+	centerDot.BackgroundColor3 = Color3.new(1, 1, 1)
+	centerDot.BackgroundTransparency = 0.15
+	centerDot.Visible = false
+	centerDot.Parent = dotGui
+	Instance.new("UICorner", centerDot).CornerRadius = UDim.new(1, 0)
+	local dotStroke = Instance.new("UIStroke")
+	dotStroke.Color, dotStroke.Thickness = Color3.new(0, 0, 0), 1.5
+	dotStroke.Parent = centerDot
+	local MIN_WINDUP = 0.3 -- a tap still gets a short wind-up, like MM2's
+	local throwInput: InputObject? = nil
+	throwButton.InputBegan:Connect(function(input)
+		if
+			input.UserInputType ~= Enum.UserInputType.Touch
+			and input.UserInputType ~= Enum.UserInputType.MouseButton1
+		then
+			return
+		end
+		if throwInput or not allowed() or not holdingMurderKnife() then
+			return
+		end
+		if spamMode() then
+			spamThrow(nil)
+			return
+		end
+		throwInput = input
+		beginCharge("basic")
+	end)
+	throwButton.InputEnded:Connect(function(input)
+		if input ~= throwInput then
+			return
+		end
+		throwInput = nil
+		local started = chargingSince
+		if not started then
+			return
+		end
+		local left = MIN_WINDUP - (os.clock() - started)
+		if left > 0 then
+			task.delay(left, function()
+				if chargingSince == started then
+					endCharge(true)
+				end
+			end)
+		else
+			endCharge(true)
+		end
+	end)
+	RunService.RenderStepped:Connect(function()
+		local show = Ui.Phone
+			and not usingMouse()
+			and holdingMurderKnife()
+			and allowed()
+			and player:GetAttribute("InRound") == true
+		throwButton.Visible = show
+		centerDot.Visible = show and not chargingSince
+		if show then
+			local isReady = os.clock() >= basicThrowReadyAt or spamMode()
+			throwButton.BackgroundTransparency = if isReady then 0.15 else 0.6
+			throwButton.Text = if chargingSince
+				then "RELEASE"
+				elseif isReady then "THROW"
+				else `{math.ceil(basicThrowReadyAt - os.clock())}`
+		end
+	end)
+
 	-- Who the Murderer's swing is at, as this screen sees it: the nearest living character in
 	-- front (or right next to you). The server re-checks it with a little extra reach for lag.
 	local function stabTarget(character: Model): Model?
@@ -897,13 +1160,39 @@ function Abilities.Init()
 			wireKnife(tool)
 		elseif tool:GetAttribute("Revolver") and not tool:GetAttribute("Wired") then
 			tool:SetAttribute("Wired", true)
+			-- A finger fires where it taps (TouchTapInWorld below); a mouse fires at the cursor here
 			tool.Activated:Connect(function()
-				if not Ui.menuOpen() then
+				if not Ui.menuOpen() and UserInputService:GetLastInputType() ~= Enum.UserInputType.Touch then
 					Remotes.Shoot:FireServer(aimPoint())
 				end
 			end)
 		end
 	end
+	-- Phones, MM2 style: with the gun out, tap anyone on screen to shoot them; with the Murderer's
+	-- knife out, a tap stabs (Spam Knife: throws at the spot you tapped)
+	UserInputService.TouchTapInWorld:Connect(function(position: Vector2, processed: boolean)
+		if processed or not Ui.Phone or Ui.menuOpen() or usingMouse() then
+			return
+		end
+		local character = player.Character
+		if not character then
+			return
+		end
+		local gun = character:FindFirstChildOfClass("Tool")
+		if gun and gun:GetAttribute("Revolver") then
+			Remotes.Shoot:FireServer(tapAim(position))
+			return
+		end
+		local knife = knifeInHand()
+		if knife and knife:GetAttribute("MurderKnife") and allowed() then
+			if spamMode() then
+				spamThrow(position, true)
+			else
+				knife:Activate()
+			end
+		end
+	end)
+
 	local function watchContainer(container: Instance)
 		for _, child in container:GetChildren() do
 			watchTool(child)

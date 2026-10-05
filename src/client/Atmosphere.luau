@@ -122,8 +122,9 @@ function Atmosphere.Init()
 			tintTween:Cancel()
 		end
 		local nextTint = TweenService:Create(raidTint, TweenInfo.new(0.5), {
-			TintColor = if raid then Color3.fromRGB(255, 225, 210) else Color3.new(1, 1, 1),
-			Contrast = if raid then 0.06 else 0,
+			TintColor = if raid then Color3.fromRGB(255, 205, 195) else Color3.new(1, 1, 1),
+			Contrast = if raid then 0.05 else 0,
+			Saturation = if raid then 0.1 else 0,
 		})
 		tintTween = nextTint
 		nextTint:Play()
@@ -132,13 +133,20 @@ function Atmosphere.Init()
 			if skyTween then
 				skyTween:Cancel()
 			end
-			local nextSky = TweenService:Create(atmosphere, TweenInfo.new(0.5), {
+			if atmosphere:GetAttribute("HubGlare") == nil then
+				atmosphere:SetAttribute("HubGlare", atmosphere.Glare)
+				atmosphere:SetAttribute("HubHaze", atmosphere.Haze)
+			end
+			-- Same bright, glowing sky, just blood red: the sun's haze glows crimson everywhere
+			local nextSky = TweenService:Create(atmosphere, TweenInfo.new(1.2), {
 				Color = if raid
-					then Color3.fromRGB(215, 145, 125)
+					then Color3.fromRGB(255, 120, 105)
 					else atmosphere:GetAttribute("HubColor") or atmosphere.Color,
 				Decay = if raid
-					then Color3.fromRGB(142, 101, 104)
+					then Color3.fromRGB(255, 60, 50)
 					else atmosphere:GetAttribute("HubDecay") or atmosphere.Decay,
+				Glare = if raid then 5 else (atmosphere:GetAttribute("HubGlare") or atmosphere.Glare) :: number,
+				Haze = if raid then 2.4 else (atmosphere:GetAttribute("HubHaze") or atmosphere.Haze) :: number,
 			})
 			skyTween = nextSky
 			nextSky:Play()

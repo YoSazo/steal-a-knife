@@ -5,6 +5,9 @@ local TweenService = game:GetService("TweenService")
 local Ui = require(script.Parent.Ui)
 local Art = require(ReplicatedStorage.Shared.Config.MenuArtwork)
 local Textures = require(ReplicatedStorage.Shared.Config.Textures)
+local CartoonArt = require(ReplicatedStorage.Shared.Config.CartoonArt)
+local Kit = require(ReplicatedStorage.Shared.Config.CleanKit)
+local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 local Theme = {}
 Theme.Navy = Color3.fromRGB(12, 29, 48)
 Theme.Green = Color3.fromRGB(45, 244, 15)
@@ -64,6 +67,10 @@ function Theme.text(parent: Instance, text: string, props: { [string]: any }?): 
 end
 
 function Theme.studs(parent: GuiObject)
+	-- (no checker texture: plain, Tsunami-simple surfaces)
+	if true then
+		return
+	end
 	Ui.new("ImageLabel", {
 		Name = "Studs",
 		Size = UDim2.fromScale(1, 1),
@@ -85,6 +92,10 @@ function Theme.surface(parent: Instance, props: { [string]: any }, color: Color3
 	Theme.outline(frame, edge, 3)
 	Ui.gradient(frame, color:Lerp(Color3.new(1, 1, 1), 0.12), color:Lerp(Color3.new(0, 0, 0), 0.12))
 	Theme.studs(frame)
+	local studs = frame:FindFirstChild("Studs") :: ImageLabel?
+	if studs then
+		studs.ImageTransparency = 0.8
+	end
 	return frame
 end
 
@@ -158,9 +169,78 @@ local function symbol(parent: Instance, name: string, props: { [string]: any }?)
 	return root
 end
 
+local VoxelHud = require(ReplicatedStorage.Shared.Config.VoxelUi).Hud :: { [string]: string }
+local VoxelCases = require(ReplicatedStorage.Shared.Config.VoxelUi).Cases :: { [string]: string }
+local VoxelLuckyBlocks = require(ReplicatedStorage.Shared.Config.VoxelUi).LuckyBlocks :: { [string]: string }
+local Icons2 = require(ReplicatedStorage.Shared.Config.VoxelIcons2).Icons :: { [string]: string }
+local VOXEL_ALIAS: { [string]: string } = {
+	Upgrades = "Upgrades",
+	Index = "Index",
+	Rebirth = "Rebirth",
+	Stats = "Stats",
+	Players = "Players",
+	Powers = "Powers",
+	More = "More",
+	Speed = "Speed",
+	Training = "Speed",
+	Trophy = "Stats",
+	Spin = "Spin",
+	Merchant = "Merchant",
+	Knives = "Knives",
+	Cash = "Cash",
+	FreeChest = "FreeChest",
+	Heat = "Heat",
+}
 function Theme.image(parent: Instance, name: string, props: { [string]: any }?): ImageLabel
+	-- Codex's voxel art (headers AND buttons/tiles now - the Powers menu is the bar every icon
+	-- should clear, so anything with a real icon here uses it instead of the old sprite sheet).
+	local caseRarity = name:match("^Case(%a+)$")
+	local luckyRarity = name:match("^Lucky(%a+)$")
+	local voxel = (VOXEL_ALIAS[name] and VoxelHud[VOXEL_ALIAS[name]])
+		or Icons2[name]
+		or (caseRarity and VoxelCases[caseRarity])
+		or (luckyRarity and VoxelLuckyBlocks[luckyRarity])
+	if voxel then
+		local options: { [string]: any } = {
+			Name = name .. "Art",
+			Image = voxel,
+			BackgroundTransparency = 1,
+			ScaleType = Enum.ScaleType.Fit,
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = 8,
+		}
+		for key, value in (props or {}) :: { [string]: any } do
+			options[key] = value
+		end
+		return Ui.new("ImageLabel", options, parent)
+	end
+	-- Art-pack pictures (single PNGs, no atlas)
+	local packed = ({ Trophy = CartoonArt.Trophy, LootBag = CartoonArt.LootBag } :: { [string]: string })[name]
+	if packed then
+		local options: { [string]: any } = {
+			Name = name .. "Art",
+			Image = packed,
+			BackgroundTransparency = 1,
+			ScaleType = Enum.ScaleType.Fit,
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = 8,
+		}
+		for key, value in (props or {}) :: { [string]: any } do
+			options[key] = value
+		end
+		return Ui.new("ImageLabel", options, parent)
+	end
 	if symbols[name] then
 		return symbol(parent, name, props)
+	end
+	-- Knives use their own single picture: the shared knife sheet's art runs to the edge of every
+	-- cell, so cropping one out clipped the blade tips
+	if KnifeIcons[name] then
+		local options: { [string]: any } = { Name = name .. "Art", ZIndex = 8 }
+		for key, value in (props or {}) :: { [string]: any } do
+			options[key] = value
+		end
+		return Ui.art(parent, name, options)
 	end
 	local icon = icons[name]
 	local knife = table.find(Art.KnifeNames, name)
@@ -173,11 +253,18 @@ function Theme.image(parent: Instance, name: string, props: { [string]: any }?):
 	local rows = if icon then 3 else 4
 	local size = if icon then Art.IconSize else Art.KnifeSize
 	local cell = Vector2.new(size.X / columns, size.Y / rows)
+	-- The Art.Knives sheet is disabled (Art.Knives == ""), so that branch never actually renders;
+	-- only the small Art.Icons sheet (Cash/Speed/Rebirth/Luck/...) reaches here now, and most of
+	-- its icons already moved to Codex's clean individual PNGs above via VOXEL_ALIAS/Icons2. The
+	-- few still on the old sheet (Luck, the case-tier icons) bled a sliver of the next cell in at
+	-- the boundary; a small inset trims that without visibly cropping these simple icons.
+	local inset = if icon then Vector2.new(6, 6) else Vector2.zero
 	local options: { [string]: any } = {
 		Name = name .. "Art",
 		Image = asset,
-		ImageRectOffset = Vector2.new(((index - 1) % columns) * cell.X, math.floor((index - 1) / columns) * cell.Y),
-		ImageRectSize = cell,
+		ImageRectOffset = Vector2.new(((index - 1) % columns) * cell.X, math.floor((index - 1) / columns) * cell.Y)
+			+ inset,
+		ImageRectSize = cell - inset * 2,
 		BackgroundTransparency = 1,
 		ScaleType = Enum.ScaleType.Fit,
 		Size = UDim2.fromScale(1, 1),
@@ -202,18 +289,42 @@ function Theme.button(
 	props.Text, props.BackgroundColor3, props.AutoButtonColor = "", color, false
 	props.ZIndex = props.ZIndex or 8
 	local button: TextButton = Ui.new("TextButton", props, parent)
-	Ui.corner(button, 9)
-	Theme.outline(button)
-	Ui.gradient(button, color:Lerp(Color3.new(1, 1, 1), 0.18), color:Lerp(Color3.new(0, 0, 0), 0.14))
-	Theme.studs(button)
-	local shine = Ui.new("Frame", {
-		Position = UDim2.fromOffset(5, 4),
-		Size = UDim2.new(1, -10, 0.38, 0),
-		BackgroundColor3 = Color3.new(1, 1, 1),
-		BackgroundTransparency = 0.85,
-		ZIndex = button.ZIndex,
-	}, button)
-	Ui.corner(shine, 5)
+	-- The reference mockup's own buttons (CleanKit) for green / blue / red-X; other colours keep
+	-- the drawn style
+	local piece: any = nil -- (one plain style for every button)
+	local shine: Frame
+	if piece then
+		button.BackgroundTransparency = 1
+		Ui.new("ImageLabel", {
+			Name = "Skin",
+			BackgroundTransparency = 1,
+			Size = UDim2.fromScale(1, 1),
+			Image = piece.Image,
+			ScaleType = if piece.Slice then Enum.ScaleType.Slice else Enum.ScaleType.Stretch,
+			SliceCenter = piece.Slice or Rect.new(0, 0, 0, 0),
+			ZIndex = button.ZIndex,
+		}, button)
+		shine = Ui.new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(0, 0) }, button)
+		-- (callers recolour a button's UIStroke for selection: keep one, drawn as a thin highlight)
+		Ui.new(
+			"UIStroke",
+			{ Color = Theme.Black, Thickness = 0, ApplyStrokeMode = Enum.ApplyStrokeMode.Border },
+			button
+		)
+	else
+		Ui.corner(button, 9)
+		Theme.outline(button)
+		Ui.gradient(button, color:Lerp(Color3.new(1, 1, 1), 0.18), color:Lerp(Color3.new(0, 0, 0), 0.14))
+		Theme.studs(button)
+		shine = Ui.new("Frame", {
+			Position = UDim2.fromOffset(5, 4),
+			Size = UDim2.new(1, -10, 0.38, 0),
+			BackgroundColor3 = Color3.new(1, 1, 1),
+			BackgroundTransparency = 0.85,
+			ZIndex = button.ZIndex,
+		}, button)
+		Ui.corner(shine, 5)
+	end
 	local label = Theme.text(button, text, {
 		Name = "Label",
 		Position = UDim2.new(if icon then 0.24 else 0, 6, 0, 4),
@@ -237,7 +348,9 @@ function Theme.button(
 		shine.BackgroundTransparency = 0.85
 	end)
 	button.Activated:Connect(function()
-		if button:GetAttribute("Disabled") == true or button:GetAttribute("Busy") == true then
+		-- A greyed-out button still answers: the click goes through and the server says why not
+		-- ("Not enough cash", "No spins left"...). Only a click already in flight is ignored.
+		if button:GetAttribute("Busy") == true then
 			return
 		end
 		if action then
@@ -253,12 +366,14 @@ function Theme.button(
 		end
 	end)
 	label.Name = "Label"
+	if piece == Kit.CloseButton then
+		label.Visible = false -- the X is part of the picture
+	end
 	return button
 end
 
 function Theme.enabled(button: TextButton, enabled: boolean, label: string?)
 	button:SetAttribute("Disabled", not enabled)
-	button.Active = enabled
 	button.Selectable = enabled
 	local veil = button:FindFirstChild("DisabledVeil") :: Frame?
 	if not veil then
@@ -283,7 +398,8 @@ function Theme.badge(parent: GuiObject): TextLabel
 	local badge = Theme.text(parent, "", {
 		Name = "Badge",
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(1, -4, 0, 4),
+		-- inside the button's right edge, so buttons hugging the screen edge don't cut it off
+		Position = UDim2.new(1, -14, 0, 4),
 		Size = UDim2.fromOffset(28, 28),
 		BackgroundTransparency = 0,
 		BackgroundColor3 = Theme.Red,
@@ -381,15 +497,21 @@ function Theme.shell(
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromOffset(designWidth, height),
-		BackgroundColor3 = Theme.Navy,
+		BackgroundColor3 = Color3.fromRGB(14, 16, 26),
+		BackgroundTransparency = 0.25, -- see-through, Tsunami-simple
 		Visible = false,
 		ZIndex = 5,
 	}, Ui.gui)
-	Ui.corner(frame, 10)
-	Theme.outline(frame, color:Lerp(Theme.Navy, 0.45), 3)
-	Theme.studs(frame)
+	Ui.corner(frame, 14)
+	Theme.outline(frame, Theme.Black, 4)
 	local scale = Ui.new("UIScale", { Scale = 1 }, frame)
 	local header = Theme.surface(frame, { Name = "Header", Size = UDim2.new(1, 0, 0, 88), ZIndex = 6 }, color)
+	local headerCorner = header:FindFirstChildOfClass("UICorner") :: UICorner
+	headerCorner.CornerRadius = UDim.new(0, 14)
+	local headerStuds = header:FindFirstChild("Studs") :: ImageLabel?
+	if headerStuds then
+		headerStuds.ImageTransparency = 0.8 -- just a hint of texture
+	end
 	Theme.image(header, icon, { Position = UDim2.fromOffset(8, 2), Size = UDim2.fromOffset(104, 84) })
 	Theme.text(header, title, {
 		Name = "Title",

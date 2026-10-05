@@ -10,6 +10,7 @@
 -- Small details don't collide (nobody should snag on a keyboard) and big pieces do.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 
 local Props = require(ReplicatedStorage.Shared.Props)
 local Textures = require(ReplicatedStorage.Shared.Config.Textures)
@@ -132,29 +133,18 @@ local function light(parent: Instance, color: Color3, range: number, brightness:
 end
 
 -- Text on the front (-Z) face of a part
-local function label(
-	p: BasePart,
-	text: string,
-	color: Color3,
-	font: Enum.Font?,
-	face: Enum.NormalId?,
-	glow: boolean?
-): TextLabel
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = face or Enum.NormalId.Front
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 40
-	gui.LightInfluence = if glow then 0 else 1
-	gui.Parent = p
-	local t = Instance.new("TextLabel")
-	t.Size = UDim2.fromScale(1, 1)
-	t.BackgroundTransparency = 1
-	t.Font = font or Enum.Font.GothamBold
-	t.TextScaled = true
-	t.TextColor3 = color
-	t.Text = text
-	t.Parent = gui
-	return t
+local function label(p: BasePart, text: string, color: Color3, _font: Enum.Font?, face: Enum.NormalId?, glow: boolean?)
+	WorldSignModel.Letters(p, text, color, face)
+	if glow then
+		local letters = p:FindFirstChild("VoxelLetters")
+		if letters then
+			for _, glyph in letters:GetChildren() do
+				if glyph:IsA("BasePart") then
+					glyph.Material = Enum.Material.Neon
+				end
+			end
+		end
+	end
 end
 
 -- Walls --------------------------------------------------------------------------------------
@@ -718,9 +708,7 @@ function Kit.whiteboard(x: number, y: number, z: number, rotation: number, text:
 	local b = frame(x, z, rotation, y)
 	bit(b, "BoardFrame", Vector3.new(8.4, 4.4, 0.2), Vector3.new(0, 0, -0.1), rgb(190, 190, 195), Enum.Material.Metal)
 	local board = bit(b, "Whiteboard", Vector3.new(8, 4, 0.06), Vector3.new(0, 0, -0.22), rgb(250, 250, 250))
-	local t = label(board, text, rgb(30, 60, 160), Enum.Font.PatrickHand)
-	t.TextXAlignment = Enum.TextXAlignment.Left
-	t.TextYAlignment = Enum.TextYAlignment.Top
+	label(board, text, rgb(30, 60, 160), Enum.Font.PatrickHand)
 	bit(b, "Tray", Vector3.new(6, 0.2, 0.5), Vector3.new(0, -2.25, -0.3), rgb(190, 190, 195), Enum.Material.Metal)
 	for i, c in { rgb(30, 60, 160), rgb(200, 40, 40), rgb(30, 140, 60) } do
 		cylinder(bit(b, "Marker", Vector3.new(0.6, 0.15, 0.15), Vector3.new(-2 + i * 0.8, -2.08, -0.35), c))
@@ -1362,27 +1350,7 @@ function Kit.projectorScreen(x: number, y: number, z: number, rotation: number)
 	local b = frame(x, z, rotation, y)
 	bit(b, "ScreenCase", Vector3.new(11, 0.5, 0.5), Vector3.new(0, 3.3, -0.3), rgb(40, 40, 45))
 	local screen = bit(b, "ProjectorScreen", Vector3.new(10, 6, 0.05), Vector3.new(0, 0, -0.3), rgb(250, 250, 248))
-	local gui = Instance.new("SurfaceGui")
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 30
-	gui.Parent = screen
-	local title = Instance.new("TextLabel")
-	title.Size = UDim2.fromScale(1, 0.18)
-	title.BackgroundTransparency = 1
-	title.Font = Enum.Font.GothamBold
-	title.TextScaled = true
-	title.Text = "KNIFE SALES - Q3"
-	title.TextColor3 = rgb(40, 40, 50)
-	title.Parent = gui
-	for i, h in { 0.25, 0.4, 0.35, 0.6, 0.15 } do
-		local bar = Instance.new("Frame")
-		bar.AnchorPoint = Vector2.new(0, 1)
-		bar.Position = UDim2.fromScale(0.1 + (i - 1) * 0.16, 0.92)
-		bar.Size = UDim2.fromScale(0.1, h)
-		bar.BackgroundColor3 = if i == 5 then rgb(220, 50, 50) else rgb(60, 120, 220)
-		bar.BorderSizePixel = 0
-		bar.Parent = gui
-	end
+	WorldSignModel.Attach("ProjectorScreen", screen, Enum.NormalId.Front)
 end
 
 -- Furniture: homes ---------------------------------------------------------------------------

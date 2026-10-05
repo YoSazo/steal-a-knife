@@ -24,6 +24,10 @@ local GameConfig = {
 	StartingSlots = 10,
 	MaxSlots = 40,
 	FloorCosts = { 1.5e6, 2e10, 1e14 }, -- the 2nd, 3rd and 4th floor
+	FloorRebirths = { 0, 1, 3 }, -- rebirths needed before the 2nd, 3rd and 4th floor (Steal a Brainrot style)
+	-- Speed -> walk speed: walk = BaseWalkSpeed + SpeedCurve * log2(1 + Speed / 500). Lower = every
+	-- deeper biome needs a lot more Speed (the long climb; tools/pacing_sim.py checks the hours)
+	SpeedCurve = 3.6,
 	TicketCost = 30000, -- the floor; tickets cost TicketIncomeSeconds of your income (TicketPrice)
 	TicketIncomeSeconds = 60,
 
@@ -215,46 +219,14 @@ local GameConfig = {
 		},
 	},
 
-	-- Raids: a server-wide event near the end of every intermission. Gates can be broken, players
-	-- can knock each other down (no dying in the hub - you drop what you carry), broken vaults can
-	-- be robbed, and burglar NPCs come for everyone's knives so even a quiet server gets a raid.
+	-- The Blood Moon (RaidService): the biomes close and vaults can be robbed for Duration seconds
 	Raid = {
-		Duration = 120,
-		StartBefore = 140, -- starts this many seconds before the murder round (ends ~20s before it)
-		MinPlayers = 1, -- burglars make a raid fun on your own
-		GateRegenDelay = 6, -- a gate nobody has hit for this long starts repairing itself
-		GateRegen = 0.03, -- fraction of its max health per second
-		BrokenTime = 22, -- a broken gate stays open this long, then reforges at half health
-		RepairTime = 1.2, -- owner hold-to-repair
-		RepairAmount = 0.2, -- of max health per repair
-		RepairCooldown = 4,
-		StealTime = 1.6, -- hold to lift a knife off someone's wall
-		KnockdownTime = 2.2,
-		KnockImmunity = 3.5, -- after getting up, no knocking you straight back down
-		RevengeTime = 60, -- robbed? their vault is open to you (and only you) for this long
-		RaiderMarkTime = 90, -- hit a gate: its owner can hunt you down (real damage) for this long
-		ThrowGateMultiplier = 1.25, -- thrown knives hit gates a bit harder than swings
-		Burglars = 5, -- per Thief Moon, arriving in waves through the first half of it
-		BurglarHealth = 160,
-		BurglarSpeed = 20, -- a bit quicker than a fresh player; catchable once you've trained
-		BurglarCarrySpeed = 16,
-		BurglarSwing = 1.2, -- seconds between crowbar hits on a gate
-		BurglarStealsPerVault = 1, -- knives burglars can take from one vault per Thief Moon
-		BurglarsPerGate = 2, -- at most this many at one gate; the rest go for other vaults
-		BurglarReward = { Min = 4500, Seconds = 20 }, -- bounty for stopping one (GameConfig.Pay)
-		BurglarGateDamage = 15, -- per bash, flat: strong walls really do keep them out
-
-		-- Break-ins happen any time outside a round. Players' knives do this fraction of their
-		-- damage to gates (a starter knife needs ~15s on a Tier 1 gate; walls scale it up).
-		PlayerGateDamage = 0.5,
-		RobbedSeal = 180, -- after a knife is stolen, that vault can't be broken into for this long
-		CatchBounty = { Min = 7500, Seconds = 60 }, -- of the knife's income, for catching your thief
-		IntruderBounty = { Min = 3750, Seconds = 10 }, -- of your income, for knocking out an intruder
-		-- Every few intermissions the Thief Moon rises: burglars come, gates take more damage,
-		-- bounties double and anyone outside their own vault can be knocked down
-		Every = 3,
-		BloodMoonGateDamage = 1.5,
-		BloodMoonBounty = 2,
+		Duration = 90,
+		Every = 3, -- every this many intermissions
+		StartBefore = 140, -- rises this many seconds before the murder round
+		MinPlayers = 2, -- someone to steal from
+		StealTime = 1.6, -- hold to lift a knife off someone's plate
+		StealsPerVault = 2, -- a vault loses at most this many knives per moon
 	},
 
 	-- Rebirth: start over (cash, knives, slots, Speed, wheel, walls) for a permanent multiplier on
@@ -266,6 +238,9 @@ local GameConfig = {
 		SpeedBonus = 0.3, -- +30% Speed training per rebirth
 		LuckBonus = 0.15, -- +15% mutation / size luck per rebirth
 		Max = 30,
+		-- Steal a Brainrot style: each rebirth also needs a knife of this rarity on your plates
+		-- (the last entry repeats for every rebirth after)
+		Needs = { "Legendary", "Mythic", "Godly", "Godly", "Celestial", "Celestial", "Cosmic" },
 		Titles = {
 			"Pickpocket",
 			"Cutpurse",
@@ -293,6 +268,36 @@ local GameConfig = {
 		{ Rarity = "Celestial", Cost = 220e9 },
 		{ Rarity = "Cosmic", Cost = 3.5e12 },
 	},
+
+	-- Lucky Blocks bought with in-game cash (Items.LuckyBlocks has the odds)
+	LuckyBlockCash = {
+		Rare = 250000,
+		Epic = 3.5e6,
+		Legendary = 50e6,
+		Mythic = 800e6,
+		Godly = 12e9,
+		Cosmic = 3e12,
+	} :: { [string]: number },
+	-- The Lucky Wheel (Gamble): a free spin a day, one per EarnEvery seconds played, Robux packs
+	Spin = {
+		EarnEvery = 900,
+		RevealDelay = 4.2, -- the wheel's spin on the client; the prize lands when it stops
+		Prizes = {
+			{ Kind = "Cash", Seconds = 60, Weight = 26, Label = "1 min cash" },
+			{ Kind = "Spin", Count = 1, Weight = 14, Label = "+1 Spin" },
+			{ Kind = "Cash", Seconds = 300, Weight = 18, Label = "5 min cash" },
+			{ Kind = "Luck", Seconds = 900, Weight = 12, Label = "2x Luck 15m" },
+			{ Kind = "Case", Tier = "Rare", Weight = 12, Label = "Rare Case" },
+			{ Kind = "Cash", Seconds = 1800, Weight = 7, Label = "30 min cash" },
+			{ Kind = "Case", Tier = "Epic", Weight = 6, Label = "Epic Case" },
+			{ Kind = "Lucky", Tier = "Legendary", Weight = 3, Label = "Legendary Block" },
+			{ Kind = "Case", Tier = "Legendary", Weight = 1.5, Label = "Legendary Case" },
+			{ Kind = "Lucky", Tier = "Mythic", Weight = 0.5, Label = "MYTHIC BLOCK" },
+		} :: { any },
+	},
+	LuckPotion = { Multiplier = 2 },
+	-- The Mystery Merchant: a fresh, discounted stock every Rotation seconds (one of each per player)
+	Merchant = { Rotation = 1200, Slots = 3, MinDiscount = 25, MaxDiscount = 50, MaxMinutes = 20 },
 
 	-- A free chest on the plaza every so often: cash (scaled to what you earn) or a case
 	FreeChest = { Cooldown = 600, MinCash = 10000, IncomeSeconds = 90, CaseChance = 0.4 },
@@ -341,7 +346,7 @@ local GameConfig = {
 			Boss = "Frank", -- a round character (Disguises) guarding this biome's knife wall
 			BossTitle = "The Groundskeeper",
 			BossWear = {}, -- Blender pieces worn on top of their usual outfit
-			Restock = 25, -- seconds before a stolen slot on the wall refills
+			Restock = 30, -- seconds before a stolen slot on the wall refills
 			Title = "The Courtyard",
 			GuardSpeed = 12.5,
 			SpeedNeeded = 0,
@@ -354,10 +359,10 @@ local GameConfig = {
 			Boss = "Ivy", -- a round character (Disguises) guarding this biome's knife wall
 			BossTitle = "The Gardener",
 			BossWear = { "FlowerCrown" }, -- Blender pieces worn on top of their usual outfit
-			Restock = 30, -- seconds before a stolen slot on the wall refills
+			Restock = 45, -- seconds before a stolen slot on the wall refills
 			Title = "The Gardens",
 			GuardSpeed = 26,
-			SpeedNeeded = 4000,
+			SpeedNeeded = 5500,
 			Health = 200,
 			Damage = 12.5,
 			Color = Color3.fromRGB(110, 190, 255),
@@ -367,10 +372,10 @@ local GameConfig = {
 			Boss = "Sam", -- a round character (Disguises) guarding this biome's knife wall
 			BossTitle = "The Gravedigger",
 			BossWear = {}, -- Blender pieces worn on top of their usual outfit
-			Restock = 40, -- seconds before a stolen slot on the wall refills
+			Restock = 60, -- seconds before a stolen slot on the wall refills
 			Title = "The Crypts",
 			GuardSpeed = 47,
-			SpeedNeeded = 180000,
+			SpeedNeeded = 535000,
 			Health = 450,
 			Damage = 17.5,
 			Throws = true,
@@ -381,10 +386,10 @@ local GameConfig = {
 			Boss = "Leo", -- a round character (Disguises) guarding this biome's knife wall
 			BossTitle = "The Collector",
 			BossWear = { "Monocle" }, -- Blender pieces worn on top of their usual outfit
-			Restock = 50, -- seconds before a stolen slot on the wall refills
+			Restock = 90, -- seconds before a stolen slot on the wall refills
 			Title = "The Catacombs",
 			GuardSpeed = 70,
-			SpeedNeeded = 10e6,
+			SpeedNeeded = 73e6,
 			Health = 1000,
 			Damage = 24,
 			Throws = true,
@@ -395,10 +400,10 @@ local GameConfig = {
 			Boss = "Ruby", -- a round character (Disguises) guarding this biome's knife wall
 			BossTitle = "The Firestarter",
 			BossWear = { "DevilHorns" }, -- Blender pieces worn on top of their usual outfit
-			Restock = 60, -- seconds before a stolen slot on the wall refills
+			Restock = 120, -- seconds before a stolen slot on the wall refills
 			Title = "The Inferno",
 			GuardSpeed = 82,
-			SpeedNeeded = 80e6,
+			SpeedNeeded = 950e6,
 			Health = 2000,
 			Damage = 29,
 			Throws = true,
@@ -409,10 +414,10 @@ local GameConfig = {
 			Boss = "Kate", -- a round character (Disguises) guarding this biome's knife wall
 			BossTitle = "The Queen",
 			BossWear = { "Crown" }, -- Blender pieces worn on top of their usual outfit
-			Restock = 70, -- seconds before a stolen slot on the wall refills
+			Restock = 180, -- seconds before a stolen slot on the wall refills
 			Title = "Mount Olympus",
 			GuardSpeed = 94,
-			SpeedNeeded = 650e6,
+			SpeedNeeded = 12.5e9,
 			Health = 3800,
 			Damage = 33,
 			Throws = true,
@@ -423,10 +428,10 @@ local GameConfig = {
 			Boss = "Zoe", -- a round character (Disguises) guarding this biome's knife wall
 			BossTitle = "The Angel",
 			BossWear = { "Halo", "AngelWings" }, -- Blender pieces worn on top of their usual outfit
-			Restock = 80, -- seconds before a stolen slot on the wall refills
+			Restock = 240, -- seconds before a stolen slot on the wall refills
 			Title = "The Heavens",
 			GuardSpeed = 104,
-			SpeedNeeded = 4e9,
+			SpeedNeeded = 106e9,
 			Health = 6500,
 			Damage = 37,
 			Throws = true,
@@ -437,10 +442,10 @@ local GameConfig = {
 			Boss = "Nick", -- a round character (Disguises) guarding this biome's knife wall
 			BossTitle = "The Void Walker",
 			BossWear = { "SpaceHelmet" }, -- Blender pieces worn on top of their usual outfit
-			Restock = 90, -- seconds before a stolen slot on the wall refills
+			Restock = 300, -- seconds before a stolen slot on the wall refills
 			Title = "Outer Space",
 			GuardSpeed = 114,
-			SpeedNeeded = 31e9,
+			SpeedNeeded = 900e9,
 			Health = 11000,
 			Damage = 41,
 			Throws = true,
@@ -495,7 +500,7 @@ local GameConfig = {
 	-- grab it; shooting an innocent by mistake costs the shooter their life too.
 	RevolverTime = 35,
 	RevolverCooldown = 2.5,
-	RevolverRange = 250,
+	RevolverRange = 2000, -- the bullet flies until it hits something
 
 	-- Surviving a round doubles your rack income for a while, so rounds fuel stealing
 	BoostDuration = 90,
@@ -519,7 +524,7 @@ local GameConfig = {
 	SwingRange = 7.5,
 	-- Hold to crank back; a full charge (AnimLibrary.ChargeTime) flies faster and hits this much harder
 	-- No cooldown: throw as fast as you can hold-and-release.
-	HubThrow = { Cooldown = 0, Range = 400, DamageMultiplier = 1.6 }, -- flies until it hits something
+	HubThrow = { Cooldown = 0, Range = 2000, DamageMultiplier = 1.6 }, -- flies until it hits something
 	-- Server-side floor between any two throws (hub or Murderer). Hold-to-throw already keeps real
 	-- players slower than this; it stops exploit scripts firing hundreds a second.
 	ThrowMinInterval = 0.3,
@@ -532,8 +537,9 @@ local GameConfig = {
 		Windup = 0.6,
 		Cooldown = 2.8,
 		MinRange = 10,
-		MaxRange = 80,
-		FlightRange = 140,
+		MaxRange = 220, -- far enough that a fast thief still gets thrown at (the knife outruns them)
+		FlightRange = 900, -- flies until it hits something (or the thief), not giving up mid-chase
+		SpeedOverTarget = 1.5, -- at least this times the target's walk speed
 		Speed = 75,
 		HitRadius = 2.5,
 		Lead = 0.85,
@@ -549,15 +555,15 @@ local GameConfig = {
 	-- are indexed by power level 1..3.
 	PowerSlots = 2,
 	MaxPowerSlots = 3,
-	PowerSlotCost = 450000,
+	PowerSlotCost = 25000000, -- the third slot
 	Powers = {
 		{
 			Id = "Vanish",
 			DisplayName = "Vanish",
-			Description = "Turn invisible. A boss chasing you loses sight of you, and so does the Murderer.",
-			Cost = 30000,
+			Description = "Turn invisible for a moment. The Murderer loses sight of you.",
+			Cost = 150000,
 			Color = Color3.fromRGB(150, 120, 255),
-			Duration = { 4, 5, 6 }, -- in the arena; rounds use RoundDuration
+			Duration = { 4, 5, 6 }, -- (rounds use RoundDuration)
 			RoundDuration = { 2, 2.5, 3 }, -- short in rounds, and the Murderer still sees a shimmer
 			Energy = { 5, 5, 4 }, -- round cost per level (coins refill Energy)
 			RoundUses = 1, -- once per round
@@ -566,8 +572,8 @@ local GameConfig = {
 		{
 			Id = "Radar",
 			DisplayName = "Radar",
-			Description = "See through walls: the Murderer in rounds, every guard and its knife in the arena.",
-			Cost = 22000,
+			Description = "See the Murderer through walls (once their knife is out).",
+			Cost = 25000,
 			Color = Color3.fromRGB(80, 220, 160),
 			Duration = { 3, 4, 5 },
 			Energy = { 2, 2, 1 }, -- round cost per level (coins refill Energy)
@@ -576,8 +582,8 @@ local GameConfig = {
 		{
 			Id = "Trap",
 			DisplayName = "Bear Trap",
-			Description = "Drop a trap. The next guard or Murderer to step in is stuck.",
-			Cost = 45000,
+			Description = "Drop a trap. If the Murderer steps in, they're stuck.",
+			Cost = 900000,
 			Color = Color3.fromRGB(170, 170, 180),
 			Duration = { 2, 2.5, 3 }, -- how long it holds them
 			Energy = { 2, 2, 1 }, -- round cost per level (coins refill Energy)
@@ -587,7 +593,7 @@ local GameConfig = {
 			Id = "Shield",
 			DisplayName = "Shield",
 			Description = "Blocks the next stab that would hit you.",
-			Cost = 52000,
+			Cost = 6000000,
 			Color = Color3.fromRGB(90, 180, 255),
 			Duration = { 8, 10, 12 }, -- how long the bubble lasts in the arena
 			RoundDuration = { 6, 6, 6 },
@@ -598,8 +604,8 @@ local GameConfig = {
 		{
 			Id = "Decoy",
 			DisplayName = "Decoy",
-			Description = "A fake you runs off. Whoever was chasing you follows it instead.",
-			Cost = 68000,
+			Description = "A fake you runs off. The Murderer chases it instead.",
+			Cost = 250000000,
 			Color = Color3.fromRGB(255, 190, 90),
 			Duration = { 5, 6, 8 },
 			Energy = { 3, 2, 2 }, -- round cost per level (coins refill Energy)
@@ -609,7 +615,7 @@ local GameConfig = {
 			Id = "Flash",
 			DisplayName = "Flash",
 			Description = "A blinding camera flash. Whoever's in front of you can't see or move for a moment.",
-			Cost = 60000,
+			Cost = 40000000,
 			Color = Color3.fromRGB(255, 250, 200),
 			Duration = { 1.6, 2.1, 2.7 }, -- how long they're blinded
 			Energy = { 3, 3, 2 },
@@ -618,8 +624,8 @@ local GameConfig = {
 		{
 			Id = "Barricade",
 			DisplayName = "Barricade",
-			Description = "Slam down a wooden barricade. Blocks the Murderer, bosses and raiders until it's smashed.",
-			Cost = 82000,
+			Description = "Slam down a wooden barricade. Blocks the Murderer until it's smashed.",
+			Cost = 2000000000,
 			Color = Color3.fromRGB(200, 140, 80),
 			Duration = { 10, 13, 16 }, -- how long it stands (if nobody smashes it)
 			Energy = { 2, 2, 2 },
@@ -629,23 +635,79 @@ local GameConfig = {
 		{
 			Id = "Mimic",
 			DisplayName = "Mimic",
-			Description = "Become furniture you can walk around in! Chasers lose you (unless they get close).",
-			Cost = 110000,
+			Description = "Become furniture you can walk around in! The Murderer loses you (unless they get close).",
+			Cost = 15000000000,
 			Color = Color3.fromRGB(255, 120, 180),
 			Duration = { 8, 12, 16 },
 			Energy = { 3, 3, 2 }, -- round cost per level (coins refill Energy)
 			Cooldown = 25,
 		},
+		-- Innocent sides that only come on knives (docs/POWERS.md)
+		{
+			Id = "Rush",
+			DisplayName = "Rush",
+			Description = "A burst of speed: get away!",
+			Cost = 0,
+			Color = Color3.fromRGB(255, 150, 60),
+			Duration = { 3, 3, 3 },
+			Energy = { 3, 3, 3 },
+			Speed = 10, -- extra walk speed while it lasts
+			Cooldown = 15,
+		},
+		{
+			Id = "Dash",
+			DisplayName = "Dash",
+			Description = "Blink a few studs forward (not through walls).",
+			Cost = 0,
+			Color = Color3.fromRGB(90, 220, 255),
+			Duration = { 8, 8, 8 }, -- studs
+			Energy = { 2, 2, 2 },
+			Cooldown = 8,
+		},
+		{
+			Id = "SmokeBurst",
+			DisplayName = "Smoke Burst",
+			Description = "A puff of smoke that throws the Murderer back if they're close.",
+			Cost = 0,
+			Color = Color3.fromRGB(170, 170, 190),
+			Duration = { 4, 4, 4 }, -- push strength (studs-ish)
+			Energy = { 3, 3, 3 },
+			Range = 12,
+			Cooldown = 15,
+		},
+		{
+			Id = "PhoenixWall",
+			DisplayName = "Phoenix Wall",
+			Description = "A wall of fire the Murderer can't break through.",
+			Cost = 0,
+			Color = Color3.fromRGB(255, 110, 40),
+			Duration = { 2.5, 2.5, 2.5 },
+			Energy = { 4, 4, 4 },
+			RoundUses = 1,
+			Cooldown = 20,
+		},
 	} :: { any },
 	PowerMaxLevel = 3,
+	-- Robux consumables (Config/Monetization): each one takes away a friction you feel every session,
+	-- so it's bought again. Timed boosts live in profile.Boosts (os.time until), charges in
+	-- profile.Charges (counts). Hub only: nothing here helps win a murder round.
+	Consumables = {
+		SpeedMultiplier = 1.25, -- Speed Potion: walk speed in the hub (outrun a boss one zone deeper)
+		CashMultiplier = 2, -- Cash Potion: vault income
+		TrainingMultiplier = 3, -- Training Potion: Haunted Wheel training
+		EscapeStun = 3, -- Escape Token: seconds the boss is stunned when you break free
+		TrainingOfferAfter = 90, -- seconds on the wheel before the Training Potion is offered
+		RestockOfferRange = 45, -- studs from a lair where an empty wall offers the restock
+	},
 	-- The fuel between the two games (server Fuel): Heat and the Murderer meter
 	Fuel = {
 		MaxHeat = 10,
 		HeatIncome = 0.2, -- +20% vault income per Heat (10 Heat = 3x)
-		HeatLuck = 0.5, -- +50% power-roll luck per Heat (10 Heat = 6x)
-		RarityLuck = 0.15, -- deeper-zone knives roll powers more often (+15% per rarity step)
-		PityPer = 50, -- bad-luck protection: every 50 knives without a power = +1x luck
-		RevengeLuck = 3, -- after a Sheriff steals your power: 3x luck...
+		HeatLuck = 0.1, -- +10% power-roll luck per Heat (10 Heat = 2x)
+		RarityLuck = 0.05, -- deeper-zone knives roll powers a bit more often (+5% per rarity step)
+		PityPer = 100, -- bad-luck protection: every 100 knives without a power = +1x luck
+		MaxPowerLuck = 4, -- all the boosts together never beat 4x (powers stay rare)
+		RevengeLuck = 2, -- after a Sheriff steals your power: 2x luck...
 		RevengeTime = 1800, -- ...for 30 minutes
 		MeterPerRound = 2, -- Murderer meter for each round you weren't the Murderer
 		MeterCap = 3, -- nobody's chance can be more than 3x the server average
@@ -662,7 +724,7 @@ local GameConfig = {
 	ClassicPay = 1.5,
 
 	-- The Murderer's thrown knife (everyone's, whatever the perk)
-	MurderThrow = { Range = 400, Speed = 110 }, -- flies until it hits something
+	MurderThrow = { Range = 2000, Speed = 110 }, -- flies until it hits something
 
 	-- Knife perks (The Mad Murderer's classics): the Murderer's equipped knife gives them one.
 	-- Active perks go on Q / the ability button; passive ones just work.
@@ -674,53 +736,80 @@ local GameConfig = {
 			PerKill = 0.2, -- +20% throw speed per kill
 		},
 		Identifier = {
-			DisplayName = "Identifier",
+			DisplayName = "Sense",
 			Description = "Reveal who's holding the Revolver (3 per round)",
 			Uses = 3,
 			Cooldown = 5,
 			Duration = 4,
 		},
 		Bulletproof = {
-			DisplayName = "Bulletproof",
+			DisplayName = "Bulwark",
 			Description = "Survive one Revolver shot",
 			Passive = true,
 		},
 		ShapeShifter = {
-			DisplayName = "Shape Shifter",
+			DisplayName = "Disguise",
 			Description = "Turn into someone else (once per round)",
 			Uses = 1,
 			Cooldown = 3,
 		},
 		SpamKnife = {
 			DisplayName = "Spam Knife",
-			Description = "No stab: every click throws a knife where you aim, all round",
-			Passive = true, -- always on (RoundService.giveWeapon turns spam mode on for the round)
-			Interval = 0.15, -- server floor between two spam throws
-			Range = 1000,
+			Description = "Q: every click throws a knife where you aim (Lv 100: the whole round)",
+			-- Lv 100 = passive, the whole round (RoundService.giveWeapon). Below that it's Q bursts that
+			-- grow with the level: GameConfig.SpamForLevel
+			Uses = 1,
+			Cooldown = 10,
+			Duration = 4,
+			Interval = 0.166, -- server floor between two spam throws (overridden per level)
+			Range = 2000,
 		},
 		GhostKnife = {
-			DisplayName = "Ghost Knife",
+			DisplayName = "Phantom",
 			Description = "Thrown knives fly through up to 5 people",
 			Passive = true,
 			Pierce = 5,
 		},
 		Invisiknife = {
-			DisplayName = "Invisiknife",
+			DisplayName = "Shadow",
 			Description = "Turn invisible for a few seconds after every kill",
 			Passive = true,
 			Duration = 4,
 		},
 		LaserKnife = {
-			DisplayName = "Laser Knife",
+			DisplayName = "Laser",
 			Description = "Fully charged throws fly lightning fast",
 			Passive = true,
 			Speed = 480,
 		},
 		ExplodingKnife = {
-			DisplayName = "Exploding Knife",
+			DisplayName = "Blast",
 			Description = "Throw kills explode, taking out anyone close by",
 			Passive = true,
 			Radius = 9,
+		},
+		-- Murderer sides that only come on knives (docs/POWERS.md)
+		Snare = {
+			DisplayName = "Snare",
+			Description = "Q: drop a hidden snare: the next innocent to step in is stuck",
+			Uses = 2,
+			Cooldown = 4,
+			Duration = 2, -- seconds stuck (x0.5 at Lv 1 -> x1.5 at Lv 100)
+		},
+		DecoyKnife = {
+			DisplayName = "Decoy",
+			Description = "Q: a fake you runs off - bait the Sheriff",
+			Uses = 1,
+			Cooldown = 10,
+			Duration = 6,
+		},
+		FlashKnife = {
+			DisplayName = "Flash",
+			Description = "Q: blind the innocents in front of you",
+			Uses = 2,
+			Cooldown = 12,
+			Duration = 1.4,
+			Range = 24,
 		},
 		Hellfire = {
 			DisplayName = "Hellfire",
@@ -732,6 +821,20 @@ local GameConfig = {
 		},
 	} :: { [string]: any },
 
+	-- The Enchanter (Madame Vesper): re-roll the power on the knife you fight with. Cash cost =
+	-- that knife's income for CostSeconds (at least MinCost); or one Reroll Token (Robux, a charge)
+	Enchant = { CostSeconds = 900, MinCost = 5000 },
+	-- Power levels (docs/POWERS.md): XP goes to the power on the knife you fight with. Lv 100 takes
+	-- about 3 months of daily play. Never sold for Robux.
+	PowerXP = {
+		BossSteal = 12, -- a boss's knife safely home
+		MoonSteal = 18, -- a knife stolen from a vault in the Blood Moon
+		Survive = 20, -- survived a round
+		Kill = 12, -- each kill as the Murderer
+		Hero = 40, -- shot the Murderer
+		Curve = 1.85, -- XP for level L = Scale * (L - 1) ^ Curve
+		Scale = 5.5,
+	},
 	-- Anti-cheat
 	SpeedTolerance = 1.6, -- carriers moving faster than walkspeed * this drop their knife
 }
@@ -774,6 +877,29 @@ function GameConfig.SlotCost(slots: number): number
 	return GameConfig.FloorCosts[floors] or math.huge
 end
 
+-- The rarity a rebirth from `rebirths` needs on your plates
+function GameConfig.RebirthNeeds(rebirths: number): string
+	local needs = GameConfig.Rebirth.Needs
+	return needs[math.min(rebirths + 1, #needs)]
+end
+
+-- Rebirths needed before buying the floor after `slots`
+function GameConfig.FloorRebirthsFor(slots: number): number
+	local floors = math.max(1, math.ceil(slots / GameConfig.SlotsPerFloor))
+	return GameConfig.FloorRebirths[floors] or 0
+end
+
+-- The deepest biome's rarity your Speed can outrun (cash cases / blocks only go up to this)
+function GameConfig.RarityReached(speed: number): string
+	local reached = GameConfig.Zones[1].Rarity
+	for _, zone in GameConfig.Zones do
+		if speed >= (zone.SpeedNeeded or 0) then
+			reached = zone.Rarity
+		end
+	end
+	return reached
+end
+
 function GameConfig.FloorsFor(slots: number): number
 	return math.clamp(math.ceil(slots / GameConfig.SlotsPerFloor), 1, GameConfig.MaxSlots // GameConfig.SlotsPerFloor)
 end
@@ -790,14 +916,16 @@ function GameConfig.HealthCost(level: number): number
 end
 
 -- Unlock costs the power's Cost; each upgrade after that doubles
+-- Powers are spread over the whole climb (Radar in the first minutes, Mimic around a rebirth),
+-- and each level costs 8x the last, so maxing one is a real goal
 function GameConfig.PowerCost(cost: number, currentLevel: number): number
-	return cost * 2 ^ currentLevel
+	return cost * 8 ^ currentLevel
 end
 
 -- Speed stat -> walk speed. Every doubling of Speed is worth +4.4 walk speed (16 at 0, ~30 at 4K,
 -- ~54 at 180K, ~79 at 10M, ~105 at 650M, ~128 at 31B), up to MaxWalkSpeed.
 function GameConfig.WalkSpeedFor(speed: number): number
-	local walk = GameConfig.BaseWalkSpeed + 4.4 * math.log(1 + math.max(speed, 0) / 500, 2)
+	local walk = GameConfig.BaseWalkSpeed + GameConfig.SpeedCurve * math.log(1 + math.max(speed, 0) / 500, 2)
 	return math.min(walk, GameConfig.MaxWalkSpeed)
 end
 
@@ -809,6 +937,35 @@ function GameConfig.TrailMultiplier(level: number, phantom: boolean?): number
 		multiplier = math.max(multiplier, GameConfig.PhantomTrail.Multiplier)
 	end
 	return multiplier
+end
+
+-- Power level (1..100) for an amount of power XP
+function GameConfig.PowerLevelFor(xp: number): number
+	local config = GameConfig.PowerXP
+	local level = math.floor((math.max(0, xp) / config.Scale) ^ (1 / config.Curve)) + 1
+	return math.clamp(level, 1, 100)
+end
+
+-- XP needed to reach a level
+function GameConfig.PowerXPFor(level: number): number
+	local config = GameConfig.PowerXP
+	return math.ceil(config.Scale * math.max(0, level - 1) ^ config.Curve)
+end
+
+-- 0 at level 1, 1 at level 100
+function GameConfig.PowerProgress(level: number): number
+	return math.clamp((level - 1) / 99, 0, 1)
+end
+
+-- Spam Knife by level: Q bursts (uses per round, seconds each, throws per second); Lv 100 = whole round
+function GameConfig.SpamForLevel(level: number): { Uses: number, Duration: number, Interval: number, Whole: boolean }
+	local t = GameConfig.PowerProgress(level)
+	return {
+		Uses = 1 + math.floor(t * 2.99), -- 1 -> 3 bursts
+		Duration = 4 + 16 * t, -- 4 s -> 20 s
+		Interval = 1 / (2 + 3 * t), -- 2 -> 5 throws/s
+		Whole = level >= 100, -- the dream: all round at 6/s
+	}
 end
 
 return GameConfig

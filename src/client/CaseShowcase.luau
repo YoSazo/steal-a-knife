@@ -13,19 +13,16 @@ function View.Build(
 	odds: () -> (),
 	height: number?
 ): Frame
+	-- Same philosophy as the Index: a solid rarity-colour card with a black outline, not a dark
+	-- navy box with a faint coloured edge.
 	local color = Knives.RarityColors[rarity]
-	local row = Theme.surface(
-		parent,
-		{ Name = rarity .. "Case", Size = UDim2.new(1, -8, 0, height or 346), ZIndex = 7 },
-		Theme.Navy,
-		color
-	)
+	local row =
+		Theme.surface(parent, { Name = rarity .. "Case", Size = UDim2.new(1, -8, 0, height or 346), ZIndex = 7 }, color)
 	Theme.text(row, rarity:upper() .. " CASE", {
 		Name = "CaseTitle",
 		Position = UDim2.fromOffset(12, 2),
 		Size = UDim2.new(1, -24, 0, 60),
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = color,
 		MaximumTextSize = 52,
 		ZIndex = 10,
 	})
@@ -35,7 +32,6 @@ function View.Build(
 		BackgroundTransparency = 1,
 		ZIndex = 7,
 	}, row)
-	Theme.burst(chest, color)
 	Theme.image(chest, "Case" .. rarity, { Position = UDim2.fromScale(0, 0), Size = UDim2.fromScale(1, 1), ZIndex = 9 })
 	local rewards = Ui.new("Frame", {
 		Name = "Rewards",

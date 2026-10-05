@@ -9,22 +9,24 @@
 -- The Case Shop goes through UpgradeService's Purchase remote ("Case:<Rarity>").
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 
 local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
-local Props = require(ReplicatedStorage.Shared.Props)
+local ToyBlockModel = require(ReplicatedStorage.Shared.ToyBlockModel)
 local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local Offers = require(script.Parent.Offers)
 local StealService = require(script.Parent.StealService)
+local Analytics = require(script.Parent.Analytics)
 
 local Rewards = {}
 
 local rng = Random.new()
 -- Beside the Knife Merchant's stall
-local CHEST_AT = CFrame.new(-49, 1.4, -34) * CFrame.Angles(0, math.rad(130), 0)
+local CHEST_AT = CFrame.new(-49, 1.4, -34) * CFrame.Angles(0, math.rad(130 + 180), 0) -- lid faces the plaza
 
 -- Case Shop -----------------------------------------------------------------------------------
 
@@ -42,11 +44,16 @@ function Rewards.BuyCase(player: Player, rarity: string): (boolean, string)
 	if player:GetAttribute("InRound") then
 		return false, "Not during a round!"
 	end
+	-- Cash can't skip the climb: only cases up to the deepest biome your Speed reaches
+	local reached = GameConfig.RarityReached(profile.Speed)
+	if Knives.Rank(rarity) > Knives.Rank(reached) then
+		return false, `Reach the {rarity} biome first (train your Speed)!`
+	end
 	if #profile.Knives >= profile.Slots then
 		Offers.Show(player, "Mount", "Your wall is full! Add another mount instantly.")
 		return false, "Your wall is full! Sell a knife or buy a mount first."
 	end
-	if not DataService.TrySpend(player, entry.Cost) then
+	if not DataService.TrySpend(player, entry.Cost, "case_shop") then
 		Offers.Cash(player, entry.Cost - profile.Cash, BaseService.RackIncome(player))
 		return false, "Not enough cash"
 	end
@@ -86,7 +93,7 @@ local function giveCase(player: Player, rarity: string): string
 			cost = entry.Cost
 		end
 	end
-	DataService.AddCash(player, cost)
+	DataService.AddCash(player, cost, "case_value")
 	return `{Format.Cash(cost)} (your wall was full, so you got the {rarity} Case's value)`
 end
 
@@ -97,6 +104,7 @@ local function claimDaily(player: Player): (boolean, string)
 	end
 	local day = dailyDay(profile)
 	if not day then
+		Net.Notify(player, "Already claimed today - come back tomorrow!", "info")
 		return false, "Already claimed today - come back tomorrow!"
 	end
 	local reward = GameConfig.Daily[day]
@@ -116,11 +124,32 @@ local function claimDaily(player: Player): (boolean, string)
 	else
 		local cash =
 			GameConfig.Pay({ Min = reward.Min or 100, Seconds = reward.Seconds or 60 }, BaseService.RackIncome(player))
-		DataService.AddCash(player, cash)
+		DataService.AddCash(player, cash, "daily")
 		got = `{Format.Cash(cash)}`
 	end
 	Net.Notify(player, `Day {day} reward: {got}!`, "good")
 	return true, got
+end
+
+-- Robux "Save My Streak": the streak a missed day broke carries on as if they hadn't missed it
+function Rewards.RestoreStreak(player: Player): boolean
+	local profile = DataService.Get(player)
+	if not profile or profile.LostStreak <= 0 then
+		return false
+	end
+	local lost = profile.LostStreak
+	DataService.Update(player, function(p)
+		if p.LastDaily == today() then
+			-- Already claimed day 1 today: that claim becomes the next day of the old streak
+			p.DailyStreak = lost % #GameConfig.Daily + 1
+		else
+			-- Not claimed yet: as if yesterday was claimed, so today continues the streak
+			p.DailyStreak = lost
+			p.LastDaily = today() - 1
+		end
+		p.LostStreak = 0
+	end)
+	return true
 end
 
 -- On join: pay what the vault earned while they were away, and tell the client about it and
@@ -134,35 +163,63 @@ local function welcome(player: Player)
 	local away = if awaySince > 0 then os.time() - awaySince else 0
 	local earned = 0
 	local config = GameConfig.Offline
+	-- (passes are checked asynchronously on join)
+	for _ = 1, 20 do
+		if player:GetAttribute("PassesChecked") then
+			break
+		end
+		task.wait(0.25)
+	end
+	local plus = player:GetAttribute("Pass_OfflinePlus") == true
 	if away >= config.MinAway then
-		local seconds = math.min(away, config.MaxHours * 3600)
-		earned = math.floor(BaseService.RackIncome(player) * seconds * config.Fraction)
+		local seconds = math.min(away, (if plus then 24 else config.MaxHours) * 3600)
+		earned = math.floor(BaseService.RackIncome(player) * seconds * (if plus then 1 else config.Fraction))
 		if earned > 0 then
-			DataService.AddCash(player, earned)
+			DataService.AddCash(player, earned, "offline")
 		end
 	end
+	-- What Double Offline Earnings would pay again (only this visit's payout)
+	DataService.Update(player, function(p)
+		p.LastOffline = earned
+	end)
+	-- Missed a day with a streak going: remember it, Save My Streak brings it back
 	local day = dailyDay(profile)
+	local lostStreak = 0
+	if day == 1 and profile.DailyStreak >= 2 and profile.LastDaily < today() - 1 then
+		lostStreak = profile.DailyStreak
+		DataService.Update(player, function(p)
+			p.LostStreak = lostStreak
+		end)
+	end
+	Analytics.Track(player, "reward.welcome", {
+		offline = earned,
+		away_h = math.floor(away / 360) / 10,
+		streak_day = day or profile.DailyStreak,
+		daily_ready = day ~= nil,
+		lost_streak = lostStreak,
+	})
 	Net.Remotes.Welcome:FireClient(player, {
 		Offline = earned,
 		Away = away,
 		Streak = day or profile.DailyStreak,
 		DailyReady = day ~= nil,
+		LostStreak = if lostStreak > 0 then lostStreak else nil,
 		Shielded = DataService.IsNewPlayer(player),
 	})
 end
 
 -- Free chest ---------------------------------------------------------------------------------
 
-local function claimFreeChest(player: Player)
+local function claimFreeChest(player: Player): boolean
 	local profile = DataService.Get(player)
 	if not profile then
-		return
+		return false
 	end
 	local now = os.time()
 	if now < profile.NextFreeChest then
 		Net.Notify(player, `The chest refills in {math.ceil((profile.NextFreeChest - now) / 60)} min`, "bad")
 		Offers.Show(player, "ChestRefill", "Can't wait? Refill your chest right now.")
-		return
+		return false
 	end
 	local config = GameConfig.FreeChest
 	DataService.Update(player, function(p)
@@ -191,28 +248,18 @@ local function claimFreeChest(player: Player)
 			config.MinCash,
 			math.floor(BaseService.RackIncome(player) * config.IncomeSeconds * rng:NextNumber(0.8, 1.4))
 		)
-		DataService.AddCash(player, cash)
+		DataService.AddCash(player, cash, "free_chest")
 		Net.Notify(player, `FREE CHEST: +{Format.Cash(cash)}!`, "good")
 		Net.Remotes.Effect:FireClient(player, "CashBurst", CHEST_AT.Position, cash)
 	end
+	return true
 end
 
 local function buildChest(parent: Instance)
-	local chest = Props.Build("Chest", true)
+	local chest = ToyBlockModel.Build("FreeChest", true)
 	chest.Name = "FreeChest"
 	chest:ScaleTo(1.6)
 	chest:PivotTo(CHEST_AT)
-	for _, d in chest:GetDescendants() do
-		if d:IsA("BasePart") then
-			if d.Name == "Lock" or d.Name == "Seam" then
-				d.Color = Color3.fromRGB(255, 220, 80)
-			elseif d.Name == "Iron" then
-				d.Color = Color3.fromRGB(235, 185, 60)
-			elseif d.Name == "Wood" then
-				d.Color = Color3.fromRGB(190, 40, 40)
-			end
-		end
-	end
 	chest:AddTag("FreeChest")
 	chest.Parent = parent
 	local root = chest.PrimaryPart :: BasePart
@@ -234,24 +281,18 @@ local function buildChest(parent: Instance)
 	light.Range = 16
 	light.Brightness = 2
 	light.Parent = root
-	-- "FREE!" floats over it; clients swap in their own countdown (see client/Hud)
-	local gui = Instance.new("BillboardGui")
-	gui.Name = "FreeLabel"
-	gui.Size = UDim2.fromOffset(220, 60)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, 4.5, 0)
-	gui.MaxDistance = 160
-	gui.Adornee = root
-	gui.Parent = root
-	local label = Instance.new("TextLabel")
-	label.Name = "Text"
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.FredokaOne
-	label.TextScaled = true
-	label.TextColor3 = Color3.fromRGB(120, 255, 140)
-	label.TextStrokeTransparency = 0
-	label.Text = "FREE!"
-	label.Parent = gui
+	local plaque = Instance.new("Part")
+	plaque.Name, plaque.Size = "FreeChestSign", Vector3.new(8, 5, 0.2)
+	plaque.CFrame = root.CFrame * CFrame.new(0, 6.5, 0)
+	plaque.Anchored, plaque.CanCollide, plaque.CanQuery, plaque.CanTouch = true, false, false, false
+	plaque.Parent = chest
+	local _, liveFace = WorldSignModel.Attach("FreeChestLabel", plaque, Enum.NormalId.Front)
+	WorldSignModel.LiveText(
+		WorldSignModel.Surface(plaque, liveFace, "FreeLabel", 160),
+		"Text",
+		"FREE!",
+		Color3.fromRGB(120, 255, 140)
+	)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Open"
 	prompt.ObjectText = "Free Chest"
@@ -276,6 +317,7 @@ local function claimIndex(player: Player, which: unknown): boolean
 		end
 	end
 	if #names == 0 then
+		Net.Notify(player, "Nothing to claim yet - discover new knives first!", "info")
 		return false
 	end
 	local cash, speed = 0, 0
@@ -287,6 +329,7 @@ local function claimIndex(player: Player, which: unknown): boolean
 			speed += reward.Speed
 		end
 	end
+	DataService.CashFlow(player, cash, "index")
 	DataService.Update(player, function(p)
 		for _, name in names do
 			table.insert(p.IndexClaimed, name)
@@ -305,8 +348,11 @@ function Rewards.Init()
 	folder.Parent = workspace:FindFirstChild("Map")
 	buildChest(folder)
 
-	Net.Remotes.ClaimIndex.OnServerInvoke = claimIndex
-	Net.Remotes.ClaimDaily.OnServerInvoke = claimDaily
+	Net.Remotes.ClaimIndex.OnServerInvoke = Analytics.Remote("ClaimIndex", claimIndex)
+	Net.Remotes.ClaimDaily.OnServerInvoke = Analytics.Remote("ClaimDaily", claimDaily)
+	Net.Remotes.ClaimFreeChest.OnServerInvoke = Analytics.Remote("ClaimFreeChest", function(player: Player)
+		return claimFreeChest(player)
+	end)
 	DataService.PlayerLoaded:Connect(function(player: Player)
 		-- After the vault is assigned and the client has its UI up
 		task.delay(4, function()
@@ -315,18 +361,31 @@ function Rewards.Init()
 			end
 		end)
 	end)
-	Net.Remotes.Tutorial.OnServerEvent:Connect(function(player: Player, step: unknown)
+	Net.Remotes.Tutorial.OnServerEvent:Connect(function(player: Player, step: unknown, at: unknown)
 		local profile = DataService.Get(player)
 		if step == "Done" and profile and not profile.TutorialDone then
 			DataService.Update(player, function(p)
 				p.TutorialDone = true
 				p.Cash += GameConfig.TutorialReward
 			end)
+			DataService.CashFlow(player, GameConfig.TutorialReward, "tutorial")
 			Net.Notify(player, `Guide complete! +{Format.Cash(GameConfig.TutorialReward)}`, "good")
 		elseif step == "Skip" and profile then
 			DataService.Update(player, function(p)
 				p.TutorialDone = true
 			end)
+		elseif step == "Step" and profile and type(at) == "number" and at == at then
+			-- how far the guide got, so leaving midway resumes there
+			DataService.Update(player, function(p)
+				p.TutorialStep = math.clamp(math.floor(at), 1, 10)
+			end)
+		elseif step == "Tip" and profile and type(at) == "string" and #at <= 24 and #profile.Tips < 60 then
+			-- a one-time tip was shown (client/Tips): never again
+			if not table.find(profile.Tips, at) then
+				DataService.Update(player, function(p)
+					table.insert(p.Tips, at)
+				end)
+			end
 		end
 	end)
 end

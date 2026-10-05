@@ -130,7 +130,7 @@ function RoundBots.GiveKnife(bot: Bot, knifeName: string)
 		return
 	end
 	local knife = KnifeModel.Build(knifeName, false)
-	KnifeModel.FitLength(knife, 2.4)
+	KnifeModel.FitLength(knife, 1.7)
 	knife:PivotTo(hand.CFrame * CFrame.new(0, -0.3, 0) * CFrame.Angles(math.rad(-90), 0, 0))
 	for _, d in knife:GetDescendants() do
 		if d:IsA("BasePart") then

@@ -53,6 +53,7 @@ Toy.Sides = {
 -- Expects an axis-aligned (unrotated or 90-degree-turned) wall.
 function Toy.DirtWall(part: BasePart, color: Color3?): Part
 	part.Color = color or Toy.Dirt
+	part.CastShadow = false -- 170 studs tall: its shadow would cover half the arena
 	Toy.Dress(part, {
 		Enum.NormalId.Front,
 		Enum.NormalId.Back,
@@ -68,6 +69,7 @@ function Toy.DirtWall(part: BasePart, color: Color3?): Part
 	cap.Size = Vector3.new(part.Size.X + 0.8, 1.6, part.Size.Z + 0.8)
 	cap.CFrame = part.CFrame * CFrame.new(0, part.Size.Y / 2 + 0.5, 0)
 	cap.Color = Toy.Grass
+	cap.CastShadow = false
 	cap.TopSurface = Enum.SurfaceType.Smooth
 	cap.BottomSurface = Enum.SurfaceType.Smooth
 	cap.Parent = part.Parent

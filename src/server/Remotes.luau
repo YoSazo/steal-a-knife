@@ -42,18 +42,31 @@ local Remotes = {
 	ClaimIndex = func("ClaimIndex"), -- client -> server: (knifeName | "All") -> ok
 	Welcome = event("Welcome"), -- server -> client: ({ Offline, Away, Streak, DailyReady }) on join
 	ClaimDaily = func("ClaimDaily"), -- client -> server: () -> (ok, message) today's login-streak reward
+	ClaimFreeChest = func("ClaimFreeChest"), -- client -> server: () -> ok; same as walking up and pressing E
 	Offer = event("Offer"), -- server -> client: (storeKey, reason) a contextual store offer
 	TeamUp = event("TeamUp"), -- client -> server: ("Invite" | "Accept" | "Decline", userId) / ("Leave")
 	Trade = func("Trade"), -- client -> server: (action, ...) -> ok, see TradeService
+	SellSign = event("SellSign"), -- client -> server: (sign: BasePart) tapped a Sell sign with a tool in hand
 	SlowMode = event("SlowMode"), -- client -> server: (on: boolean) walk at normal speed in the hub
+	Gamble = func("Gamble"), -- client -> server: (action, arg) -> (ok, message, extra), see Gamble
 	StoreTest = func("StoreTest"), -- client -> server: (kind, key) Studio-only fake purchase for unset ids
+	Track = event("Track"), -- client -> server: (event, props) analytics from the client (server/Analytics whitelists)
 }
+
+-- Analytics listens to every message (the "bad" ones are where players get stuck)
+local notifyHook: ((Player, string, string) -> ())? = nil
 
 return {
 	Remotes = Remotes,
 	-- kind: "info" | "good" | "bad"
 	Notify = function(player: Player, text: string, kind: string?)
 		Remotes.Notify:FireClient(player, text, kind or "info")
+		if notifyHook then
+			task.spawn(notifyHook, player, text, kind or "info")
+		end
+	end,
+	SetNotifyHook = function(hook: (Player, string, string) -> ())
+		notifyHook = hook
 	end,
 	-- A big banner across everyone's screen (rare unboxes, raids, thefts). hype 1..4 = how loud.
 	Announce = function(text: string, color: Color3, hype: number?)

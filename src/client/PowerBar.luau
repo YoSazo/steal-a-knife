@@ -66,19 +66,27 @@ function PowerBar.Init()
 		}, bar)
 		Ui.corner(button, 14)
 		new("UIStroke", { Thickness = 2, Color = Color3.new(1, 1, 1) }, button)
+		-- The power's name across the middle, its key in a little badge on the corner (they used to
+		-- share the top-left and overlap)
 		local name = Ui.label({
-			Position = UDim2.fromOffset(4, 2),
-			Size = UDim2.new(1, -8, 0, 26),
+			Position = UDim2.fromOffset(4, 6),
+			Size = UDim2.new(1, -8, 0, 24),
 			Text = "",
 			TextTruncate = Enum.TextTruncate.AtEnd,
-			TextStrokeTransparency = 0.4,
 		}, button)
+		Ui.textStroke(name, 1.5)
 		local key = Ui.label({
-			Position = UDim2.fromOffset(6, 4),
-			Size = UDim2.fromOffset(22, 18),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromOffset(4, 4),
+			Size = UDim2.fromOffset(20, 20),
 			Text = KEY_LABELS[i],
-			TextColor3 = Color3.fromRGB(220, 220, 230),
+			TextColor3 = Color3.new(1, 1, 1),
+			BackgroundTransparency = 0,
+			BackgroundColor3 = Color3.fromRGB(20, 16, 28),
+			ZIndex = 5,
 		}, button)
+		Ui.corner(key, 10)
+		new("UIStroke", { Thickness = 1.5, Color = Color3.new(1, 1, 1) }, key)
 		local shade = new("Frame", {
 			AnchorPoint = Vector2.new(0, 1),
 			Position = UDim2.fromScale(0, 1),
@@ -101,7 +109,9 @@ function PowerBar.Init()
 	end
 
 	local function refresh()
-		loadout = Ui.list(player:GetAttribute("Loadout"))
+		-- One power system: your power is the Innocent side of the knife you fight with
+		local roundPower = player:GetAttribute("RoundPower")
+		loadout = if type(roundPower) == "string" and byId[roundPower] then { roundPower } else {}
 		for i, slot in slots do
 			local power = byId[loadout[i]]
 			slot.Button.Visible = power ~= nil
@@ -114,6 +124,7 @@ function PowerBar.Init()
 		end
 	end
 	player:GetAttributeChangedSignal("Loadout"):Connect(refresh)
+	player:GetAttributeChangedSignal("RoundPower"):Connect(refresh)
 	refresh()
 
 	UserInputService.InputBegan:Connect(function(input, processed)
@@ -143,19 +154,9 @@ function PowerBar.Init()
 		-- The Murderer fights with their knife; powers are for innocents
 		local inRound = player:GetAttribute("InRound") == true
 		local murderer = inRound and player:GetAttribute("Role") == "Murderer"
-		-- In the hub the powers only show where you'd use them: out on the runway with the guards,
-		-- or during a Thief Moon. Safe on the plaza / in your vault, they're out of the way.
-		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
-		local onRunway = root ~= nil
-			and root.Position.Z > -2
-			and math.abs(root.Position.X) < GameConfig.ArenaWidth / 2 + 2
-		local bloodMoon = type(ReplicatedStorage:GetAttribute("RaidEndsAt")) == "number"
 		local classic = inRound and ReplicatedStorage:GetAttribute("Classic") == true
-		bar.Visible = not Ui.menuOpen()
-			and not murderer
-			and not classic
-			and #loadout > 0
-			and (inRound or onRunway or bloodMoon)
+		-- Powers are a murder-round thing only (the hub stays uncluttered)
+		bar.Visible = not Ui.menuOpen() and not murderer and not classic and #loadout > 0 and inRound
 		local gamepad = UserInputService.PreferredInput == Enum.PreferredInput.Gamepad
 		local now = workspace:GetServerTimeNow()
 		for i, slot in slots do
@@ -166,6 +167,7 @@ function PowerBar.Init()
 			-- Rounds: only your first power comes along
 			slot.Button.Visible = not inRound or i == 1
 			slot.Key.Text = if Ui.Phone then "" elseif gamepad then PAD_LABELS[i] else KEY_LABELS[i]
+			slot.Key.Visible = slot.Key.Text ~= ""
 			local energy = player:GetAttribute("Energy")
 			if type(energy) == "number" then
 				-- In a round: costs Energy (coins fill it); shaded while you can't afford it

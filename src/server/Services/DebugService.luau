@@ -14,12 +14,15 @@ local ServerStorage = game:GetService("ServerStorage")
 
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
+local Analytics = require(script.Parent.Analytics)
 local Net = require(script.Parent.Parent.Remotes)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
 local RoundService = require(script.Parent.RoundService)
 local StealService = require(script.Parent.StealService)
 local RaidService = require(script.Parent.RaidService)
+local GuardService = require(script.Parent.GuardService)
+local PowerService = require(script.Parent.PowerService)
 
 local DebugService = {}
 
@@ -41,8 +44,20 @@ local commands: { [string]: (Player, ...any) -> any } = {
 		BaseService.RefreshRack(player)
 		return true
 	end,
+	-- The last n analytics events (newest last), each as "event {json props}"
+	-- raw = the exact JSON body the ingest server would get
+	Analytics = function(_player: Player, n: number?, raw: boolean?)
+		if raw then
+			return game:GetService("HttpService"):JSONEncode({ batch = Analytics.Recent(n) })
+		end
+		local out = {}
+		for _, event in Analytics.Recent(n) do
+			table.insert(out, `{event.event} {game:GetService("HttpService"):JSONEncode(event.props)}`)
+		end
+		return out
+	end,
 	Cash = function(player: Player, amount: number)
-		DataService.AddCash(player, amount)
+		DataService.AddCash(player, amount, "debug")
 		return true
 	end,
 	Data = function(player: Player)
@@ -69,6 +84,46 @@ local commands: { [string]: (Player, ...any) -> any } = {
 			StealService.DropKnife(name, root.Position + root.CFrame.LookVector * 5)
 		end
 		return root ~= nil
+	end,
+	-- Set the XP of a knife power (tests levels: Spam Knife bursts, level-ups, the cards)
+	PowerXP = function(player: Player, power: string, xp: number)
+		DataService.Update(player, function(p)
+			p.PowerXP[power] = xp
+		end)
+		return true
+	end,
+	-- Pretend this is an old save with cash-bought powers, then run the migration (tests the refund)
+	OldPowers = function(player: Player)
+		DataService.Update(player, function(p)
+			p.Powers = { Vanish = 2, Radar = 1 }
+			p.Loadout = { "Vanish" }
+			local index = table.find(p.Bought, "PowerRefund")
+			if index then
+				table.remove(p.Bought, index)
+			end
+		end)
+		PowerService.DebugMigrate(player)
+		return true
+	end,
+	-- Use a power as if the client pressed it (tests every power in one round)
+	UsePower = function(player: Player, id: string)
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		PowerService.DebugUse(player, id, if root then root.CFrame.LookVector else nil)
+		return true
+	end,
+	-- Fill a round's Energy (tests powers without collecting coins)
+	Energy = function(player: Player, amount: number?)
+		PowerService.AddEnergy(player, amount or 20)
+		return true
+	end,
+	-- Steal from a boss's wall for real (the boss chases you): tests guard hits and thrown knives
+	BossSteal = function(player: Player, zone: number?)
+		return GuardService.DebugSteal(player, zone or 1)
+	end,
+	-- Start carrying a knife right now, as if just stolen (tests the run home / placing)
+	Carry = function(player: Player, name: string?)
+		StealService.StartCarry(player, "Knife", name or "KitchenKnife")
+		return true
 	end,
 	Case = function(player: Player, rarity: string?)
 		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?

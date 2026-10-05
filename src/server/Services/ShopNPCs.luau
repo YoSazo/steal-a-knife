@@ -1,7 +1,7 @@
 --!strict
 -- The plaza's shopkeepers. Instead of a Shop button, you walk up and talk to someone:
 --   Mortimer, the Knife Merchant: sealed knife cases (the Case Shop) and Health upgrades
---   Madame Vesper, the Mystic: Innocent Powers (buy, upgrade, equip)
+--   Madame Vesper, the Enchanter: knife powers (see yours and every power, re-roll a knife's power)
 -- Each stands at a little stall with a glowing ring on the floor in front: step onto it and the
 -- client opens that shop panel (ShopRing tag, ShopPanel attribute); step off and it closes. Purchases still go
 -- through the usual server remotes, so standing here grants nothing by itself.
@@ -10,8 +10,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
-local Props = require(ReplicatedStorage.Shared.Props)
-local Toy = require(ReplicatedStorage.Shared.Toy)
+local ToyBlockModel = require(ReplicatedStorage.Shared.ToyBlockModel)
 local Disguises = require(script.Parent.Disguises)
 local CharacterFaces = require(script.Parent.CharacterFaces)
 local CharacterDetails = require(script.Parent.CharacterDetails)
@@ -60,7 +59,7 @@ local SPECS: { Spec } = {
 	},
 	{
 		Name = "Madame Vesper",
-		Title = "Power Mystic",
+		Title = "The Enchanter",
 		Panel = "Powers",
 		Position = Vector3.new(45, 0, -26), -- across the entrance from Mortimer
 		Facing = 50,
@@ -106,28 +105,29 @@ local function buildStall(folder: Instance, spec: Spec, frame: CFrame)
 	local function at(x: number, y: number, z: number): CFrame
 		return frame * CFrame.new(x, y, z)
 	end
-	-- Local -Z is the front (where customers stand). Toy-style: studded wood, a striped awning
-	local counter = block(folder, "Counter", Vector3.new(10, 3.4, 2.4), at(0, 1.7, -3), wood)
-	Toy.Dress(counter, Toy.Sides, 1, 0)
-	block(folder, "CounterTop", Vector3.new(10.6, 0.4, 3), at(0, 3.6, -3), wood:Lerp(Color3.new(0, 0, 0), 0.3))
-	block(folder, "KeeperStep", Vector3.new(7, 0.45, 2.4), at(0, 0.225, 0.2), wood)
-	for _, x in { -5, 5 } do
-		for _, z in { -4, 2.5 } do
-			block(folder, "Post", Vector3.new(0.6, 10, 0.6), at(x, 5, z), wood)
+	local shell = ToyBlockModel.Build(if spec.Panel == "Shop" then "ShopMortimer" else "ShopVesper", true)
+	shell:PivotTo(frame)
+	-- No board above the stall: the name floats on its own (below)
+	local boardParts = {
+		SignSide = true,
+		SignRail = true,
+		ShopSignBack = true,
+		CrestBack = true,
+		CrestBlade = true,
+		CrestGuard = true,
+		CrestGrip = true,
+	}
+	for _, d in shell:GetDescendants() do
+		if d:IsA("BasePart") and boardParts[d.Name] then
+			d:Destroy()
 		end
 	end
-	-- Striped awning, tilted towards the customers
-	for i = 0, 5 do
-		local stripe = block(
-			folder,
-			"Canopy",
-			Vector3.new(11 / 6, 0.6, 8.4),
-			at(-5.5 + 11 / 12 + i * 11 / 6, 10.2, -0.8) * CFrame.Angles(math.rad(-10), 0, 0),
-			if i % 2 == 0 then spec.Color else Color3.fromRGB(245, 245, 245)
-		)
-		stripe.CanCollide = false
-		Toy.Dress(stripe, { Enum.NormalId.Top }, 1, 0)
-	end
+	shell.Parent = folder
+	-- Retain the existing counter and keeper step as collision-only surfaces.
+	local counter = block(folder, "Counter", Vector3.new(10, 3.4, 2.4), at(0, 1.7, -3), wood)
+	counter.Transparency = 1
+	local step = block(folder, "KeeperStep", Vector3.new(7, 0.45, 2.4), at(0, 0.225, 0.2), wood)
+	step.Transparency = 1
 	-- A soft glowing ring on the floor in front: "stand here"
 	local ring = block(
 		folder,
@@ -147,17 +147,15 @@ local function buildStall(folder: Instance, spec: Spec, frame: CFrame)
 	-- One clean title floating over the stall (white fading into the stall's colour)
 	local anchor = block(folder, "TitleAnchor", Vector3.one * 0.2, at(0, 12.5, -1), spec.Color)
 	anchor.Transparency = 1
-	anchor.CanCollide = false
-	anchor.CanQuery = false
-	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(280, 54)
-	gui:SetAttribute("LabelCategory", "Shop")
-	gui:AddTag("ResponsiveWorldLabel")
-	gui.MaxDistance = 140
-	gui.LightInfluence = 0
-	gui.Brightness = 0.85 -- full-bright signs, a touch softer than pure white
-	gui.Adornee = anchor
-	gui.Parent = anchor
+	anchor.CanCollide, anchor.CanQuery, anchor.CanTouch = false, false, false
+	local title = Instance.new("BillboardGui")
+	title.Size = UDim2.fromOffset(280, 54)
+	title:SetAttribute("LabelCategory", "Shop")
+	title:AddTag("ResponsiveWorldLabel")
+	title.MaxDistance = 140
+	title.LightInfluence = 0
+	title.Adornee = anchor
+	title.Parent = anchor
 	local text = Instance.new("TextLabel")
 	text.Size = UDim2.fromScale(1, 1)
 	text.BackgroundTransparency = 1
@@ -165,7 +163,7 @@ local function buildStall(folder: Instance, spec: Spec, frame: CFrame)
 	text.TextScaled = true
 	text.TextColor3 = Color3.new(1, 1, 1)
 	text.Text = spec.Title
-	text.Parent = gui
+	text.Parent = title
 	local gradient = Instance.new("UIGradient")
 	gradient.Rotation = 90
 	gradient.Color = ColorSequence.new(Color3.new(1, 1, 1), spec.Color:Lerp(Color3.new(1, 1, 1), 0.35))
@@ -178,7 +176,15 @@ local function buildStall(folder: Instance, spec: Spec, frame: CFrame)
 	if spec.Panel == "Shop" then
 		local casePositions = { -3.5, -1.8, 3.3 } -- leave the merchant's face clear in the middle
 		for i, rarity in { "Common", "Epic", "Godly" } do
-			local case = KnifeModel.BuildCase(rarity, true)
+			local case = ToyBlockModel.Build("FreeChest", true)
+			for _, p in case:GetChildren() do
+				if p:IsA("BasePart") and p.Name == "Wood" then
+					p.Color = if i == 1
+						then rgb(203, 57, 57)
+						else if i == 2 then rgb(77, 151, 98) else rgb(190, 78, 165)
+				end
+			end
+			case:SetAttribute("Case", rarity)
 			case:ScaleTo(0.5)
 			case:PivotTo(at(casePositions[i], 4.4, -3) * CFrame.Angles(0, math.rad(180 + (i - 2) * 15), 0))
 			for _, d in case:GetDescendants() do
@@ -190,7 +196,6 @@ local function buildStall(folder: Instance, spec: Spec, frame: CFrame)
 			case.Parent = folder
 		end
 		-- Knives displayed on a board behind the merchant
-		block(folder, "KnifeBoard", Vector3.new(8, 4.5, 0.4), at(0, 6, 2.3), wood, Enum.Material.WoodPlanks)
 		for i, name in { "KitchenKnife", "Katana", "InfernoFang", "VoidEdge" } do
 			local knife = KnifeModel.Build(name, true)
 			KnifeModel.FitLength(knife, 2.6)
@@ -203,39 +208,6 @@ local function buildStall(folder: Instance, spec: Spec, frame: CFrame)
 			end
 			knife.Parent = folder
 		end
-	else
-		-- A glowing crystal ball on a stand, candles, floating sparkles
-		block(folder, "BallStand", Vector3.new(1, 0.6, 1), at(-2.4, 4.1, -3), rgb(200, 160, 70), Enum.Material.Metal)
-		local ball =
-			block(folder, "CrystalBall", Vector3.one * 1.6, at(-2.4, 5.05, -3), spec.Color, Enum.Material.Glass)
-		ball.Shape = Enum.PartType.Ball
-		ball.Transparency = 0.25
-		ball.CanCollide = false
-		local light = Instance.new("PointLight")
-		light.Color = spec.Color
-		light.Range = 18
-		light.Brightness = 2.5
-		light.Parent = ball
-		local sparkles = Instance.new("ParticleEmitter")
-		sparkles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-		sparkles.Color = ColorSequence.new(spec.Color, Color3.new(1, 1, 1))
-		sparkles.LightEmission = 1
-		sparkles.Size = NumberSequence.new(0.3, 0)
-		sparkles.Lifetime = NumberRange.new(1, 2)
-		sparkles.Rate = 12
-		sparkles.Speed = NumberRange.new(0.5, 1.5)
-		sparkles.Parent = ball
-		for _, x in { -3.6, 3.6 } do
-			block(folder, "Candle", Vector3.new(0.4, 1, 0.4), at(x, 4.3, -3), rgb(245, 238, 220))
-			local flame =
-				block(folder, "Flame", Vector3.new(0.3, 0.45, 0.3), at(x, 5, -3), rgb(255, 190, 90), Enum.Material.Neon)
-			flame.CanCollide = false
-			flame:AddTag("Flicker")
-		end
-		local crystal = Props.Build("Crystal", true)
-		crystal:ScaleTo(1.4)
-		crystal:PivotTo(at(-4.2, 0, 1.5))
-		crystal.Parent = folder
 	end
 end
 

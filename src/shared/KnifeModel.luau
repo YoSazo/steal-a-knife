@@ -1,13 +1,6 @@
 --!strict
--- Builds knife models. Two flavours:
---   * Mesh knives from Blender (Config/KnifeMeshes). The server turns the mesh ids into template
---     models once at startup (Preload) and parks them in ReplicatedStorage.KnifeTemplates, so both
---     server and client just clone them.
---   * Part-built knives (bright, low-poly), used until the templates exist or if meshes fail.
--- Either way the knife stands along +Y from a grip at the origin, and the model's PrimaryPart is
--- an invisible "Handle" part at the grip, so pivots, welds and Tool grips work the same.
-
-local AssetService = game:GetService("AssetService")
+-- Native chunky toy knives; all 24 silhouettes are reconstructed as individual cuboids.
+-- The invisible Handle remains at the grip origin, Blade and Guard keep their aura contracts.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -15,18 +8,14 @@ local Items = require(script.Parent.Items)
 local KnifeIcons = require(script.Parent.Config.KnifeIcons)
 local Props = require(script.Parent.Props)
 local Knives = require(script.Parent.Config.Knives)
-local KnifeMeshes = require(script.Parent.Config.KnifeMeshes)
-local KnifeDetailMeshes = require(script.Parent.Config.KnifeDetailMeshes)
-local KnifeAppearance = require(script.Parent.Config.KnifeAppearance)
+
+local ToyBlockModel = require(script.Parent.ToyBlockModel)
 
 local KnifeModel = {}
 
-local MESH_SCALE = 1.35 -- Blender units -> studs, tuned to match the part knives' size
--- Mesh frame (blade along -X, spine +Y) -> knife frame (blade along +Y)
-local MESH_TO_KNIFE = CFrame.Angles(0, 0, -math.pi / 2)
 local TEMPLATE_FOLDER = "KnifeTemplates"
-local TOOL_LENGTH = 2.4 -- studs, pommel to tip, for the knife the Murderer holds
-local SILHOUETTE = "GoldenDagger" -- every skin uses the same blade, crossguard and grip
+local TOOL_LENGTH = 1.7 -- forearm length: reads as a knife in a Roblox hand (was 2.4)
+local BLOCK_VERSION = 1
 
 local function part(parent: Instance, name: string, size: Vector3, offset: CFrame, color: Color3): Part
 	local p = Instance.new("Part")
@@ -56,146 +45,32 @@ local function weldAll(parent: Instance, root: BasePart)
 	end
 end
 
-local function assembleParts(parent: Instance, knife: Knives.Knife): BasePart
-	local standard = Knives.ByName[SILHOUETTE]
-	local length, width = standard.BladeLength, standard.BladeWidth
-	local handle = part(parent, "Handle", Vector3.new(0.35, 1.1, 0.35), CFrame.new(), knife.HandleColor)
-	local pommel = part(parent, "Pommel", Vector3.new(0.5, 0.5, 0.5), CFrame.new(0, -0.65, 0), knife.GuardColor)
-	pommel.Shape = Enum.PartType.Ball
-	part(parent, "Guard", Vector3.new(0.3, 0.2, width + 0.6), CFrame.new(0, 0.65, 0), knife.GuardColor)
-	local blade = part(
-		parent,
-		"Blade",
-		Vector3.new(0.12, length * 0.8, width),
-		CFrame.new(0, 0.75 + length * 0.4, 0),
-		knife.BladeColor
-	)
-
-	local tip = Instance.new("WedgePart")
-	tip.Name = "Tip"
-	tip.Size = Vector3.new(0.12, length * 0.25, width)
-	tip.CFrame = CFrame.new(0, 0.75 + length * 0.8 + length * 0.125, 0)
-	tip.Color = knife.BladeColor
-	tip.CanCollide, tip.CanQuery, tip.CanTouch, tip.Massless = false, false, false, true
-	tip.Parent = parent
-
-	if knife.Neon then
-		blade.Material = Enum.Material.Neon
-		tip.Material = Enum.Material.Neon
-		local light = Instance.new("PointLight")
-		light.Color = knife.BladeColor
-		light.Range = 10
-		light.Parent = blade
-	end
-	weldAll(parent, handle)
-	return handle
-end
-
-local function finishPart(p: BasePart, knife: Knives.Knife, role: string)
-	local styles = KnifeAppearance[knife.Name]
-	local finish = styles and styles[role]
-	p:SetAttribute("KnifeRole", role)
-	if finish then
-		p.Color = finish.Color
-		p.Material = finish.Material
-	end
-	p.Reflectance = if p.Material == Enum.Material.Metal then 0.06 else 0
-	p.CastShadow = p.Material ~= Enum.Material.Neon
-end
-
-local function addBladeLight(model: Model, knife: Knives.Knife)
-	if not knife.Neon then
-		return
-	end
-	local light = Instance.new("PointLight")
-	light.Name = "BladeGlow"
-	light.Color = KnifeAppearance[knife.Name].CuttingEdge.Color
-	light.Range = 5
-	light.Brightness = 0.45
-	light.Shadows = false
-	light.Parent = model:FindFirstChild("Blade")
-end
-
--- Server only: create one template per knife from the mesh ids. Yields (a few seconds).
+-- Server templates and client fallback use exactly the same native geometry.
 function KnifeModel.Preload()
 	assert(RunService:IsServer(), "KnifeModel.Preload runs on the server")
-	if ReplicatedStorage:FindFirstChild(TEMPLATE_FOLDER) then
+	local old = ReplicatedStorage:FindFirstChild(TEMPLATE_FOLDER)
+	if old and old:GetAttribute("ToyBlockVersion") == BLOCK_VERSION then
 		return
+	end
+	if old then
+		old:Destroy()
 	end
 	local folder = Instance.new("Folder")
 	folder.Name = TEMPLATE_FOLDER
-	local pending = 0
-	-- Skins differ by finish and shallow relief, never by blade shape or size.
+	folder:SetAttribute("ToyBlockVersion", BLOCK_VERSION)
 	for _, knife in Knives.List do
-		local name = knife.Name
-		local specs = KnifeMeshes[SILHOUETTE]
-		if not specs then
-			continue
-		end
-		pending += 1
-		task.spawn(function()
-			local model = Instance.new("Model")
-			model.Name = name
-			local root = part(model, "Handle", Vector3.new(0.3, 1, 0.3), CFrame.new(), Color3.new())
-			root.Transparency = 1
-			local ok, err = pcall(function()
-				for _, spec in specs do
-					if spec.Name == "Extra" then
-						continue
-					end
-					local mesh = AssetService:CreateMeshPartAsync(Content.fromUri(spec.MeshId))
-					mesh.Name = if spec.Name == "Handle" then "Grip" else spec.Name
-					mesh.Size = spec.Size * MESH_SCALE
-					mesh.CFrame = MESH_TO_KNIFE * CFrame.new(spec.Offset * MESH_SCALE)
-					local role = if spec.Name == "Handle"
-						then "Grip"
-						else if spec.Name == "Pommel" then "Guard" else spec.Name
-					finishPart(mesh, knife, role)
-					mesh.CanCollide = false
-					mesh.CanQuery = false
-					mesh.CanTouch = false
-					mesh.Massless = true
-					mesh.Parent = model
-				end
-			end)
-			if ok then
-				-- Detail failures leave the complete original silhouette usable.
-				local detailsOk, detailsError = pcall(function()
-					local details: { KnifeMeshes.MeshPartSpec } = KnifeDetailMeshes[name] or {}
-					for _, spec in details do
-						local mesh = AssetService:CreateMeshPartAsync(Content.fromUri(spec.MeshId))
-						mesh.Name = spec.Name
-						mesh.Size = spec.Size * MESH_SCALE
-						mesh.CFrame = MESH_TO_KNIFE * CFrame.new(spec.Offset * MESH_SCALE)
-						mesh.CanCollide, mesh.CanQuery, mesh.CanTouch, mesh.Massless = false, false, false, true
-						finishPart(mesh, knife, spec.Name)
-						mesh.Parent = model
-					end
-				end)
-				if not detailsOk then
-					warn(`[KnifeModel] details for {name} unavailable: {detailsError}`)
-				end
-				addBladeLight(model, knife)
-				weldAll(model, root)
-				model.PrimaryPart = root
-				model.Parent = folder
-			else
-				model:Destroy()
-				warn(`[KnifeModel] mesh knife {name} failed, using parts: {err}`)
-			end
-			pending -= 1
-		end)
-	end
-	local started = os.clock()
-	while pending > 0 and os.clock() - started < 20 do
-		task.wait(0.1)
+		local model = ToyBlockModel.Build(knife.Name, false, "Handle")
+		model.Parent = folder
 	end
 	folder.Parent = ReplicatedStorage
 end
 
 local function template(name: string): Model?
 	local folder = ReplicatedStorage:FindFirstChild(TEMPLATE_FOLDER)
-	return folder and folder:FindFirstChild(name) :: Model?
+	if not folder or folder:GetAttribute("ToyBlockVersion") ~= BLOCK_VERSION then
+		return nil
+	end
+	return folder:FindFirstChild(name) :: Model?
 end
 
 -- A motion trail along the blade, off by default; the client's animation engine (Moves) turns it
@@ -345,36 +220,13 @@ function KnifeModel.Build(item: string, anchored: boolean?): Model
 	assert(parsed, `unknown knife {item}`)
 	local name, knife = parsed.Name, parsed.Knife
 	local source = template(name)
-	local model: Model
-	if source then
-		model = source:Clone()
-	else
-		model = Instance.new("Model")
-		model.Name = name
-		model.PrimaryPart = assembleParts(model, knife)
-		for _, p in model:GetChildren() do
-			if p:IsA("BasePart") then
-				local role = if p.Name == "Handle"
-					then "Grip"
-					else if p.Name == "Pommel" then "Guard" else if p.Name == "Tip" then "Blade" else p.Name
-				finishPart(p, knife, role)
-			end
-		end
-		local blade = model:FindFirstChild("Blade")
-		if blade then
-			local light = blade:FindFirstChildOfClass("PointLight")
-			if light then
-				light:Destroy()
-			end
-		end
-		addBladeLight(model, knife)
-	end
+	local model = if source then source:Clone() else ToyBlockModel.Build(name, false, "Handle")
 	local root = model.PrimaryPart :: BasePart
 	root.Massless = false
 	addTrail(model, knife)
 	KnifeModel.ApplyMutation(model, parsed.Mutation.Id)
 	model:SetAttribute("Item", item)
-	model:SetAttribute("Silhouette", SILHOUETTE)
+	model:SetAttribute("Silhouette", name)
 	if anchored then
 		for _, p in model:GetDescendants() do
 			if p:IsA("BasePart") then
@@ -509,6 +361,14 @@ function KnifeModel.BuildCase(rarity: string, anchored: boolean?): Model
 			end
 		end
 	end
+	return model
+end
+
+-- Mystery blocks are actual cuboid toys, shared by the Store's static viewport previews.
+function KnifeModel.BuildLuckyBlock(rarity: string, anchored: boolean?): Model
+	assert(Knives.RarityColors[rarity] and rarity ~= "Common", `Unknown Lucky Block tier {rarity}`)
+	local model = ToyBlockModel.Build("Lucky" .. rarity, anchored, "Handle")
+	model:SetAttribute("LuckyBlock", rarity)
 	return model
 end
 

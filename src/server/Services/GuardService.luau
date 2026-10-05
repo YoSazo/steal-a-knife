@@ -22,18 +22,24 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
+local KnifeAura = require(ReplicatedStorage.Shared.KnifeAura)
+local SignTheme = require(ReplicatedStorage.Shared.SignTheme)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
-local Props = require(ReplicatedStorage.Shared.Props)
-local Toy = require(ReplicatedStorage.Shared.Toy)
+local ToyBlockModel = require(ReplicatedStorage.Shared.ToyBlockModel)
+local BossTitleModel = require(ReplicatedStorage.Shared.BossTitleModel)
+
+-- Retained for side-by-side verification; production lair titles use physical voxel meshes.
 local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
+local Offers = require(script.Parent.Offers)
 local ManorDecor = require(script.Parent.ManorDecor)
 local Disguises = require(script.Parent.Disguises)
 local MapService = require(script.Parent.MapService)
 local Obstacles = require(script.Parent.Obstacles)
 local Ragdoll = require(script.Parent.Ragdoll)
 local StealService = require(script.Parent.StealService)
+local Analytics = require(script.Parent.Analytics)
 local ServerEvents = require(script.Parent.ServerEvents)
 local StuckKnives = require(script.Parent.StuckKnives)
 
@@ -107,6 +113,7 @@ type Projectile = {
 	Traveled: number,
 	Damage: number,
 	Target: Player,
+	Speed: number?, -- studs/s (faster than the target runs)
 }
 
 local GuardService = {}
@@ -120,6 +127,8 @@ local ANIMATIONS: { [string]: string } = {
 	Run = "rbxassetid://507767714",
 }
 
+local nearestBoss: (Vector3) -> { Boss: Boss, Position: Vector3 }?
+local emptySlots: (Boss, number) -> number
 local bosses: { Boss } = {}
 local chasers: { Guard } = {} -- every guard currently chasing or walking back (bosses and shadows)
 local guardByModel: { [Model]: Guard } = {}
@@ -302,6 +311,9 @@ local function buildRig(config: ZoneConfig, shadow: boolean): Model
 	-- Name + title (visible from across the zone)
 	local tag = billboard(head, UDim2.fromOffset(150, 40), Vector3.new(0, 3, 0), 60)
 	tag.Name = "BossTag"
+	-- At home the lair sign and ribbon already name them; the tag only shows while they're out
+	-- chasing (shadows always have theirs)
+	tag.Enabled = shadow == true
 	text(
 		tag,
 		if shadow then `{config.Boss:upper()}'S SHADOW` else config.Boss:upper(),
@@ -366,6 +378,20 @@ local function newGuard(boss: Boss, shadow: boolean, at: CFrame): Guard
 	return guard
 end
 
+-- The flame recipe whose body colour is closest to a zone's colour (for the lair torches)
+local auraStyles = require(ReplicatedStorage.Shared.Config.KnifeAuraVariants).List
+local function torchStyle(color: Color3): any
+	local best, bestGap = auraStyles[1], math.huge
+	for _, style in auraStyles do
+		local c = style.Colors.Outer.Start
+		local gap = (c.R - color.R) ^ 2 + (c.G - color.G) ^ 2 + (c.B - color.B) ^ 2
+		if gap < bestGap then
+			best, bestGap = style, gap
+		end
+	end
+	return best
+end
+
 -- The wall ---------------------------------------------------------------------------------------
 
 local function clearDisplay(slot: Slot)
@@ -390,7 +416,7 @@ local function setSlot(boss: Boss, slot: Slot, item: string)
 		return
 	end
 	local model = KnifeModel.Build(item, true)
-	KnifeModel.FitLength(model, 6)
+	KnifeModel.FitLength(model, 4) -- same display size as vault knives
 	model:PivotTo(slot.Spot)
 	local box = model:GetBoundingBox()
 	model:PivotTo(model:GetPivot() + (slot.Spot.Position - box.Position))
@@ -406,7 +432,36 @@ local function setSlot(boss: Boss, slot: Slot, item: string)
 	glow.Brightness = 1.2
 	glow.Shadows = false
 	glow.Parent = model.PrimaryPart
-	slot.Prompt.ObjectText = `{Items.DisplayName(item)} · +{Format.Cash(Items.Income(item))}/s`
+	-- The same flame the vault knives wear, hotter the deeper the zone: each step into the arena
+	-- adds aura power on top of the knife's own, so the far bosses' walls blaze
+	local blade = model:FindFirstChild("Blade", true)
+	local guardPart = model:FindFirstChild("Guard", true)
+	if blade and blade:IsA("BasePart") then
+		local anchor = Instance.new("Part")
+		anchor.Name = "Aura"
+		anchor.Anchored = true
+		anchor.CanCollide = false
+		anchor.CanQuery = false
+		anchor.CanTouch = false
+		anchor.Transparency = 1
+		anchor.Size = Vector3.new(0.2, 0.2, 0.2)
+		anchor.CFrame = CFrame.new(if guardPart and guardPart:IsA("BasePart") then guardPart.Position else box.Position)
+		anchor.Parent = model
+		local depth = (table.find(Knives.Rarities, parsed.Knife.Rarity) or 1) - 1
+		KnifeAura.Mount(anchor, KnifeAura.Power(item) + depth * 0.8, nil, KnifeAura.Variation(item), blade)
+	end
+	-- Brainrot label over the knife: name, rarity, money per second (the prompt just says Steal)
+	SignTheme.knifeLabel(
+		model,
+		model.PrimaryPart :: BasePart,
+		Items.DisplayName(item),
+		parsed.Knife.Rarity,
+		Knives.RarityColors[parsed.Knife.Rarity],
+		`+{Format.Cash(Items.Income(item))}/s`,
+		nil,
+		70
+	)
+	slot.Prompt.ObjectText = ""
 	slot.Prompt.Enabled = true
 end
 
@@ -441,60 +496,45 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 	local model = Instance.new("Model")
 	model.Name = `Lair{index}`
 	model.Parent = folder
-	local dark = config.Color:Lerp(Color3.fromRGB(40, 44, 90), 0.6)
 	local W, D = lair.Width, lair.Depth
-	-- The wall stands at the far end of the stage (local +Z, deeper into the zone)
 	local wallZ = D / 2 - 1
-
-	local stage = block(
-		model,
-		"Stage",
-		Vector3.new(W, PLATFORM, D),
-		at(0, PLATFORM / 2, 0),
-		config.Color:Lerp(Color3.new(1, 1, 1), 0.35),
-		Enum.Material.SmoothPlastic
-	)
-	Toy.Dress(stage, nil, 1, 4)
-	local edge = block(
-		model,
-		"StageEdge",
-		Vector3.new(W + 0.4, 0.25, 0.4),
-		at(0, PLATFORM, -D / 2),
-		config.Color,
-		Enum.Material.Neon
-	)
-	edge.CanCollide = false
-	Toy.DirtWall(
-		block(model, "BackWall", Vector3.new(W, 18, 2), at(0, 9 + PLATFORM, wallZ), dark, Enum.Material.SmoothPlastic)
-	)
-	-- The boss's name in lights across the top of the wall, facing the runway
-	local sign = block(
-		model,
+	local shell = ToyBlockModel.Build("Lair" .. config.Boss, true)
+	shell:PivotTo(frame)
+	shell.Parent = model
+	-- Original walking surface and back boundary remain; the block shell is cosmetic.
+	local stage = block(model, "Stage", Vector3.new(W, PLATFORM, D), at(0, PLATFORM / 2, 0), config.Color)
+	stage.Transparency = 1
+	local back = block(model, "BackWall", Vector3.new(W, 18, 2), at(0, 9 + PLATFORM, wallZ), config.Color)
+	back.Transparency = 1
+	-- Mount canvases keep the original dimensions and frames, including transparent margins.
+	local signWidth = math.min(W - 6, 26)
+	local signSize = Vector2.new(1024, 256)
+	local ribbonWidth = signWidth * 0.62
+	local ribbonSize = Vector2.new(768, 128)
+	local ribbonHeight = ribbonWidth * ribbonSize.Y / ribbonSize.X
+	local function mount(name: string, size: Vector3, cframe: CFrame): Part
+		local part = block(model, name, size, cframe, Color3.new())
+		part.Transparency = 1
+		part.CanCollide, part.CanQuery, part.CanTouch = false, false, false
+		part.CastShadow = false
+		part:SetAttribute("BossTitleMount", true)
+		return part
+	end
+	local sign = mount(
 		"Sign",
-		Vector3.new(W - 8, 5, 0.4),
-		at(0, PLATFORM + 13.5, wallZ - 1.2),
-		Color3.fromRGB(20, 16, 26)
+		Vector3.new(signWidth, signWidth * signSize.Y / signSize.X, 0.2),
+		at(0, PLATFORM + 14, wallZ - 1.2)
 	)
-	local surface = Instance.new("SurfaceGui")
-	surface.Face = Enum.NormalId.Front -- the frame looks at the plaza, so Front faces the runway
-	surface.CanvasSize = Vector2.new(800, 100)
-	surface.LightInfluence = 0
-	surface.Brightness = 0.85 -- full-bright signs, a touch softer than pure white
-	surface.Parent = sign
-	text(
-		surface,
-		`{config.Boss:upper()}'S STASH`,
-		config.Color:Lerp(Color3.new(1, 1, 1), 0.25),
-		UDim2.fromScale(0, 0),
-		UDim2.fromScale(1, 0.7)
+	local ribbon = mount(
+		"SignRibbon",
+		Vector3.new(ribbonWidth, ribbonHeight, 0.2),
+		at(0, PLATFORM + 14 - signWidth * signSize.Y / signSize.X / 2 - ribbonHeight / 2 + 0.3, wallZ - 1.3)
 	)
-	text(
-		surface,
-		`{config.BossTitle} · steal one if you dare`,
-		Color3.fromRGB(230, 225, 240),
-		UDim2.fromScale(0, 0.7),
-		UDim2.fromScale(1, 0.3)
-	)
+	local titles = BossTitleModel.Build(config.Boss, sign, ribbon)
+	if titles then
+		titles.Parent = model
+	end
+
 	-- Torches at both front corners of the stage
 	for _, x in { -W / 2 + 2, W / 2 - 2 } do
 		block(
@@ -513,12 +553,8 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 			Color3.fromRGB(30, 28, 34),
 			Enum.Material.Metal
 		)
-		local fire = Instance.new("Fire")
-		fire.Size = 4
-		fire.Heat = 7
-		fire.Color = config.Color
-		fire.SecondaryColor = config.Color:Lerp(Color3.new(1, 1, 1), 0.5)
-		fire.Parent = bowl
+		-- The knives' cartoon flame in the zone's colours, bigger the deeper the zone
+		KnifeAura.Mount(bowl, (index - 1) * 1.6, nil, torchStyle(config.Color))
 		local light = Instance.new("PointLight")
 		light.Color = config.Color
 		light.Range = 22
@@ -563,17 +599,14 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 		)
 		border.CanCollide = false
 		border.Transparency = 1
-		local pedestal = Props.Build("Pedestal", true)
-		pedestal:ScaleTo(1.3)
+		local pedestal = ToyBlockModel.Build("LairPlate" .. config.Boss, true)
 		pedestal:PivotTo(at(x, PLATFORM, wallZ - 6))
-		for _, d in pedestal:GetDescendants() do
-			if d:IsA("BasePart") then
-				d.CanCollide = d.Name == "Stone"
-				d.CanQuery = d.Name == "Stone"
-			end
-		end
 		pedestal.Parent = model
-		local pad = (pedestal:FindFirstChild("Stone") or pedestal.PrimaryPart) :: BasePart
+		-- Stone is the original interaction centre; its collision and query contract is unchanged.
+		local pad: BasePart =
+			block(pedestal, "Stone", Vector3.new(4.55, 1.521, 4.55), at(x, PLATFORM + 0.7605, wallZ - 6), config.Color)
+		pad.Transparency = 1
+		-- (no flat plate art: the pedestals are block-built now)
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Steal"
 		prompt.ObjectText = ""
@@ -621,6 +654,14 @@ local function chaseTarget(guard: Guard): BasePart?
 	return root
 end
 
+local function showTag(guard: Guard, on: boolean)
+	local head = guard.Model:FindFirstChild("Head")
+	local tag = head and head:FindFirstChild("BossTag")
+	if tag and tag:IsA("BillboardGui") then
+		tag.Enabled = on or guard.IsShadow == true
+	end
+end
+
 local function face(guard: Guard, point: Vector3)
 	local look = Vector3.new(point.X, guard.Position.Y, point.Z)
 	if (look - guard.Position).Magnitude > 0.1 then
@@ -632,10 +673,12 @@ local function stopChase(guard: Guard, escaped: boolean)
 	local thief = guard.Target
 	guard.Target = nil
 	guard.Alert.Enabled = false
+	showTag(guard, false)
 	guard.WindupUntil = 0
 	guard.Model:SetAttribute("ChargeStart", nil)
 	if thief and escaped and thief.Parent then
 		Net.Notify(thief, `You got away from {guard.Boss.Name}!`, "good")
+		Analytics.Track(thief, "boss.escaped", { zone = guard.Boss.Index, shadow = guard.IsShadow == true })
 	end
 	if guard.IsShadow then
 		-- Shadows just fade out
@@ -653,9 +696,9 @@ local function stopChase(guard: Guard, escaped: boolean)
 end
 
 -- Someone just took a knife off the wall: the boss (or a shadow of them) comes for them
-local function sendChaser(boss: Boss, thief: Player)
+local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 	local guard = boss.Guard
-	if guard.Target ~= nil then
+	if guard.Target ~= nil and guard.Target ~= thief then
 		-- Already busy with someone else: a shadow steps out of the wall
 		guard = newGuard(boss, true, boss.Post)
 		Net.Remotes.Effect:FireAllClients("Smoke", boss.Post.Position)
@@ -664,11 +707,27 @@ local function sendChaser(boss: Boss, thief: Player)
 	guard.Returning = false
 	guard.AlertUntil = now() + GameConfig.GuardAlertTime
 	guard.Alert.Enabled = true
+	showTag(guard, true)
 	guard.ThrowReadyAt = now() + 2
 	if not table.find(chasers, guard) then
 		table.insert(chasers, guard)
 	end
+	if startAt then
+		-- Picking a chase back up after a round: right where they were when it was interrupted
+		guard.Position = startAt.Position
+		guard.Model:PivotTo(startAt)
+	end
 	Net.Animate(guard.Model, "Alert")
+	Analytics.Track(thief, "boss.chase", {
+		zone = boss.Index,
+		shadow = guard.IsShadow == true,
+		resumed = startAt ~= nil,
+		walk_speed = (function()
+			local humanoid = thief.Character and thief.Character:FindFirstChildOfClass("Humanoid")
+			return if humanoid then math.floor(humanoid.WalkSpeed) else nil
+		end)(),
+		boss_speed = guard.Config.GuardSpeed,
+	})
 	Net.Remotes.Effect:FireClient(thief, "Alarm")
 	Net.Notify(thief, `{boss.Name:upper()} IS COMING FOR YOU! Get it home!`, "bad")
 end
@@ -687,8 +746,18 @@ local function hurt(player: Player, amount: number, from: Vector3): boolean
 		Net.Remotes.Effect:FireAllClients("Shield", root.Position)
 		return false
 	end
-	humanoid:TakeDamage(amount)
+	-- Bosses knock you about, they never kill you: the hit stops at 1 health (the tumble that follows
+	-- is the punishment), and health comes back while you get up
+	humanoid.Health = math.max(1, humanoid.Health - amount)
+	if humanoid.Health <= 1 then
+		task.delay(2, function()
+			if humanoid.Parent and humanoid.Health > 0 and not player:GetAttribute("InRound") then
+				humanoid.Health = math.max(humanoid.Health, humanoid.MaxHealth * 0.5)
+			end
+		end)
+	end
 	Net.Remotes.Effect:FireAllClients("Hit", root.Position)
+	Analytics.Count(player, "boss_hits_taken")
 	Net.Remotes.Effect:FireClient(player, "Hurt", from)
 	if humanoid.Health > 0 then
 		Net.Animate(character, "Hurt")
@@ -702,13 +771,52 @@ local function snatch(guard: Guard, thief: Player)
 	if not root then
 		return
 	end
+	local profileNow = DataService.Get(thief)
+	local zoneNow = GameConfig.Zones[guard.Boss.Index]
+	local snatchProps = {
+		zone = guard.Boss.Index,
+		speed = if profileNow then math.floor(profileNow.Speed) else nil,
+		speed_needed = if zoneNow then zoneNow.SpeedNeeded or 0 else nil,
+		too_slow = profileNow ~= nil and zoneNow ~= nil and profileNow.Speed < (zoneNow.SpeedNeeded or 0),
+		carrying = StealService.BossCarry(thief) ~= nil,
+		shadow = guard.IsShadow == true,
+	}
 	if not hurt(thief, guard.Config.Damage * 2, guard.Position) then
 		Net.Notify(thief, "Your Shield saved you - keep running!", "good")
+		Analytics.Track(thief, "boss.shield_saved", snatchProps)
+		return
+	end
+	Analytics.Track(thief, "boss.snatch", snatchProps)
+	-- Escape Token (Robux charge): break free with the knife, the boss reels
+	if StealService.BossCarry(thief) and DataService.UseCharge(thief, "Escape") then
+		GuardService.Stun(guard, GameConfig.Consumables.EscapeStun)
+		local left = DataService.Get(thief)
+		Net.Notify(
+			thief,
+			`🗝️ ESCAPE TOKEN! You broke free with the knife - RUN! ({left and left.Charges.Escape or 0} left)`,
+			"good"
+		)
+		Net.Remotes.Effect:FireAllClients("Shield", root.Position)
+		Analytics.Track(thief, "boss.escape_token", snatchProps)
 		return
 	end
 	local item = StealService.ReturnToBoss(thief)
 	if item then
+		-- Caught: the two things that fix it next time
+		local profile = DataService.Get(thief)
+		local zone = GameConfig.Zones[guard.Boss.Index]
+		if
+			profile
+			and zone
+			and profile.Speed < (zone.SpeedNeeded or 0)
+			and not DataService.BoostActive(profile, "Speed")
+		then
+			Offers.Show(thief, "SpeedPotion", `Too slow for {guard.Boss.Name}! A Speed Potion lets you outrun them.`)
+		else
+			Offers.Show(thief, "Escape3", "Caught at the last second? An Escape Token breaks you free WITH the knife.")
+		end
 		Net.Notify(thief, `{guard.Boss.Name} caught you and took the {Items.DisplayName(item)} back!`, "bad")
+		Net.Remotes.Effect:FireClient(thief, "Tip", "Caught")
 		Net.Remotes.Effect:FireClient(thief, "Damage", root.Position + Vector3.new(0, 3, 0), "CAUGHT!")
 	end
 	-- Thrown through the air like a rag doll (Steal An Egg style)
@@ -723,11 +831,16 @@ local function throwAt(guard: Guard, aim: Vector3, target: Player)
 	local hand = guard.Model:FindFirstChild("RightHand") :: BasePart?
 	local origin = if hand then hand.Position else guard.Position + Vector3.new(0, 1, 0)
 	local config = GameConfig.GuardThrow
-	-- Lead the target: where they'll be by the time the knife gets there
+	-- Always faster than the one it's thrown at (a trained thief runs 100+ studs/s: a fixed speed
+	-- could never catch them), so it's the dodge that saves you, not outrunning it
 	local targetRoot = rootOf(target)
+	local targetHumanoid = target.Character and target.Character:FindFirstChildOfClass("Humanoid")
+	local speed =
+		math.max(config.Speed, (if targetHumanoid then targetHumanoid.WalkSpeed else 0) * config.SpeedOverTarget)
+	-- Lead the target: where they'll be by the time the knife gets there
 	if targetRoot then
 		local velocity = targetRoot.AssemblyLinearVelocity
-		local flight = (targetRoot.Position - origin).Magnitude / config.Speed
+		local flight = (targetRoot.Position - origin).Magnitude / speed
 		aim = targetRoot.Position + Vector3.new(velocity.X, 0, velocity.Z) * flight * config.Lead
 	end
 	local flat = Vector3.new(aim.X - origin.X, 0, aim.Z - origin.Z)
@@ -735,7 +848,7 @@ local function throwAt(guard: Guard, aim: Vector3, target: Player)
 		return
 	end
 	local model = KnifeModel.Build(guard.KnifeName, true)
-	KnifeModel.FitLength(model, 2.6)
+	KnifeModel.FitLength(model, 1.9) -- thrown knives match the held size
 	for _, d in model:GetDescendants() do
 		if d:IsA("BasePart") then
 			d.CanQuery = false
@@ -751,6 +864,7 @@ local function throwAt(guard: Guard, aim: Vector3, target: Player)
 		Traveled = 0,
 		Damage = guard.Config.Damage,
 		Target = target,
+		Speed = speed,
 	})
 	Net.Remotes.Effect:FireAllClients("Dash", origin)
 end
@@ -776,7 +890,7 @@ local function stepProjectiles(dt: number)
 				end
 			end
 		end
-		local stepLength = config.Speed * dt
+		local stepLength = (p.Speed or config.Speed) * dt
 		local nextPosition = p.Position + p.Direction * stepLength
 		local done = false
 		local hit = workspace:Raycast(p.Position, nextPosition - p.Position, params)
@@ -918,6 +1032,7 @@ local function step(guard: Guard, dt: number)
 	local gap = ((targetRoot.Position - guard.Position) * Vector3.new(1, 0, 1)).Magnitude
 	if thief:GetAttribute("Invisible") or (thief:GetAttribute("Mimic") and gap > GameConfig.MimicSpotRange) then
 		guard.Alert.Enabled = false
+		showTag(guard, false)
 		animate(guard, "Idle")
 		return
 	end
@@ -929,6 +1044,7 @@ local function step(guard: Guard, dt: number)
 		return
 	end
 	guard.Alert.Enabled = false
+	showTag(guard, false)
 
 	-- Winding up a throw: they keep running at you while the arm cranks back, and let go
 	-- mid-stride (never stopping, so throwing never costs them ground)
@@ -1123,6 +1239,9 @@ function GuardService.Damage(guard: Guard, amount: number, attacker: Player?)
 	end
 	local head = guard.Model:FindFirstChild("Head") :: BasePart?
 	Net.Remotes.Effect:FireAllClients("Hit", if head then head.Position else guard.Position)
+	if attacker then
+		Analytics.Count(attacker, if guard.Target then "boss_hits_chasing" else "boss_hits_idle")
+	end
 	if not guard.Target then
 		quip(guard, attacker, "Idle")
 		if attacker and now() - (idleHitNotice[attacker] or 0) > 20 then
@@ -1158,6 +1277,71 @@ end
 
 -- Init ---------------------------------------------------------------------------------------------
 
+-- The boss whose lair is nearest a point (and that lair's centre)
+nearestBoss = function(position: Vector3): { Boss: Boss, Position: Vector3 }?
+	local best, bestDistance = nil, math.huge
+	for index, boss in bosses do
+		local center = GameConfig.BossLairCenter(index)
+		local distance = (center - position).Magnitude
+		if distance < bestDistance then
+			best, bestDistance = { Boss = boss, Position = center }, distance
+		end
+	end
+	return best
+end
+
+-- Slots that are empty and still waiting to restock for a while
+emptySlots = function(boss: Boss, t: number): number
+	local count = 0
+	for _, slot in boss.Slots do
+		if not slot.Item and not slot.Out and slot.RestockAt and slot.RestockAt - t > 15 then
+			count += 1
+		end
+	end
+	return count
+end
+
+-- Robux "Restock the Boss": the nearest boss's empty slots refill on the next restock tick.
+-- Returns the boss's name, or nil if nothing there was waiting.
+function GuardService.RestockNear(player: Player): string?
+	local root = rootOf(player)
+	local found = root and nearestBoss(root.Position)
+	if not found then
+		return nil
+	end
+	local t = now()
+	local any = false
+	for _, slot in found.Boss.Slots do
+		if not slot.Item and not slot.Out and slot.RestockAt then
+			slot.RestockAt = t
+			any = true
+		end
+	end
+	return if any then found.Boss.Name else nil
+end
+
+-- Studio tests (DebugService "BossSteal"): stand the player by a stocked slot of this boss's wall
+-- and steal it, exactly as the prompt would
+function GuardService.DebugSteal(player: Player, zone: number): boolean
+	local boss = bosses[zone]
+	local root = rootOf(player)
+	if not boss or not root then
+		return false
+	end
+	for _, slot in boss.Slots do
+		if slot.Item and not slot.Out then
+			-- (move only if out of reach: a jump right before carrying trips the speed check)
+			if (root.Position - slot.Pad.Position).Magnitude > 12 then
+				root.CFrame = CFrame.new(slot.Pad.Position + Vector3.new(0, 4, 0))
+				task.wait(2)
+			end
+			onSteal(player, boss, slot)
+			return true
+		end
+	end
+	return false
+end
+
 function GuardService.Init()
 	folder = Instance.new("Folder")
 	folder.Name = "Guards"
@@ -1165,6 +1349,8 @@ function GuardService.Init()
 	projectileFolder = Instance.new("Folder")
 	projectileFolder.Name = "GuardKnives"
 	projectileFolder.Parent = workspace:FindFirstChild("Map")
+
+	BossTitleModel.Preload()
 
 	-- How high a rig's root sits so feet touch the floor
 	local probe = Disguises.BuildCharacter("Frank")
@@ -1188,16 +1374,68 @@ function GuardService.Init()
 			slot.Prompt.Triggered:Connect(function(player)
 				onSteal(player, boss, thisSlot)
 			end)
+			-- Started holding E (vs. Triggered = finished): the gap is people who lost their nerve
+			slot.Prompt.PromptButtonHoldBegan:Connect(function(player)
+				Analytics.Track(player, "boss.hold", { zone = boss.Index, chasing = boss.Guard.Target ~= nil })
+			end)
 		end
 	end
 
 	StealService.OnBossCarryEnded = onBossCarryEnded
+	StealService.OnSuspendBoss = function(player: Player, zone: number): (CFrame?, boolean)
+		-- Where the boss is right now, and whether it was chasing this thief (saved across the round)
+		for _, guard in chasers do
+			if guard.Target == player and not guard.Dead then
+				return guard.Model:GetPivot(), true
+			end
+		end
+		local boss = bosses[zone]
+		if boss and boss.Guard and not boss.Guard.Dead and boss.Guard.Target == nil then
+			return boss.Guard.Model:GetPivot(), false
+		end
+		return nil, false
+	end
+	StealService.OnResumeBoss = function(player: Player, zone: number, at: CFrame?, chasing: boolean)
+		local boss = bosses[zone]
+		if not boss then
+			return
+		end
+		if chasing then
+			sendChaser(boss, player, at)
+		elseif at and boss.Guard and boss.Guard.Target == nil then
+			-- It had given up: back where it was, walking home to its post
+			local guard = boss.Guard
+			guard.Position = at.Position
+			guard.Model:PivotTo(at)
+			guard.Returning = true
+			if not table.find(chasers, guard) then
+				table.insert(chasers, guard)
+			end
+		end
+	end
 
 	-- Restocks, once a second
+	local restockCheck = 0
 	task.spawn(function()
 		while true do
 			task.wait(1)
 			local t = now()
+			-- Someone standing at a mostly empty wall: offer the restock (every few seconds)
+			restockCheck += 1
+			if restockCheck % 4 == 0 then
+				for _, player in Players:GetPlayers() do
+					local root = rootOf(player)
+					local boss = root and nearestBoss(root.Position)
+					if
+						boss
+						and not player:GetAttribute("Carrying")
+						and (boss.Position - (root :: BasePart).Position).Magnitude < GameConfig.Consumables.RestockOfferRange
+						and emptySlots(boss.Boss, t) >= 2
+					then
+						Offers.Show(player, "BossRestock", `{boss.Boss.Name}'s wall is empty! Restock it right now.`)
+					end
+				end
+			end
 			for _, boss in bosses do
 				for _, slot in boss.Slots do
 					if slot.RestockAt and t >= slot.RestockAt and not slot.Item and not slot.Out then

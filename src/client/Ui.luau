@@ -12,8 +12,18 @@ local MenuController = require(script.Parent.MenuController)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Artwork = require(ReplicatedStorage.Shared.Config.UiArtwork)
 local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
+local VoxelKnives = require(ReplicatedStorage.Shared.Config.VoxelUi).Knives :: { [string]: string }
 
-local Ui = { gui = nil :: any, root = nil :: any, Navigation = nil :: any }
+local Ui = {
+	gui = nil :: any,
+	root = nil :: any,
+	feedback = nil :: any, -- the always-on-top layer for messages (see below)
+	Navigation = nil :: any,
+	Buy = nil :: ((kind: string, key: string) -> ())?, -- set by Store
+	OpenGift = nil :: ((target: Player) -> ())?, -- set by GambleUi
+	ReplayTutorial = nil :: (() -> ())?, -- set by Tutorial (More > How to play)
+	Toast = nil :: ((text: string, kind: string) -> ())?, -- set by Hud: a message on the Feedback layer
+}
 
 -- Phones (and tablets): touch with no keyboard. They get a compact layout that keeps clear of the
 -- thumbstick (bottom left) and jump button (bottom right). In Studio, ReplicatedStorage attribute
@@ -55,14 +65,15 @@ function Ui.art(parent: Instance, name: string, props: { [string]: any }?): Imag
 	local defaults: { [string]: any } = {
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
-		Image = KnifeIcons[name] or Artwork[name] or "",
+		-- Knives: Codex's voxel renders of the current models first
+		Image = VoxelKnives[name] or KnifeIcons[name] or Artwork[name] or "",
 		ScaleType = Enum.ScaleType.Fit,
 	}
 	for key, value in (props or {}) :: { [string]: any } do
 		defaults[key] = value
 	end
 	local image: ImageLabel = Ui.new("ImageLabel", defaults, parent)
-	if KnifeIcons[name] then
+	if KnifeIcons[name] and not VoxelKnives[name] then
 		task.delay(8, function()
 			if image.Parent and not image.IsLoaded then
 				image.Image = Artwork[name] or KnifeIcons[name]
@@ -294,6 +305,21 @@ Ui.gui = Ui.new("ScreenGui", {
 Ui.root =
 	Ui.new("Frame", { Name = "SafeRoot", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, Ui.gui) :: Frame
 Ui.Scale = Ui.new("UIScale", { Scale = 1 }, Ui.gui)
+-- Feedback (toasts, announcements, offer cards) lives on its own layer ABOVE every menu and screen:
+-- a message must never be hidden behind the window you clicked in (Steal An Egg does the same).
+-- Same safe area and scale as the HUD, so positions mean the same thing.
+Ui.feedback = Ui.new("ScreenGui", {
+	Name = "Feedback",
+	ResetOnSpawn = false,
+	IgnoreGuiInset = false,
+	ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets,
+	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+	DisplayOrder = 100,
+}, player:WaitForChild("PlayerGui")) :: ScreenGui
+local feedbackScale = Ui.new("UIScale", { Scale = 1 }, Ui.feedback) :: UIScale
+Ui.Scale:GetPropertyChangedSignal("Scale"):Connect(function()
+	feedbackScale.Scale = Ui.Scale.Scale
+end)
 Ui.Layout = Layout
 Ui.Menu = MenuController
 Layout.bind(Ui.root)
@@ -325,17 +351,15 @@ function Ui.fitMenu(frame: GuiObject, maximum: Vector2?)
 	Layout.fit(frame, maximum)
 end
 
-local backdrop = Ui.new("TextButton", {
+-- Behind menus: nothing that catches taps, so the side buttons stay usable with a menu open
+-- (tap Shop while Index is open and it simply switches)
+local backdrop = Ui.new("Frame", {
 	Name = "MenuBackdrop",
 	Size = UDim2.fromScale(1, 1),
-	Text = "",
-	BackgroundColor3 = Color3.fromRGB(7, 13, 25),
-	BackgroundTransparency = 0.35,
-	AutoButtonColor = false,
+	BackgroundTransparency = 1,
 	Visible = false,
 	ZIndex = 4,
-	Active = true,
-	Selectable = false,
+	Active = false,
 }, Ui.gui)
 MenuController.Init(Ui.gui, backdrop)
 function Ui.registerMenu(frame: GuiObject)
@@ -343,6 +367,21 @@ function Ui.registerMenu(frame: GuiObject)
 end
 function Ui.menuOpen(): boolean
 	return MenuController.IsOpen()
+end
+-- True while you're really in the hub: not in a round, alive, and not still standing on the round
+-- maps (they're far away at x = 3000; a player who died in a round watches from there until they
+-- respawn, and the hub buttons popping back over that view looked broken)
+function Ui.inHub(): boolean
+	if player:GetAttribute("InRound") then
+		return false
+	end
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not humanoid or humanoid.Health <= 0 or not root then
+		return false
+	end
+	return root.Position.X < 1500
 end
 function Ui.hint(keyboard: string, gamepad: string): string
 	if UserInputService.PreferredInput == Enum.PreferredInput.Touch or Ui.Phone then

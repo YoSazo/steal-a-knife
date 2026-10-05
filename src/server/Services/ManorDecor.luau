@@ -18,6 +18,8 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Props = require(ReplicatedStorage.Shared.Props)
 local Toy = require(ReplicatedStorage.Shared.Toy)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
+local ToyBlockModel = require(ReplicatedStorage.Shared.ToyBlockModel)
+local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 
 local ManorDecor = {}
 
@@ -1021,32 +1023,27 @@ local function manor(center: Vector3)
 end
 
 -- The board over the runway entrance; the client fills in the countdowns (Hud)
-local function eventBoard(z: number, width: number)
-	local woodColor = Color3.fromRGB(104, 66, 38)
-	-- A beam from wall to wall, the board hanging off it on two ropes
-	local beam = block("BoardBeam", Vector3.new(width + 12, 2, 2), at(0, 36, z), woodColor)
-	Toy.Dress(beam, Toy.Sides, 1, 0)
+local function eventBoard(z: number, _width: number)
+	local hardware = ToyBlockModel.Build("EventBoardDecor", true)
+	hardware:PivotTo(CFrame.new(0, 0, z))
+	hardware.Parent = folder
 	local boardWidth, boardHeight = 52, 15
-	for _, x in { -boardWidth / 2 + 3, boardWidth / 2 - 3 } do
-		block("BoardRope", Vector3.new(0.4, 6, 0.4), at(x, 32, z), Color3.fromRGB(70, 46, 28))
-	end
-	local frameBlock = block(
-		"EventBoardFrame",
-		Vector3.new(boardWidth + 1.6, boardHeight + 1.6, 1.2),
-		at(0, 29 - boardHeight / 2 + 0.8, z + 0.2),
-		woodColor
-	)
-	Toy.Dress(frameBlock, Toy.Sides, 1, 0)
 	local board = block(
 		"EventBoard",
 		Vector3.new(boardWidth, boardHeight, 1.4),
 		at(0, 29 - boardHeight / 2 + 0.8, z),
-		Color3.fromRGB(34, 22, 16)
+		Color3.fromRGB(28, 38, 60)
 	)
+	local _, frontFace = WorldSignModel.Attach("EventBoard", board, Enum.NormalId.Front)
+	local backAnchor = board:Clone()
+	backAnchor:ClearAllChildren()
+	backAnchor.Name, backAnchor.Parent = "EventBoardBack", board
+	local _, backFace = WorldSignModel.Attach("EventBoard", backAnchor, Enum.NormalId.Back)
 	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
 		local gui = Instance.new("SurfaceGui")
+		gui.Adornee = if face == Enum.NormalId.Front then frontFace else backFace
 		gui.Name = `Lines{face.Name}`
-		gui.Face = face
+		gui.Face = Enum.NormalId.Back
 		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 		gui.PixelsPerStud = 20
 		gui.LightInfluence = 0
@@ -1115,6 +1112,9 @@ function ManorDecor.ClearArea(center: Vector3, halfX: number, halfZ: number)
 	end
 end
 
+-- Zones a Codex shell dresses instead (set by MapService before Build)
+ManorDecor.ShellZones = {} :: { [number]: string }
+
 function ManorDecor.Build(root: Instance, arena: Bounds, _hideaways: { Bounds })
 	folder = Instance.new("Folder")
 	folder.Name = "Decor"
@@ -1135,6 +1135,10 @@ function ManorDecor.Build(root: Instance, arena: Bounds, _hideaways: { Bounds })
 			6
 		)
 		mist(Vector3.new(0, 1.5, z0 + depth / 2), Vector3.new(width - 4, 1, depth - 6), Color3.fromRGB(150, 140, 190))
+		-- A Codex shell dresses this biome (MapService.BuildBiomeShells): none of the random props
+		if ManorDecor.ShellZones[i] then
+			continue
+		end
 		for z = z0 + 18, z0 + depth - 10, 35 do
 			sconce(-half, z, -1, color)
 			sconce(half, z, 1, color)

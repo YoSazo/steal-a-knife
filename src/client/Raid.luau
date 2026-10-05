@@ -44,13 +44,17 @@ local function blockerOf(ownerId: number): BasePart?
 	return nil
 end
 
--- Whether a vault is open to me right now
+-- Whether a vault is open to me right now: during the Blood Moon, anyone's but a new player's
 local function openToMe(ownerId: number?): boolean
 	if ReplicatedStorage:GetAttribute("Phase") ~= "Intermission" or player:GetAttribute("InRound") then
 		return false
 	end
 	if not ownerId or ownerId == player.UserId then
 		return false
+	end
+	if ReplicatedStorage:GetAttribute("Raid") == true then
+		local owner = Players:GetPlayerByUserId(ownerId)
+		return owner ~= nil and not owner:GetAttribute("Shielded") and not player:GetAttribute("Carrying")
 	end
 	if revengeOn(ownerId) then
 		return true
@@ -86,12 +90,10 @@ local function refreshGates()
 	for _, instance in CollectionService:GetTagged("VaultGate") do
 		local blocker = instance :: BasePart
 		local owner = blocker:GetAttribute("Owner") :: number?
-		local solid = owner ~= nil and owner ~= player.UserId and not openToMe(owner)
-		-- Empty vaults are sealed too (nothing to see, nowhere to hide)
-		if owner == nil then
-			solid = true
-		end
-		blocker.CanCollide = solid
+		-- Vaults are open now (Tsunami): anyone can walk in, nobody can take anything
+		local _ = owner
+		local _ = openToMe
+		blocker.CanCollide = false
 	end
 end
 
@@ -171,7 +173,7 @@ function Raid.Init()
 		end)
 	end
 	CollectionService:GetInstanceAddedSignal("StealPrompt"):Connect(refreshPrompts)
-	for _, attribute in { "RevengeOn", "RevengeUntil", "InRound" } do
+	for _, attribute in { "RevengeOn", "RevengeUntil", "InRound", "Carrying" } do
 		player:GetAttributeChangedSignal(attribute):Connect(function()
 			refreshGates()
 			refreshPrompts()

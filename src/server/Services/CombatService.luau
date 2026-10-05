@@ -19,6 +19,7 @@ local Net = require(script.Parent.Parent.Remotes)
 local DataService = require(script.Parent.DataService)
 local GuardService = require(script.Parent.GuardService)
 local Ragdoll = require(script.Parent.Ragdoll)
+local Analytics = require(script.Parent.Analytics)
 local Targets = require(script.Parent.Targets)
 local StuckKnives = require(script.Parent.StuckKnives)
 
@@ -246,7 +247,7 @@ local function throw(player: Player, aim: unknown)
 			return
 		end
 		local model = KnifeModel.Build(name, true)
-		KnifeModel.FitLength(model, 2.6)
+		KnifeModel.FitLength(model, 1.9) -- thrown knives match the held size
 		for _, d in model:GetDescendants() do
 			if d:IsA("BasePart") then
 				d.CanQuery = false
@@ -359,6 +360,7 @@ local function onCharacterAdded(player: Player, character: Model)
 	end)
 	humanoid.BreakJointsOnDeath = false
 	humanoid.Died:Connect(function()
+		Analytics.Track(player, "death", { where = if player:GetAttribute("InRound") then "round" else "hub" })
 		Ragdoll.DeathCry(character)
 		Ragdoll.Collapse(character, nil)
 		Net.Remotes.Effect:FireClient(player, "Died")

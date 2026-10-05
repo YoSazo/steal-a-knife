@@ -12,6 +12,7 @@ local Items = require(ReplicatedStorage.Shared.Items)
 local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
+local Analytics = require(script.Parent.Analytics)
 
 local InventoryService = {}
 
@@ -40,6 +41,7 @@ local function equip(player: Player, name: unknown): boolean
 		return false
 	end
 	if name ~= "" and not table.find(profile.Knives, name) then
+		Net.Notify(player, "That knife isn't in your vault any more", "bad")
 		return false
 	end
 	DataService.Update(player, function(p)
@@ -77,9 +79,18 @@ local function sell(player: Player, index: unknown): boolean
 	end
 	local name = profile.Knives[index]
 	if not name or index % 1 ~= 0 then
+		Net.Notify(player, "That knife isn't on your plates any more", "bad")
 		return false
 	end
 	local price = InventoryService.SellPrice(name)
+	DataService.CashFlow(player, price, "sell")
+	local soldParsed = Items.Parse(name)
+	Analytics.Track(player, "knife.sold", {
+		knife = Items.Name(name),
+		rarity = if soldParsed then soldParsed.Knife.Rarity else nil,
+		power = if soldParsed then soldParsed.Perk else nil,
+		price = price,
+	})
 	DataService.Update(player, function(p)
 		DataService.RemoveKnife(p, index)
 		p.Cash += price
@@ -93,7 +104,7 @@ local function sell(player: Player, index: unknown): boolean
 end
 
 function InventoryService.Init()
-	Net.Remotes.Equip.OnServerInvoke = equip
+	Net.Remotes.Equip.OnServerInvoke = Analytics.Remote("Equip", equip, 1)
 	Net.Remotes.Sell.OnServerInvoke = sell
 	BaseService.OnSellPrompt = function(player, slot)
 		sell(player, slot)

@@ -44,12 +44,14 @@ function View.Build(): (Frame, () -> number)
 		CellPadding = UDim2.fromOffset(8, 9),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 	}, grid)
-	local inspector = Theme.surface(
-		body,
-		{ Name = "Inspector", Position = UDim2.new(1, -226, 0, 0), Size = UDim2.new(0, 226, 1, 0), ZIndex = 7 },
-		Theme.Navy,
-		Color3.fromRGB(70, 119, 179)
-	)
+	-- See-through dark, like the rest of the window - not a solid (near-black) panel.
+	local inspector = Theme.surface(body, {
+		Name = "Inspector",
+		Position = UDim2.new(1, -226, 0, 0),
+		Size = UDim2.new(0, 226, 1, 0),
+		BackgroundTransparency = 0.25,
+		ZIndex = 7,
+	}, Theme.Navy, Color3.fromRGB(70, 119, 179))
 	local title = Theme.text(
 		inspector,
 		"",
@@ -60,12 +62,21 @@ function View.Build(): (Frame, () -> number)
 		"",
 		{ Position = UDim2.fromOffset(6, 40), Size = UDim2.new(1, -12, 0, 25), MaximumTextSize = 22 }
 	)
-	local display = Ui.new(
-		"Frame",
-		{ Position = UDim2.fromOffset(4, 64), Size = UDim2.new(1, -8, 0, 190), BackgroundTransparency = 1, ZIndex = 7 },
-		inspector
+	-- The art box and the two reward tiles are all painted the knife's own rarity colour (not a
+	-- dark navy-on-navy box), so they pop off the panel instead of reading as a black square.
+	local function paint(tile: Frame, color: Color3)
+		tile.BackgroundColor3 = color
+		local gradient = tile:FindFirstChildOfClass("UIGradient")
+		if gradient then
+			gradient.Color =
+				ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.12), color:Lerp(Color3.new(0, 0, 0), 0.12))
+		end
+	end
+	local display = Theme.surface(
+		inspector,
+		{ Position = UDim2.fromOffset(4, 64), Size = UDim2.new(1, -8, 0, 190), ZIndex = 7 },
+		Knives.RarityColors[selected.Rarity]
 	)
-	local burst = Theme.burst(display, Theme.Gold)
 	local art = Theme.image(display, selected.Name)
 	Theme.text(
 		inspector,
@@ -73,14 +84,19 @@ function View.Build(): (Frame, () -> number)
 		{ Position = UDim2.fromOffset(4, 250), Size = UDim2.new(1, -8, 0, 26), MaximumTextSize = 24 }
 	)
 	local rewards = {}
+	local rewardTiles: { Frame } = {}
 	for i, symbol in { "Cash", "Speed" } do
 		local tile = Theme.surface(
 			inspector,
-			{ Position = UDim2.new((i - 1) * 0.5, 6, 0, 278), Size = UDim2.new(0.5, -12, 0, 74), ZIndex = 7 },
-			Theme.Navy,
-			Color3.fromRGB(61, 99, 144)
+			{ Position = UDim2.new((i - 1) * 0.5, 8, 0, 278), Size = UDim2.new(0.5, -16, 0, 74), ZIndex = 7 },
+			Knives.RarityColors[selected.Rarity]
 		)
-		Theme.image(tile, symbol, { Position = UDim2.new(0.5, -28, 0, -4), Size = UDim2.fromOffset(56, 48) })
+		rewardTiles[i] = tile
+		Theme.image(tile, symbol, {
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.fromScale(0.5, 0.06),
+			Size = UDim2.fromScale(0.42, 0.5),
+		})
 		rewards[i] = Theme.text(tile, "", {
 			Name = symbol .. "Reward",
 			Position = UDim2.fromOffset(2, 42),
@@ -127,14 +143,17 @@ function View.Build(): (Frame, () -> number)
 	local function inspect()
 		local known = found[selected.Name] == true
 		title.Text = if known then selected.DisplayName else "???"
-		rarity.Text, rarity.TextColor3 = selected.Rarity:upper(), Knives.RarityColors[selected.Rarity]
+		local color = Knives.RarityColors[selected.Rarity]
+		rarity.Text, rarity.TextColor3 = selected.Rarity:upper(), color
+		paint(display, color)
+		paint(rewardTiles[1], color)
+		paint(rewardTiles[2], color)
 		art:Destroy()
 		art = Theme.image(
 			display,
 			selected.Name,
 			{ ImageColor3 = if known then Color3.new(1, 1, 1) else Color3.new(0, 0, 0) }
 		)
-		burst.Visible = known
 		local reward = GameConfig.IndexRewards[selected.Rarity]
 		rewards[1].Text, rewards[2].Text = "+$" .. Ui.abbreviate(reward.Cash), "+" .. Ui.abbreviate(reward.Speed)
 		Theme.enabled(
@@ -152,8 +171,10 @@ function View.Build(): (Frame, () -> number)
 			tiles[knife.Name].Button.Visible = filter == "All" or knife.Rarity == filter
 		end
 		for name, button in filterButtons do
-			local border = button:FindFirstChildOfClass("UIStroke") :: UIStroke
-			border.Color = if name == filter then Theme.Gold else Theme.Black
+			local border = button:FindFirstChildOfClass("UIStroke")
+			if border then
+				border.Color = if name == filter then Theme.Gold else Theme.Black
+			end
 		end
 		grid.CanvasPosition = Vector2.zero
 	end
@@ -167,7 +188,7 @@ function View.Build(): (Frame, () -> number)
 			filters,
 			name,
 			color,
-			{ Name = name, LayoutOrder = order, Size = UDim2.new(1, -6, 0, 37), MaximumTextSize = 21 },
+			{ Name = name, LayoutOrder = order, Size = UDim2.new(1, -6, 0, 46), MaximumTextSize = 24 }, -- (tappable on phones)
 			function()
 				filter = name
 				applyFilter()
@@ -196,7 +217,13 @@ function View.Build(): (Frame, () -> number)
 		local image = Theme.image(
 			button,
 			knife.Name,
-			{ Position = UDim2.fromOffset(3, 28), Size = UDim2.new(1, -6, 1, -32), ZIndex = 9 }
+			-- a little smaller than the card, centred under the name
+			{
+				AnchorPoint = Vector2.new(0.5, 0),
+				Position = UDim2.new(0.5, 0, 0, 34),
+				Size = UDim2.new(0.82, 0, 1, -44),
+				ZIndex = 9,
+			}
 		)
 		tiles[knife.Name] = { Button = button, Name = name, Art = image, Border = border }
 	end

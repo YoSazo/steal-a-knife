@@ -27,9 +27,11 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local ManorDecor = require(script.Parent.ManorDecor)
 local RoundMaps = require(script.Parent.RoundMaps)
 local VaultWalls = require(script.Parent.VaultWalls)
-local Textures = require(ReplicatedStorage.Shared.Config.Textures)
 local SignTheme = require(ReplicatedStorage.Shared.SignTheme)
+local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 local Toy = require(ReplicatedStorage.Shared.Toy)
+local WheelModel = require(ReplicatedStorage.Shared.WheelModel)
+local VaultModel = require(ReplicatedStorage.Shared.VaultModel)
 
 export type Bounds = { MinX: number, MaxX: number, MinZ: number, MaxZ: number }
 export type BaseSite = {
@@ -46,7 +48,8 @@ export type BaseSite = {
 	Spawn: CFrame,
 	SlotCFrames: { CFrame }, -- where each knife floats, over its pedestal
 	SlotPads: { BasePart }, -- each pedestal's stone (holds the prompts)
-	SlotRims: { BasePart }, -- each pedestal's glowing top (the knife's colour when filled)
+	SlotRims: { BasePart }, -- state proxy; VaultModel updates the octagon's individual glow blocks
+	PlateArts: { ImageLabel }, -- retained artwork hooks, hidden on the native block-built plates
 	FloorFolders: { Folder }, -- each storey's decks, ladder and plates (SetFloors shows the owned ones)
 	CashPads: { BasePart }, -- the green pad beside each plate: walk on it to collect that knife's money
 	CashLabels: { TextLabel }, -- the amount waiting, written on the pad
@@ -68,6 +71,16 @@ MapService.RoundSpawns = {} :: { CFrame }
 MapService.RoundCenter = Vector3.new(3000, 0, 0)
 MapService.RoundMapSize = Vector2.new(150, 110)
 MapService.LobbySpawn = CFrame.new(0, 4, -110)
+-- Biomes dressed by a Codex-built shell (src/shared/Assets/<Name>Shell): zone index -> module name.
+-- Their old wall looks and ManorDecor's random props are switched off (ManorDecor reads this too).
+local BIOME_SHELLS: { [number]: string } = {
+	[1] = "CourtyardShell",
+	[2] = "GardensShell",
+	[3] = "CryptsShell",
+	[4] = "CatacombsShell",
+	[5] = "InfernoShell",
+}
+MapService.BiomeShells = BIOME_SHELLS
 
 local root: Folder
 
@@ -83,29 +96,6 @@ local function block(name: string, size: Vector3, cframe: CFrame, color: Color3,
 	p.BottomSurface = Enum.SurfaceType.Smooth
 	p.Parent = parent or root
 	return p
-end
-
--- offset is in world space, so a sign's text can sit in front of its board
-local function label(adornee: BasePart, text: string, color: Color3, size: UDim2, offset: Vector3): TextLabel
-	local gui = Instance.new("BillboardGui")
-	gui:SetAttribute("LabelCategory", "Utility")
-	gui:AddTag("ResponsiveWorldLabel")
-	gui.Size = size
-	gui.StudsOffsetWorldSpace = offset
-	gui.AlwaysOnTop = false
-	gui.MaxDistance = 400
-	gui.Adornee = adornee
-	gui.Parent = adornee
-	local text_ = Instance.new("TextLabel")
-	text_.Size = UDim2.fromScale(1, 1)
-	text_.BackgroundTransparency = 1
-	text_.Font = Enum.Font.FredokaOne
-	text_.TextScaled = true
-	text_.TextColor3 = color
-	text_.TextStrokeTransparency = 0
-	text_.Text = text
-	text_.Parent = gui
-	return text_
 end
 
 local function bounds(center: Vector3, sizeX: number, sizeZ: number): Bounds
@@ -136,18 +126,22 @@ end
 -- throws a clear shadow, blue sky all the way round (also below: the map floats), soft clouds.
 -- Set Lighting.Technology to Future (or ShadowMap) in Studio for crisp shadows.
 local function buildLighting()
-	-- Noon with the sun straight overhead (like Steal An Egg): at latitude 23.5 the noon sun is
-	-- exactly vertical, so the tall runway walls throw no shadow across the boss lairs beside them
-	Lighting.ClockTime = 12
-	Lighting.GeographicLatitude = 23.5
+	-- Early afternoon, the sun 60 degrees up in the north-west: high enough to stay in view over
+	-- the walls, low enough that everything throws a real shadow (76 degrees hid them underfoot) (Roblox north = -Z, west = -X): light
+	-- falls toward the south-east, so everything throws a short shadow and its sides shade.
+	-- (Found by searching ClockTime/latitude for GetSunDirection ~ (-0.36, 0.87, -0.35).)
+	-- The tall boundary walls don't cast (Toy.DirtWall), or they'd shade half the arena.
+	Lighting.ClockTime = 13.5
+	Lighting.GeographicLatitude = 3
 	-- Flat and bright: a gentle sun (a strong one glares off the floors in bright patches) and
 	-- strong, even fill light so nothing looks dim
-	Lighting.Brightness = 4
-	Lighting.ExposureCompensation = 0.1
+	Lighting.Brightness = 3
+	Lighting.ExposureCompensation = 0
 	-- Warm and even, like Steal An Egg: the sun is overhead, so walls get no direct light - strong
 	-- warm fill keeps them bright tan instead of murky. No sky-light bounce (it tinted everything blue).
-	Lighting.Ambient = Color3.fromRGB(190, 188, 184)
-	Lighting.OutdoorAmbient = Color3.fromRGB(222, 218, 210)
+	-- The round maps' warm, neutral fill (rounds read clean and even), with the sun on top
+	Lighting.Ambient = Color3.fromRGB(165, 160, 150)
+	Lighting.OutdoorAmbient = Color3.fromRGB(170, 165, 155)
 	Lighting.ColorShift_Top = Color3.fromRGB(255, 252, 245)
 	Lighting.ColorShift_Bottom = Color3.fromRGB(0, 0, 0)
 	Lighting.EnvironmentDiffuseScale = 0
@@ -157,7 +151,7 @@ local function buildLighting()
 	Lighting:SetAttribute("HubOutdoor", Lighting.OutdoorAmbient)
 	-- Real shadows (with the sun overhead, just a small one under each character)
 	Lighting.GlobalShadows = true
-	Lighting.ShadowSoftness = 0.2
+	Lighting.ShadowSoftness = 0.15 -- crisp enough to read
 	for _, child in Lighting:GetChildren() do
 		if child:IsA("Atmosphere") or child:IsA("PostEffect") or child:IsA("Sky") then
 			child:Destroy()
@@ -165,39 +159,39 @@ local function buildLighting()
 	end
 	-- A soft, pale haze with distance (things far below or far away go lighter, close up stays crisp)
 	local atmosphere = Instance.new("Atmosphere")
-	atmosphere.Density = 0.28
-	atmosphere.Offset = 0.05
-	atmosphere.Color = Color3.fromRGB(225, 232, 240)
-	atmosphere.Decay = Color3.fromRGB(190, 210, 230)
+	-- Steal a Brainrot's sky: a big soft glow round the sun, pale blue haze toward the horizon
+	atmosphere.Density = 0.32
+	atmosphere.Offset = 0.25
+	atmosphere.Color = Color3.fromRGB(199, 236, 255)
+	atmosphere.Decay = Color3.fromRGB(92, 196, 230)
 	atmosphere:SetAttribute("HubColor", atmosphere.Color)
 	atmosphere:SetAttribute("HubDecay", atmosphere.Decay)
-	atmosphere.Glare = 0
-	atmosphere.Haze = 1 -- the soft, sunny white haze down the runway (Steal An Egg)
+	atmosphere.Glare = 4 -- the big soft bloom of light around the sun
+	atmosphere.Haze = 2 -- pale cyan sky and soft distance haze (Steal a Brainrot)
 	atmosphere.Parent = Lighting
 	local sky = Instance.new("Sky")
-	sky.SkyboxFt = Textures.Day.Ft
-	sky.SkyboxBk = Textures.Day.Bk
-	sky.SkyboxLf = Textures.Day.Lf
-	sky.SkyboxRt = Textures.Day.Rt
-	sky.SkyboxUp = Textures.Day.Up
-	sky.SkyboxDn = Textures.Day.Dn
+	-- Roblox's own soft sky (the painted Textures.Day box read deep blue and flat next to Brainrot's)
 	sky.StarCount = 0
 	sky.CelestialBodiesShown = true -- the real sun, matching the shadows
-	sky.SunAngularSize = 14
+	sky.SunAngularSize = 21
 	sky.MoonAngularSize = 0
 	sky.Parent = Lighting
 	local bloom = Instance.new("BloomEffect")
-	bloom.Intensity = 0.25
-	bloom.Size = 20
-	bloom.Threshold = 2
+	bloom.Intensity = 1 -- the sun glows; the threshold keeps the world itself crisp
+	bloom.Size = 56
+	bloom.Threshold = 1.6
+	local rays = Instance.new("SunRaysEffect")
+	-- Light streaming out of the sun (that lifelike glow you see looking up at it)
+	rays.Intensity = 0.28
+	rays.Spread = 0.85
+	rays.Parent = Lighting
 	bloom.Parent = Lighting
 	local grade = Instance.new("ColorCorrectionEffect")
-	-- Softer and a touch brighter, like Steal An Egg: slightly less saturation (the parts alone read
-	-- neon) and a gentle lift
-	grade.Contrast = -0.02
-	grade.Saturation = -0.08
+	-- Punchy and bright, like Tsunami: extra saturation and a little contrast (muted read gloomy)
+	grade.Contrast = 0.1
+	grade.Saturation = 0.12
 	grade.TintColor = Color3.fromRGB(255, 253, 248)
-	grade.Brightness = 0.04
+	grade.Brightness = 0
 	grade.Parent = Lighting
 	-- A clear sky (the few clouds are painted into the skybox)
 	local clouds = workspace.Terrain:FindFirstChildOfClass("Clouds")
@@ -229,9 +223,11 @@ local ZONE_WALLS: { [string]: Color3 } = {
 	Cosmic = Color3.fromRGB(48, 36, 84), -- void
 }
 
-local WALL_HEIGHT = 40
+local WALL_HEIGHT = 120 -- tall walls (Tsunami): a full 4-floor vault (~96) stays under; the sun stays in view
 local WALL_THICK = 6
 local STONE = Color3.fromRGB(98, 92, 150)
+-- Tsunami's walls are a vivid orange-red brick, not dull dirt
+local HUB_BRICK = Color3.fromRGB(232, 112, 62)
 
 -- Runway walls take on a hint of the colour of the zone they're in
 local function zoneTint(z: number): Color3
@@ -281,10 +277,22 @@ local function buildArena()
 				zoneTint(z0 + depth / 2),
 				arena
 			)
-			Toy.DirtWall(wall, ZONE_WALLS[GameConfig.Zones[i].Rarity])
+			local cap = Toy.DirtWall(wall, ZONE_WALLS[GameConfig.Zones[i].Rarity])
+			-- Biomes with a Codex shell (MapService.BuildBiomeShells) wear it instead: the wall stays
+			-- (same size, place and collision), only its looks go
+			if BIOME_SHELLS[i] then
+				for _, part in { wall, cap } do
+					part.Transparency = 1
+					for _, d in part:GetDescendants() do
+						if d:IsA("Decal") then -- (a Texture is a Decal too)
+							(d :: Decal).Transparency = 1
+						end
+					end
+				end
+			end
 		end
 	end
-	-- The far end: the Manor's wall
+	-- The far end, in the last zone's wall colour (it closes off that biome)
 	local farWall = block(
 		"RunwayEnd",
 		Vector3.new(width + WALL_THICK * 2, WALL_HEIGHT, WALL_THICK),
@@ -292,7 +300,7 @@ local function buildArena()
 		STONE,
 		arena
 	)
-	Toy.DirtWall(farWall)
+	Toy.DirtWall(farWall, ZONE_WALLS[GameConfig.Zones[#GameConfig.Zones].Rarity])
 
 	-- A glowing line where the runway starts
 	local line = block(
@@ -309,26 +317,17 @@ local function buildArena()
 	paint.Transparency = 1
 	paint.CanCollide = false
 	paint.CanQuery = false
-	local surface = Instance.new("SurfaceGui")
-	surface.Face = Enum.NormalId.Top
-	surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	surface.PixelsPerStud = 20
-	surface.LightInfluence = 0
-	surface.Brightness = 0.85 -- full-bright signs, a touch softer than pure white
-	surface.Parent = paint
+	local safeGui = SignTheme.face(paint, Enum.NormalId.Top, 20, 300)
 	local safeText = Instance.new("TextLabel")
 	safeText.Size = UDim2.fromScale(1, 1)
 	safeText.BackgroundTransparency = 1
 	safeText.Font = Enum.Font.FredokaOne
 	safeText.TextScaled = true
 	safeText.TextColor3 = Color3.new(1, 1, 1)
+	safeText.TextTransparency = 0.15
 	safeText.Text = "🛡 SAFE ZONE 🛡"
 	safeText.Rotation = 180 -- reads the right way round walking up from the plaza
-	safeText.Parent = surface
-	local outline = Instance.new("UIStroke")
-	outline.Thickness = 6
-	outline.Color = Color3.fromRGB(30, 30, 40)
-	outline.Parent = safeText
+	safeText.Parent = safeGui
 end
 
 -- Vaults: four down each side of the plaza, each opening onto it. Built in each vault's own frame
@@ -346,13 +345,11 @@ local WALK_HALF = 4
 local LADDER_LANDING = 3.5 -- deck behind the ladder at the back, where you step off at the top
 local LADDER_HOLE = 3 -- the slot in front of the ladder you climb up through
 local LADDER_HOLE_HALF = 2.5
-local PLATE_RADIUS = 3.4
-local FLOOR_PINK = Color3.fromRGB(242, 238, 255) -- (lavender white, like Tsunami's floors)
+local VAULT_DECK = VaultModel.Deck
 local HUB_HALF = GameConfig.ArenaWidth / 2 + VAULT_DEPTH + 0.5 -- the hub's outer wall (inner face), just behind the vaults
 local COLUMN = 6 -- vaults down each side; 4 more across the back
 local HUB_BACK = COLUMN * 40 + 44 -- the hub ends right behind the back row of vaults
 local NAVY = Color3.fromRGB(40, 44, 90)
-local CYAN = Color3.fromRGB(80, 228, 255)
 local KNIFE_TILT = 12 -- degrees
 MapService.Floors = FLOORS
 MapService.FloorHeight = FLOOR_HEIGHT
@@ -410,14 +407,7 @@ local function buildBases()
 		folder.Parent = bases
 
 		-- An open platform (Tsunami style): a pale studded floor with a hint of the owner's colour
-		local floor = block(
-			"Floor",
-			Vector3.new(VAULT_WIDTH, 1, VAULT_DEPTH),
-			at(0, 0.1, 0),
-			FLOOR_PINK:Lerp(color, 0.08),
-			folder
-		)
-		Toy.Dress(floor, nil, 1, 4)
+		block("Floor", Vector3.new(VAULT_WIDTH, 1, VAULT_DEPTH), at(0, 0.1, 0), VAULT_DECK, folder)
 		-- Walls, gate towers and the gate itself depend on the owner's wall tier (VaultWalls)
 		local wallFolder = Instance.new("Folder")
 		wallFolder.Name = "Walls"
@@ -426,10 +416,11 @@ local function buildBases()
 		-- The storeys. Each has its own folder so the vault can grow: decks with a hole at the back
 		-- middle, a ladder up from the floor below, a glass rail along the open front, the walkway
 		-- and ten plates (slots 1-10 ground, 11-20 next floor, ...)
-		local deckColor = FLOOR_PINK:Lerp(color, 0.08)
+		local deckColor = VAULT_DECK
 		local floorFolders: { Folder } = {}
 		local slotCFrames: { CFrame }, slotPads: { BasePart }, slotRims: { BasePart } = {}, {}, {}
 		local cashPads: { BasePart }, cashLabels: { TextLabel } = {}, {}
+		local plateArts: { ImageLabel } = {}
 		local inner = VAULT_WIDTH / 2 - 0.5
 		local back, front = -VAULT_DEPTH / 2 + 0.5, VAULT_DEPTH / 2 - 0.5
 		for level = 1, FLOORS do
@@ -445,14 +436,13 @@ local function buildBases()
 				local landing = back + LADDER_LANDING
 				local holeTo = landing + 2 + LADDER_HOLE
 				local function deck(minX: number, maxX: number, minZ: number, maxZ: number)
-					local piece = block(
+					block(
 						"Deck",
 						Vector3.new(maxX - minX, 1, maxZ - minZ),
 						at((minX + maxX) / 2, y - 0.5, (minZ + maxZ) / 2),
 						deckColor,
 						levelFolder
 					)
-					Toy.Dress(piece, nil, 1, 4)
 				end
 				deck(-inner, inner, back, landing) -- the landing
 				deck(-inner, inner, holeTo, front) -- the floor
@@ -460,16 +450,8 @@ local function buildBases()
 					local a, b = deckSide * LADDER_HOLE_HALF, deckSide * inner
 					deck(math.min(a, b), math.max(a, b), landing, holeTo)
 				end
-				local glass = block(
-					"RailGlass",
-					Vector3.new(inner * 2, 3.5, 0.3),
-					at(0, y + 1.75, front - 0.2),
-					Color3.fromRGB(190, 240, 255),
-					levelFolder
-				)
-				glass.Material = Enum.Material.Glass
-				glass.Transparency = 0.6
-				block("RailCap", Vector3.new(inner * 2, 0.4, 0.6), at(0, y + 3.6, front - 0.2), NAVY, levelFolder)
+				-- A slim navy edge along the open front (no glass rail, Tsunami style)
+				block("RailCap", Vector3.new(inner * 2, 0.4, 0.6), at(0, y + 0.2, front - 0.2), NAVY, levelFolder)
 				-- The ladder from the floor below, poking up through the hole so you can step off
 				local truss = Instance.new("TrussPart")
 				truss.Name = "Ladder"
@@ -481,32 +463,8 @@ local function buildBases()
 				truss.CFrame = at(0, bottom + FLOOR_HEIGHT / 2, landing + 1)
 				truss.Transparency = 1 -- climbable, but the ladder you see is drawn below
 				truss.Parent = levelFolder
-				-- The ladder you see: two chunky navy rails and bright yellow rungs, and a yellow trim
-				-- round the hole so it's easy to spot from across the vault
-				local ladderZ = landing + 1
-				for _, railSide in { -1, 1 } do
-					local rail = block(
-						"LadderRail",
-						Vector3.new(0.45, FLOOR_HEIGHT + 2.5, 0.45),
-						at(railSide * 1.15, bottom + (FLOOR_HEIGHT + 2.5) / 2, ladderZ + 0.7),
-						NAVY,
-						levelFolder
-					)
-					rail.CanCollide = false
-					rail.CanQuery = false
-					Toy.Dress(rail, Toy.Sides, 1, 0)
-				end
-				for rungY = bottom + 1, bottom + FLOOR_HEIGHT - 0.4, 1.6 do
-					local rung = block(
-						"LadderRung",
-						Vector3.new(2.3, 0.3, 0.35),
-						at(0, rungY, ladderZ + 0.7),
-						Color3.fromRGB(255, 205, 40),
-						levelFolder
-					)
-					rung.CanCollide = false
-					rung.CanQuery = false
-				end
+				-- The visible block ladder is cosmetic; the original TrussPart stays climbable.
+				VaultModel.BuildLadder(levelFolder, frame, bottom, landing + 1)
 				for _, trim in
 					{
 						{ Vector3.new(LADDER_HOLE_HALF * 2 + 0.6, 0.12, 0.3), Vector3.new(0, y + 0.06, holeTo) },
@@ -520,13 +478,8 @@ local function buildBases()
 						},
 					}
 				do
-					local edge = block(
-						"HoleTrim",
-						trim[1],
-						at(trim[2].X, trim[2].Y, trim[2].Z),
-						Color3.fromRGB(255, 205, 40),
-						levelFolder
-					)
+					local edge =
+						block("HoleTrim", trim[1], at(trim[2].X, trim[2].Y, trim[2].Z), VaultModel.Cyan, levelFolder)
 					edge.CanCollide = false
 					edge.CanQuery = false
 				end
@@ -538,28 +491,20 @@ local function buildBases()
 				"Walkway",
 				Vector3.new(WALK_HALF * 2, 0.06, front - walkFrom),
 				at(0, surface + 0.03, (front + walkFrom) / 2),
-				Color3.fromRGB(226, 230, 242),
+				Color3.fromRGB(206, 210, 226), -- grey walkway against the lavender floor
 				levelFolder
 			)
 			walk.CanCollide = false
 			walk.CanQuery = false
-			Toy.Dress(walk, nil, 1, 0)
+			VaultModel.BuildFloor(levelFolder, frame, surface)
 			for index = 1, SLOTS_PER_FLOOR do
 				local plateSide = if index <= #PLATE_Z then -1 else 1
 				local x, z = plateSide * PLATE_X, PLATE_Z[(index - 1) % #PLATE_Z + 1]
 				local slot = (level - 1) * SLOTS_PER_FLOOR + index
-				-- A plain flat plate on the floor (Tsunami style), nothing else
-				local plate = block(
-					`Pedestal{slot}`,
-					Vector3.new(0.3, PLATE_RADIUS * 2, PLATE_RADIUS * 2),
-					at(x, surface + 0.15, z) * CFrame.Angles(0, 0, math.rad(90)),
-					CYAN,
-					levelFolder
-				)
-				plate.Shape = Enum.PartType.Cylinder
-				plate.CanCollide = false
-				slotPads[slot] = plate
-				slotRims[slot] = plate
+				local builtPlate = VaultModel.BuildPlate(levelFolder, at(x, surface, z), slot)
+				slotPads[slot] = builtPlate.Pad
+				slotRims[slot] = builtPlate.Rim
+				VaultModel.SetPlateTier(builtPlate.Details, at(x, surface, z), 1)
 				-- The money pad between the plate and the walkway (Tsunami style): the knife's
 				-- earnings pile up here until its owner walks over it
 				-- The panel's +Z faces the plate, so the text reads from the walkway.
@@ -576,41 +521,23 @@ local function buildBases()
 				cashPad.Transparency = 1
 				cashPad.CanCollide = false
 				cashPad.CanQuery = false
-				local padGui = Instance.new("SurfaceGui")
-				padGui.Face = Enum.NormalId.Top
-				padGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-				padGui.PixelsPerStud = 40
-				padGui.LightInfluence = 0
-				padGui.Brightness = 0.85 -- full-bright signs, a touch softer than pure white
-				padGui.MaxDistance = 70
-				padGui.Parent = cashPad
-				local panel = Instance.new("Frame")
-				panel.AnchorPoint = Vector2.new(0.5, 0.5)
-				panel.Position = UDim2.fromScale(0.5, 0.5)
-				panel.Size = UDim2.new(1, -12, 1, -12)
-				panel.Parent = padGui
-				SignTheme.surface(panel, SignTheme.Green)
-				-- Steal An Egg pad: a small "COLLECT" over the money in huge chunky numbers
-				SignTheme.cashIcon(panel, UDim2.fromScale(0.05, 0.04), UDim2.fromScale(0.2, 0.3))
-				local collect = Instance.new("TextLabel")
-				collect.Name = "Collect"
-				collect.Position, collect.Size = UDim2.fromScale(0.26, 0.06), UDim2.fromScale(0.5, 0.24)
-				collect.Text = "COLLECT"
-				collect.Parent = panel
-				SignTheme.text(collect, 30)
-				local padText = Instance.new("TextLabel")
-				padText.AnchorPoint = Vector2.new(0.5, 0.5)
-				padText.Name = "Amount"
-				padText.Position = UDim2.fromScale(0.5, 0.64)
-				padText.Size = UDim2.fromScale(0.94, 0.6)
-				padText.Text = ""
-				padText.Parent = panel
-				SignTheme.text(padText, 90, SignTheme.NumberFont)
+				local padArt = block(
+					`CashPadArt{slot}`,
+					Vector3.new(2.6, 0.05, 5.6),
+					cashPad.CFrame * CFrame.new(0, 0.04, 0),
+					NAVY,
+					levelFolder
+				)
+				padArt.CanCollide, padArt.CanTouch, padArt.CanQuery = false, false, false
+				-- Tsunami: a simple green pill with the money in it (a Top-face canvas runs along Z)
+				padArt.Transparency = 1
+				local padText = SignTheme.cashPill(SignTheme.face(padArt, Enum.NormalId.Top, 60, 70))
 				cashPads[slot] = cashPad
 				cashLabels[slot] = padText
 				-- The knife floats upright over the plate, a little tilted
 				slotCFrames[slot] = at(x, surface + 4.2, z) * CFrame.Angles(0, 0, math.rad(KNIFE_TILT))
 			end
+			VaultModel.ApplyTier(levelFolder, 1)
 		end
 
 		-- The owner's sign rides on top of the frame (BaseService moves it as the vault grows)
@@ -618,14 +545,13 @@ local function buildBases()
 		signPart.Transparency = 1
 		signPart.CanCollide = false
 		signPart.CanQuery = false
-		local sign = label(
-			signPart,
+		local _, ownerFace = WorldSignModel.Attach("VaultOwner", signPart, Enum.NormalId.Back)
+		local sign = WorldSignModel.LiveText(
+			WorldSignModel.Surface(signPart, ownerFace, "OwnerGui", 160),
+			"Owner",
 			"Empty Vault",
-			color,
-			UDim2.fromScale(24, 5),
-			frame:VectorToWorldSpace(Vector3.new(0, 0, 1.5))
-		);
-		(sign.Parent :: BillboardGui).Enabled = false
+			color
+		)
 
 		-- The Haunted Wheel: a giant iron wheel you run inside to train Speed (the plate at the bottom
 		-- is what counts as "on it"). Clients spin it while its owner is training. It stands just
@@ -634,115 +560,110 @@ local function buildBases()
 		-- The Upgrade Base sign on the other side of the gate (client/Hud fills it in for its owner)
 		local upgradeSign = Instance.new("Model")
 		upgradeSign.Name = "UpgradeSign"
-		block("Post", Vector3.new(0.6, 4, 0.6), at(13, 2, VAULT_DEPTH / 2 + 6), Color3.fromRGB(70, 46, 28), upgradeSign)
+		-- Tsunami's Upgrade Base sign: a dark post and board (3D), the info flat on its face (2D):
+		-- a white title over one bright green pill with a house, the price and the floor count
+		local SIGN_DARK = Color3.fromRGB(26, 28, 38)
+		block("Post", Vector3.new(0.7, 3, 0.7), at(13, 1.5, VAULT_DEPTH / 2 + 6), SIGN_DARK, upgradeSign)
 		local signBoard = block(
 			"Board",
-			Vector3.new(7, 4, 0.5),
-			at(13, 5.4, VAULT_DEPTH / 2 + 6) * CFrame.Angles(math.rad(-12), 0, 0),
-			Color3.fromRGB(34, 26, 40),
+			Vector3.new(7, 4, 0.35),
+			-- Standing straight up (not leaning back) on top of the post, not sunk into it
+			at(13, 5, VAULT_DEPTH / 2 + 6) * CFrame.Angles(0, math.pi, 0),
+			SIGN_DARK,
 			upgradeSign
 		)
 		local signGui = Instance.new("SurfaceGui")
 		signGui.Name = "Gui"
-		-- The board's front (-Z) looks into the vault; its back faces the plaza
-		signGui.Face = Enum.NormalId.Back
+		signGui.Face = Enum.NormalId.Front
 		signGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		signGui.PixelsPerStud = 40
+		signGui.PixelsPerStud = 60
 		signGui.LightInfluence = 0
-		signGui.Brightness = 0.85 -- full-bright signs, a touch softer than pure white
 		signGui.MaxDistance = 80
 		signGui.Parent = signBoard
+		local function signText(name: string, parent: Instance, text: string, tint: Color3, font: Enum.Font): TextLabel
+			local label = Instance.new("TextLabel")
+			label.Name = name
+			label.BackgroundTransparency = 1
+			label.Font = font
+			label.TextScaled = true
+			label.TextColor3 = tint
+			label.Text = text
+			local stroke = Instance.new("UIStroke")
+			stroke.Color, stroke.Thickness = Color3.fromRGB(14, 16, 24), 3
+			stroke.Parent = label
+			label.Parent = parent
+			return label
+		end
+		local title = signText("Title", signGui, "Upgrade Base", Color3.new(1, 1, 1), Enum.Font.FredokaOne)
+		title.Position, title.Size = UDim2.fromScale(0.05, 0.04), UDim2.fromScale(0.9, 0.28)
+		-- The same pill as the vault's cash pads (SignTheme.cashPill), a touch darker: mint with a
+		-- violet edge and the big green number, the floor count under it
+		local pillHolder = Instance.new("Frame")
+		pillHolder.Name = "PillHolder"
+		pillHolder.BackgroundTransparency = 1
+		pillHolder.Position, pillHolder.Size = UDim2.fromScale(0.04, 0.34), UDim2.fromScale(0.92, 0.62)
+		pillHolder.Parent = signGui
+		local price = SignTheme.cashPill(pillHolder)
+		price.Name = "Price"
+		price.Position, price.Size = UDim2.fromScale(0.5, 0.4), UDim2.fromScale(0.9, 0.62)
+		local pill = price.Parent :: Frame
+		pill.Name = "Pill"
+		pill.BackgroundColor3 = Color3.fromRGB(105, 185, 115)
+		pill.BackgroundTransparency = 0.05
+		local count = signText("Count", pill, "", Color3.fromRGB(30, 110, 30), Enum.Font.GothamBlack)
+		count.AnchorPoint = Vector2.new(0.5, 0)
+		count.Position, count.Size = UDim2.fromScale(0.5, 0.7), UDim2.fromScale(0.6, 0.26)
+		local countStroke = count:FindFirstChildOfClass("UIStroke")
+		if countStroke then
+			countStroke.Thickness = 0
+		end
+		local alert = signText("Alert", signGui, "!", Color3.fromRGB(255, 60, 60), Enum.Font.LuckiestGuy)
+		alert.Position, alert.Size = UDim2.fromScale(0.86, -0.08), UDim2.fromScale(0.14, 0.4)
+		alert.Visible = false
 		upgradeSign.Parent = folder
-		local wheel = Instance.new("Model")
-		wheel.Name = "HauntedWheel"
-		local hub = block(
-			"Hub",
-			Vector3.new(7.4, 1.2, 1.2),
-			at(wheelCenter.X, wheelCenter.Y, wheelCenter.Z),
-			Color3.fromRGB(50, 46, 58),
-			wheel
-		)
-		hub.Shape = Enum.PartType.Cylinder
-		hub.Material = Enum.Material.Metal
-		hub.CanCollide = false
-		hub.Transparency = 1 -- just the pivot; a bar here would go through the runner's head
-		for _, x in { -3.9, 3.9 } do
-			local cap = block(
-				"AxleCap",
-				Vector3.new(1.4, 1.2, 1.2),
-				at(wheelCenter.X + x, wheelCenter.Y, wheelCenter.Z),
-				Color3.fromRGB(50, 46, 58),
-				wheel
-			)
-			cap.Shape = Enum.PartType.Cylinder
-			cap.Material = Enum.Material.Metal
-			cap.CanCollide = false
-		end
-		local iron = NAVY
-		local radius, segments = 6, 16
-		for k = 0, segments - 1 do
-			local angle = k / segments * math.pi * 2
-			local oy, oz = math.cos(angle) * radius, math.sin(angle) * radius
-			for _, x in { -3.4, 3.4 } do
-				local rim = block(
-					"Rim",
-					Vector3.new(0.5, 0.5, 2 * math.pi * radius / segments + 0.1),
-					at(wheelCenter.X + x, wheelCenter.Y + oy, wheelCenter.Z + oz) * CFrame.Angles(angle, 0, 0),
-					iron,
-					wheel
-				)
-				rim.Material = Enum.Material.Metal
-				rim.CanCollide = false
-			end
-			-- Rungs across the inside, like a hamster wheel
-			local rung = block(
-				"Rung",
-				Vector3.new(6.8, 0.25, 0.4),
-				at(wheelCenter.X, wheelCenter.Y + oy * 0.97, wheelCenter.Z + oz * 0.97) * CFrame.Angles(angle, 0, 0),
-				Color3.new(1, 1, 1),
-				wheel
-			)
-			rung.CanCollide = false
-			if k % 4 == 0 then
-				local spoke = block(
-					"Spoke",
-					Vector3.new(0.4, radius, 0.4),
-					at(wheelCenter.X - 3.4, wheelCenter.Y + oy / 2, wheelCenter.Z + oz / 2) * CFrame.Angles(angle, 0, 0),
-					iron,
-					wheel
-				)
-				spoke.CanCollide = false
-				-- Ghost lights riding the rim
-				local wisp = block(
-					"Wisp",
-					Vector3.one * 0.8,
-					at(wheelCenter.X + 3.4, wheelCenter.Y + oy, wheelCenter.Z + oz),
-					color,
-					wheel
-				)
-				wisp.Shape = Enum.PartType.Ball
-				wisp.Material = Enum.Material.Neon
-				wisp.CanCollide = false
-			end
-		end
-		wheel.PrimaryPart = hub
-		-- Streams in as one piece, and remembers its resting position so clients can spin it
-		-- around the right spot even if they see the model before all its parts arrive
-		wheel.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
-		wheel:SetAttribute("Pivot", hub.CFrame)
+		local builtWheel = WheelModel.Build(1, at(wheelCenter.X, wheelCenter.Y, wheelCenter.Z))
+		local wheel = builtWheel.Rotor
 		wheel:AddTag("HauntedWheel")
 		wheel.Parent = folder
-		-- Stands holding the axle
-		for _, x in { -4.4, 4.4 } do
-			block("WheelStand", Vector3.new(0.8, 7, 1.2), at(wheelCenter.X + x, 3.5, wheelCenter.Z), iron, folder).Material =
-				Enum.Material.Metal
-		end
+		builtWheel.Stand.Parent = folder
 		-- The plate you stand on inside the bottom of the wheel
-		local belt = block("WheelFloor", Vector3.new(6, 0.4, 5), at(wheelCenter.X, 0.8, wheelCenter.Z), CYAN, folder)
-		Toy.Dress(belt, nil, 1, 0)
+		local belt = block(
+			"WheelFloor",
+			Vector3.new(6, 0.4, 5),
+			at(wheelCenter.X, 0.8, wheelCenter.Z),
+			Color3.fromRGB(80, 228, 255),
+			folder
+		)
+		belt.Transparency = 1 -- the tier's moving tread blocks are the visible running surface
 		local wheelSign =
-			block("WheelSign", Vector3.new(6, 1.6, 0.4), at(wheelCenter.X, 13.2, wheelCenter.Z), NAVY, folder)
-		local treadmillSign = label(wheelSign, "Creaky Wheel", color, UDim2.fromScale(9, 2), Vector3.new(0, 0.2, 1)) -- under the vault's own sign
+			block("WheelSign", Vector3.new(6, 2.4, 0.4), at(wheelCenter.X, 15.2, wheelCenter.Z), NAVY, folder)
+		-- No board: the wheel's name just floats over it, like the shop stalls' titles
+		wheelSign.Transparency = 1
+		wheelSign.CanCollide, wheelSign.CanQuery, wheelSign.CanTouch = false, false, false
+		local wheelTitle = Instance.new("BillboardGui")
+		wheelTitle.Name = "TierGui"
+		wheelTitle.Size = UDim2.fromScale(9, 1.8) -- studs: smaller with distance
+		wheelTitle.MaxDistance = 90
+		wheelTitle.LightInfluence = 0
+		wheelTitle.Adornee = wheelSign
+		wheelTitle.Parent = wheelSign
+		local treadmillSign = Instance.new("TextLabel")
+		treadmillSign.Name = "Tier"
+		treadmillSign.Size = UDim2.fromScale(1, 1)
+		treadmillSign.BackgroundTransparency = 1
+		treadmillSign.Font = Enum.Font.FredokaOne
+		treadmillSign.TextScaled = true
+		treadmillSign.TextColor3 = Color3.new(1, 1, 1)
+		treadmillSign.Text = "Creaky Wheel"
+		treadmillSign.Parent = wheelTitle
+		local titleGradient = Instance.new("UIGradient")
+		titleGradient.Rotation = 90
+		titleGradient.Color = ColorSequence.new(Color3.new(1, 1, 1), color:Lerp(Color3.new(1, 1, 1), 0.35))
+		titleGradient.Parent = treadmillSign
+		local titleStroke = Instance.new("UIStroke")
+		titleStroke.Thickness = 3
+		titleStroke.Color = color:Lerp(Color3.new(0, 0, 0), 0.65)
+		titleStroke.Parent = treadmillSign
 
 		-- Spawn just inside the door, facing out towards the plaza and the runway
 		local spawnPos = (at(0, 4, VAULT_DEPTH / 2 - 10)).Position
@@ -764,6 +685,7 @@ local function buildBases()
 			SlotCFrames = slotCFrames,
 			SlotPads = slotPads,
 			SlotRims = slotRims,
+			PlateArts = plateArts,
 			FloorFolders = floorFolders,
 			CashPads = cashPads,
 			CashLabels = cashLabels,
@@ -783,6 +705,12 @@ local function buildBases()
 		bases
 	)
 	Toy.Dress(plaza, nil, 1, 5)
+	-- No shadows anywhere in the vaults (decks, frames, roofs): the insides stay bright
+	for _, d in bases:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.CastShadow = false
+		end
+	end
 	-- One dirt wall all the way round the hub, so you can't wander off anywhere: the two sides,
 	-- the back behind the plaza, and the shoulders joining them to the runway walls
 	local wallX = HUB_HALF + WALL_THICK / 2
@@ -814,7 +742,8 @@ local function buildBases()
 			CFrame.new(0, WALL_HEIGHT / 2, -HUB_BACK - WALL_THICK / 2),
 			Toy.Dirt,
 			bases
-		)
+		),
+		HUB_BRICK
 	)
 end
 
@@ -887,34 +816,8 @@ local function buildIsland()
 			puff.Shape = Enum.PartType.Ball
 		end
 	end
-	for _ = 1, 28 do
-		local side = if rng:NextNumber() < 0.5 then -1 else 1
-		cloud(
-			Vector3.new(side * rng:NextNumber(190, 480), rng:NextNumber(-90, 50), rng:NextNumber(-350, runwayEnd + 250)),
-			rng:NextNumber(0.8, 1.6)
-		)
-	end
-	for _ = 1, 16 do
-		cloud(
-			Vector3.new(rng:NextNumber(-260, 260), rng:NextNumber(-160, -80), rng:NextNumber(-300, runwayEnd + 200)),
-			rng:NextNumber(1.2, 2)
-		)
-	end
-	-- Overhead: drifting above the runway and plaza, high enough to never get in the way
-	for _ = 1, 45 do
-		cloud(
-			Vector3.new(rng:NextNumber(-220, 220), rng:NextNumber(85, 150), rng:NextNumber(-350, runwayEnd + 150)),
-			rng:NextNumber(1, 2.2)
-		)
-	end
-	-- Just past the walls at eye level, so the sky around you is full of them
-	for _ = 1, 30 do
-		local side = if rng:NextNumber() < 0.5 then -1 else 1
-		cloud(
-			Vector3.new(side * rng:NextNumber(150, 230), rng:NextNumber(20, 70), rng:NextNumber(-320, runwayEnd + 100)),
-			rng:NextNumber(0.9, 1.6)
-		)
-	end
+	-- (no clouds: a clear sky)
+	local _ = cloud
 end
 
 -- Round maps are real buildings (RoundMaps); a random one is rebuilt at the start of each round
@@ -940,6 +843,13 @@ function MapService.BuildRoundMap(name: string?): RoundMaps.Built
 			child.Parent = folder
 		end
 		model:Destroy()
+		-- Clock hands turn about the "Center" they were built with; the scale moved the clocks,
+		-- so put each centre back where its hand now starts (the hand's bottom end)
+		for _, hand in folder:GetDescendants() do
+			if hand:IsA("BasePart") and hand:HasTag("ClockHand") then
+				hand:SetAttribute("Center", hand.CFrame * CFrame.new(0, -hand.Size.Y / 2, 0))
+			end
+		end
 		for i, spawn in built.Spawns do
 			built.Spawns[i] = CFrame.new(center + (spawn.Position - center) * ROUND_SCALE) * spawn.Rotation
 		end
@@ -968,6 +878,59 @@ local function noLights()
 	end)
 end
 
+-- Apply the physical finish to every storey, including unpurchased detached floors.
+-- Keep each prompt anchor, artwork canvas and cash hitbox in place.
+function MapService.SetVaultTier(base: BaseSite, level: number)
+	local palette = VaultModel.Style(level)
+	local floor = base.Folder:FindFirstChild("Floor")
+	if floor and floor:IsA("BasePart") then
+		floor.Color = palette.Deck
+	end
+	for _, levelFolder in base.FloorFolders do
+		VaultModel.ApplyTier(levelFolder, level)
+		for _, child in levelFolder:GetChildren() do
+			if child:IsA("BasePart") and child.Name == "Deck" then
+				child.Color = palette.Deck
+			elseif child:IsA("BasePart") and child.Name == "RailCap" then
+				child.Color = palette.Body
+			elseif child:IsA("BasePart") and child.Name == "HoleTrim" then
+				child.Color = palette.Inset
+			elseif child:IsA("Model") and child.Name:match("^PlateDetails%d+$") then
+				local slot = tonumber(child.Name:match("%d+"))
+				local pad = slot and base.SlotPads[slot]
+				if pad then
+					VaultModel.SetPlateTier(child, pad.CFrame * CFrame.new(0, -0.15, 0), level)
+				end
+			end
+		end
+	end
+end
+
+-- Rebuild only when the tier changes, including rebirth and a newly claimed vault.
+-- Preserve training state when an owner buys an upgrade while already running.
+function MapService.SetWheelTier(base: BaseSite, level: number)
+	level = math.clamp(math.floor(level), 1, #GameConfig.Treadmills)
+	base.TreadmillSign.Text = GameConfig.Treadmills[level].Name
+	if base.Wheel:GetAttribute("Tier") == level then
+		return
+	end
+	local old = base.Wheel
+	local pivot = old:GetAttribute("Pivot")
+	assert(typeof(pivot) == "CFrame", "Wheel is missing its resting axle pivot")
+	local built = WheelModel.Build(level, pivot)
+	built.Rotor:SetAttribute("Spinning", old:GetAttribute("Spinning"))
+	built.Rotor:SetAttribute("SpinRate", old:GetAttribute("SpinRate"))
+	built.Rotor:AddTag("HauntedWheel")
+	built.Rotor.Parent = base.Folder
+	local oldStand = base.Folder:FindFirstChild("WheelDetails")
+	if oldStand then
+		oldStand:Destroy()
+	end
+	built.Stand.Parent = base.Folder
+	base.Wheel = built.Rotor
+	old:Destroy()
+end
+
 -- Shows the vault's first `count` storeys (the rest wait out of the world until they're bought)
 function MapService.SetFloors(base: BaseSite, count: number)
 	for level, levelFolder in base.FloorFolders do
@@ -993,6 +956,7 @@ function MapService.Init()
 	spawn.CFrame = MapService.LobbySpawn - Vector3.new(0, 3.3, 0)
 	spawn.Color = Color3.fromRGB(62, 60, 72)
 	spawn.Material = Enum.Material.Slate
+	spawn.Transparency = 1 -- only a fallback: everyone spawns at their own vault (BaseService)
 	spawn.Duration = 0
 	spawn.Parent = root
 
@@ -1000,6 +964,7 @@ function MapService.Init()
 	buildArena()
 	buildBases()
 	buildIsland()
+	ManorDecor.ShellZones = BIOME_SHELLS
 	ManorDecor.Build(root, MapService.Arena :: Bounds, MapService.Hideaways)
 	-- Nothing from the plaza decor in the way of the wheels outside the vault gates
 	for _, base in MapService.Bases do
@@ -1008,6 +973,30 @@ function MapService.Init()
 	end
 	MapService.BuildRoundMap("Office")
 	noLights()
+end
+
+-- The biome shells: built after the boss lairs (GuardService) so nothing clears them, as cosmetic
+-- siblings of the arena (never inside ManorDecor's Decor folder). Origin = the runway entrance.
+function MapService.BuildBiomeShells()
+	local map = workspace:FindFirstChild("Map") or workspace
+	local folder = Instance.new("Folder")
+	folder.Name = "BiomeShells"
+	folder.Parent = map
+	for index, name in BIOME_SHELLS do
+		local module = ReplicatedStorage.Shared.Assets:FindFirstChild(name)
+		if module and module:IsA("ModuleScript") then
+			local ok, err = pcall(function()
+				local shell = (require(module) :: any).Build(
+					folder,
+					CFrame.new(0, 0, (index - 1) * GameConfig.ZoneDepth)
+				)
+				shell:SetAttribute("Zone", index)
+			end)
+			if not ok then
+				warn(`[MapService] biome shell {name} failed: {err}`)
+			end
+		end
+	end
 end
 
 return MapService

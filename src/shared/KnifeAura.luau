@@ -180,16 +180,112 @@ function KnifeAura.Mount(anchor: BasePart, power: number, clearance: number?, st
 		})
 		return p
 	end
-	local outer = bodyFlame("FlameOuter", body, 3)
-	outer:SetAttribute("AuraMinRate", 2.4)
-	outer.LightEmission = 0.12 -- low: keeps the colour rich instead of washing out
-	outer.Brightness = 1.3
-	outer.ZOffset = -1.2
-	local core = bodyFlame("FlameCore", body * 0.62, 3.4)
-	core:SetAttribute("AuraMinRate", 2.6)
-	core.LightEmission = 0.5
-	core.Brightness = 1.5
-	core.ZOffset = -1
+	local guard = blade and blade.Parent and blade.Parent:FindFirstChild("Guard")
+	local outer: ParticleEmitter?, core: ParticleEmitter?, glow: ParticleEmitter? = nil, nil, nil
+	local sewnOn = blade ~= nil and guard ~= nil and guard:IsA("BasePart")
+	if blade and guard and guard:IsA("BasePart") then
+		local axis = if blade.Size.X >= blade.Size.Y and blade.Size.X >= blade.Size.Z
+			then Vector3.xAxis
+			elseif blade.Size.Y >= blade.Size.Z then Vector3.yAxis
+			else Vector3.zAxis
+		local guardAt = blade.CFrame:PointToObjectSpace(guard.Position)
+		local toTip = if guardAt:Dot(axis) > 0 then -axis else axis
+		local tipAt = toTip * (bladeLength / 2)
+		-- better knives burn bigger: 1x for the weakest up to 2x for the best
+		local reach = (tipAt - guardAt).Magnitude * 1.3 * (1 + strength / 15)
+		if clearance then
+			reach = math.min(reach, math.max(1.5, clearance))
+		end
+		local direction = (tipAt - guardAt).Unit
+		-- Flame particles that lie ALONG the blade: VelocityParallel turns each particle to its
+		-- direction of travel, and they drift (barely) from the guard towards the tip, locked to
+		-- the blade, so the fire tilts, bobs and turns with the knife. Several overlap, each on
+		-- its own frame of the 64-frame flame, so it never reads as one looping cut-out.
+		local side = if math.abs(direction:Dot(Vector3.xAxis)) < 0.9 then Vector3.xAxis else Vector3.zAxis
+		local function aligned(name: string, length: number, rate: number, layer: string): ParticleEmitter
+			-- a particle's Size is half its quad; the flame's base is 5% up the art
+			local size = length / 1.8
+			local attachment = Instance.new("Attachment")
+			attachment.Name = name .. "Origin"
+			-- the attachment's up (where Top emits) runs guard -> tip
+			attachment.CFrame = CFrame.fromMatrix(
+				guardAt + direction * (size * 0.9 - 0.05 * length),
+				direction:Cross(side).Unit,
+				direction
+			)
+			attachment:SetAttribute("KnifeAuraOwned", true)
+			attachment.Parent = blade
+			local p = Instance.new("ParticleEmitter")
+			p.Name = name
+			p.Texture = Art.CartoonFlame
+			p.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid8x8
+			p.FlipbookMode = Enum.ParticleFlipbookMode.Loop
+			p.FlipbookFramerate = NumberRange.new(20, 26)
+			p.FlipbookStartRandom = true
+			p.Orientation = Enum.ParticleOrientation.VelocityParallel
+			-- (that lines the art's width up with the travel: turn it so the flame points tipwards)
+			p.Rotation = NumberRange.new(-90)
+			p.RotSpeed = NumberRange.new(0)
+			p.EmissionDirection = Enum.NormalId.Top
+			p.Speed = NumberRange.new(0.05)
+			p.SpreadAngle = Vector2.new(0, 0)
+			p.LockedToPart = true
+			p.LightInfluence = 0
+			-- long, overlapping lives with slow fades: a steady fire, never blinking on and off
+			p.Lifetime = NumberRange.new(1.6, 2.2)
+			p.Rate = rate
+			p:SetAttribute("BaseRate", rate)
+			p:SetAttribute("AuraMinRate", rate * 0.7)
+			p.Size = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, size * 0.9),
+				NumberSequenceKeypoint.new(0.3, size),
+				NumberSequenceKeypoint.new(1, size * 0.95),
+			})
+			p.Squash = NumberSequence.new(0.2) -- a little taller than wide: a sharper triangle
+			p.Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.35, 0.08),
+				NumberSequenceKeypoint.new(0.65, 0.12),
+				NumberSequenceKeypoint.new(1, 1),
+			})
+			local colors = recipe.Colors[layer]
+			p.Color = ColorSequence.new(colors.Start, colors.Finish)
+			p:SetAttribute("KnifeAuraOwned", true)
+			p:AddTag("KnifeAuraEmitter")
+			p.Parent = attachment
+			return p
+		end
+		local soft = aligned("FlameGlow", reach * 1.15, 2.6, "Glow")
+		soft.LightEmission = 1
+		soft.ZOffset = -0.9
+		soft.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.4, 0.86),
+			NumberSequenceKeypoint.new(0.6, 0.88),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		glow = soft
+		outer = aligned("FlameOuter", reach, 3.6, "Outer");
+		(outer :: ParticleEmitter).LightEmission = 0.12 -- low: the colour stays rich
+		(outer :: ParticleEmitter).Brightness = 1.3
+		(outer :: ParticleEmitter).ZOffset = -0.7
+		core = aligned("FlameCore", reach * 0.66, 4, "Core");
+		(core :: ParticleEmitter).LightEmission = 0.5
+		(core :: ParticleEmitter).Brightness = 1.5
+		(core :: ParticleEmitter).ZOffset = -0.55
+		body = reach / 1.85
+	else
+		outer = bodyFlame("FlameOuter", body, 3);
+		(outer :: ParticleEmitter):SetAttribute("AuraMinRate", 2.4);
+		(outer :: ParticleEmitter).LightEmission = 0.12
+		(outer :: ParticleEmitter).Brightness = 1.3
+		(outer :: ParticleEmitter).ZOffset = -1.2
+		core = bodyFlame("FlameCore", body * 0.62, 3.4);
+		(core :: ParticleEmitter):SetAttribute("AuraMinRate", 2.6);
+		(core :: ParticleEmitter).LightEmission = 0.5
+		(core :: ParticleEmitter).Brightness = 1.5
+		(core :: ParticleEmitter).ZOffset = -1
+	end
 
 	-- Licks all along the blade's edges, in the body's colours, so it reads as one fire
 	local flameSize = math.clamp(0.7 + strength * 0.08, 0.7, math.max(0.7, body * 0.25))
@@ -218,7 +314,6 @@ function KnifeAura.Mount(anchor: BasePart, power: number, clearance: number?, st
 	licks.Color = ColorSequence.new(recipe.Colors.Core.Start, lickColors.Start)
 
 	-- ...and off the crossguard itself, so the fire visibly grows out of the guard
-	local guard = blade and blade.Parent and blade.Parent:FindFirstChild("Guard")
 	if guard and guard:IsA("BasePart") then
 		local guardLicks = licks:Clone()
 		guardLicks.Name = "FlameGuard"
@@ -253,18 +348,21 @@ function KnifeAura.Mount(anchor: BasePart, power: number, clearance: number?, st
 		NumberSequenceKeypoint.new(1, 1),
 	})
 
-	-- A soft wide glow behind the whole flame
-	local glow = bodyFlame("FlameGlow", body * 1.2, 1.6)
-	glow:SetAttribute("AuraMinRate", 1)
-	glow.LightEmission = 1
-	glow.Brightness = 1
-	glow.ZOffset = -1.5
-	glow.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.3, 0.8),
-		NumberSequenceKeypoint.new(0.7, 0.84),
-		NumberSequenceKeypoint.new(1, 1),
-	})
+	-- A soft wide glow behind the whole flame (the beam version has its own)
+	if not sewnOn then
+		local soft = bodyFlame("FlameGlow", body * 1.2, 1.6)
+		soft:SetAttribute("AuraMinRate", 1)
+		soft.LightEmission = 1
+		soft.Brightness = 1
+		soft.ZOffset = -1.5
+		soft.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.3, 0.8),
+			NumberSequenceKeypoint.new(0.7, 0.84),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		glow = soft
+	end
 	height = body * 1.85
 
 	-- The smoke curl drifting off the top (upright, from above the knife)
@@ -300,7 +398,7 @@ function KnifeAura.Mount(anchor: BasePart, power: number, clearance: number?, st
 	embers.Size = NumberSequence.new(emberSize, math.min(0.06, emberSize))
 	embers.Transparency = NumberSequence.new(0.05, 1)
 
-	local layers: { [string]: ParticleEmitter } = {
+	local layers: { [string]: ParticleEmitter? } = {
 		Outer = outer,
 		Core = core,
 		Tongues = tongues,
@@ -308,7 +406,8 @@ function KnifeAura.Mount(anchor: BasePart, power: number, clearance: number?, st
 		Glow = glow,
 		Embers = embers,
 	}
-	for role, effect in layers do
+	for role, maybe in layers do
+		local effect = maybe :: ParticleEmitter
 		local colors = recipe.Colors[role]
 		effect:SetAttribute("AuraLayer", role)
 		effect.Color = ColorSequence.new(colors.Start, colors.Finish)

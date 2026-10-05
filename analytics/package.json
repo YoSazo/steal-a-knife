@@ -1,0 +1,22 @@
+{
+  "name": "steal-a-knife-analytics",
+  "private": true,
+  "type": "module",
+  "description": "Ingest + dashboard for Steal a Knife's own analytics (Render + Neon Postgres)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/main.js",
+    "q": "node scripts/q.js",
+    "test": "node scripts/test.js && node scripts/test-setup.js",
+    "setup": "node scripts/setup.js"
+  },
+  "dependencies": {
+    "libsodium-wrappers": "^0.8.4",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.2.17"
+  }
+}

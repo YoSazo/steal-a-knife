@@ -93,6 +93,8 @@ while not ready() and os.clock() - started < 45 do
 	task.wait(0.1)
 end
 task.wait(0.4) -- let the camera settle on the character before revealing it
+-- (client/Telemetry reports this: how long people stare at the loading screen; -1 = gave up waiting)
+playerGui:SetAttribute("LoadedIn", if ready() then math.floor((os.clock() - started) * 10) / 10 else -1)
 
 animating:Disconnect()
 local fade = TweenInfo.new(0.5, Enum.EasingStyle.Quad)

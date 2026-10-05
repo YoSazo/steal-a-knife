@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Ui = require(script.Parent.Ui)
+local Theme = require(script.Parent.MenuTheme)
 local Effects = require(script.Parent.Effects)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
@@ -16,35 +17,45 @@ function View.Play(rarity: string, item: string, upgraded: boolean, isNew: boole
 		return
 	end
 	local color = Items.Color(item)
-	local frame = Ui.new("Frame", { Name = "Unbox", BackgroundColor3 = Ui.PANEL, ZIndex = 30 }, Ui.gui)
+	local rarityColor = Knives.RarityColors[rarity] or color
+	-- Same philosophy as every other window: a solid-colour header (the case's own rarity
+	-- colour) with a real icon, a red X, and a see-through dark body.
+	local frame = Ui.new("Frame", {
+		Name = "Unbox",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		BackgroundColor3 = Color3.fromRGB(14, 16, 26),
+		BackgroundTransparency = 0.25,
+		ZIndex = 30,
+	}, Ui.gui)
 	Ui.corner(frame, 16)
+	Theme.outline(frame, Theme.Black, 4)
 	Ui.fitMenu(frame, Vector2.new(900, 520))
 	Ui.registerMenu(frame)
-	local title = Ui.label({
-		Text = "Opening " .. rarity .. " Case",
-		Position = UDim2.fromOffset(16, 8),
-		Size = UDim2.new(1, -84, 0, 44),
+	local header = Theme.surface(frame, { Size = UDim2.new(1, 0, 0, 64), ZIndex = 31 }, rarityColor)
+	local headerCorner = header:FindFirstChildOfClass("UICorner") :: UICorner
+	headerCorner.CornerRadius = UDim.new(0, 16)
+	Theme.image(header, "Case" .. rarity, { Position = UDim2.fromOffset(6, 2), Size = UDim2.fromOffset(60, 60) })
+	local title = Theme.text(header, "Opening " .. rarity .. " Case", {
+		Position = UDim2.fromOffset(74, 2),
+		Size = UDim2.new(1, -150, 1, -4),
 		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 31,
-	}, frame)
+		MaximumTextSize = 34,
+	})
 	local skipped, dismissed = false, false
-	local close = Ui.button(
-		{
-			Name = "Close",
-			Text = "Skip",
-			Position = UDim2.new(1, -68, 0, 8),
-			Size = UDim2.fromOffset(60, 44),
-			ZIndex = 32,
-		},
-		frame,
-		function()
-			if skipped then
-				dismissed = true
-			else
-				skipped = true
-			end
+	local close = Theme.button(header, "Skip", Theme.Red, {
+		Name = "Close",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -8, 0.5, 0),
+		Size = UDim2.fromOffset(74, 50),
+		MaximumTextSize = 28,
+	}, function()
+		if skipped then
+			dismissed = true
+		else
+			skipped = true
 		end
-	)
+	end)
 	frame:GetPropertyChangedSignal("Visible"):Connect(function()
 		if not frame.Visible then
 			skipped = true
@@ -52,8 +63,8 @@ function View.Play(rarity: string, item: string, upgraded: boolean, isNew: boole
 		end
 	end)
 	local scroll = Ui.new("ScrollingFrame", {
-		Position = UDim2.fromOffset(12, 64),
-		Size = UDim2.new(1, -24, 1, -76),
+		Position = UDim2.fromOffset(12, 76),
+		Size = UDim2.new(1, -24, 1, -88),
 		BackgroundTransparency = 1,
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		CanvasSize = UDim2.new(),
@@ -63,10 +74,12 @@ function View.Play(rarity: string, item: string, upgraded: boolean, isNew: boole
 	local window = Ui.new("Frame", {
 		Size = UDim2.new(1, -8, 0, 150),
 		ClipsDescendants = true,
-		BackgroundColor3 = Color3.fromRGB(14, 23, 41),
+		BackgroundColor3 = Color3.fromRGB(14, 16, 26),
+		BackgroundTransparency = 0.25,
 		ZIndex = 31,
 	}, scroll)
 	Ui.corner(window, 12)
+	Theme.outline(window, Theme.Black, 3)
 	local strip = Ui.new("Frame", {
 		Size = UDim2.fromOffset(34 * 130, 144),
 		Position = UDim2.fromOffset(window.AbsoluteSize.X / 2 - 60, 3),
@@ -77,13 +90,13 @@ function View.Play(rarity: string, item: string, upgraded: boolean, isNew: boole
 	local pool = Knives.ByRarity[rarity]
 	for i = 1, 34 do
 		local knife = if i == 29 then parsed.Knife else pool[rng:NextInteger(1, #pool)]
-		local tile = Ui.new("Frame", {
+		-- The knife's own rarity colour, full strength with a black outline (not a muddy
+		-- navy-tinted one) - same as the Index and every other knife card.
+		local tile = Theme.surface(strip, {
 			Position = UDim2.fromOffset((i - 1) * 130, 0),
 			Size = UDim2.fromOffset(120, 144),
-			BackgroundColor3 = Knives.RarityColors[knife.Rarity]:Lerp(Ui.PANEL, 0.7),
 			ZIndex = 31,
-		}, strip)
-		Ui.corner(tile, 10)
+		}, Knives.RarityColors[knife.Rarity])
 		Ui.art(tile, knife.Name, { Size = UDim2.new(1, 0, 0, 90), ZIndex = 31 })
 		Ui.label({
 			Text = knife.DisplayName,
@@ -128,24 +141,39 @@ function View.Play(rarity: string, item: string, upgraded: boolean, isNew: boole
 	tick:Disconnect()
 	strip.Position = UDim2.fromOffset(endX, 3)
 	if not dismissed then
-		title.Text = "Case reward"
-		close.Text = "X"
+		title.Text = "Case Reward"
+		Theme.enabled(close, true, "X")
 		skipped = true
 		Effects.Sound(Sounds.Reveal, nil, 0.7)
 		local tags = (if isNew then "NEW!  " else "") .. (if upgraded then "RARITY UP!  " else "")
-		local text = Ui.label({
-			Text = tags
-				.. Items.DisplayName(item)
-				.. `\n{parsed.Knife.Rarity} · +${Ui.abbreviate(Items.Income(item))}/s · Damage {Items.Damage(item)}\nMutation: {parsed.Mutation.DisplayName} · Size: {parsed.Size.DisplayName}`,
-			Position = UDim2.fromOffset(8, 158),
-			Size = UDim2.new(1, -24, 0, 100),
-			TextScaled = false,
-			TextSize = 16,
-			TextWrapped = true,
-			TextColor3 = color,
-			ZIndex = 32,
-		}, scroll)
-		Ui.textStroke(text, 1)
+		-- A solid card in the knife's own colour, not plain floating text.
+		local reveal = Theme.surface(scroll, {
+			Position = UDim2.fromOffset(4, 158),
+			Size = UDim2.new(1, -16, 0, 110),
+			ZIndex = 31,
+		}, color)
+		Theme.text(reveal, tags .. Items.DisplayName(item), {
+			Position = UDim2.fromOffset(10, 6),
+			Size = UDim2.new(1, -20, 0, 36),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			MaximumTextSize = 30,
+		})
+		Theme.text(
+			reveal,
+			`{parsed.Knife.Rarity} · +${Ui.abbreviate(Items.Income(item))}/s · Damage {Items.Damage(item)}`,
+			{
+				Position = UDim2.fromOffset(10, 46),
+				Size = UDim2.new(1, -20, 0, 28),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				MaximumTextSize = 22,
+			}
+		)
+		Theme.text(reveal, `Mutation: {parsed.Mutation.DisplayName} · Size: {parsed.Size.DisplayName}`, {
+			Position = UDim2.fromOffset(10, 76),
+			Size = UDim2.new(1, -20, 0, 26),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			MaximumTextSize = 20,
+		})
 		local revealed = os.clock()
 		while not dismissed and os.clock() - revealed < 2.7 do
 			task.wait()

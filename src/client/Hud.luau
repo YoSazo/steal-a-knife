@@ -15,6 +15,13 @@ local TweenService = game:GetService("TweenService")
 
 local Ui = require(script.Parent.Ui)
 local Theme = require(script.Parent.MenuTheme)
+local CartoonArt = require(ReplicatedStorage.Shared.Config.CartoonArt)
+local SimpleUi = require(script.Parent.SimpleUi)
+local VoxelUi = require(ReplicatedStorage.Shared.Config.VoxelUi)
+local Icons2 = require(ReplicatedStorage.Shared.Config.VoxelIcons2).Icons
+local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
+local WheelModel = require(ReplicatedStorage.Shared.WheelModel)
+local Items = require(ReplicatedStorage.Shared.Items)
 local Effects = require(script.Parent.Effects)
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("GameConfig"))
 local Sounds = require(ReplicatedStorage.Shared.Config:WaitForChild("Sounds"))
@@ -91,6 +98,22 @@ local function touchGhosts()
 	resize()
 end
 
+-- Puts an art-pack picture where an emoji icon label was (the label keeps its size and place)
+local function pictureIcon(label: TextLabel, image: string)
+	label.Text = ""
+	local picture = label:FindFirstChild("Picture") :: ImageLabel?
+	if not picture then
+		picture = new("ImageLabel", {
+			Name = "Picture",
+			BackgroundTransparency = 1,
+			Size = UDim2.fromScale(1, 1),
+			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = label.ZIndex + 1,
+		}, label)
+	end
+	(picture :: ImageLabel).Image = image
+end
+
 function Hud.Init()
 	local gui = Ui.gui
 	if Ui.Phone and RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugPhone") then
@@ -114,9 +137,30 @@ function Hud.Init()
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
 		LineJoinMode = Enum.LineJoinMode.Round,
 	}, timerLabel)
+	-- During the Blood Moon its name takes the left of the timer: big plain text in the game's font
+	-- (like the floating shop titles), the countdown stays live beside it
+	local moonTitle = new("TextLabel", {
+		Name = "BloodMoonTitle",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(0.5, 1.3),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromScale(0, 0.5),
+		Font = Enum.Font.FredokaOne,
+		Text = "BLOOD MOON",
+		TextColor3 = Color3.fromRGB(255, 60, 60),
+		TextScaled = true,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Visible = false,
+	}, timerFrame)
+	new("UIStroke", {
+		Thickness = 3,
+		Color = Color3.fromRGB(20, 16, 28),
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
+		LineJoinMode = Enum.LineJoinMode.Round,
+	}, moonTitle)
 	local timerCap = timerLabel:FindFirstChildOfClass("UITextSizeConstraint")
 	if timerCap then
-		timerCap.MaxTextSize = 36
+		timerCap.MaxTextSize = if Ui.Phone then 24 else 36
 	end
 	local subLabel = Ui.label({
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -143,42 +187,25 @@ function Hud.Init()
 			end
 			if builtFor ~= surface then
 				builtFor = surface
-				local function text(y: number, height: number, color: Color3): TextLabel
-					return Ui.label({
-						Position = UDim2.fromScale(0.05, y),
-						Size = UDim2.fromScale(0.9, height),
-						TextColor3 = color,
-						Text = "",
-					}, surface)
-				end
+				-- The sign's labels are built in the world (MapService); this only fills them in
+				local signPill = (surface :: SurfaceGui):FindFirstChild("Pill", true)
 				built = {
-					Title = text(0.05, 0.28, Color3.new(1, 1, 1)),
-					Price = text(0.36, 0.36, Color3.fromRGB(110, 255, 110)),
-					Count = text(0.74, 0.2, Color3.fromRGB(220, 220, 230)),
-					Alert = Ui.label({
-						AnchorPoint = Vector2.new(1, 0),
-						Position = UDim2.fromScale(1, 0),
-						Size = UDim2.fromScale(0.18, 0.4),
-						TextColor3 = Color3.fromRGB(255, 60, 60),
-						Text = "!",
-					}, surface),
-				}
-				for _, label in built :: any do
-					Ui.textStroke(label, 2)
-					-- world sign, not HUD: let the text fill the board
-					local cap = label:FindFirstChildOfClass("UITextSizeConstraint")
-					if cap then
-						cap.MaxTextSize = 100
-					end
+					Title = (surface :: SurfaceGui):FindFirstChild("Title"),
+					Price = signPill and signPill:FindFirstChild("Price"),
+					Count = signPill and signPill:FindFirstChild("Count"),
+					Alert = (surface :: SurfaceGui):FindFirstChild("Alert"),
+				} :: any
+				if not (built :: any).Price then
+					builtFor = nil
+					continue
 				end
-				(built :: any).Price.Font = Enum.Font.LuckiestGuy
 			end
 			local labels = built :: any
 			local slots = (player:GetAttribute("Slots") or GameConfig.StartingSlots) :: number
 			local knives = (player:GetAttribute("KnifeCount") or 0) :: number
 			local cash = (player:GetAttribute("Cash") or 0) :: number
-			labels.Title.Text = "🏠 Upgrade Base"
-			labels.Count.Text = `{knives}/{slots} knives`
+			labels.Title.Text = "Upgrade Base"
+			labels.Count.Text = `{knives}/{slots}`
 			if slots >= GameConfig.MaxSlots then
 				labels.Price.Text = "MAX"
 				labels.Alert.Visible = false
@@ -244,9 +271,10 @@ function Hud.Init()
 		TextColor3 = Color3.fromRGB(255, 110, 120),
 	}, gui)
 	Ui.textStroke(chanceLabel, 1.5)
+	-- (plain text, centred: no icon beside it)
 	local function refreshChance()
 		local chance = player:GetAttribute("MurdererChance")
-		chanceLabel.Visible = type(chance) == "number" and not player:GetAttribute("InRound")
+		chanceLabel.Visible = type(chance) == "number" and Ui.inHub()
 		chanceLabel.Text = `Murderer chance: {chance or 0}%`
 	end
 	player:GetAttributeChangedSignal("MurdererChance"):Connect(refreshChance)
@@ -326,6 +354,7 @@ function Hud.Init()
 	-- Bottom left: Speed and Cash -----------------------------------------------------------------
 	-- (phones: top left beside the icon strip, away from the thumbstick)
 	local stats = new("Frame", {
+		Name = "Stats",
 		AnchorPoint = if Ui.Phone then Vector2.zero else Vector2.new(0, 1),
 		Position = if Ui.Phone then UDim2.fromOffset(80, 58) else UDim2.new(0, 14, 1, -14),
 		Size = UDim2.fromOffset(330, 176),
@@ -383,7 +412,7 @@ function Hud.Init()
 	local function refreshHeat()
 		local heat = (player:GetAttribute("Heat") or 0) :: number
 		local fuel = GameConfig.Fuel
-		heatLabel.Text = `🔥 HEAT {heat}/{fuel.MaxHeat}`
+		heatLabel.Text = `HEAT {heat}/{fuel.MaxHeat}` -- (the flame is the art-pack icon beside it)
 		heatLabel.TextColor3 = Color3.fromRGB(255, 200, 90):Lerp(Color3.fromRGB(255, 60, 40), heat / fuel.MaxHeat)
 		local friends = (player:GetAttribute("FriendsHere") or 0) :: number
 		heatHint.Text = (
@@ -416,7 +445,13 @@ function Hud.Init()
 
 	-- Right side: upgrades, folded behind one "Upgrades" button (a badge counts what you can afford)
 	-- so the screen stays clear; the list drops down under it when opened
-	local upgradePanel, upgradeBody = Theme.shell("Upgrades", "Upgrades", Theme.Green, "Upgrades", 520, 640)
+	local upgradePanel, upgradeBody = SimpleUi.window(
+		"Upgrades",
+		"Upgrades",
+		VoxelUi.Hud.Upgrades,
+		Color3.fromRGB(70, 200, 50),
+		Vector2.new(900, 640)
+	)
 	local shop: ScrollingFrame
 	local upgradesButton = Theme.button(gui, "Upgrades", Theme.Green, {
 		AnchorPoint = Vector2.new(1, 0),
@@ -446,36 +481,108 @@ function Hud.Init()
 		VerticalAlignment = Enum.VerticalAlignment.Top,
 		SortOrder = Enum.SortOrder.LayoutOrder,
 	}, shop)
-	local buttons: { [string]: TextButton } = {}
+	-- Tsunami-simple rows: icon, name, what you get now -> next, and ONE big price button
+	type UpgradeRow = { Detail: TextLabel, Buy: TextButton }
+	local upgradeRows: { [string]: UpgradeRow } = {}
 	local order = 0
-	local function shopButton(kind: string, color: Color3, icon: string)
-		order += 1
-		local button = Theme.button(shop, kind, color, {
-			Name = kind,
+	-- The training wheel has 13 very different real tiers (Shared/WheelModel), so its row shows
+	-- a live spin of the actual tier instead of one generic icon that can't match all of them.
+	local function wheelViewport(parent: Instance): (level: number) -> ()
+		local frame = new("ViewportFrame", {
+			BackgroundTransparency = 1,
+			Position = UDim2.fromOffset(10, 10),
+			Size = UDim2.fromOffset(92, 92),
+			Ambient = Color3.fromRGB(200, 200, 200),
+			LightColor = Color3.new(1, 1, 1),
 			ZIndex = 7,
+		}, parent)
+		local world = Instance.new("WorldModel")
+		world.Parent = frame
+		local camera = new("Camera", { FieldOfView = 35 }, frame)
+		frame.CurrentCamera = camera
+		local shown = -1
+		return function(level: number)
+			if level == shown then
+				return
+			end
+			shown = level
+			world:ClearAllChildren()
+			local built = WheelModel.Build(level, CFrame.new())
+			built.Rotor.Parent = world
+			built.Stand.Parent = world
+			local cf, size = (world :: any):GetBoundingBox()
+			-- A 3/4 angled "product shot", not a flat side-on view of the rungs.
+			local offset = CFrame.Angles(math.rad(-18), math.rad(35), 0) * Vector3.new(0, 0, size.Magnitude * 1.6)
+			camera.CFrame = CFrame.lookAt(cf.Position + offset, cf.Position)
+		end
+	end
+	local setWheelLevel: ((number) -> ())? = nil
+	local function shopButton(kind: string, title: string, icon: string)
+		order += 1
+		local row = new("Frame", {
+			Name = kind,
 			LayoutOrder = order,
-			Size = UDim2.new(1, -6, 0, 72),
-			MaximumTextSize = 30,
+			Size = UDim2.new(1, -10, 0, 112),
+			BackgroundColor3 = Color3.fromRGB(34, 38, 56),
+			BackgroundTransparency = 0.2,
+			ZIndex = 6,
+		}, shop)
+		Ui.corner(row, 12)
+		if kind == "Treadmill" then
+			setWheelLevel = wheelViewport(row)
+		else
+			new("ImageLabel", {
+				BackgroundTransparency = 1,
+				Position = UDim2.fromOffset(10, 10),
+				Size = UDim2.fromOffset(92, 92),
+				Image = icon,
+				ScaleType = Enum.ScaleType.Fit,
+				ZIndex = 7,
+			}, row)
+		end
+		SimpleUi.text(row, title, {
+			Position = UDim2.fromOffset(114, 10),
+			Size = UDim2.new(1, -420, 0, 46),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Max = 40,
+		})
+		local detail = SimpleUi.text(row, "", {
+			Position = UDim2.fromOffset(114, 60),
+			Size = UDim2.new(1, -420, 0, 38),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = Color3.fromRGB(205, 215, 240),
+			Max = 28,
+		})
+		local buy = SimpleUi.button(row, "", Color3.fromRGB(80, 210, 50), {
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -12, 0.5, 0),
+			Size = UDim2.fromOffset(280, 84),
+			ZIndex = 7,
+			Max = 38,
 		}, function()
 			Remotes.Purchase:InvokeServer(kind)
-		end, icon)
-		buttons[kind] = button
+		end)
+		upgradeRows[kind] = { Detail = detail, Buy = buy }
 	end
-	shopButton("Treadmill", Theme.Cyan, "Training")
-	shopButton("Trail", Theme.Purple, "RustyShank")
-	shopButton("Health", Theme.Red, "Health")
-	shopButton("Walls", Color3.fromRGB(176, 125, 79), "Walls")
-	shopButton("Slot", Theme.Gold, "Floor")
-	local function setButtonText(kind: string, text: string)
-		local label = buttons[kind]:FindFirstChild("Label") :: TextLabel?
-		if label then
-			label.Text = text
+	shopButton("Treadmill", "Training Wheel", Icons2.Wheel)
+	shopButton("Trail", "Knife Trail", Icons2.Trail)
+	shopButton("Health", "Max Health", Icons2.Health)
+	shopButton("Slot", "Vault Floor", Icons2.Floor)
+	-- detail line + price (nil price = maxed)
+	local function setRow(kind: string, detail: string, price: number?, cash: number)
+		local row = upgradeRows[kind]
+		row.Detail.Text = detail
+		if price then
+			SimpleUi.set(row.Buy, `${Ui.abbreviate(price)}`, Color3.fromRGB(80, 210, 50), cash >= price)
+		else
+			SimpleUi.set(row.Buy, "MAX", Color3.fromRGB(255, 185, 30), false)
 		end
 	end
 
 	-- Bottom right: event timers ----------------------------------------------------------------
 	-- (phones: top right, out from under the jump button)
 	local timers = new("Frame", {
+		Name = "Timers",
 		AnchorPoint = if Ui.Phone then Vector2.new(1, 0) else Vector2.new(1, 1),
 		Position = if Ui.Phone then UDim2.new(1, -10, 0, 6) else UDim2.new(1, -14, 1, -14),
 		Size = UDim2.fromOffset(250, 160),
@@ -506,11 +613,12 @@ function Hud.Init()
 	player:GetAttributeChangedSignal("Shielded"):Connect(refreshShield)
 	refreshShield()
 	local raidPill, raidIcon, raidText = pill(timers, 1)
-	raidIcon.Text = "⚔️"
+	pictureIcon(raidIcon, CartoonArt.LootBag)
 	local roundPill, roundIcon, roundText = pill(timers, 2)
 	roundPill.Visible = false -- the top timer says the same thing
 	roundIcon.Text = "🔪"
 	local chestPill, chestIcon, chestText = pill(timers, 3)
+	chestPill.Name = "ChestPill"
 	chestIcon.Visible = false
 	chestPill.BackgroundColor3 = Theme.Navy
 	chestPill.BackgroundTransparency = 0
@@ -518,10 +626,29 @@ function Hud.Init()
 	Theme.studs(chestPill)
 	Theme.image(
 		chestPill,
-		"CaseLegendary",
+		"FreeChest",
 		{ Position = UDim2.fromOffset(2, 4), Size = UDim2.fromOffset(32, 36), ZIndex = 2 }
 	)
 	chestText.ZIndex = 2
+	-- It looked like a button (same skin as Upgrades/Spin/Merchant) but did nothing when tapped;
+	-- tapping it now claims the chest directly, same as walking up and holding E.
+	-- Named "Label": HudSkin's restyle skips hiding anything by that name (it otherwise hides
+	-- every plain child when it skins this pill), so this click-catcher survives the restyle.
+	local chestButton = new("TextButton", {
+		Name = "Label",
+		Text = "",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 20,
+	}, chestPill)
+	chestButton.Activated:Connect(function()
+		if chestButton:GetAttribute("Busy") then
+			return
+		end
+		chestButton:SetAttribute("Busy", true)
+		Remotes.ClaimFreeChest:InvokeServer()
+		chestButton:SetAttribute("Busy", false)
+	end)
 
 	local function refreshStats()
 		local cash = player:GetAttribute("Cash") or 0
@@ -542,34 +669,46 @@ function Hud.Init()
 			.. (if rebirths > 0 then `  ·  Rebirth {rebirths}` else "")
 
 		local nextWheel = GameConfig.Treadmills[treadmill + 1]
-		setButtonText(
+		local wheel = GameConfig.Treadmills[treadmill]
+		setRow(
 			"Treadmill",
-			if nextWheel then `{nextWheel.Name}\n${Ui.abbreviate(nextWheel.Cost)}` else "Wheel MAX"
+			if nextWheel then `{wheel.Name} → <font color="#78FF6E">{nextWheel.Name}</font>` else `{wheel.Name} (max)`,
+			if nextWheel then nextWheel.Cost else nil,
+			cash
 		)
+		if setWheelLevel then
+			-- Shows the wheel you're buying; once maxed, shows the one you're standing in.
+			setWheelLevel(if nextWheel then treadmill + 1 else treadmill)
+		end
 		local trailLevel = (player:GetAttribute("TrailLevel") or 0) :: number
 		local nextTrail = GameConfig.Trails[trailLevel + 1]
-		setButtonText(
+		setRow(
 			"Trail",
 			if nextTrail
-				then `{nextTrail.Name} x{nextTrail.Multiplier}\n${Ui.abbreviate(nextTrail.Cost)}`
-				else "Trail MAX"
+				then `Next: <font color="#78FF6E">{nextTrail.Name} x{nextTrail.Multiplier} speed</font>`
+				else "All trails owned",
+			if nextTrail then nextTrail.Cost else nil,
+			cash
 		)
 		local healthLevel = (player:GetAttribute("HealthLevel") or 0) :: number
 		local titan = if player:GetAttribute("Pass_Titan") then 2 else 1
-		setButtonText(
+		local maxedHealth = healthLevel >= GameConfig.Health.MaxLevel
+		setRow(
 			"Health",
-			if healthLevel >= GameConfig.Health.MaxLevel
-				then `Health MAX ({GameConfig.MaxHealthFor(healthLevel, titan)})`
-				else `Max Health {GameConfig.MaxHealthFor(healthLevel + 1, titan)}\n${Ui.abbreviate(
-					GameConfig.HealthCost(healthLevel)
-				)}`
+			if maxedHealth
+				then `{GameConfig.MaxHealthFor(healthLevel, titan)} health (max)`
+				else `{GameConfig.MaxHealthFor(healthLevel, titan)} → <font color="#78FF6E">{GameConfig.MaxHealthFor(
+					healthLevel + 1,
+					titan
+				)}</font> health`,
+			if maxedHealth then nil else GameConfig.HealthCost(healthLevel),
+			cash
 		)
 		-- How many upgrades you could buy right now (the badge on the Upgrades button)
 		local costs = {
 			if nextWheel then nextWheel.Cost else math.huge,
 			if nextTrail then nextTrail.Cost else math.huge,
 			if healthLevel < GameConfig.Health.MaxLevel then GameConfig.HealthCost(healthLevel) else math.huge,
-			if GameConfig.Walls[walls + 1] then GameConfig.Walls[walls + 1].Cost else math.huge,
 			if slots < GameConfig.MaxSlots then GameConfig.SlotCost(slots) else math.huge,
 		}
 		local affordable = 0
@@ -580,19 +719,21 @@ function Hud.Init()
 		end
 		upgradesBadge.Visible = affordable > 0
 		upgradesBadge.Text = tostring(affordable)
-		local nextWalls = GameConfig.Walls[walls + 1]
-		setButtonText(
-			"Walls",
-			if nextWalls
-				then `Upgrade Walls\n{Ui.abbreviate(nextWalls.GateHealth)} HP - ${Ui.abbreviate(nextWalls.Cost)}`
-				else "Walls MAX"
-		)
-		setButtonText(
+		local _ = walls -- (vault walls are gone: open vaults, nothing to upgrade)
+		setRow(
 			"Slot",
 			if slots >= GameConfig.MaxSlots
-				then "Vault MAX"
-				else `+1 Floor (10 plates)\n${Ui.abbreviate(GameConfig.SlotCost(slots))}`
+				then `{slots} plates (max)`
+				else `{slots} → <font color="#78FF6E">{slots + GameConfig.SlotsPerFloor}</font> plates`,
+			if slots >= GameConfig.MaxSlots then nil else GameConfig.SlotCost(slots),
+			cash
 		)
+		-- Floors 3 and 4 wait for rebirths (Steal a Brainrot style)
+		local floorRebirths = GameConfig.FloorRebirthsFor(slots)
+		if slots < GameConfig.MaxSlots and ((player:GetAttribute("Rebirths") or 0) :: number) < floorRebirths then
+			upgradeRows.Slot.Detail.Text = `Needs <font color="#C882FF">Rebirth {floorRebirths}</font> first`
+			SimpleUi.set(upgradeRows.Slot.Buy, `Rebirth {floorRebirths}`, Color3.fromRGB(160, 70, 235), false)
+		end
 	end
 	for _, attribute in
 		{
@@ -649,6 +790,37 @@ function Hud.Init()
 		end
 	end)
 
+	-- Thief Moon rewards: the case badge pops in mid-screen for a moment
+	Remotes.Effect.OnClientEvent:Connect(function(kind: string, rarity: any)
+		if kind ~= "MoonReward" then
+			return
+		end
+		local badge = new("ImageLabel", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.42),
+			Size = UDim2.fromOffset(150, 150),
+			BackgroundTransparency = 1,
+			Image = CartoonArt.CaseReward,
+			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = 20,
+		}, gui)
+		local caption = Ui.label({
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.fromScale(0.5, 1),
+			Size = UDim2.fromOffset(240, 34),
+			Text = `{rarity} CASE!`,
+			ZIndex = 21,
+		}, badge)
+		Ui.textStroke(caption, 2)
+		local scale = new("UIScale", { Scale = 0.2 }, badge)
+		TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = Ui.phoneScale() }):Play()
+		task.delay(1.8, function()
+			TweenService:Create(badge, TweenInfo.new(0.3), { ImageTransparency = 1 }):Play()
+			task.wait(0.3)
+			badge:Destroy()
+		end)
+	end)
+
 	-- Results banner (big, centre) for the few seconds between a round and the next intermission
 	local banner = Ui.label({
 		Font = Ui.SPOOKY,
@@ -666,7 +838,7 @@ function Hud.Init()
 		Position = UDim2.new(0.5, 0, 0, 178),
 		Size = UDim2.fromOffset(720, 70),
 		BackgroundTransparency = 1,
-	}, gui)
+	}, Ui.feedback) -- (above every menu: never hidden behind a window)
 	local announceQueue: { { Text: string, Color: Color3, Hype: number } } = {}
 	local announcing = false
 	local function nextAnnouncement()
@@ -837,13 +1009,13 @@ function Hud.Init()
 				elseif status:find("Waiting") then line("#FF5A5A", string.upper(status), "")
 				else line("#FF5A5A", "MURDER ROUND", `IN {Ui.clock(left)}`)
 			local line2 = if type(raidEnds) == "number"
-				then line("#FFB43C", "THIEF MOON", `ENDS IN {Ui.clock(raidEnds - now)}`)
+				then line("#FF4646", "BLOOD MOON", `ENDS IN {Ui.clock(raidEnds - now)}`)
 				elseif type(nextRaid) == "number" then line(
-					"#FFB43C",
-					"THIEF MOON",
+					"#FF4646",
+					"BLOOD MOON",
 					`IN {Ui.clock(nextRaid - now)}`
 				)
-				else line("#FFB43C", "THIEF MOON", "SOON")
+				else line("#FF4646", "BLOOD MOON", "SOON")
 			local texts = {
 				line1,
 				line2,
@@ -902,18 +1074,17 @@ function Hud.Init()
 		elseif type(raidEnds) == "number" then
 			-- The raid takes over the top of the screen, pulsing red
 			local pulse = (math.sin(os.clock() * 6) + 1) / 2
-			timerLabel.Text = `🌕 THIEF MOON  {Ui.clock(raidEnds - now)}`
+			timerLabel.Text = `ENDS IN {Ui.clock(raidEnds - now)}`
 			timerFrame.BackgroundColor3 = Color3.fromRGB(120, 20, 30):Lerp(Color3.fromRGB(200, 40, 50), pulse)
-			local revengeUntil = player:GetAttribute("RevengeUntil")
-			subLabel.Text = if type(revengeUntil) == "number" and revengeUntil > now
-				then `REVENGE! Their vault is open to you: {Ui.clock(revengeUntil - now)}`
-				else "Burglars are out · gates are weak · bounties x2!"
+			subLabel.Text = if player:GetAttribute("Carrying")
+				then "Get it home before someone knocks it loose!"
+				else "Biomes closed - steal a knife from another vault!"
 		elseif phase == "Results" or status:find("Waiting") then
 			timerLabel.Text = if phase == "Results" then "Round over!" else status
 			timerFrame.BackgroundColor3 = Ui.PANEL
 			subLabel.Text = ""
 		else
-			timerLabel.Text = `🔪 MURDER ROUND in {clock}`
+			timerLabel.Text = `MURDER ROUND in {clock}`
 			timerFrame.BackgroundColor3 = Ui.PANEL
 			local revengeUntil = player:GetAttribute("RevengeUntil")
 			subLabel.Text = if type(revengeUntil) == "number" and revengeUntil > now
@@ -921,21 +1092,26 @@ function Hud.Init()
 				elseif (endsAt - now) < 30 then "Get ready! Check your powers"
 				else ""
 		end
+		local moon = phase ~= "Round" and type(raidEnds) == "number"
+		moonTitle.Visible = moon
+		timerLabel.Position = UDim2.fromScale(if moon then 0.5 else 0, 0)
+		timerLabel.Size = UDim2.fromScale(if moon then 0.5 else 1, 1)
 		banner.Visible = phase == "Results" and not Ui.menuOpen()
 		if phase == "Results" then
 			banner.Text = status
 		end
-		upgradesButton.Visible = not inRound and not Ui.menuOpen() and gui:GetAttribute("KnifeGestureActive") ~= true
+		-- (not hidden while the knife is held: they never overlap, and taps made it flicker)
+		upgradesButton.Visible = Ui.inHub() -- (stays with a menu open: tap it to switch menus)
 		stats.Visible = not Ui.menuOpen()
-		timers.Visible = not inRound and not Ui.menuOpen()
+		timers.Visible = Ui.inHub()
 
 		-- Event pills
 		local nextRaid = ReplicatedStorage:GetAttribute("NextRaidAt")
 		-- (only once it's close; the top timer already shows the next murder round)
 		raidPill.Visible = type(raidEnds) == "number" or (type(nextRaid) == "number" and nextRaid - now < 60)
 		raidText.Text = if type(raidEnds) == "number"
-			then `THIEF MOON {Ui.clock(raidEnds - now)}`
-			elseif type(nextRaid) == "number" then `Thief Moon in {Ui.clock(nextRaid - now)}`
+			then `BLOOD MOON {Ui.clock(raidEnds - now)}`
+			elseif type(nextRaid) == "number" then `Blood Moon in {Ui.clock(nextRaid - now)}`
 			else ""
 		raidText.TextColor3 = if type(raidEnds) == "number" then Color3.fromRGB(255, 90, 90) else Color3.new(1, 1, 1)
 		roundText.Text = if phase == "Round"
@@ -982,14 +1158,17 @@ function Hud.Init()
 		Position = UDim2.new(0.5, 0, 1, -230), -- above the power bar and the Energy bar
 		Size = UDim2.fromOffset(560, 220),
 		BackgroundTransparency = 1,
-	}, gui)
+		-- On the Feedback layer, above every menu and screen: a toast (what you bought, why you
+		-- can't) must never be hidden behind the window you clicked in
+		ZIndex = 60,
+	}, Ui.feedback)
 	new("UIListLayout", {
 		Padding = UDim.new(0, 6),
 		VerticalAlignment = Enum.VerticalAlignment.Bottom,
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
 	}, toasts)
 
-	Remotes.Notify.OnClientEvent:Connect(function(text: string, kind: string)
+	local function toast(text: string, kind: string)
 		for _, child in toasts:GetChildren() do
 			if child:IsA("TextLabel") and child.Text == text then
 				return -- already on screen
@@ -1031,7 +1210,10 @@ function Hud.Init()
 			local oldest = table.remove(labels, 1) :: TextLabel
 			oldest:Destroy()
 		end
-	end)
+	end
+	Remotes.Notify.OnClientEvent:Connect(toast)
+	-- (client-side answers use the same toast: a click must always say something)
+	Ui.Toast = toast
 
 	-- Classic full-screen role reveal ----------------------------------------------------------
 	local reveal = new("Frame", {
@@ -1066,14 +1248,51 @@ function Hud.Init()
 		ZIndex = 21,
 	}, reveal)
 
+	-- The Murderer's own knife, big, above the reveal
+	local knifeArt = new("ImageLabel", {
+		Name = "MurdererKnife",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 0.5, -96),
+		Size = UDim2.fromOffset(150, 150),
+		BackgroundTransparency = 1,
+		ScaleType = Enum.ScaleType.Fit,
+		Visible = false,
+		ZIndex = 20,
+	}, reveal)
+	if Ui.Phone then
+		new("UIScale", { Scale = Ui.phoneScale() }, knifeArt)
+	end
+	reveal:GetPropertyChangedSignal("Visible"):Connect(function()
+		if not reveal.Visible then
+			knifeArt.Visible = false
+		end
+	end)
 	Remotes.Role.OnClientEvent:Connect(function(role: string, disguise: string?)
 		nameLabel.Text = `You are {disguise or player.DisplayName}`
 		if role == "Murderer" then
 			roleLabel.Text = "THE MURDERER"
 			roleLabel.TextColor3 = Color3.fromRGB(255, 50, 60)
+			-- Make the link obvious: this is the knife from YOUR vault, with its power
+			local equipped = player:GetAttribute("Equipped")
+			local parsed = if type(equipped) == "string" and equipped ~= "" then Items.Parse(equipped) else nil
+			local perk = parsed and parsed.Perk and GameConfig.Perks[parsed.Perk]
+			hintLabel.Text = if parsed
+				then `You're fighting with YOUR {Items.DisplayName(equipped :: string)} from your vault{if perk
+					then ` - power: {perk.DisplayName}!`
+					else "!"} It arrives in {GameConfig.MurdererGrace}s.`
+				else `Blend in - your knife arrives in {GameConfig.MurdererGrace}s, and pulling it out shows everyone!`
+			knifeArt.Image = if parsed
+				then (VoxelUi.Knives[parsed.Knife.Name] or KnifeIcons[parsed.Knife.Name] or "")
+				else ""
+			knifeArt.Visible = parsed ~= nil
+		elseif role == "Sheriff" then
+			knifeArt.Visible = false
+			roleLabel.Text = "THE SHERIFF"
+			roleLabel.TextColor3 = Color3.fromRGB(90, 170, 255)
 			hintLabel.Text =
-				`Your chance was {player:GetAttribute("MurdererChance") or "?"}%. Blend in - your knife arrives in {GameConfig.MurdererGrace}s, and pulling it out shows everyone!`
+				"You have the Revolver! Find the Murderer and shoot them - but hit an innocent and you're out."
 		else
+			knifeArt.Visible = false
 			roleLabel.Text = "INNOCENT"
 			roleLabel.TextColor3 = Color3.fromRGB(90, 230, 120)
 			hintLabel.Text = "Survive. Grab coins to charge your powers. Find the Revolver!"
@@ -1110,8 +1329,14 @@ function Hud.Init()
 		end
 	end
 	-- Steal An Egg readout: a big icon and a big chunky number per row, Speed over Cash
-	local speedArt = Ui.art(stats, "Speed")
-	local cashArt = Ui.art(stats, "Cash")
+	local speedArt = Ui.art(stats, "Speed", { Image = CartoonArt.Speed }) -- the + badge is baked in
+	local cashArt = Ui.art(stats, "Cash", { Image = CartoonArt.Cash })
+	local heatArt = Ui.art(stats, "Heat", { Image = CartoonArt.Heat })
+	heatLabel.Visible = true
+	heatLabel.Font = Enum.Font.LuckiestGuy
+	heatLabel.TextScaled = false
+	heatLabel.TextXAlignment = Enum.TextXAlignment.Left
+	heatLabel.TextYAlignment = Enum.TextYAlignment.Center
 	for _, text in { speedLabel, cashLabel } do
 		text.TextScaled = false
 		text.Font = Enum.Font.LuckiestGuy
@@ -1131,16 +1356,26 @@ function Hud.Init()
 			local _, bounds = Ui.bounds()
 			local stick = if bounds.Y < 500 then 70 else 120
 			-- as big as the screen allows (Steal An Egg keeps them huge on phones too)
-			size = math.clamp(math.floor(bounds.Y * 0.055), 22, 42)
-			icon, row = math.floor(size * 1.1), math.floor(size * 1.25)
+			-- Steal An Egg keeps these small and tucked in: two short rows, no Heat row on phones
+			size = math.clamp(math.floor(bounds.Y * 0.085), 26, 44) -- big and chunky, like theirs
+			icon, row = math.floor(size * 1.1), math.floor(size * 1.2)
 			x = 25 + stick + 12 -- just right of the thumbstick
 		end
-		stats.Position, stats.Size = UDim2.new(0, x, 1, -12), UDim2.fromOffset(icon + 8 + size * 6, row * 2)
-		speedArt.Position, speedArt.Size = UDim2.fromOffset(0, (row - icon) / 2), UDim2.fromOffset(icon, icon)
-		cashArt.Position, cashArt.Size = UDim2.fromOffset(0, row + (row - icon) / 2), UDim2.fromOffset(icon, icon)
-		speedLabel.Position, speedLabel.Size = UDim2.fromOffset(icon + 8, 0), UDim2.fromOffset(size * 6, row)
-		cashLabel.Position, cashLabel.Size = UDim2.fromOffset(icon + 8, row), UDim2.fromOffset(size * 6, row)
+		heatArt.Visible, heatLabel.Visible = not Ui.Phone, not Ui.Phone
+		-- a smaller Heat row on top (not on phones), then Speed, then Cash
+		local small = if Ui.Phone then 0 else math.floor(row * 0.7)
+		local smallIcon = math.floor(icon * 0.7)
+		stats.Position, stats.Size = UDim2.new(0, x, 1, -12), UDim2.fromOffset(icon + 8 + size * 6, small + row * 2)
+		heatArt.Position, heatArt.Size =
+			UDim2.fromOffset((icon - smallIcon) / 2, (small - smallIcon) / 2), UDim2.fromOffset(smallIcon, smallIcon)
+		speedArt.Position, speedArt.Size = UDim2.fromOffset(0, small + (row - icon) / 2), UDim2.fromOffset(icon, icon)
+		cashArt.Position, cashArt.Size =
+			UDim2.fromOffset(0, small + row + (row - icon) / 2), UDim2.fromOffset(icon, icon)
+		heatLabel.Position, heatLabel.Size = UDim2.fromOffset(icon + 8, 0), UDim2.fromOffset(size * 6, small)
+		speedLabel.Position, speedLabel.Size = UDim2.fromOffset(icon + 8, small), UDim2.fromOffset(size * 6, row)
+		cashLabel.Position, cashLabel.Size = UDim2.fromOffset(icon + 8, small + row), UDim2.fromOffset(size * 6, row)
 		speedLabel.TextSize, cashLabel.TextSize = math.floor(size * 0.9), size
+		heatLabel.TextSize = math.floor(size * 0.6)
 	end
 	Ui.Layout.Changed:Connect(placeStats)
 	placeStats()
@@ -1161,7 +1396,7 @@ function Hud.Init()
 		end
 	end)
 	energyFrame.AnchorPoint, energyFrame.Position, energyFrame.Size =
-		Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 124), UDim2.fromOffset(180, 20)
+		Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -38), UDim2.fromOffset(180, 20)
 	energyFrame.AutomaticSize = Enum.AutomaticSize.None
 	for _, child in energyFrame:GetChildren() do
 		if child:IsA("TextLabel") then
@@ -1177,7 +1412,7 @@ function Hud.Init()
 		end
 	end
 	healthFrame.AnchorPoint, healthFrame.Position, healthFrame.Size =
-		Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 148), UDim2.fromOffset(180, 20)
+		Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -12), UDim2.fromOffset(180, 20)
 	for _, text in { healthText, chanceLabel, subLabel } do
 		text.TextScaled = false
 		text.TextSize = if text == chanceLabel then 17 else 14
@@ -1191,11 +1426,15 @@ function Hud.Init()
 			local right = math.min(center + 90, Ui.Layout.knifePosition().X - 12)
 			local left = if bounds.Y < 420 then 256 else 136
 			local healthWidth = math.min(180, math.max(80, right - left))
-			healthFrame.Position = UDim2.fromOffset(math.min(center, right - healthWidth / 2), 148)
+			-- bottom centre, clear of the thumbstick and the knife / jump buttons
+			healthFrame.Position = UDim2.new(0, math.min(center, right - healthWidth / 2), 1, -12)
+			energyFrame.Position = UDim2.new(0, math.min(center, right - healthWidth / 2), 1, -38)
 			healthFrame.Size = UDim2.fromOffset(healthWidth, 20)
 		end
-		timerFrame.Position, timerFrame.Size = UDim2.fromOffset(center, 0), UDim2.fromOffset(width, 44)
-		chanceLabel.Position, chanceLabel.Size = UDim2.fromOffset(center, 44), UDim2.fromOffset(width, 22)
+		-- The Murderer chance sits above the timer, so the timer is the lowest line up there and the
+		-- view of the world (boss stashes, knife labels) stays clear
+		chanceLabel.Position, chanceLabel.Size = UDim2.fromOffset(center, 0), UDim2.fromOffset(width, 20)
+		timerFrame.Position, timerFrame.Size = UDim2.fromOffset(center, 18), UDim2.fromOffset(width, 40)
 		subLabel.Position, subLabel.Size = UDim2.fromOffset(center, 68), UDim2.fromOffset(width, 20)
 		subLabel.TextWrapped = false
 		eventLabel.Position, eventLabel.Size = UDim2.fromOffset(center, 90), UDim2.fromOffset(width, 20)
@@ -1205,9 +1444,12 @@ function Hud.Init()
 		if Ui.Phone then
 			-- Between the left buttons and the right ones, under the timer: never mid-screen
 			local lane = math.max(220, math.min(420, bounds.X - 2 * 150))
-			announceHolder.Position, announceHolder.Size = UDim2.fromOffset(center, 66), UDim2.fromOffset(lane, 30)
+			-- the tutorial line sits at 92-126: everything else goes under it while it's up
+			local below = if Ui.gui:GetAttribute("TutorialBar") == true then 44 else 0
+			announceHolder.Position, announceHolder.Size =
+				UDim2.fromOffset(center, 66 + below), UDim2.fromOffset(lane, 30)
 			toasts.AnchorPoint = Vector2.new(0.5, 0)
-			toasts.Position, toasts.Size = UDim2.fromOffset(center, 100), UDim2.fromOffset(lane, 70)
+			toasts.Position, toasts.Size = UDim2.fromOffset(center, 100 + below), UDim2.fromOffset(lane, 70)
 			local list = toasts:FindFirstChildOfClass("UIListLayout")
 			if list then
 				list.VerticalAlignment = Enum.VerticalAlignment.Top
@@ -1233,10 +1475,10 @@ function Hud.Init()
 		end
 	end
 	Ui.Layout.Changed:Connect(layout)
+	Ui.gui:GetAttributeChangedSignal("TutorialBar"):Connect(layout)
 	layout()
 	Ui.Menu.Changed:Connect(function()
-		toasts.Visible = not Ui.menuOpen()
-		announceHolder.Visible = not Ui.menuOpen()
+		-- (toasts and announcements stay up with a menu open: they're how a click answers you)
 		if Ui.menuOpen() then
 			healthFrame.Visible = false
 			energyFrame.Visible = false

@@ -2,7 +2,7 @@
 -- Joystick visuals with native touch-pan sensitivity (Roblox CameraInput).
 -- Camera motion follows finger movement, never a fixed time-based turn rate.
 local Aim = {}
-Aim.ButtonSize = 160
+Aim.ButtonSize = 92 -- only a touch on the stick itself grabs it
 function Aim.Axis(pointer: Vector2, origin: Vector2): Vector2
 	local offset = (pointer - origin) / 48
 	return if offset.Magnitude > 1 then offset.Unit else offset

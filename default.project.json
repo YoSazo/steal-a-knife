@@ -16,6 +16,11 @@
       }
     },
     "StarterPlayer": {
+      "$properties": {
+        "EnableMouseLockOption": false,
+        "DevTouchCameraMovementMode": "Classic",
+        "DevComputerCameraMovementMode": "Classic"
+      },
       "StarterPlayerScripts": {
         "Client": {
           "$path": "src/client"

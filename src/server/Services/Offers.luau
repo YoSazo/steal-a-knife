@@ -12,6 +12,7 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
 local Net = require(script.Parent.Parent.Remotes)
+local Analytics = require(script.Parent.Analytics)
 
 local Offers = {}
 
@@ -53,6 +54,7 @@ function Offers.Show(player: Player, key: string, reason: string, early: boolean
 	lastAny[player] = now
 	byKey[key] = now
 	Net.Remotes.Offer:FireClient(player, key, reason)
+	Analytics.Track(player, "offer.shown", { key = key, reason = Analytics.Normalize(reason) })
 end
 
 -- Short on cash: offer the smallest cash pack that covers the gap
@@ -68,6 +70,19 @@ function Offers.Cash(player: Player, short: number, income: number)
 		end
 	end
 	Offers.Show(player, "CashBig", "Need a big boost? Four hours of income, right now.")
+end
+
+-- Show an offer once they're out of the round (it happened in a round, but offers never show
+-- there): waits up to `within` seconds for InRound to go off, plus a moment to read the results
+function Offers.Later(player: Player, key: string, reason: string, within: number?)
+	task.spawn(function()
+		local deadline = os.clock() + (within or 240)
+		while player.Parent and player:GetAttribute("InRound") and os.clock() < deadline do
+			task.wait(1)
+		end
+		task.wait(6)
+		Offers.Show(player, key, reason)
+	end)
 end
 
 Players.PlayerRemoving:Connect(function(player)

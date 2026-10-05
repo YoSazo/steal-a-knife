@@ -24,6 +24,11 @@ local DataService = require(script.Parent.DataService)
 local Offers = require(script.Parent.Offers)
 local RaidService = require(script.Parent.RaidService)
 local StealService = require(script.Parent.StealService)
+local Gamble = require(script.Parent.Gamble)
+local GuardService = require(script.Parent.GuardService)
+local Fuel = require(script.Parent.Fuel)
+local Rewards = require(script.Parent.Rewards)
+local Analytics = require(script.Parent.Analytics)
 
 local MonetizationService = {}
 
@@ -82,10 +87,15 @@ local function grantPass(player: Player, key: string, announce: boolean)
 	end
 	player:SetAttribute("Pass_" .. key, true)
 	local pass = Monetization.PassByKey[key]
-	if key == "Fortified" then
-		local base = BaseService.GetBase(player)
-		if base then
-			BaseService.RefreshWalls(base)
+	if key == "ExtraFloor" then
+		-- One extra floor, once ever (passes are re-checked every visit)
+		local profile = DataService.Get(player)
+		if profile and not table.find(profile.Bought, "ExtraFloorPass") then
+			DataService.Update(player, function(p)
+				table.insert(p.Bought, "ExtraFloorPass")
+				p.Slots = math.min(GameConfig.MaxSlots, p.Slots + GameConfig.SlotsPerFloor)
+			end)
+			BaseService.RefreshRack(player)
 		end
 	elseif key == "DoubleCash" or key == "VIP" then
 		BaseService.RefreshRack(player) -- income readouts
@@ -111,6 +121,7 @@ local function checkPasses(player: Player)
 			end
 		end
 	end
+	player:SetAttribute("PassesChecked", true) -- Rewards waits for this before offline earnings
 end
 
 -- Products -----------------------------------------------------------------------------------
@@ -125,7 +136,8 @@ local function caseValue(rarity: string): number
 end
 
 -- Gives what a product contains. Returns false if it can't be given right now (try again later).
-local function grantProduct(player: Player, product: Monetization.Product): boolean
+local grantProduct: (Player, Monetization.Product) -> boolean
+grantProduct = function(player: Player, product: Monetization.Product): boolean
 	local profile = DataService.Get(player)
 	if not profile then
 		return false
@@ -134,14 +146,35 @@ local function grantProduct(player: Player, product: Monetization.Product): bool
 	if product.OneTime and table.find(profile.Bought, key) then
 		-- Bought twice somehow: never lose their Robux, pay out the cash part twice instead
 		local cash = if product.Cash then GameConfig.Pay(product.Cash, BaseService.RackIncome(player)) else 0
-		DataService.AddCash(player, cash * 2 + (if product.Case then caseValue(product.Case) else 0))
+		DataService.AddCash(player, cash * 2 + (if product.Case then caseValue(product.Case) else 0), "robux_product")
 		return true
 	end
 
+	-- A gift: the chosen player gets the real product (the buyer, if they've left)
+	if product.Gift then
+		local inner = Monetization.ProductByKey[product.Gift]
+		local target = Gamble.GiftTarget(player) or player
+		if inner and grantProduct(target, inner) then
+			if target ~= player then
+				Net.Notify(player, `You gifted {inner.Name} to {target.DisplayName}!`, "good")
+				Net.Notify(target, `{player.DisplayName} gifted you {inner.Name}!`, "good")
+				Net.Announce(`{player.DisplayName} gifted {target.DisplayName} a {inner.Name}!`, inner.Color, 2)
+			end
+			return true
+		end
+		return false
+	end
+	-- Paid random items aren't allowed where this player lives: never open one (the client hides
+	-- them; this is the backstop). They get the case's cash value instead.
+	if Monetization.IsPaidRandom(product) and player:GetAttribute("PaidRandomRestricted") == true then
+		DataService.AddCash(player, caseValue(product.Case or product.LuckyBlock or "Rare"), "robux_case_value")
+		Net.Notify(player, "Cases aren't available where you are - here's cash instead.", "info")
+		return true
+	end
 	local got: { string } = {}
 	if product.Cash then
 		local cash = GameConfig.Pay(product.Cash, BaseService.RackIncome(player))
-		DataService.AddCash(player, cash)
+		DataService.AddCash(player, cash, "robux_cash")
 		Net.Remotes.Effect:FireClient(player, "CashBurst", nil, cash)
 		table.insert(got, `{Format.Cash(cash)}`)
 	end
@@ -156,6 +189,31 @@ local function grantProduct(player: Player, product: Monetization.Product): bool
 		StealService.OpenCase(player, product.Case, true)
 		table.insert(got, `a {product.Case} Case`)
 	end
+	if product.Spins then
+		Gamble.AddSpins(player, product.Spins)
+		table.insert(got, `{product.Spins} wheel spins`)
+	end
+	if product.Luck then
+		Gamble.AddLuck(player, product.Luck)
+		table.insert(got, `{product.Luck // 60} min of 2x Luck`)
+	end
+	if product.LuckyBlock then
+		StealService.OpenCase(player, product.LuckyBlock, true, true)
+		table.insert(got, `a {product.LuckyBlock} Lucky Block`)
+	end
+	if product.Boost then
+		local boost = product.Boost
+		DataService.AddBoost(player, boost.Name, boost.Seconds)
+		if boost.Name == "Speed" then
+			BaseService.RefreshWalkSpeed(player)
+		end
+		table.insert(got, `{boost.Seconds // 60} min of {product.Name:match("^[^%(]+") or boost.Name}`)
+	end
+	if product.Charge then
+		local charge = product.Charge
+		DataService.AddCharge(player, charge.Name, charge.Count)
+		table.insert(got, product.Name)
+	end
 	if key == "Mount" then
 		if profile.Slots < GameConfig.MaxSlots then
 			DataService.Update(player, function(p)
@@ -166,7 +224,7 @@ local function grantProduct(player: Player, product: Monetization.Product): bool
 		else
 			-- Already maxed: their Robux turn into the cash a mount would have cost
 			local value = GameConfig.SlotCost(profile.Slots)
-			DataService.AddCash(player, value)
+			DataService.AddCash(player, value, "robux_product")
 			table.insert(got, `{Format.Cash(value)} (your vault was already maxed)`)
 		end
 	elseif key == "HealthBoost" then
@@ -184,12 +242,9 @@ local function grantProduct(player: Player, product: Monetization.Product): bool
 			refund += GameConfig.HealthCost(level)
 		end
 		if refund > 0 then
-			DataService.AddCash(player, refund)
+			DataService.AddCash(player, refund, "robux_product")
 			table.insert(got, `{Format.Cash(refund)} (health was maxed)`)
 		end
-	elseif key == "Repair" then
-		RaidService.RepairFull(player)
-		table.insert(got, "a fully repaired gate")
 	elseif key == "ServerLuck" then
 		local config = Monetization.ServerLuck
 		local now = workspace:GetServerTimeNow()
@@ -208,9 +263,44 @@ local function grantProduct(player: Player, product: Monetization.Product): bool
 			p.NextFreeChest = 0
 		end)
 		table.insert(got, "a full free chest")
+	elseif key == "CollectSession" then
+		player:SetAttribute("SessionAutoCollect", true) -- gone when they leave (never saved)
+		table.insert(got, "Auto Collect until you leave")
+	elseif key == "HeatRefill" then
+		Fuel.AddHeat(player, GameConfig.Fuel.MaxHeat - profile.Heat, "Full Heat!")
+		table.insert(got, "full Heat")
+	elseif key == "BossRestock" then
+		local boss = GuardService.RestockNear(player)
+		if boss then
+			Net.Announce(`🔄 {player.DisplayName} restocked {boss}'s wall!`, Color3.fromRGB(255, 140, 90), 2)
+			table.insert(got, `{boss}'s wall restocked`)
+		else
+			-- Nothing was waiting there: a Mythic Lucky Block's worth of cash instead of nothing
+			local value = GameConfig.Pay({ Min = 5000, Seconds = 600 }, BaseService.RackIncome(player))
+			DataService.AddCash(player, value, "robux_product")
+			table.insert(got, `{Format.Cash(value)} (that wall was already full)`)
+		end
+	elseif key == "OfflineDouble" then
+		local amount = profile.LastOffline
+		if amount <= 0 then
+			amount = GameConfig.Pay({ Min = 1000, Seconds = 1800 }, BaseService.RackIncome(player))
+		end
+		DataService.AddCash(player, amount, "robux_product")
+		DataService.Update(player, function(p)
+			p.LastOffline = 0
+		end)
+		Net.Remotes.Effect:FireClient(player, "CashBurst", nil, amount)
+		table.insert(got, Format.Cash(amount))
+	elseif key == "StreakSave" then
+		if Rewards.RestoreStreak(player) then
+			table.insert(got, "your daily streak back")
+		else
+			Gamble.AddSpins(player, 3) -- nothing to restore: never lose their Robux
+			table.insert(got, "3 wheel spins (your streak was fine)")
+		end
 	elseif key == "BloodMoon" then
 		RaidService.Summon(player)
-		table.insert(got, "the Thief Moon")
+		table.insert(got, "the Blood Moon")
 	end
 	if product.OneTime then
 		DataService.Update(player, function(p)
@@ -250,6 +340,10 @@ local function processReceipt(info: { [string]: any }): Enum.ProductPurchaseDeci
 			table.remove(p.Receipts, 1)
 		end
 	end)
+	local robux = tonumber(info.CurrencySpent) or product.Price or 0
+	Analytics.Robux(player, robux)
+	Analytics.Track(player, "purchase.product", { key = product.Key, robux = robux, price = product.Price })
+	Analytics.Milestone(player, "first_purchase", { key = product.Key, robux = robux })
 	if not DataService.SaveNow(player) then
 		-- Roblox will retry; the PurchaseId is already recorded, so it won't be granted twice
 		return Enum.ProductPurchaseDecision.NotProcessedYet
@@ -267,6 +361,7 @@ local function storeTest(player: Player, kind: unknown, key: unknown): boolean
 		return false
 	end
 	lastTest[player] = os.clock()
+	Analytics.Track(player, "purchase.studio_test", { kind = kind, key = key })
 	if kind == "Pass" and Monetization.PassByKey[key] then
 		grantPass(player, key, true)
 		return true
@@ -283,6 +378,9 @@ function MonetizationService.Init()
 			local pass = passById[passId]
 			if purchased and pass then
 				grantPass(player, pass.Key, true)
+				Analytics.Robux(player, pass.Price)
+				Analytics.Track(player, "purchase.pass", { key = pass.Key, robux = pass.Price })
+				Analytics.Milestone(player, "first_purchase", { key = pass.Key, robux = pass.Price })
 			end
 		end
 	)
@@ -290,6 +388,14 @@ function MonetizationService.Init()
 
 	local function setup(player: Player)
 		player:SetAttribute("JoinedAt", os.time())
+		-- Roblox policy: paid random items (Robux cases, Lucky Blocks) are off where restricted.
+		-- If the check fails we assume restricted (the safe side).
+		task.spawn(function()
+			local ok, info = pcall(function()
+				return game:GetService("PolicyService"):GetPolicyInfoForPlayerAsync(player)
+			end)
+			player:SetAttribute("PaidRandomRestricted", not ok or (info :: any).ArePaidRandomItemsRestricted == true)
+		end)
 		task.spawn(checkPasses, player)
 		player.CharacterAdded:Connect(function()
 			task.wait(0.5)

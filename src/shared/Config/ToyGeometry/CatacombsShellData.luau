@@ -1,0 +1,47 @@
+--!strict
+-- Zone 4 entrance is world (0,0,660); block offsets are local.
+return {
+	Version = 1,
+	Name = "CatacombsShell",
+	BiomeIndex = 4,
+	Rarity = "Legendary",
+	Boss = "Leo",
+	BossTitle = "The Collector",
+	BossWear = { "Monocle" },
+	Origin = { 0, 0, 660 },
+	LocalOrigin = { 0, 0, 0 },
+	FrontAxis = "-Z; +Z goes deeper",
+	PartCount = 1452,
+	LowPartCount = 727,
+	Bounds = { MinX = -80, MaxX = 80, MinZ = 0, MaxZ = 220, WallHeight = 120, FloorTop = 0.2 },
+	ClearLane = { MinX = -56, MaxX = 56, OverheadClearance = 70 },
+	ReservedLair = {
+		LocalCenter = { 73, 0, 132 },
+		WorldCenter = { 73, 0, 792 },
+		ClearX = { 62, 80 },
+		ClearZ = {
+			105,
+			159,
+		},
+		ClearHeight = 32,
+	},
+	Seam = {
+		Previous = "CryptsShell",
+		PreviousExitWorldZ = 660,
+		EntranceOverlap = 3,
+		ExactXYProfile = true,
+		ExitCenter = 214,
+		PreviousExitPrefix = "CryptExit_",
+		ExitProfilePrefix = "CatacombExit_",
+		ExitAccentPrefix = "ExitRelicCrest",
+		PreviousExitSha256 = "94573cb5d129da24f28f5b447581aa003ebe256425edadc866a64c9107f9c29b",
+	},
+	Groups = {
+		LeftWall = require(script.Parent.CatacombsShell.LeftWall),
+		RightWall = require(script.Parent.CatacombsShell.RightWall),
+		Entrance = require(script.Parent.CatacombsShell.Entrance),
+		Exit = require(script.Parent.CatacombsShell.Exit),
+		Treasury = require(script.Parent.CatacombsShell.Treasury),
+		Floor = require(script.Parent.CatacombsShell.Floor),
+	},
+}

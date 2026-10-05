@@ -583,5 +583,50 @@
     "assetId": "125210038281005",
     "file": "blender/textures/aura/ember_4x4.png",
     "uploaded": "2026-10-03 02:00"
+  },
+  "BossTitle_Frank": {
+    "assetId": "75041380769521",
+    "file": "assets/boss-titles/models/Frank.fbx",
+    "uploaded": "2026-10-03 22:04"
+  },
+  "BossTitle_Ivy": {
+    "assetId": "98667990775531",
+    "file": "assets/boss-titles/models/Ivy.fbx",
+    "uploaded": "2026-10-03 22:05"
+  },
+  "BossTitle_Sam": {
+    "assetId": "138085076321283",
+    "file": "assets/boss-titles/models/Sam.fbx",
+    "uploaded": "2026-10-03 22:05"
+  },
+  "BossTitle_Leo": {
+    "assetId": "110092731020376",
+    "file": "assets/boss-titles/models/Leo.fbx",
+    "uploaded": "2026-10-03 22:05"
+  },
+  "BossTitle_Ruby": {
+    "assetId": "116984942690919",
+    "file": "assets/boss-titles/models/Ruby.fbx",
+    "uploaded": "2026-10-03 22:06"
+  },
+  "BossTitle_Kate": {
+    "assetId": "110318448250925",
+    "file": "assets/boss-titles/models/Kate.fbx",
+    "uploaded": "2026-10-03 22:06"
+  },
+  "BossTitle_Zoe": {
+    "assetId": "93067078660034",
+    "file": "assets/boss-titles/models/Zoe.fbx",
+    "uploaded": "2026-10-03 22:06"
+  },
+  "BossTitle_Nick": {
+    "assetId": "131017597540770",
+    "file": "assets/boss-titles/models/Nick.fbx",
+    "uploaded": "2026-10-03 22:06"
+  },
+  "BossTitle_VertexProbe": {
+    "assetId": "111222461252498",
+    "file": "assets/boss-titles/models/vertex-probe.fbx",
+    "uploaded": "2026-10-03 21:38"
   }
 }
