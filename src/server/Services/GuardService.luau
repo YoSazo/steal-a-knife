@@ -785,10 +785,13 @@ local function snatch(guard: Guard, thief: Player)
 	-- Your very first knife always makes it home: the boss still chases (the thrill), but trips
 	-- at the last second. 58% of tutorial steals were caught, and every new player who never banked
 	-- a knife quit, while everyone who did stayed 5-18 min.
+	-- (and then gives up: a 1.5 s stun had them caught-and-saved ~3 times a run, and 23 of 34 such
+	-- players quit mid-carry)
 	if profileNow and not profileNow.TutorialDone and #profileNow.Knives == 0 then
-		GuardService.Stun(guard, 1.5)
 		Net.Notify(thief, `{guard.Boss.Name} tripped! RUN HOME!`, "good")
 		Analytics.Track(thief, "boss.first_steal_saved", { zone = guard.Boss.Index })
+		Net.Remotes.Effect:FireAllClients("Smoke", guard.Position)
+		stopChase(guard, false)
 		return
 	end
 	local zoneNow = GameConfig.Zones[guard.Boss.Index]
