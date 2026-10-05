@@ -264,11 +264,22 @@ local function aliveCount(round: Round): number
 	return n
 end
 
+-- When each player joined this server: nobody is pulled into a round in their first
+-- GameConfig.RoundJoinGrace seconds (an ad player was dragged in 16 s after joining, died, left)
+local joinedAt: { [Player]: number } = {}
+Players.PlayerAdded:Connect(function(player)
+	joinedAt[player] = os.clock()
+end)
+Players.PlayerRemoving:Connect(function(player)
+	joinedAt[player] = nil
+end)
+
 local function eligiblePlayers(): { Player }
 	local list = {}
 	for _, player in Players:GetPlayers() do
 		local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-		if DataService.Get(player) and humanoid and humanoid.Health > 0 then
+		local fresh = os.clock() - (joinedAt[player] or -math.huge) < GameConfig.RoundJoinGrace
+		if DataService.Get(player) and humanoid and humanoid.Health > 0 and not fresh then
 			table.insert(list, player)
 		end
 	end

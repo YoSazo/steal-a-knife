@@ -489,6 +489,7 @@ local GameConfig = {
 	IntermissionTime = 360,
 	NewcomerRoundIn = 100, -- a first-time player joining pulls the next round in to at most this (s)
 	NewcomerMinBreak = 240, -- ...but never to a hub break shorter than this (s) for everyone else
+	RoundJoinGrace = 90, -- nobody is pulled into a round in their first this many seconds in a server
 	RoundTime = 150,
 	ResultsTime = 8,
 	MurdererGrace = 10, -- seconds before the Murderer gets their knife (same as the classic)
