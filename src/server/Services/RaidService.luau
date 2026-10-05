@@ -22,6 +22,8 @@ local PowerService = require(script.Parent.PowerService)
 local StealService = require(script.Parent.StealService)
 local ServerEvents = require(script.Parent.ServerEvents)
 local Analytics = require(script.Parent.Analytics)
+local Ragdoll = require(script.Parent.Ragdoll)
+local Targets = require(script.Parent.Targets)
 
 local RaidService = {}
 
@@ -31,6 +33,7 @@ local raiding = false
 local raidEndsAt = 0
 local moonWall: BasePart? = nil
 local stolenFrom: { [Player]: number } = {} -- knives taken from each vault this moon
+local knockedAt: { [Player]: number } = {} -- last Blood Moon knockdown (a short immunity after)
 
 local function now(): number
 	return workspace:GetServerTimeNow()
@@ -56,6 +59,43 @@ end
 -- Players never fight each other with powers (powers are a murder-round thing now)
 function RaidService.CanAttackPlayer(_attacker: Player, _victim: Player): boolean
 	return false
+end
+
+-- Blood Moon knockdowns: while the moon is up, a hub knife hit on ANY player sends them tumbling
+-- (ragdoll + fling) - never a kill, no knife lost (carriers are StealService's: they drop it too).
+-- Not inside their own vault, not mid-tumble, not twice within KNOCK_IMMUNITY seconds.
+local KNOCK_IMMUNITY = 3
+local function canKnock(attacker: Player, victim: Player): boolean
+	if
+		not raiding
+		or attacker == victim
+		or attacker:GetAttribute("InRound")
+		or victim:GetAttribute("InRound")
+		or victim:GetAttribute("Tumbling")
+		or StealService.IsCarrying(victim)
+		or now() - (knockedAt[victim] or -math.huge) < KNOCK_IMMUNITY
+	then
+		return false
+	end
+	local root, attackerRoot = rootOf(victim), rootOf(attacker)
+	if not root or not attackerRoot then
+		return false
+	end
+	local _, owner = BaseService.BaseAt(root.Position)
+	return owner ~= victim -- safe at home
+end
+
+local function knock(attacker: Player, victim: Player, from: Vector3)
+	local root = rootOf(victim)
+	if not root or not canKnock(attacker, victim) then
+		return
+	end
+	knockedAt[victim] = now()
+	local away = (root.Position - from) * Vector3.new(1, 0, 1)
+	local push = (if away.Magnitude > 0.1 then away.Unit else -root.CFrame.LookVector) * 55 + Vector3.new(0, 45, 0)
+	Ragdoll.Tumble(victim, push, 1.3)
+	Net.Remotes.Effect:FireAllClients("Hit", root.Position)
+	Analytics.Track(attacker, "pvp.knockdown", { victim_new = DataService.IsNewPlayer(victim) })
 end
 
 function RaidService.AuraPower(item: string): number
@@ -234,6 +274,35 @@ end
 function RaidService.Init()
 	BaseService.OnStealPrompt = steal
 	PowerService.CanRaidPlayer = RaidService.CanAttackPlayer
+	-- Everyone out and about is a hub-knife target while the moon is up
+	Targets.AddProvider(function()
+		local list = {}
+		if not raiding then
+			return list
+		end
+		for _, victim in Players:GetPlayers() do
+			local root = rootOf(victim)
+			if root and victim.Character and not StealService.IsCarrying(victim) then
+				table.insert(
+					list,
+					{
+						Part = root,
+						Model = victim.Character,
+						CanHit = function(attacker: Player): boolean
+							return canKnock(attacker, victim)
+						end,
+						Hit = function(attacker: Player, _damage: number, _kind: string, from: Vector3)
+							knock(attacker, victim, from)
+						end,
+					} :: any
+				)
+			end
+		end
+		return list
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		knockedAt[player] = nil
+	end)
 	-- A Murderer wipe calls the Blood Moon (now, or as soon as the intermission allows)
 	ServerEvents.OnWipe = function(name: string)
 		Net.Announce(`🔪 {name}'s massacre is calling the Blood Moon!`, Color3.fromRGB(255, 70, 70), 3)

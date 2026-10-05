@@ -973,7 +973,7 @@ local function canHitCarrier(attacker: Player, victim: Player): boolean
 	if not root or not attackerRoot or onRunway(root.Position) or onRunway(attackerRoot.Position) then
 		return false
 	end
-	if DataService.IsNewPlayer(victim) or victim:GetAttribute("Tumbling") then
+	if victim:GetAttribute("Tumbling") then
 		return false
 	end
 	local _, owner = BaseService.BaseAt(root.Position)
