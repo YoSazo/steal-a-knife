@@ -69,7 +69,7 @@ def main():
     meta = {
         "assetType": asset_type,
         "displayName": name[:50],
-        "description": f"Steal a Knife - {name}",
+        "description": f"Steal and Murder - {name}",
         "creationContext": {"creator": creator},
     }
 

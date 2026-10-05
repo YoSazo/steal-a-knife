@@ -1,4 +1,4 @@
-// Steal a Knife analytics server (Render web service + Neon Postgres).
+// Steal and Murder analytics server (Render web service + Neon Postgres).
 //   POST /ingest      batches from Roblox game servers (header X-Ingest-Key = INGEST_KEY)
 //   GET  /            the dashboard (basic auth: any user name, password = DASH_PASSWORD)
 //   GET  /health      for Render's health check

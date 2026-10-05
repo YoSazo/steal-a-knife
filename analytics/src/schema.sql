@@ -1,4 +1,4 @@
--- Steal a Knife analytics. Idempotent: runs on every server start.
+-- Steal and Murder analytics. Idempotent: runs on every server start.
 
 -- Every event the game sends (src/server/Services/Analytics.luau, src/client/Telemetry.luau)
 create table if not exists events (

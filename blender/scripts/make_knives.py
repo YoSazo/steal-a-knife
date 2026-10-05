@@ -1,4 +1,4 @@
-"""Procedurally build the whole Steal a Knife lineup (all 10 knives) and export one FBX per knife.
+"""Procedurally build the whole Steal and Murder lineup (all 10 knives) and export one FBX per knife.
 
 Run headless:
   "C:\\Program Files\\Blender Foundation\\Blender 4.5\\blender.exe" -b --factory-startup \

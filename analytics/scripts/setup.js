@@ -36,7 +36,7 @@ const need = (name, why) => {
   return value;
 };
 
-console.log(`Steal a Knife setup${CHECK_ONLY ? " (check only, nothing changes)" : ""}\n`);
+console.log(`Steal and Murder setup${CHECK_ONLY ? " (check only, nothing changes)" : ""}\n`);
 
 // 1. Roblox --------------------------------------------------------------------------------------
 const apiKey = need("ROBLOX_API_KEY", "Creator Hub > Open Cloud > API Keys (see .env.example for the permissions)");

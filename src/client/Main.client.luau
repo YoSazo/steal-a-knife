@@ -71,7 +71,7 @@ timed("PhoneHud", PhoneHud.Init) -- last: lays out what the others built
 task.spawn(Tutorial.Init)
 print(
 	string.format(
-		"[Steal a Knife] client ready in %.2fs (%s)",
+		"[Steal and Murder] client ready in %.2fs (%s)",
 		os.clock() - clientStart,
 		table.concat(clientTimings, ", ")
 	)

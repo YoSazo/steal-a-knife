@@ -53,7 +53,8 @@ end
 
 local knife = label({ Position = UDim2.fromScale(0.5, 0.33), Size = UDim2.fromScale(0.16, 0.16), Text = "🔪" })
 new("UIAspectRatioConstraint", {}, knife)
-local title = label({ Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.7, 0.13), Text = "STEAL A KNIFE" })
+local title =
+	label({ Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.7, 0.13), Text = "STEAL AND MURDER" })
 local status = label({ Position = UDim2.fromScale(0.5, 0.62), Size = UDim2.fromScale(0.5, 0.05), Text = "Loading" })
 local tip = label({
 	Position = UDim2.fromScale(0.5, 0.88),

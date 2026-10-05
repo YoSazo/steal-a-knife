@@ -1,4 +1,4 @@
-# Steal a Knife — Roblox game
+# Steal and Murder — Roblox game (repo and code still say "Steal a Knife"/StealAKnife; the players see "Steal and Murder")
 
 Loop: knives earn cash -> cash buys Innocent Powers -> knives arm the Murderer, powers arm innocents -> rounds steal
 and return knives. Steal-and-collect + Murder Mystery 2-style rounds. Players fight their way into an arena of NPC watchmen

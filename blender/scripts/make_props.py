@@ -1,4 +1,4 @@
-"""Procedurally build the Steal a Knife props and export one FBX per prop.
+"""Procedurally build the Steal and Murder props and export one FBX per prop.
 
 Run headless:
   "C:\\Program Files\\Blender Foundation\\Blender 4.5\\blender.exe" -b --factory-startup \

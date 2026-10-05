@@ -1,8 +1,8 @@
 {
-  "name": "steal-a-knife-analytics",
+  "name": "steal-and-murder-analytics",
   "private": true,
   "type": "module",
-  "description": "Ingest + dashboard for Steal a Knife's own analytics (Render + Neon Postgres)",
+  "description": "Ingest + dashboard for Steal and Murder's own analytics (Render + Neon Postgres)",
   "engines": {
     "node": ">=20"
   },

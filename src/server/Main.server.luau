@@ -101,4 +101,6 @@ DataService.PlayerLoaded:Connect(function(player: Player)
 end)
 DataService.Init()
 
-print(string.format("[Steal a Knife] server ready in %.1fs (%s)", os.clock() - startedAt, table.concat(timings, ", ")))
+print(
+	string.format("[Steal and Murder] server ready in %.1fs (%s)", os.clock() - startedAt, table.concat(timings, ", "))
+)

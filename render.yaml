@@ -3,7 +3,7 @@
 # aws-eu-central-1 -> frankfurt).
 services:
   - type: web
-    name: sak-analytics
+    name: steal-and-murder-analytics
     runtime: node
     rootDir: analytics
     plan: starter

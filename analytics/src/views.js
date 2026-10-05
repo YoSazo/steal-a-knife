@@ -71,8 +71,8 @@ export function page({ title, base, extra = {}, days, body }) {
     })
     .join("");
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)} · Steal a Knife</title><style>${CSS}</style></head><body>
-<header><div class="brand">🔪 Steal a Knife <span>analytics</span></div>
+<title>${esc(title)} · Steal and Murder</title><style>${CSS}</style></head><body>
+<header><div class="brand">🔪 Steal and Murder <span>analytics</span></div>
 <nav>${NAV.map(([href, label]) => `<a href="${href}?days=${days}" class="${path.split("?")[0] === href ? "on" : ""}">${label}</a>`).join("")}</nav>
 <div class="ranges">${ranges}</div></header>
 <main>${body}</main></body></html>`;

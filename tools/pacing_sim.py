@@ -1,4 +1,4 @@
-"""Rough pacing simulation of a player's first day(s) in Steal a Knife.
+"""Rough pacing simulation of a player's first day(s) in Steal and Murder.
 
 Not a replay of the game: a sanity check on the numbers in GameConfig / Knives. A greedy player
 trains Speed on their wheel, runs to the deepest biome they're fast enough for, mounts what they
