@@ -24,7 +24,10 @@ export function client({ apiKey, fetchImpl = fetch }) {
         body = JSON.stringify(json);
       } else if (form) {
         body = new FormData();
-        for (const [key, value] of Object.entries(form)) if (value !== undefined && value !== null) body.append(key, String(value));
+        for (const [key, value] of Object.entries(form)) {
+          if (value instanceof Blob) body.append(key, value, `${key}.png`);
+          else if (value !== undefined && value !== null) body.append(key, String(value));
+        }
       }
       const res = await fetchImpl(BASE + path, { method, headers, body });
       const text = await res.text();

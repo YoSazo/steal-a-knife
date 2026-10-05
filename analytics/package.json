@@ -10,7 +10,8 @@
     "start": "node src/main.js",
     "q": "node scripts/q.js",
     "test": "node scripts/test.js && node scripts/test-setup.js",
-    "setup": "node scripts/setup.js"
+    "setup": "node scripts/setup.js",
+    "icons": "node scripts/icons.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
