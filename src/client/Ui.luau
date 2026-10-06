@@ -350,6 +350,8 @@ Ui.Menu = MenuController
 -- Panels other modules can open by name (the plaza's rings: ShopPanel "Spin" / "Merchant", and the
 -- right-side quick buttons)
 Ui.Panels = {} :: { [string]: GuiObject }
+-- The Speed shoe in the bottom-left readout (client/Hud), for the round prize's flying shoes
+Ui.SpeedIcon = nil :: GuiObject?
 Layout.bind(Ui.root)
 player:WaitForChild("PlayerGui").ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor
 -- Phones: the free strip of Roblox's top bar, between its buttons on the left and our shift-lock

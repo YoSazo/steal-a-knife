@@ -280,23 +280,14 @@ function Hud.Init()
 			local stats = RoundPrize.Stats(player)
 			local star = if jackpot then "⭐ JACKPOT! " else ""
 			local done = if doubled then '  <font color="#78FF8C">✓ x2</font>' else ""
-			-- (phones: just the knife's name - "that makes $12K/s" doesn't fit on one line there)
-			local function short(prize: string): string
-				return if Ui.Phone then (prize:gsub(" that makes .*$", "")) else prize
-			end
-			-- (phones: "the round" - it takes turns with "MURDER ROUND in 0:49", so it's clear which)
-			local theRound = if Ui.Phone then "the round" else "the Murder Round"
-			if beat < 7 then
-				local innocent = RoundPrize.For(kind, "Innocent", jackpot, seed, stats, doubled)
-				return {
-					Text = `{star}If <font color="#8CFF96">Innocents</font> win {theRound}: <b>{short(innocent.Text)}</b>{done}`,
-					Pill = not doubled,
-				}
-			end
-			local murderer = RoundPrize.For(kind, "Murderer", jackpot, seed, stats, doubled)
+			-- One promise for everyone: "Win the round: +1.9K Speed" (+ "outrun Ivy!" when it gets you
+			-- there). No sides to work out - whoever wins gets it.
+			local prize = RoundPrize.For(kind, "", jackpot, seed, stats, doubled)
+			local outrun = if prize.Boss then ` - outrun {prize.Boss}!` else ""
 			return {
-				Text = `{star}If the <font color="#FF7878">Murderer</font> wins {theRound}: <b>{short(murderer.Text)}</b>{done}`,
+				Text = `{star}Win the round: <font color="#8CFF96"><b>{prize.Text}</b></font>{outrun}{done}`,
 				Pill = not doubled,
+				Icon = CartoonArt.Speed, -- (the same shoe as your Speed readout)
 			}
 		end
 		local goal, goalKind, zone = nextGoal()
@@ -1377,6 +1368,7 @@ function Hud.Init()
 	end
 	-- Steal An Egg readout: a big icon and a big chunky number per row, Speed over Cash
 	local speedArt = Ui.art(stats, "Speed", { Image = CartoonArt.Speed }) -- the + badge is baked in
+	Ui.SpeedIcon = speedArt -- (the round prize's shoes fly into it: client/Transitions)
 	local cashArt = Ui.art(stats, "Cash", { Image = CartoonArt.Cash })
 	local heatArt = Ui.art(stats, "Heat", { Image = CartoonArt.Heat })
 	heatLabel.Visible = true

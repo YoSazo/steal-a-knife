@@ -8,10 +8,13 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Items = require(ReplicatedStorage.Shared.Items)
+local Sounds = require(ReplicatedStorage.Shared.Config.Sounds)
+local CartoonArt = require(ReplicatedStorage.Shared.Config.CartoonArt)
 
 local Ui = require(script.Parent.Ui)
 local TopLine = require(script.Parent.TopLine)
@@ -507,6 +510,71 @@ function Transitions.Init()
 			end
 		end
 	)
+	-- The Speed prize's payoff: ~30 shoes burst out of the "You won!" card and fly into the Speed
+	-- shoe at the bottom left (Ui.SpeedIcon), which pops with every one that lands
+	local function shoeShower(fromCard: GuiObject)
+		local target = Ui.SpeedIcon :: GuiObject?
+		if not target or not target.Parent or not fromCard.Parent then
+			return
+		end
+		local root = Ui.root
+		local scale = math.max(Ui.Scale.Scale, 0.01)
+		local function local_(at: Vector2): UDim2
+			local p = (at - root.AbsolutePosition) / scale
+			return UDim2.fromOffset(p.X, p.Y)
+		end
+		local from = fromCard.AbsolutePosition + fromCard.AbsoluteSize / 2
+		local to = target.AbsolutePosition + target.AbsoluteSize / 2
+		local size = math.clamp(target.AbsoluteSize.X / scale * 0.8, 28, 44)
+		local bump = target:FindFirstChild("ShoeBump") :: UIScale? or Instance.new("UIScale")
+		bump.Name = "ShoeBump"
+		bump.Parent = target
+		local count = 30
+		for i = 1, count do
+			local shoe = Instance.new("ImageLabel")
+			shoe.Name = "PrizeShoe"
+			shoe.BackgroundTransparency = 1
+			shoe.Image = CartoonArt.Speed
+			shoe.ScaleType = Enum.ScaleType.Fit
+			shoe.AnchorPoint = Vector2.new(0.5, 0.5)
+			shoe.Size = UDim2.fromOffset(size, size)
+			shoe.Rotation = math.random(-30, 30)
+			shoe.ZIndex = 60
+			-- burst out of the card in a ring, then swoop down into the readout
+			local angle = math.random() * math.pi * 2
+			local spread = Vector2.new(math.cos(angle), math.sin(angle)) * math.random(40, 150) * scale
+			shoe.Position = local_(from)
+			shoe.Parent = root
+			task.delay((i - 1) * 0.03, function()
+				TweenService:Create(
+					shoe,
+					TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+					{ Position = local_(from + spread), Rotation = shoe.Rotation * 2 }
+				):Play()
+				task.wait(0.28 + math.random() * 0.15)
+				local fly = TweenService:Create(
+					shoe,
+					TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+					{ Position = local_(to), Size = UDim2.fromOffset(size * 0.55, size * 0.55), Rotation = 0 }
+				)
+				fly:Play()
+				fly.Completed:Wait()
+				shoe:Destroy()
+				bump.Scale = 1.25
+				TweenService:Create(bump, TweenInfo.new(0.12), { Scale = 1 }):Play()
+				if i % 3 == 0 then
+					local tick = Instance.new("Sound")
+					tick.SoundId = Sounds.Coin
+					tick.Volume = 0.25
+					tick.PlaybackSpeed = 1.2 + i / count * 0.5
+					tick.Parent = workspace.CurrentCamera
+					tick:Play()
+					Debris:AddItem(tick, 2)
+				end
+			end)
+		end
+	end
+
 	-- The round prize, paid once you're home: "You won! +$4.2M" (a knife shows its picture)
 	local function showPrize(text: string, kind: unknown, knife: unknown, jackpot: boolean)
 		local prizeCard = Instance.new("Frame")
@@ -553,6 +621,9 @@ function Transitions.Init()
 		pop.Scale = 0.6
 		pop.Parent = prizeCard
 		TweenService:Create(pop, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+		if kind == "Speed" then
+			task.delay(0.9, shoeShower, prizeCard)
+		end
 		task.delay(4.5, function()
 			TweenService:Create(pop, TweenInfo.new(0.2), { Scale = 0.8 }):Play()
 			task.wait(0.2)

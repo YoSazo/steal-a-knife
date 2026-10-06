@@ -586,7 +586,8 @@ local function payPrize(
 	elseif prize.Kind == "Spins" then
 		Gamble.AddSpins(player, prize.Amount)
 	end
-	Net.Remotes.Effect:FireClient(player, "PrizeWon", prize.Text, prize.Kind, prize.Knife, jackpot)
+	local text = if prize.Boss then `{prize.Text}\nNow you can outrun {prize.Boss}!` else prize.Text
+	Net.Remotes.Effect:FireClient(player, "PrizeWon", text, prize.Kind, prize.Knife, jackpot)
 	Analytics.Track(player, "round.prize", { kind = prize.Kind, side = side, jackpot = jackpot, doubled = doubled })
 end
 
@@ -637,7 +638,8 @@ local function eliminate(round: Round, victim: Player, killer: Player?, fatal: b
 	round.Alive[victim] = nil
 	ReplicatedStorage:SetAttribute("Alive", aliveCount(round))
 	if not isKiller(round, victim) then
-		Fuel.HalveHeat(victim, "You died in the round!")
+		-- (no Heat lost any more: the round pulls everyone in, so dying in it shouldn't make your
+		-- vault earn less)
 		Fuel.AddMeter(victim, -1)
 	end
 	local root = rootOf(victim)
@@ -2649,12 +2651,14 @@ local function endRound(round: Round)
 		end
 	end
 
-	-- Loot goes back to its owners if the Murderer was shot (or quit); otherwise they keep it
+	-- Loot goes back to its owners if the Innocents won, or the Murderer was shot (or quit);
+	-- the Murderer keeps it only when they win. ("You won!" and then a missing knife spoiled it.)
 	local hero = round.Hero
 	local kept: { [Player]: { string } } = {}
 	for _, entry in round.Loot do
 		local killer = entry.Killer or murderer
-		local returned = round.ShotByBot
+		local returned = innocentsWon
+			or round.ShotByBot
 			or not killer
 			or not killer.Parent
 			or round.ShotKillers[killer]

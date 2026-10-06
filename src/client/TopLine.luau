@@ -18,7 +18,8 @@ local Ui = require(script.Parent.Ui)
 
 local TopLine = {}
 
-export type Rest = { Text: string, Pill: boolean?, Pulse: boolean? }
+-- Icon: an image drawn right after the words (the prize line's Speed shoe)
+export type Rest = { Text: string, Pill: boolean?, Pulse: boolean?, Icon: string? }
 -- Set by client/Hud: what the line says when no notice is up (nil = hidden)
 TopLine.Resting = nil :: (() -> Rest?)?
 
@@ -33,6 +34,8 @@ local pill: GuiObject? = nil
 local pulse: UIScale? = nil
 local shownText = ""
 local shownPill = false
+local icon: ImageLabel? = nil
+local shownIcon: string? = nil
 
 local function baseHeight(): number
 	return if Ui.Phone then 32 else 34
@@ -68,6 +71,14 @@ local function build()
 	}, frame)
 	Ui.textStroke(text, 1.5)
 	pulse = Ui.new("UIScale", { Scale = 1 }, text) :: UIScale
+	icon = Ui.new("ImageLabel", {
+		Name = "Icon",
+		AnchorPoint = Vector2.new(0, 0.5),
+		BackgroundTransparency = 1,
+		ScaleType = Enum.ScaleType.Fit,
+		Visible = false,
+		ZIndex = 41,
+	}, frame) :: ImageLabel
 	band, label = frame, text
 end
 
@@ -79,7 +90,10 @@ local function fit(text: string, withPill: boolean)
 	end
 	local _, bounds = Ui.bounds()
 	words.TextSize = if Ui.Phone then 18 else 20
-	local pillWidth = if withPill and pill then pill.AbsoluteSize.X / math.max(Ui.Scale.Scale, 0.01) + 8 else 0
+	local iconSize = baseHeight() - 2
+	local iconWidth = if shownIcon then iconSize + 4 else 0
+	local pillWidth = (if withPill and pill then pill.AbsoluteSize.X / math.max(Ui.Scale.Scale, 0.01) + 8 else 0)
+		+ iconWidth
 	-- (phones: keep the words between the left and right button columns)
 	local maxLane = math.max(160, math.min(860, bounds.X - (if Ui.Phone then 2 * 175 else 2 * FADE + 24)) - pillWidth)
 	local plain = text:gsub("<[^>]->", "") -- (RichText tags take no space)
@@ -112,10 +126,16 @@ local function fit(text: string, withPill: boolean)
 	end
 	frame.Size = UDim2.fromOffset(math.min(bounds.X, lane + pillWidth + 2 * fade), tall)
 	words.Size = UDim2.fromOffset(lane, tall)
+	if icon then
+		icon.Visible = shownIcon ~= nil
+		icon.Image = shownIcon or ""
+		icon.Size = UDim2.fromOffset(iconSize, iconSize)
+		icon.Position = UDim2.new(0, fade + lane + 2, 0.5, 0)
+	end
 	if pill then
 		pill.Visible = withPill
 		pill.AnchorPoint = Vector2.new(0, 0.5)
-		pill.Position = UDim2.new(0, fade + lane + 8, 0.5, 0)
+		pill.Position = UDim2.new(0, fade + lane + iconWidth + 8, 0.5, 0)
 	end
 	local top = if Ui.gui:GetAttribute("TutorialBar") == true and not tutorialInStrip
 		then ((Ui.gui:GetAttribute("TutorialBarHeight") or 36) :: number) + 2
@@ -144,6 +164,7 @@ local function nextOne()
 	text.TextTransparency = 0
 	shownText = entry.Text
 	shownPill = false
+	shownIcon = nil
 	text.Text = entry.Text
 	if band then
 		band.Visible = true
@@ -223,8 +244,8 @@ function TopLine.Init()
 		local scale = pulse :: UIScale
 		scale.Scale = if rest.Pulse then 1.06 + 0.06 * math.abs(math.sin(os.clock() * math.pi)) else 1
 		local wantsPill = rest.Pill == true and pill ~= nil
-		if rest.Text ~= shownText or wantsPill ~= shownPill then
-			shownText, shownPill = rest.Text, wantsPill
+		if rest.Text ~= shownText or wantsPill ~= shownPill or rest.Icon ~= shownIcon then
+			shownText, shownPill, shownIcon = rest.Text, wantsPill, rest.Icon
 			text.Text = rest.Text
 			fit(rest.Text, wantsPill)
 		end

@@ -13,7 +13,9 @@ Look: dark murder-mystery theme. The hub is "Blackwood Manor" at night (fences, 
 the Manor behind the arena); rounds are The Mad Murderer-style indoor maps (Office, Mansion) with
 disguises (named pre-made characters), bodies that stay, and a Revolver innocents can grab.
 The loop feeds itself: the equipped knife = the Murderer's perk; kills loot a random knife off the
-victim's rack (returned if the Murderer is shot); survivors get 2x vault income for a while.
+victim's rack (returned if the Innocents win or the Murderer is shot); survivors get 2x vault income for a while.
+Round prize (`Shared/RoundPrize`): ONE promise for every winner, "Win the round: +X Speed" (a share of the way to
+the next boss you can't outrun yet; the win card + ~30 shoes flying into the Speed readout).
 
 ## Architecture (server-authoritative, assume exploiters)
 - `src/server/Main.server.luau`: `CharacterAutoLoads` is off; `KnifeModel.Preload()` (mesh knives), then Map → Base → Steal →
@@ -62,7 +64,7 @@ victim's rack (returned if the Murderer is shot); survivors get 2x vault income 
   effect, then deposit). Cases still open on arrival. Equipping fires Effect "Equipped" (knife flies to your hand +
   banner) and the Draw clip. Each vault has an Upgrade Base sign by the gate (client/Hud fills it; prompt -> "Slot").
 - Fuel (`Fuel` service, GameConfig.Fuel): 🔥 Heat 0-10 (profile.Heat) fills from boss steals, surviving rounds,
-  Murderer wins; halves when you die in a round, -1 when a boss catches you; boosts vault income and power-roll luck.
+  Murderer wins; -1 when a boss catches you (dying in a round costs none: rounds are compulsory); boosts vault income and power-roll luck.
   Murderer meter = profile.Luck (+2 per round not picked, +1 steal/survive, -1 death/caught, 0 when picked),
   capped at 3x the server average; no Robux way to raise it (MurdererLuck pass + Tickets product removed).
 - Murderer powers are rare rolls on the ITEM, not the knife type: items are "Name|Mut|Size|Power" (Power "" none,
