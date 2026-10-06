@@ -1120,6 +1120,12 @@ end
 
 -- Stealing -----------------------------------------------------------------------------------------
 
+-- Which zones have already warned this player they're too slow (once each per visit)
+local slowWarned: { [Player]: { [number]: boolean } } = {}
+Players.PlayerRemoving:Connect(function(player)
+	slowWarned[player] = nil
+end)
+
 local function onSteal(player: Player, boss: Boss, slot: Slot)
 	local item = slot.Item
 	local root = rootOf(player)
@@ -1136,6 +1142,32 @@ local function onSteal(player: Player, boss: Boss, slot: Slot)
 	if #profile.Knives >= profile.Slots then
 		Net.Notify(player, "Your vault is full! Sell a knife first.", "bad")
 		return
+	end
+	-- Too slow for this boss: the first try in a zone is a warning, not a chase you can't win
+	-- (zones 2-3: about half of all catches were players below the zone's speed). Trying again
+	-- goes ahead - your call.
+	local zone = GameConfig.Zones[boss.Index]
+	local needed = zone and zone.SpeedNeeded or 0
+	if profile.Speed < needed and not DataService.BoostActive(profile, "Speed") then
+		local warned = slowWarned[player]
+		if not warned then
+			warned = {}
+			slowWarned[player] = warned
+		end
+		if not warned[boss.Index] then
+			warned[boss.Index] = true
+			Net.Notify(
+				player,
+				`Too slow for {boss.Name}! Train to Speed {Format.Short(needed)} in your wheel first. (Steal again to risk it)`,
+				"bad"
+			)
+			Analytics.Track(
+				player,
+				"boss.too_slow_warned",
+				{ zone = boss.Index, speed = math.floor(profile.Speed), needed = needed }
+			)
+			return
+		end
 	end
 	slot.Item = nil
 	slot.Out = true

@@ -30,7 +30,9 @@
     "Workspace": {
       "$className": "Workspace",
       "$properties": {
-        "StreamingIntegrityMode": "Disabled"
+        "StreamingIntegrityMode": "Disabled",
+        "StreamOutBehavior": "Opportunistic",
+        "StreamingTargetRadius": 768
       }
     }
   }

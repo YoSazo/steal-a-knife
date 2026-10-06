@@ -80,6 +80,12 @@ local function canKnock(attacker: Player, victim: Player): boolean
 	if not root or not attackerRoot then
 		return false
 	end
+	-- New players can't be knocked over while they learn (until the tutorial's done or 10 min
+	-- played): 215 knockdowns hit brand-new players in their first hours
+	local profile = DataService.Get(victim)
+	if profile and not profile.TutorialDone and profile.PlayTime < 600 then
+		return false
+	end
 	local _, owner = BaseService.BaseAt(root.Position)
 	return owner ~= victim -- safe at home
 end
