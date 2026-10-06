@@ -634,6 +634,17 @@ function Transitions.Init()
 		end)
 	end
 
+	-- The end-of-round cards take turns in the middle of the screen: a winning Murderer gets their
+	-- haul ("You stole 3 knives!") AND the prize ("You won! +1.1K Speed") a second apart, and the two
+	-- sat on top of each other. Each waits until the one before has gone. `seconds` = how long it shows.
+	local cardFreeAt = 0
+	local function queueCard(seconds: number, show: () -> ())
+		local now = os.clock()
+		local start = math.max(now, cardFreeAt)
+		cardFreeAt = start + seconds
+		task.delay(start - now, show)
+	end
+
 	-- The Murderer's haul: "You stole 3 knives!" with every knife's picture and name (up to 5, then
 	-- "+N more"), for a few seconds once you're back in the hub
 	local function showHaul(items: { string })
@@ -764,13 +775,17 @@ function Transitions.Init()
 		if kind == "PrizeWon" then
 			if type(text) == "string" then
 				local args = { ... }
-				task.spawn(showPrize, text, extra, args[1], args[2] == true)
+				queueCard(4.8, function()
+					showPrize(text, extra, args[1], args[2] == true)
+				end)
 			end
 			return
 		end
 		if kind == "LootHaul" then
 			if type(text) == "table" and #text > 0 then
-				task.spawn(showHaul, text)
+				queueCard(5.3, function()
+					showHaul(text)
+				end)
 			end
 			return
 		end
