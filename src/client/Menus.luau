@@ -4,7 +4,7 @@
 --   Knives   your wall (equip the one you fight / murder with, sell the rest)
 --   Rebirth  start over for a permanent multiplier
 -- and the shopkeepers' panels, opened by standing on the ring at their stall (server ShopNPCs):
---   Mortimer the Knife Merchant  Health upgrades and sealed cases, with the odds of everything inside
+--   Mortimer the Knife Merchant  sealed cases and cash Lucky Blocks, with the odds of everything inside
 --   Madame Vesper the Mystic     buy, upgrade and equip Innocent Powers
 -- Knife cards show a live 3D model in a ViewportFrame built from the same KnifeModel as the game.
 

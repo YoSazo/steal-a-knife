@@ -1,6 +1,6 @@
 --!strict
 -- The plaza's shopkeepers. Instead of a Shop button, you walk up and talk to someone:
---   Mortimer, the Knife Merchant: sealed knife cases (the Case Shop) and Health upgrades
+--   Mortimer, the Knife Merchant: sealed knife cases (the Case Shop) and cash Lucky Blocks
 --   Madame Vesper, the Enchanter: knife powers (see yours and every power, re-roll a knife's power)
 --   Silas, the Mystery Merchant: the rotating half-price deals (was a HUD button)
 -- plus the Lucky Wheel standing between them (also was a HUD button)
@@ -444,8 +444,8 @@ local function buildLuckyWheel(folder: Instance)
 	anchor.Transparency = 1
 	anchor.CanCollide, anchor.CanQuery, anchor.CanTouch = false, false, false
 	floatingTitle(anchor, "Lucky Wheel", spec.Color)
-	-- "🎁 2 FREE SPINS!" just under the title (client/GambleUi fills it in for you)
-	local badgeAnchor = block(folder, "BadgeAnchor", Vector3.one * 0.2, at(0, hubY + radius + 2.3, -0.5), spec.Color)
+	-- "🎁 2 FREE SPINS!" low in front of the wheel, clear of the floating titles (client/GambleUi)
+	local badgeAnchor = block(folder, "BadgeAnchor", Vector3.one * 0.2, at(0, 2.6, -2.6), spec.Color)
 	badgeAnchor.Transparency = 1
 	badgeAnchor.CanCollide, badgeAnchor.CanQuery, badgeAnchor.CanTouch = false, false, false
 	badgeAnchor:AddTag("LuckyWheelBadge")
