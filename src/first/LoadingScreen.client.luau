@@ -64,12 +64,12 @@ local tip = label({
 })
 
 local TIPS = {
-	"Steal knives from the biome bosses and carry them home",
-	"Every knife in your vault earns cash every second",
-	"Train speed in the Haunted Wheel to outrun the deep bosses",
-	"Team up with a friend: you're picked together in Double Trouble rounds",
-	"Break into vaults to steal knives - but the owner can catch you!",
-	"Fill the server goal together for a server-wide boost",
+	"Steal a knife from a boss and run it home!",
+	"Every knife in your vault makes money!",
+	"Run in your wheel to get faster!",
+	"Faster = deeper bosses = better knives!",
+	"Win the Murder Round to get faster!",
+	"Be the Murderer: get everyone!",
 }
 local firstTip = math.random(1, #TIPS)
 

@@ -120,9 +120,7 @@ function View.Build(): (Frame, () -> ())
 			then "You've reached the final rebirth!"
 			else `Needs a <font color="{if hasNeed then "#78FF6E" else "#FF6E6E"}">{need} knife {if hasNeed
 				then "✓"
-				else "✗"}</font>  ·  resets cash, knives & speed  ·  <font color="#78FF6E">+{math.floor(
-				nextCount * config.LuckBonus * 100
-			)}% luck</font>`
+				else "✗"}</font>  ·  you start over  ·  <font color="#78FF6E">more money forever</font>`
 		local ratio = if maximum then 1 else math.clamp(cash / cost, 0, 1)
 		fill.Size = UDim2.new(ratio, -8 * ratio, 1, -8)
 		fill.Visible = ratio > 0

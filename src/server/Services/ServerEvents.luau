@@ -29,7 +29,7 @@ ServerEvents.Events = {
 		Emoji = "🍀",
 		Seconds = 300,
 		Color = Color3.fromRGB(110, 255, 120),
-		What = "2x power luck for everyone",
+		What = "better knife powers for everyone",
 	},
 	CashRush = {
 		Name = "CashRush",
@@ -45,7 +45,7 @@ ServerEvents.Events = {
 		Emoji = "🔥",
 		Seconds = 180,
 		Color = Color3.fromRGB(255, 120, 50),
-		What = "Heat gains doubled for everyone",
+		What = "2x Heat (more cash) for everyone",
 	},
 	CosmicRush = {
 		Name = "CosmicRush",
@@ -53,7 +53,7 @@ ServerEvents.Events = {
 		Emoji = "🪐",
 		Seconds = 180,
 		Color = Color3.fromRGB(190, 120, 255),
-		What = "Deep bosses restock super fast",
+		What = "deep bosses refill super fast",
 	},
 } :: { [string]: EventSpec }
 

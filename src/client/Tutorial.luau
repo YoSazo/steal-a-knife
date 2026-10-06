@@ -293,7 +293,7 @@ local function run(startAt: number, replay: boolean)
 	local lastScan = 0
 	local steps: { Step } = {
 		{
-			Text = "Follow the arrows to the glowing circle at Frank's stash!",
+			Text = "Follow the arrows to the glowing circle by the knives!",
 			Target = function(): Vector3?
 				if not atFrank then
 					return frankSpot()
@@ -312,7 +312,7 @@ local function run(startAt: number, replay: boolean)
 		{
 			-- Straight to your free plate (it glows from the start): there used to be a ring outside
 			-- the vault first, an extra stop on the way to the one thing that matters
-			Text = "RUN home before Frank catches you! Follow the arrows to the glowing plate.",
+			Text = "RUN home before the boss catches you! Follow the arrows!",
 			Target = function(): Vector3?
 				if not plateAt or os.clock() - lastScan > 1 then
 					lastScan = os.clock()
@@ -325,14 +325,14 @@ local function run(startAt: number, replay: boolean)
 			end,
 		},
 		{
-			Text = "Your knife makes cash every second! Walk over its green pad to collect it.",
+			Text = "Your knife makes money! Walk on the green pad to get it.",
 			Target = cashPad,
 			Done = function()
 				return collected
 			end,
 		},
 		{
-			Text = "Run in your wheel to train Speed. More Speed = deeper biomes = better knives!",
+			Text = "Run in your wheel to get faster! Faster = better knives!",
 			Target = wheel,
 			Done = function()
 				return player:GetAttribute("Training") == true
@@ -560,7 +560,6 @@ local function run(startAt: number, replay: boolean)
 		stepLabel.Text = "You've got it! Steal better knives and get stronger!"
 		layout()
 		-- (its own sound: the power-reveal sting here made equipping sound like the steal again)
-		Effects.Sound(Sounds.Cheer, nil, 0.5)
 		-- Then what that knife's power actually does, with a one-tap demo
 		task.delay(1.2, PowerShowcase.Show)
 		task.delay(4, function()
@@ -578,10 +577,10 @@ local function run(startAt: number, replay: boolean)
 		skip.Visible = current > 2
 		layout()
 		local compact = {
-			"Go to the glowing circle at Frank's stash.",
-			"Run home to the glowing plate!",
-			"Walk over the green cash pad.",
-			"Run in your wheel to train Speed.",
+			"Go to the glowing circle by the knives!",
+			"RUN home! Follow the arrows!",
+			"Walk on the green pad to get your money!",
+			"Run in your wheel to get faster!",
 		}
 
 		stepLabel.Text = `{current}/{#steps}  {if Ui.Phone or Ui.Layout.get().Compact
@@ -620,7 +619,7 @@ local function run(startAt: number, replay: boolean)
 			chosenPad = nil
 			current = 1
 			showStep()
-			stepLabel.Text = "Caught! Frank took it back. Try again - run straight home!"
+			stepLabel.Text = "Caught! Try again - run straight home!"
 			return
 		end
 		-- The glowing ring in front of Frank's stash (step 1): standing on it switches the target to a

@@ -50,8 +50,8 @@ function Rewards.BuyCase(player: Player, rarity: string): (boolean, string)
 		return false, `Reach the {rarity} biome first (train your Speed)!`
 	end
 	if #profile.Knives >= profile.Slots then
-		Offers.Show(player, "Mount", "Your wall is full! Add another mount instantly.")
-		return false, "Your wall is full! Sell a knife or buy a mount first."
+		Offers.Show(player, "Mount", "Your vault is full! Get more room right now.")
+		return false, "Your vault is full! Sell a knife first."
 	end
 	if not DataService.TrySpend(player, entry.Cost, "case_shop") then
 		Offers.Cash(player, entry.Cost - profile.Cash, BaseService.RackIncome(player))

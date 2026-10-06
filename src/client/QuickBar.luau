@@ -87,18 +87,18 @@ local function buildKnivesPanel(): (Frame, () -> ())
 		local slots = (player:GetAttribute("Slots") or GameConfig.StartingSlots) :: number
 		local cash = (player:GetAttribute("Cash") or 0) :: number
 		local equipped = player:GetAttribute("Equipped") or ""
-		count.Text = `{#owned}/{slots} on your wall`
+		count.Text = `{#owned}/{slots} in your vault`
 		local best = bestKnife(owned)
 		SimpleUi.set(equipBest, if best and best == equipped then "Best ✓" else "Equip Best", BLUE, best ~= equipped)
 		-- The next floor: +10 plates (later floors wait for a rebirth)
 		local floorRebirths = GameConfig.FloorRebirthsFor(slots)
 		if slots >= GameConfig.MaxSlots then
-			SimpleUi.set(floorButton, "Wall maxed", GOLD, false)
+			SimpleUi.set(floorButton, "Vault is max size", GOLD, false)
 		elseif ((player:GetAttribute("Rebirths") or 0) :: number) < floorRebirths then
-			SimpleUi.set(floorButton, `+10 slots: Rebirth {floorRebirths}`, Color3.fromRGB(160, 70, 235), false)
+			SimpleUi.set(floorButton, "🔒 More room after Rebirth", Color3.fromRGB(160, 70, 235), false)
 		else
 			local cost = GameConfig.SlotCost(slots)
-			SimpleUi.set(floorButton, `+10 slots  ${Ui.abbreviate(cost)}`, GREEN, cash >= cost)
+			SimpleUi.set(floorButton, `+10 room  ${Ui.abbreviate(cost)}`, GREEN, cash >= cost)
 		end
 		if #owned == 0 then
 			local empty = new("Frame", { Size = UDim2.new(1, 0, 0, 90), BackgroundTransparency = 1, ZIndex = 6 }, list)

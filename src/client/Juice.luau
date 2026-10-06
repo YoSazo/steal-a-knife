@@ -11,6 +11,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
+local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
 local Ui = require(script.Parent.Ui)
@@ -136,6 +137,17 @@ local function skip(button: GuiButton): boolean
 	return screen ~= nil and screen.Name == "TouchGui" -- (Roblox's thumbstick and jump button)
 end
 
+-- Touches by when they started: only a touch that STARTS on a button presses it (the thumbstick
+-- finger sliding across one used to squish it, and on touch screens there's no hover at all)
+local touchStarted: { [InputObject]: number } = setmetatable({}, { __mode = "k" }) :: any
+UserInputService.TouchStarted:Connect(function(input)
+	touchStarted[input] = os.clock()
+end)
+local function freshTouch(input: InputObject): boolean
+	local began = touchStarted[input]
+	return began == nil or os.clock() - began < 0.15
+end
+
 local function hook(instance: Instance)
 	if not instance:IsA("GuiButton") or skip(instance) then
 		return
@@ -143,9 +155,9 @@ local function hook(instance: Instance)
 	local button = instance :: GuiButton
 	button.InputBegan:Connect(function(input)
 		local kind = input.UserInputType
-		if kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.Touch then
+		if kind == Enum.UserInputType.MouseButton1 or (kind == Enum.UserInputType.Touch and freshTouch(input)) then
 			press(button)
-		elseif kind == Enum.UserInputType.MouseMovement then
+		elseif kind == Enum.UserInputType.MouseMovement and not UserInputService.TouchEnabled then
 			hover(button, true)
 		end
 	end)
@@ -153,7 +165,7 @@ local function hook(instance: Instance)
 		local kind = input.UserInputType
 		if kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.Touch then
 			release(button)
-		elseif kind == Enum.UserInputType.MouseMovement then
+		elseif kind == Enum.UserInputType.MouseMovement and not UserInputService.TouchEnabled then
 			hover(button, false)
 			release(button)
 		end

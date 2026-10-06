@@ -909,7 +909,7 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 		boss_speed = guard.Config.GuardSpeed,
 	})
 	Net.Remotes.Effect:FireClient(thief, "Alarm")
-	Net.Notify(thief, `{boss.Name:upper()} IS COMING! RUN HOME!`, "bad")
+	Net.Notify(thief, "THE BOSS IS COMING! RUN HOME!", "bad")
 end
 
 -- Hurt a thief (throws, and the snatch). Shields block it.
@@ -958,7 +958,7 @@ local function snatch(guard: Guard, thief: Player)
 	-- (and then gives up: a 1.5 s stun had them caught-and-saved ~3 times a run, and 23 of 34 such
 	-- players quit mid-carry)
 	if profileNow and not profileNow.TutorialDone and #profileNow.Knives == 0 then
-		Net.Notify(thief, `{guard.Boss.Name} tripped! RUN HOME!`, "good")
+		Net.Notify(thief, "The boss tripped! RUN HOME!", "good")
 		Analytics.Track(thief, "boss.first_steal_saved", { zone = guard.Boss.Index })
 		Net.Remotes.Effect:FireAllClients("Smoke", guard.Position)
 		stopChase(guard, false)
@@ -998,11 +998,11 @@ local function snatch(guard: Guard, thief: Player)
 			and profile.Speed < (zone.SpeedNeeded or 0)
 			and not DataService.BoostActive(profile, "Speed")
 		then
-			Offers.Show(thief, "SpeedPotion", `Too slow for {guard.Boss.Name}! A Speed Potion lets you outrun them.`)
+			Offers.Show(thief, "SpeedPotion", "Too slow! A Speed Potion makes you run faster.")
 		else
 			Offers.Show(thief, "Escape3", "Caught at the last second? An Escape Token breaks you free WITH the knife.")
 		end
-		Net.Notify(thief, `{guard.Boss.Name} caught you! The knife went back.`, "bad")
+		Net.Notify(thief, "Caught! The knife went back.", "bad")
 		Net.Remotes.Effect:FireClient(thief, "Tip", "Caught")
 		Net.Remotes.Effect:FireClient(thief, "Damage", root.Position + Vector3.new(0, 3, 0), "CAUGHT!")
 	end
@@ -1529,7 +1529,7 @@ function GuardService.Damage(guard: Guard, amount: number, attacker: Player?)
 		quip(guard, attacker, "Idle")
 		if attacker and now() - (idleHitNotice[attacker] or 0) > 20 then
 			idleHitNotice[attacker] = now()
-			Net.Notify(attacker, `Hitting {guard.Boss.Name} does nothing. Steal a knife instead!`, "info")
+			Net.Notify(attacker, "Hitting the boss does nothing. Grab a knife from the wall!", "info")
 		end
 		return
 	end
@@ -1732,7 +1732,7 @@ function GuardService.Init()
 						and (boss.Position - (root :: BasePart).Position).Magnitude < GameConfig.Consumables.RestockOfferRange
 						and emptySlots(boss.Boss, t) >= 2
 					then
-						Offers.Show(player, "BossRestock", `{boss.Boss.Name}'s wall is empty! Restock it right now.`)
+						Offers.Show(player, "BossRestock", "This wall is empty! Fill it with new knives right now.")
 					end
 				end
 			end

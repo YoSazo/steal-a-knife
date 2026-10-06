@@ -41,7 +41,7 @@ end
 local SPECS: { Spec } = {
 	{
 		Name = "Mortimer",
-		Title = "Knife Merchant",
+		Title = "Knife Cases",
 		Panel = "Shop",
 		-- The two stalls stand either side of the runway entrance, facing the plaza
 		Position = Vector3.new(-45, 0, -26),
@@ -62,7 +62,7 @@ local SPECS: { Spec } = {
 	},
 	{
 		Name = "Madame Vesper",
-		Title = "The Enchanter",
+		Title = "Power Shop",
 		Panel = "Powers",
 		Position = Vector3.new(45, 0, -26), -- across the entrance from Mortimer
 		Facing = 50,
@@ -82,7 +82,7 @@ local SPECS: { Spec } = {
 		-- The Mystery Merchant used to be a HUD button; now he's a stall on the plaza (less is more:
 		-- Steal An Egg's right side only has what you use all the time)
 		Name = "Silas",
-		Title = "Mystery Merchant",
+		Title = "Deals",
 		Panel = "Merchant",
 		-- The far end of the plaza, mirroring Madame Vesper: the four stalls face in like an X
 		Position = Vector3.new(45, 0, -198),

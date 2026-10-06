@@ -399,16 +399,17 @@ function Theme.badge(parent: GuiObject): TextLabel
 		Name = "Badge",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		-- inside the button's right edge, so buttons hugging the screen edge don't cut it off
-		Position = UDim2.new(1, -14, 0, 4),
-		Size = UDim2.fromOffset(28, 28),
+		Position = UDim2.new(1, -8, 0, 6),
+		Size = UDim2.fromOffset(20, 20),
 		BackgroundTransparency = 0,
 		BackgroundColor3 = Theme.Red,
-		MaximumTextSize = 19,
+		MaximumTextSize = 14,
 		Visible = false,
 		ZIndex = parent.ZIndex + 5,
 	})
 	Ui.corner(badge, 100)
 	Theme.outline(badge, Color3.new(1, 1, 1), 2)
+	Ui.floatBadge(badge, parent) -- (on top of every button, not under the next one)
 	return badge
 end
 

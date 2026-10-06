@@ -40,7 +40,6 @@ return {
 	RoleInnocent = "rbxassetid://9040476898", -- "Early Bird" hit: bouncy, upbeat
 	ReelTick = "rbxassetid://9120098629", -- a crisp little switch click (PSE) per knife going past
 	Reveal = "rbxassetid://4612374036", -- a quick sparkly "big diamond" ding: any reveal (case, power roll, gift)
-	Cheer = "rbxassetid://9112766176", -- crowd cheer (PSE) for the big ones
 	Tick = "rbxasset://sounds/electronicpingshort.wav",
 	MenuPop = "rbxassetid://9117848029", -- "Pops, Mouth Popping" (PSE): a menu opening (higher) / closing (lower)
 

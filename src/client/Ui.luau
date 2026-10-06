@@ -245,21 +245,67 @@ function Ui.chunky(
 	return button, iconLabel
 end
 
+-- A badge ("1", "!") floats in its own layer over the HUD, following its button: inside the
+-- button, the next button down was drawn on top of it and cut it off. Hidden while its button is
+-- (or a menu is open).
+local badgeHolders: { { Holder: Frame, Parent: GuiObject } } = {}
+function Ui.floatBadge(badge: GuiObject, parent: GuiObject)
+	local holder: Frame = Ui.new("Frame", {
+		Name = "BadgeHolder",
+		BackgroundTransparency = 1,
+		ZIndex = 30,
+		Visible = false,
+	}, Ui.gui)
+	badge.Parent = holder
+	table.insert(badgeHolders, { Holder = holder, Parent = parent })
+end
+-- (started at the bottom of this module, once everything it uses exists)
+local function syncBadges(menuOpen: () -> boolean, uiScale: UIScale)
+	local origin = Ui.root.AbsolutePosition
+	local scale = math.max(uiScale.Scale, 0.01)
+	for i = #badgeHolders, 1, -1 do
+		local entry = badgeHolders[i]
+		local parent, holder = entry.Parent, entry.Holder
+		if not parent.Parent then
+			holder:Destroy()
+			table.remove(badgeHolders, i)
+			continue
+		end
+		local shown = parent.Visible and not menuOpen()
+		local up: Instance? = parent.Parent
+		while shown and up and up:IsA("GuiObject") do
+			shown = up.Visible
+			up = up.Parent
+		end
+		holder.Visible = shown
+		if shown then
+			local at = (parent.AbsolutePosition - origin) / scale
+			holder.Position = UDim2.fromOffset(at.X, at.Y)
+			holder.Size = UDim2.fromOffset(parent.AbsoluteSize.X / scale, parent.AbsoluteSize.Y / scale)
+		end
+	end
+end
+
 -- A red bubble with a number in a button's corner (hidden at 0)
 function Ui.badge(parent: GuiObject): TextLabel
 	local badge = Ui.label({
 		Name = "Badge",
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(1, -4, 0, 4),
-		Size = UDim2.fromOffset(30, 30),
+		Position = UDim2.new(1, -6, 0, 6),
+		Size = UDim2.fromOffset(20, 20),
 		BackgroundTransparency = 0,
 		BackgroundColor3 = Color3.fromRGB(230, 40, 50),
 		Text = "",
 		Visible = false,
 		ZIndex = (parent.ZIndex or 1) + 5,
 	}, parent)
-	Ui.corner(badge, 15)
-	Ui.new("UIStroke", { Thickness = 2.5, Color = Color3.new(1, 1, 1) }, badge)
+	Ui.corner(badge, 10)
+	Ui.new("UIStroke", { Thickness = 2, Color = Color3.new(1, 1, 1) }, badge)
+	local cap = badge:FindFirstChildOfClass("UITextSizeConstraint")
+	if cap then
+		cap.MinTextSize, cap.MaxTextSize = 8, 14
+	end
+	Ui.floatBadge(badge, parent)
 	return badge
 end
 
@@ -446,4 +492,8 @@ function Ui.hint(keyboard: string, gamepad: string): string
 	end
 	return ` [{if UserInputService.PreferredInput == Enum.PreferredInput.Gamepad then gamepad else keyboard}]`
 end
+-- the floating badges follow their buttons (Ui.floatBadge)
+RunService.Heartbeat:Connect(function()
+	syncBadges(Ui.menuOpen, Ui.Scale)
+end)
 return Ui

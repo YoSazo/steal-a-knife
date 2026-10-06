@@ -135,8 +135,7 @@ local function show(info: Info)
 			Size = UDim2.new(1, -40, 0, 46),
 			Position = UDim2.fromOffset(20, y),
 			-- (two lines at most: on a phone the third was cut off)
-			Text = "Every few minutes the WHOLE SERVER plays Murder Mystery. "
-				.. "The knives you steal give you Murderer powers!",
+			Text = "Every few minutes: a MURDER ROUND for everyone. Win it to get faster!",
 			TextColor3 = Color3.fromRGB(255, 225, 225),
 			TextWrapped = true,
 			ZIndex = 52,

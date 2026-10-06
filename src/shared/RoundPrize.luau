@@ -27,6 +27,7 @@ export type Prize = {
 	Text: string,
 	Boss: string?, -- the next boss you can't outrun yet (what this Speed is for)
 	Zone: number?, -- that boss's zone
+	Rarity: string?, -- the knives that boss guards ("Rare"): what the player can SEE, unlike a name
 	Reaches: boolean, -- this prize gets you fast enough for them
 	Left: number, -- Speed still missing for them after the prize (0 when it reaches)
 }
@@ -86,6 +87,7 @@ function RoundPrize.For(
 		Text = `+{Format.Short(amount)} Speed`,
 		Boss = boss,
 		Zone = zone,
+		Rarity = if zone then (GameConfig.Zones :: any)[zone].Rarity else nil,
 		Reaches = need ~= nil and left == 0,
 		Left = left,
 	}

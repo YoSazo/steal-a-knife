@@ -460,7 +460,7 @@ local handlers: { [string]: (...any) -> () } = {
 		end
 		Effects.Sound(Sounds.Reveal, nil, 1)
 		if rare then
-			Effects.Sound(Sounds.Cheer, nil, 0.8)
+			Effects.Sound(Sounds.Reveal, nil, 0.6)
 		end
 		task.delay(if rare then 4 else 2.6, function()
 			fadeCard()
@@ -536,7 +536,7 @@ local handlers: { [string]: (...any) -> () } = {
 	GiftOpen = function(at: Vector3, what: string, kind: string)
 		Effects.Burst(at, Color3.fromRGB(255, 120, 200), 40, 18, 0.8)
 		Effects.Burst(at, Color3.fromRGB(255, 215, 80), 30, 14, 0.6)
-		Effects.Sound(if kind == "Case" then Sounds.Cheer else Sounds.Cash, at, 0.8)
+		Effects.Sound(if kind == "Case" then Sounds.Reveal else Sounds.Cash, at, 0.8)
 		Effects.FloatText(at + Vector3.new(0, 4, 0), `🎁 {what}`, Color3.fromRGB(255, 230, 120))
 	end,
 	-- (Murderer only) a vanished innocent still leaves a faint shimmer
@@ -793,7 +793,7 @@ local handlers: { [string]: (...any) -> () } = {
 		lightFlash(position, Color3.fromRGB(255, 220, 120), 10, 60, 2)
 		Effects.Sound(Sounds.Reveal, position, 1)
 		if who == player then
-			Effects.Sound(Sounds.Cheer, nil, 0.5)
+			Effects.Sound(Sounds.Reveal, nil, 0.5)
 			flash("REBIRTH!", 0.3, 2)
 		end
 	end,

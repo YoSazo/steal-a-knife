@@ -586,9 +586,11 @@ local function payPrize(
 	elseif prize.Kind == "Spins" then
 		Gamble.AddSpins(player, prize.Amount)
 	end
-	local text = if prize.Boss and prize.Reaches
-		then `{prize.Text}\nNow you can outrun {prize.Boss}!`
-		elseif prize.Boss then `{prize.Text}\n{Format.Short(prize.Left)} more to outrun {prize.Boss}`
+	-- (knives you can see, not a boss's name you don't know)
+	local rarity = if prize.Rarity then string.upper(prize.Rarity) else nil
+	local text = if rarity and prize.Reaches
+		then `{prize.Text}\nNow you can steal {rarity} knives!`
+		elseif rarity then `{prize.Text}\n{Format.Short(prize.Left)} more for {rarity} knives`
 		else prize.Text
 	-- Did the Speed get used? StealService tracks the next steal from that boss (prize.followup)
 	if prize.Kind == "Speed" and prize.Zone then
@@ -3023,6 +3025,9 @@ local function loop()
 				p.RoundsPlayed += 1
 			end)
 			local played = DataService.Get(player)
+			if played then
+				player:SetAttribute("RoundsPlayed", played.RoundsPlayed)
+			end
 			if played and played.RoundsPlayed == 2 then
 				-- stayed through a whole round and into the next one: the round didn't make them leave
 				Analytics.Milestone(player, "second_round")

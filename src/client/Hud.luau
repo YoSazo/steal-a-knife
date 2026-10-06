@@ -141,36 +141,17 @@ function Hud.Init()
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
 		LineJoinMode = Enum.LineJoinMode.Round,
 	}, timerLabel)
-	-- During the Blood Moon its name takes the left of the timer: big plain text in the game's font
-	-- (like the floating shop titles), the countdown stays live beside it
-	local moonTitle = new("TextLabel", {
-		Name = "BloodMoonTitle",
-		BackgroundTransparency = 1,
-		Size = UDim2.fromScale(0.5, 1.3),
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.fromScale(0, 0.5),
-		Font = Enum.Font.FredokaOne,
-		Text = "BLOOD MOON",
-		TextColor3 = Color3.fromRGB(255, 60, 60),
-		TextScaled = true,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		Visible = false,
-	}, timerFrame)
-	new("UIStroke", {
-		Thickness = 3,
-		Color = Color3.fromRGB(20, 16, 28),
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
-		LineJoinMode = Enum.LineJoinMode.Round,
-	}, moonTitle)
 	local timerCap = timerLabel:FindFirstChildOfClass("UITextSizeConstraint")
 	if timerCap then
 		timerCap.MaxTextSize = if Ui.Phone then 24 else 36
 	end
+	-- (the old line under the timer - "REVENGE!", a second "round on" - is gone: one top line)
 	local subLabel = Ui.label({
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 70),
 		Size = UDim2.fromOffset(460, 26),
 		Text = "",
+		Visible = false,
 	}, gui)
 
 	-- The top line's resting text (client/TopLine; notices take its place for a few seconds):
@@ -213,11 +194,13 @@ function Hud.Init()
 		local need = (zone.SpeedNeeded or 0) :: number
 		local tint = (zone.Color :: Color3):Lerp(Color3.new(1, 1, 1), 0.3):ToHex()
 		if stats.Speed < need then
-			return `🎯 Next: train to <b>{Ui.abbreviate(need)} Speed</b> on your wheel to outrun <font color="#{tint}">{zone.Boss}</font>`,
+			return `🎯 Run in your wheel to <b>{Ui.abbreviate(need)} Speed</b> for <font color="#{tint}">{string.upper(
+				zone.Rarity
+			)} knives</font>!`,
 				"train",
 				index
 		end
-		return `🎯 Next: steal from <font color="#{tint}"><b>{zone.Boss}</b></font> in {zone.Title}`, "steal", index
+		return `🎯 Go steal a <font color="#{tint}"><b>{string.upper(zone.Rarity)}</b></font> knife!`, "steal", index
 	end
 	TopLine.Resting = function(): TopLine.Rest?
 		if Ui.menuOpen() or Ui.gui:GetAttribute("FadeCover") == true then
@@ -231,8 +214,26 @@ function Hud.Init()
 		local clock = Ui.clock(left)
 		if phase == "Round" then
 			local alive = ReplicatedStorage:GetAttribute("Alive") or 0
-			if player:GetAttribute("InRound") then
+			-- (not during the first seconds: it would give your role away before the role reel lands)
+			local elapsed = GameConfig.RoundTime - left
+			if player:GetAttribute("InRound") and elapsed < 6 then
 				return { Text = `🔪 {clock}  ·  {alive} alive` }
+			end
+			if player:GetAttribute("InRound") then
+				-- how YOU win, and what it gets you, all round long
+				local prize = RoundPrize.For(
+					"Speed",
+					"",
+					ReplicatedStorage:GetAttribute("PrizeJackpot") == true,
+					1,
+					RoundPrize.Stats(player),
+					((player:GetAttribute("Charge_DoublePrize") or 0) :: number) > 0
+				)
+				local goal = if player:GetAttribute("Role") == "Murderer" then "GET EVERYONE" else "SURVIVE"
+				return {
+					Text = `🔪 {clock}  ·  <b>{goal}</b> = <font color="#8CFF96">{prize.Text}</font>`,
+					Icon = CartoonArt.Speed,
+				}
 			end
 			return {
 				Text = `🔪 {ReplicatedStorage:GetAttribute("MapName") or "Murder Round"} {clock}  ·  {alive} alive  ·  steal while they're busy!`,
@@ -284,10 +285,12 @@ function Hud.Init()
 			-- there). No sides to work out - whoever wins gets it.
 			local prize = RoundPrize.For(kind, "", jackpot, seed, stats, doubled)
 			-- (always says what the Speed is for: the next boss you can't outrun yet)
-			local outrun = if prize.Boss and prize.Reaches
-				then ` - outrun {prize.Boss}!`
-				elseif prize.Boss then ` toward {prize.Boss}`
-				else ""
+			-- what it's FOR, in things you can see: the next knives ("RARE knives"), never a boss's name
+			local zoneColor = if prize.Zone then (GameConfig.Zones :: any)[prize.Zone].Color :: Color3 else nil
+			local knives = if prize.Rarity and zoneColor
+				then `<font color="#{zoneColor:Lerp(Color3.new(1, 1, 1), 0.3):ToHex()}">{string.upper(prize.Rarity)} knives</font>`
+				else nil
+			local outrun = if knives and prize.Reaches then ` = {knives}!` elseif knives then ` for {knives}` else ""
 			return {
 				Text = `{star}Win the round: <font color="#8CFF96"><b>{prize.Text}</b></font>{outrun}{done}`,
 				Pill = not doubled,
@@ -409,10 +412,10 @@ function Hud.Init()
 	}, gui)
 	Ui.textStroke(eventLabel, 2)
 	local EVENT_TEXT: { { Name: string, Text: string } } = {
-		{ Name = "LuckyRush", Text = "🍀 LUCKY RUSH · 2x power luck" },
+		{ Name = "LuckyRush", Text = "🍀 LUCKY RUSH · better powers" },
 		{ Name = "CashRush", Text = "💸 CASH RUSH · 2x cash" },
 		{ Name = "HeatWave", Text = "🔥 HEAT WAVE · 2x Heat" },
-		{ Name = "CosmicRush", Text = "🪐 COSMIC RUSH · deep bosses restock fast" },
+		{ Name = "CosmicRush", Text = "🪐 COSMIC RUSH · deep bosses refill fast" },
 	}
 	task.spawn(function()
 		while true do
@@ -449,9 +452,14 @@ function Hud.Init()
 	local function refreshChance()
 		local chance = player:GetAttribute("MurdererChance")
 		-- (the map vote row takes this line's place while it's up - client/MapVoteCard)
-		chanceLabel.Visible = type(chance) == "number" and Ui.inHub() and gui:GetAttribute("VoteRow") ~= true
-		chanceLabel.Text = `Murderer chance: {chance or 0}%`
+		-- (only after your first round: before that it's a number about something you haven't seen)
+		chanceLabel.Visible = type(chance) == "number"
+			and Ui.inHub()
+			and gui:GetAttribute("VoteRow") ~= true
+			and ((player:GetAttribute("RoundsPlayed") or 0) :: number) > 0
+		chanceLabel.Text = `🔪 Murderer chance: {chance or 0}%`
 	end
+	player:GetAttributeChangedSignal("RoundsPlayed"):Connect(refreshChance)
 	player:GetAttributeChangedSignal("MurdererChance"):Connect(refreshChance)
 	gui:GetAttributeChangedSignal("VoteRow"):Connect(refreshChance)
 	player:GetAttributeChangedSignal("InRound"):Connect(refreshChance)
@@ -589,7 +597,8 @@ function Hud.Init()
 	local function refreshHeat()
 		local heat = (player:GetAttribute("Heat") or 0) :: number
 		local fuel = GameConfig.Fuel
-		heatLabel.Text = `HEAT {heat}/{fuel.MaxHeat}` -- (the flame is the art-pack icon beside it)
+		-- what it does, not a score: "HEAT 3 = x1.3 CASH" (hidden at 0: placeStats)
+		heatLabel.Text = `HEAT {heat} = x{math.floor((1 + heat * fuel.HeatIncome) * 10) / 10} CASH`
 		heatLabel.TextColor3 = Color3.fromRGB(255, 200, 90):Lerp(Color3.fromRGB(255, 60, 40), heat / fuel.MaxHeat)
 		local friends = (player:GetAttribute("FriendsHere") or 0) :: number
 		heatHint.Text = (
@@ -602,6 +611,12 @@ function Hud.Init()
 	end
 	player:GetAttributeChangedSignal("Heat"):Connect(refreshHeat)
 	player:GetAttributeChangedSignal("FriendsHere"):Connect(refreshHeat)
+	local placeStatsLater: (() -> ())? = nil
+	player:GetAttributeChangedSignal("Heat"):Connect(function()
+		if placeStatsLater then
+			placeStatsLater()
+		end
+	end)
 	refreshHeat()
 	Remotes.Effect.OnClientEvent:Connect(function(kind: string, _heat: any, delta: any, reason: any)
 		if kind ~= "Heat" or type(delta) ~= "number" then
@@ -656,7 +671,7 @@ function Hud.Init()
 	player:GetAttributeChangedSignal("ShieldLeft"):Connect(refreshShield)
 	player:GetAttributeChangedSignal("Shielded"):Connect(refreshShield)
 	refreshShield()
-	local raidPill, raidIcon, raidText = pill(timers, 1)
+	local raidPill, raidIcon, _raidText = pill(timers, 1)
 	pictureIcon(raidIcon, CartoonArt.LootBag)
 	local roundPill, roundIcon, roundText = pill(timers, 2)
 	roundPill.Visible = false -- the top timer says the same thing
@@ -970,10 +985,10 @@ function Hud.Init()
 			local texts = {
 				line1,
 				line("#8CFF96", "WIN IT:", `{string.upper(prize.Text)}`),
-				if prize.Boss then line("#FFE14B", "OUTRUN", string.upper(prize.Boss)) else "",
+				if prize.Rarity then line("#FFE14B", "FOR", `{string.upper(prize.Rarity)} KNIVES`) else "",
 				line(
 					"#5AF08C",
-					"SERVER GOAL",
+					if ReplicatedStorage:GetAttribute("GoalKind") == "Survives" then "TEAM: SURVIVE" else "TEAM: STEAL",
 					`{ReplicatedStorage:GetAttribute("GoalProgress") or 0}/{ReplicatedStorage:GetAttribute("GoalNeed") or "?"}`
 				),
 			}
@@ -997,7 +1012,6 @@ function Hud.Init()
 		local now = workspace:GetServerTimeNow()
 		local clock = Ui.clock(endsAt - now)
 		local inRound = player:GetAttribute("InRound")
-		local raidEnds = ReplicatedStorage:GetAttribute("RaidEndsAt")
 		timerFrame.Visible = false -- (the time is on the top line now: client/TopLine, TopLine.Resting)
 		if phase == "Round" then
 			local map = ReplicatedStorage:GetAttribute("MapName") or ""
@@ -1006,27 +1020,12 @@ function Hud.Init()
 				then `{clock}  ·  {ReplicatedStorage:GetAttribute("Alive") or 0} alive`
 				else `{map}  {clock}  ·  {ReplicatedStorage:GetAttribute("Alive") or 0} alive`
 			timerFrame.BackgroundColor3 = Color3.fromRGB(150, 30, 50)
-			subLabel.Text = if inRound then "" else "Round on - steal while they're busy!"
-		elseif type(raidEnds) == "number" then
-			-- The raid takes over the top of the screen, pulsing red
-			local pulse = (math.sin(os.clock() * 6) + 1) / 2
-			timerLabel.Text = `ENDS IN {Ui.clock(raidEnds - now)}`
-			timerFrame.BackgroundColor3 = Color3.fromRGB(120, 20, 30):Lerp(Color3.fromRGB(200, 40, 50), pulse)
-			subLabel.Text = if player:GetAttribute("Carrying")
-				then "Get it home before someone knocks it loose!"
-				else "Biomes closed - steal a knife from another vault!"
 		elseif phase == "Results" or status:find("Waiting") then
 			timerLabel.Text = if phase == "Results" then "Round over!" else status
 			timerFrame.BackgroundColor3 = Ui.PANEL
-			subLabel.Text = ""
 		else
 			timerLabel.Text = `MURDER ROUND in {clock}`
 			timerFrame.BackgroundColor3 = Ui.PANEL
-			local revengeUntil = player:GetAttribute("RevengeUntil")
-			-- (no "Get ready!" line: the prize line sits there from 60 s out)
-			subLabel.Text = if type(revengeUntil) == "number" and revengeUntil > now
-				then `REVENGE! Their vault is open to you: {Ui.clock(revengeUntil - now)}`
-				else ""
 		end
 		-- The last 10 s before a round: the timer itself goes red and pulses (that IS the countdown;
 		-- a second big red one on top of it used to cover it on phones)
@@ -1038,25 +1037,12 @@ function Hud.Init()
 		timerLabel.TextColor3 = if finalCount then Color3.fromRGB(255, 70, 70) else Color3.new(1, 1, 1)
 		local timerPulse = timerLabel:FindFirstChildOfClass("UIScale") or new("UIScale", {}, timerLabel)
 		timerPulse.Scale = if finalCount then 1.1 + 0.08 * math.abs(math.sin((endsAt - now) * math.pi)) else 1
-		local moon = phase ~= "Round" and type(raidEnds) == "number"
-		moonTitle.Visible = moon
-		timerLabel.Position = UDim2.fromScale(if moon then 0.5 else 0, 0)
-		timerLabel.Size = UDim2.fromScale(if moon then 0.5 else 1, 1)
 		-- ("Innocents win!" etc. is the top line's resting text during Results: TopLine.Resting)
 		banner.Visible = false
 		-- (not hidden while the knife is held: they never overlap, and taps made it flicker)
 		stats.Visible = not Ui.menuOpen() and Ui.inHub() -- (speed / cash: hub things; not while dead in a round)
 		timers.Visible = Ui.inHub()
 
-		-- Event pills
-		local nextRaid = ReplicatedStorage:GetAttribute("NextRaidAt")
-		-- (only once it's close; the top timer already shows the next murder round)
-		raidPill.Visible = type(raidEnds) == "number" or (type(nextRaid) == "number" and nextRaid - now < 60)
-		raidText.Text = if type(raidEnds) == "number"
-			then `BLOOD MOON {Ui.clock(raidEnds - now)}`
-			elseif type(nextRaid) == "number" then `Blood Moon in {Ui.clock(nextRaid - now)}`
-			else ""
-		raidText.TextColor3 = if type(raidEnds) == "number" then Color3.fromRGB(255, 90, 90) else Color3.new(1, 1, 1)
 		roundText.Text = if phase == "Round"
 			then "Murder round on!"
 			elseif status:find("Waiting") then "Waiting for players"
@@ -1200,10 +1186,16 @@ function Hud.Init()
 	local hintLabel = Ui.label({
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.56),
-		Size = UDim2.fromOffset(760, 36),
-		TextColor3 = Color3.fromRGB(200, 200, 200),
+		-- (the screen's width, not a fixed 760: it was cut off on small phones) - the one line that
+		-- says what to do and what you win, so bright
+		Size = UDim2.new(0.94, 0, 0, if Ui.Phone then 30 else 36),
+		TextColor3 = Color3.fromRGB(255, 235, 140),
 		ZIndex = 21,
 	}, reveal)
+	local hintCap = hintLabel:FindFirstChildOfClass("UITextSizeConstraint")
+	if hintCap then
+		hintCap.MaxTextSize = if Ui.Phone then 22 else 30
+	end
 
 	-- The Murderer's own knife, big, above the reveal
 	local knifeArt = new("ImageLabel", {
@@ -1249,26 +1241,30 @@ function Hud.Init()
 		nameLabel.Text = `You are {disguise or player.DisplayName}`
 		local hint: string
 		local knifeImage = ""
+		local function winText(): string
+			local prize = RoundPrize.For(
+				"Speed",
+				"",
+				ReplicatedStorage:GetAttribute("PrizeJackpot") == true,
+				1,
+				RoundPrize.Stats(player),
+				((player:GetAttribute("Charge_DoublePrize") or 0) :: number) > 0
+			)
+			return `👟 {prize.Text}`
+		end
 		if final == "Murderer" then
 			-- Make the link obvious: this is the knife from YOUR vault, with its power
 			local equipped = player:GetAttribute("Equipped")
 			local parsed = if type(equipped) == "string" and equipped ~= "" then Items.Parse(equipped) else nil
-			local perk = parsed and parsed.Perk and GameConfig.Perks[parsed.Perk]
-			hint = if parsed
-				then `You're fighting with YOUR {Items.DisplayName(equipped :: string)} from your vault{if perk
-					then ` - power: {perk.DisplayName}!`
-					else "!"} It arrives in {GameConfig.MurdererGrace}s.`
-				else `Blend in - your knife arrives in {GameConfig.MurdererGrace}s, and pulling it out shows everyone!`
+			-- One job and what it wins (a 5-year-old reads one line): the knife picture says which knife
+			hint = `GET EVERYONE! Win {winText()}`
 			knifeImage = if parsed
 				then (VoxelUi.Knives[parsed.Knife.Name] or KnifeIcons[parsed.Knife.Name] or "")
 				else ""
 		elseif final == "Sheriff" then
-			hint = "You have the Revolver! Find the Murderer and shoot them - but hit an innocent and you're out."
+			hint = `SHOOT THE MURDERER! Win {winText()}`
 		else
-			local power = player:GetAttribute("RoundPowerName")
-			hint = if type(power) == "string" and power ~= ""
-				then `Survive! Your power: {power}. Grab coins to charge it, and find the Revolver!`
-				else "Survive. Grab coins to charge your powers. Find the Revolver!"
+			hint = `SURVIVE! Win {winText()}`
 		end
 
 		-- The round teleport's loading cover goes first: a reel spun behind it was never seen
@@ -1403,9 +1399,10 @@ function Hud.Init()
 			icon, row = math.floor(size * 1.1), math.floor(size * 1.2)
 			x = 25 + stick + 12 -- just right of the thumbstick
 		end
-		heatArt.Visible, heatLabel.Visible = not Ui.Phone, not Ui.Phone
-		-- a smaller Heat row on top (not on phones), then Speed, then Cash
-		local small = if Ui.Phone then 0 else math.floor(row * 0.7)
+		-- a smaller Heat row on top (not on phones, and only once you have some Heat), then Speed, Cash
+		local showHeat = not Ui.Phone and ((player:GetAttribute("Heat") or 0) :: number) > 0
+		heatArt.Visible, heatLabel.Visible = showHeat, showHeat
+		local small = if showHeat then math.floor(row * 0.7) else 0
 		local smallIcon = math.floor(icon * 0.7)
 		stats.Position, stats.Size = UDim2.new(0, x, 1, -12), UDim2.fromOffset(icon + 8 + size * 6, small + row * 2)
 		heatArt.Position, heatArt.Size =
@@ -1420,6 +1417,7 @@ function Hud.Init()
 		heatLabel.TextSize = math.floor(size * 0.6)
 	end
 	Ui.Layout.Changed:Connect(placeStats)
+	placeStatsLater = placeStats
 	placeStats()
 	timers.AnchorPoint, timers.Position, timers.Size =
 		Vector2.new(1, 0), UDim2.new(1, -12, 0, 0), UDim2.fromOffset(120, 44)

@@ -127,7 +127,7 @@ local function spin(player: Player): (boolean, string, number?)
 			if not StealService.OpenCase(player, prize.Tier, false, prize.Kind == "Lucky") then
 				local cash = GameConfig.Pay({ Min = 20000, Seconds = 600 }, BaseService.RackIncome(player))
 				DataService.AddCash(player, cash, "wheel")
-				Net.Notify(player, `Your wall is full - +{Format.Cash(cash)} instead`, "good")
+				Net.Notify(player, `Your vault is full - +{Format.Cash(cash)} instead`, "good")
 			end
 		end
 		local after = DataService.Get(player)
@@ -151,7 +151,7 @@ local function buyLuckyBlock(player: Player, tier: unknown): (boolean, string)
 		return false, "Not during a round!"
 	end
 	if #profile.Knives >= profile.Slots then
-		return false, "Your wall is full! Sell a knife first."
+		return false, "Your vault is full! Sell a knife first."
 	end
 	if Knives.Rank(tier :: string) > Knives.Rank(GameConfig.RarityReached(profile.Speed)) then
 		return false, `Reach the {tier} biome first (train your Speed)!`
@@ -251,7 +251,7 @@ local function buyMerchant(player: Player, slot: unknown): (boolean, string)
 		return false, "Sold out - new stock soon"
 	end
 	if #profile.Knives >= profile.Slots then
-		return false, "Your wall is full! Sell a knife first."
+		return false, "Your vault is full! Sell a knife first."
 	end
 	local offer = stock[slot]
 	if not DataService.TrySpend(player, offer.Price, "merchant") then

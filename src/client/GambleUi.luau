@@ -235,7 +235,7 @@ end
 -- Mystery Merchant ----------------------------------------------------------------------------------
 
 local function buildMerchant()
-	local frame, body = Theme.shell("MysteryMerchant", "Mystery Merchant", PURPLE, "Merchant", 520, 860)
+	local frame, body = Theme.shell("MysteryMerchant", "Deals", PURPLE, "Merchant", 520, 860)
 	local timer = Theme.text(body, "", {
 		Size = UDim2.new(1, 0, 0, 36),
 		MaximumTextSize = 28,

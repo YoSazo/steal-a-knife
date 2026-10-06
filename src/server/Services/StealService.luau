@@ -194,7 +194,7 @@ local function canPickUp(player: Player, anchor: BasePart, prompt: ProximityProm
 	end
 	if #profile.Knives >= profile.Slots then
 		Net.Notify(player, "Your vault is full! Sell a knife first.", "bad")
-		Offers.Show(player, "Mount", "Your wall is full! Add another mount instantly.")
+		Offers.Show(player, "Mount", "Your vault is full! Get more room right now.")
 		return false
 	end
 	return true
@@ -655,7 +655,7 @@ local function deposit(player: Player)
 	local profile = DataService.Get(player)
 	if not profile or #profile.Knives >= profile.Slots then
 		Net.Notify(player, "Your vault is full! Sell a knife first.", "bad")
-		Offers.Show(player, "Mount", "Your wall is full! Add another mount instantly.")
+		Offers.Show(player, "Mount", "Your vault is full! Get more room right now.")
 		endCarry(player, false, nil, "vault_full")
 		return
 	end
@@ -818,7 +818,7 @@ local function tick()
 				local profile = DataService.Get(player)
 				if profile and #profile.Knives >= profile.Slots then
 					Net.Notify(player, "Your vault is full! Sell a knife first.", "bad")
-					Offers.Show(player, "Mount", "Your vault is full! Add the next floor instantly.")
+					Offers.Show(player, "Mount", "Your vault is full! Get more room right now.")
 				else
 					Net.Notify(player, "Walk to a glowing plate to put it down!", "good")
 				end
