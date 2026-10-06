@@ -355,6 +355,31 @@ local function buildRig(config: ZoneConfig, shadow: boolean): Model
 	return rig
 end
 
+-- Asleep in the chair at the post: the client poses the rig seated with its head down
+-- (client/Moves), and a 💤 floats over it. Waking = a thief took a knife.
+local function setAsleep(guard: Guard, asleep: boolean)
+	guard.Model:SetAttribute("Asleep", asleep)
+	local head = guard.Model:FindFirstChild("Head")
+	local zzz = head and head:FindFirstChild("Zzz") :: BillboardGui?
+	if zzz then
+		zzz.Enabled = asleep
+	elseif head and asleep then
+		local gui = Instance.new("BillboardGui")
+		gui.Name = "Zzz"
+		gui.Size = UDim2.fromOffset(56, 56)
+		gui.StudsOffset = Vector3.new(1.6, 2.2, 0)
+		gui.MaxDistance = 140
+		gui.LightInfluence = 0
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundTransparency = 1
+		label.TextScaled = true
+		label.Text = "💤"
+		label.Parent = gui
+		gui.Parent = head
+	end
+end
+
 local function newGuard(boss: Boss, shadow: boolean, at: CFrame): Guard
 	local model = buildRig(boss.Config, shadow)
 	model:PivotTo(at)
@@ -572,14 +597,35 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 		light.Parent = bowl
 	end
 
-	local postPosition = at(0, PLATFORM + HEIGHT, -D / 2 + 2.5).Position
+	-- The boss dozes in a chair at the deeper end of the stage (Steal An Egg: the creature sleeps
+	-- beside its eggs), not in front of the middle of the knife wall, turned at an angle towards
+	-- the runway and the way thieves come in
+	-- (just off the end of the stage, beside its pillar: on it he sat in front of the first knife)
+	local endA = at(W / 2 + 3.5, HEIGHT, -D / 2 + 2).Position
+	local endB = at(-(W / 2 + 3.5), HEIGHT, -D / 2 + 2).Position
+	local postPosition = if endA.Z > endB.Z then endA else endB
+	local post = CFrame.lookAt(postPosition, Vector3.new(0, postPosition.Y, postPosition.Z - 30))
+	local wood = Color3.fromRGB(120, 78, 44)
+	local function chairPart(name: string, size: Vector3, offset: CFrame)
+		local part = block(model, name, size, post * offset, wood)
+		part.CanCollide, part.CanQuery, part.CanTouch = false, false, false
+	end
+	-- (placeholder chair until Codex's biome chairs land. Measured on the seated rig: the floor is
+	-- 4.9 below the post (the boss's root), the hips rest 3.4 below it - seat top 1.5 above the
+	-- floor - and the back of the body is 0.9 behind it)
+	chairPart("ChairSeat", Vector3.new(4.4, 0.4, 2.8), CFrame.new(0, -3.6, -0.35))
+	chairPart("ChairBack", Vector3.new(4.4, 4.8, 0.5), CFrame.new(0, -1.2, 1.2))
+	for _, x in { -1.9, 1.9 } do
+		for _, z in { -1.5, 1.0 } do
+			chairPart("ChairLeg", Vector3.new(0.45, 1.1, 0.45), CFrame.new(x, -4.35, z))
+		end
+	end
 	local boss: Boss = {
 		Index = index,
 		Zone = zone,
 		Config = config,
 		Name = config.Boss,
-		-- Front and centre on the stage, facing the runway
-		Post = CFrame.lookAt(postPosition, Vector3.new(0, postPosition.Y, postPosition.Z)),
+		Post = post,
 		Folder = model,
 		Slots = {},
 		Guard = nil :: any,
@@ -713,6 +759,7 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 		guard = newGuard(boss, true, boss.Post)
 		Net.Remotes.Effect:FireAllClients("Smoke", boss.Post.Position)
 	end
+	setAsleep(guard, false)
 	guard.Target = thief
 	guard.Returning = false
 	guard.AlertUntil = now() + GameConfig.GuardAlertTime
@@ -1007,6 +1054,7 @@ local function step(guard: Guard, dt: number)
 			guard.Position = guard.Boss.Post.Position
 			guard.Model:PivotTo(guard.Boss.Post)
 			animate(guard, "Idle")
+			setAsleep(guard, true)
 			local i = table.find(chasers, guard)
 			if i then
 				table.remove(chasers, i)
@@ -1421,6 +1469,7 @@ function GuardService.Init()
 				local zone = MapService.Zones[i]
 				local boss = buildLair(i, zone, config :: any)
 				boss.Guard = newGuard(boss, false, boss.Post)
+				setAsleep(boss.Guard, true)
 				bosses[i] = boss
 			end)
 			if not ok then

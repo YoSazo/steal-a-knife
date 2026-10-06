@@ -275,7 +275,28 @@ local function step(dt: number)
 				Waist = Vector3.new(6 + math.sin(now * 1.4 + s) * 3, math.sin(now * 0.6 + s) * 10, 0),
 			}, 1)
 		end
-		if CollectionService:HasTag(model, "Guard") and not busy and not chargeStart then
+		if
+			CollectionService:HasTag(model, "Guard")
+			and not busy
+			and not chargeStart
+			and model:GetAttribute("Asleep")
+		then
+			-- Dozing in the chair at its post (GuardService setAsleep): seated, head down, breathing
+			local breath = math.sin(now * 1.6 + rig.Seed)
+			addPose(total, {
+				RootMove = Vector3.new(0, -1.55, 0),
+				LeftHip = Vector3.new(90, 0, 0),
+				RightHip = Vector3.new(90, 0, 0),
+				LeftKnee = Vector3.new(-95, 0, 0),
+				RightKnee = Vector3.new(-95, 0, 0),
+				Waist = Vector3.new(-8 - breath * 2, 0, 0),
+				Neck = Vector3.new(-30 - breath * 3, 0, 0),
+				LeftShoulder = Vector3.new(25, 0, -6),
+				RightShoulder = Vector3.new(25, 0, 6),
+				LeftElbow = Vector3.new(40, 0, 0),
+				RightElbow = Vector3.new(40, 0, 0),
+			}, 1)
+		elseif CollectionService:HasTag(model, "Guard") and not busy and not chargeStart then
 			local s = rig.Seed
 			addPose(total, {
 				Neck = Vector3.new(math.sin(now * 0.9 + s) * 6, math.sin(now * 0.45 + s) * 35, 0),

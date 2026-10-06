@@ -280,6 +280,9 @@ function Abilities.Init()
 	local chargeKind = "perk"
 	local basicThrowReadyAt = 0
 	local restoreFov = BASE_FOV
+	-- The zoom to come back to, taken only when no lean is in progress: re-reading it on every press
+	-- caught it mid-tween, so tapping the knife button zoomed the camera in a little more each time
+	local leanBase: number? = nil
 	local lastSwing = 0
 	local comboIndex = 0
 
@@ -338,7 +341,10 @@ function Abilities.Init()
 		Moves.SetLocalCharge(chargingSince)
 		Remotes.Charge:FireServer(true)
 		crosshairGui.Enabled = true
-		restoreFov = workspace.CurrentCamera.FieldOfView
+		if leanBase == nil then
+			leanBase = workspace.CurrentCamera.FieldOfView
+		end
+		restoreFov = leanBase :: number
 		zoom(restoreFov - 10)
 	end
 
@@ -350,6 +356,11 @@ function Abilities.Init()
 		Moves.SetLocalCharge(nil)
 		crosshairGui.Enabled = false
 		zoom(restoreFov)
+		task.delay(0.4, function()
+			if not chargingSince then
+				leanBase = nil -- back where it started: the next lean reads it fresh
+			end
+		end)
 		local character = player.Character
 		if throw and character and knifeInHand() then
 			Moves.Play(character, "Throw")
@@ -1140,6 +1151,12 @@ function Abilities.Init()
 			and allowed()
 			and player:GetAttribute("InRound") == true
 		throwButton.Visible = show
+		if show then
+			-- Same spot and size as the hub's knife stick, so your thumb finds it in both
+			throwButton.AnchorPoint = knifeButton.AnchorPoint
+			throwButton.Position = knifeButton.Position
+			throwButton.Size = knifeButton.Size
+		end
 		centerDot.Visible = show and not chargingSince
 		if show then
 			local isReady = os.clock() >= basicThrowReadyAt or spamMode()

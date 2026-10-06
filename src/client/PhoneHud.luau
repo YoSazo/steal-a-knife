@@ -9,6 +9,35 @@ local PhoneHud = {}
 -- Steal An Egg sizes: about half of what we had (easy to tap, but the world stays the star)
 local NAV_W, NAV_H, NAV_GAP = 112, 40, 6
 local SQUARE, SQUARE_GAP = 46, 6
+-- Phones: a small outlined word under each square ("how do I upgrade?" - icons alone weren't enough)
+local CAPTION = 14
+local CAPTIONS: { [string]: string } = {
+	UpgradesButton = "Upgrades",
+	SpinButton = "Spin",
+	MerchantButton = "Merchant",
+}
+
+local function caption(button: GuiObject, text: string)
+	if button:FindFirstChild("Caption") then
+		return
+	end
+	local label = Instance.new("TextLabel")
+	label.Name = "Caption"
+	label.AnchorPoint = Vector2.new(0.5, 0)
+	label.Position = UDim2.new(0.5, 0, 1, 1)
+	label.Size = UDim2.new(1.6, 0, 0, CAPTION)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.Text = text
+	label.TextScaled = true
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.ZIndex = button.ZIndex + 3
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = 2
+	stroke.Color = Color3.fromRGB(20, 18, 30)
+	stroke.Parent = label
+	label.Parent = button
+end
 
 -- A Theme.button turned into a square icon button (the label hides, the picture fills it)
 local function squareIcon(button: GuiObject)
@@ -39,6 +68,7 @@ function PhoneHud.Init()
 		if button and button:IsA("GuiObject") then
 			if phone then
 				squareIcon(button)
+				caption(button, CAPTIONS[name])
 			end
 			table.insert(right, button)
 		end
@@ -87,9 +117,10 @@ function PhoneHud.Init()
 		-- desktop: the labelled buttons, same height each)
 		local count = #right + (if timers then 1 else 0)
 		local bottomLimit = if phone then Ui.Layout.touchBounds().Y - 12 else bounds.Y - 12
-		local square = if phone then math.clamp(math.floor((bottomLimit - 10) / count - SQUARE_GAP), 32, SQUARE) else 52
+		local gap = if phone then SQUARE_GAP + CAPTION else SQUARE_GAP
+		local square = if phone then math.clamp(math.floor((bottomLimit - 10) / count - gap), 32, SQUARE) else 52
 		local width = if phone then square else 150
-		local total = count * square + (count - 1) * SQUARE_GAP
+		local total = count * square + (count - 1) * gap
 		local y = math.floor((bounds.Y - total) / 2)
 		y = math.max(10, math.min(y, bottomLimit - total))
 		local edge = if phone then rightEdge else -12
@@ -97,7 +128,7 @@ function PhoneHud.Init()
 			item.AnchorPoint = Vector2.new(1, 0)
 			item.Position = UDim2.new(1, edge, 0, y)
 			item.Size = UDim2.fromOffset(width, square)
-			y += square + SQUARE_GAP
+			y += square + gap
 		end
 		if timers and timers:IsA("GuiObject") then
 			place(timers)
