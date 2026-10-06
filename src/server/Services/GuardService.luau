@@ -693,10 +693,13 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 	-- beside its eggs), not in front of the middle of the knife wall, turned at an angle towards
 	-- the runway and the way thieves come in
 	-- (just off the end of the stage, beside its pillar: on it he sat in front of the first knife)
-	local endA = at(W / 2 + 3.5, HEIGHT, -D / 2 + 2).Position
-	local endB = at(-(W / 2 + 3.5), HEIGHT, -D / 2 + 2).Position
+	-- Brought forward out of the corner (it sat behind the torch post) and turned to face down the
+	-- runway towards the plaza, a little in towards the middle: thieves walking up meet him face on
+	-- (turned across the runway, everyone saw his side and back)
+	local endA = at(W / 2 + 3.5, HEIGHT, -D / 2 - 4).Position
+	local endB = at(-(W / 2 + 3.5), HEIGHT, -D / 2 - 4).Position
 	local postPosition = if endA.Z > endB.Z then endA else endB
-	local post = CFrame.lookAt(postPosition, Vector3.new(0, postPosition.Y, postPosition.Z - 30))
+	local post = CFrame.lookAt(postPosition, Vector3.new(postPosition.X * 0.75, postPosition.Y, postPosition.Z - 60))
 	-- The zone's own chair (Config/BossChairs: floor origin under the seat, front -Z, seat top 2.6).
 	-- The floor is 4.9 below the post (the boss's root). The chair is deeper than a boss's thighs
 	-- are long: sat back against the backrest his shins went down through the seat, so he sits
