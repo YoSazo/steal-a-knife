@@ -87,6 +87,8 @@ function Revolver.BuildTool(): Tool
 	tool.GripUp = Vector3.new(0, 1, 0)
 	tool.GripRight = Vector3.new(1, 0, 0)
 	tool:SetAttribute("Revolver", true)
+	-- its picture in the hotbar, like the knives' (rendered from this model: blender/textures/icons)
+	tool.TextureId = "rbxassetid://115085995206955"
 	local handle = assemble(tool)
 	handle.Massless = false
 	local sound = Instance.new("Sound")

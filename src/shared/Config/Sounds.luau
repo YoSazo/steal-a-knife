@@ -41,6 +41,9 @@ return {
 	ReelTick = "rbxassetid://9120098629", -- a crisp little switch click (PSE) per knife going past
 	Reveal = "rbxassetid://4612374036", -- a quick sparkly "big diamond" ding: any reveal (case, power roll, gift)
 	Tick = "rbxasset://sounds/electronicpingshort.wav",
+	-- Winning a round (client/Transitions): the win card's jingle, and one "got it" as the shoes land
+	Win = "rbxassetid://139651791574775", -- "Aquapark SFX - finish" (procedurally generated, original)
+	PrizeLand = "rbxassetid://3416831713", -- "Token_Get"
 	MenuPop = "rbxassetid://9117848029", -- "Pops, Mouth Popping" (PSE): a menu opening (higher) / closing (lower)
 
 	-- Footsteps (one picked at random per step, client/Footsteps)

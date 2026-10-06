@@ -20,14 +20,19 @@ local Sounds = require(ReplicatedStorage.Shared.Config.Sounds)
 local Juice = {}
 
 local JUICE = true
-local PRESSED = 0.8 -- how far a held button squishes
+-- How far a held button dips with a MOUSE. Not lower: a button that shrinks under the pointer can
+-- shrink out from under it, and a tap only counts if you let go INSIDE the button (small buttons -
+-- the map vote, X's - missed taps near their edges). On touch it doesn't shrink while held at all:
+-- the squish plays the moment you let go, after the tap has counted.
+local PRESSED = 0.92
+local TAP_SQUISH = 0.84 -- touch: the quick squish on release
 local OVERSHOOT = 1.16 -- how far it springs past full size on release
 local HOVER = 1.07
 local SKIP_NAMES: { [string]: boolean } = { KnifeButton = true, ThrowButton = true }
 
 local player = Players.LocalPlayer
 
-type State = { Scale: UIScale, Base: number, Busy: Tween?, Held: boolean, Hover: boolean }
+type State = { Scale: UIScale, Base: number, Busy: Tween?, Held: boolean, Hover: boolean, Touch: boolean }
 local states: { [GuiButton]: State } = setmetatable({}, { __mode = "k" }) :: any
 
 -- Sounds ------------------------------------------------------------------------------------------
@@ -79,7 +84,7 @@ local function stateOf(button: GuiButton): State
 	if not state then
 		local scale = button:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
 		scale.Parent = button
-		state = { Scale = scale, Base = scale.Scale, Busy = nil, Held = false, Hover = false }
+		state = { Scale = scale, Base = scale.Scale, Busy = nil, Held = false, Hover = false, Touch = false }
 		states[button] = state
 	end
 	-- (the scale may belong to something else too: take its resting value while idle)
@@ -89,10 +94,13 @@ local function stateOf(button: GuiButton): State
 	return state
 end
 
-local function press(button: GuiButton)
+local function press(button: GuiButton, touch: boolean)
 	local state = stateOf(button)
 	state.Held = true
-	tween(state, PRESSED, 0.07, Enum.EasingStyle.Quad)
+	state.Touch = touch
+	if not touch then
+		tween(state, PRESSED, 0.07, Enum.EasingStyle.Quad)
+	end
 	play(clickSound, 0.95 + math.random() * 0.25)
 end
 
@@ -102,17 +110,30 @@ local function release(button: GuiButton)
 		return
 	end
 	state.Held = false
-	local up = tween(state, OVERSHOOT, 0.08, Enum.EasingStyle.Quad)
-	up.Completed:Connect(function(status)
-		if status == Enum.PlaybackState.Completed and not state.Held then
-			local settle = tween(state, if state.Hover then HOVER else 1, 0.32, Enum.EasingStyle.Back)
-			settle.Completed:Connect(function(done)
-				if done == Enum.PlaybackState.Completed and state.Busy == settle then
-					state.Busy = nil
-				end
-			end)
-		end
-	end)
+	local function spring()
+		local up = tween(state, OVERSHOOT, 0.08, Enum.EasingStyle.Quad)
+		up.Completed:Connect(function(status)
+			if status == Enum.PlaybackState.Completed and not state.Held then
+				local settle = tween(state, if state.Hover then HOVER else 1, 0.32, Enum.EasingStyle.Back)
+				settle.Completed:Connect(function(done)
+					if done == Enum.PlaybackState.Completed and state.Busy == settle then
+						state.Busy = nil
+					end
+				end)
+			end
+		end)
+	end
+	if state.Touch then
+		-- (touch: squish now that the tap has counted, then spring)
+		local down = tween(state, TAP_SQUISH, 0.06, Enum.EasingStyle.Quad)
+		down.Completed:Connect(function(status)
+			if status == Enum.PlaybackState.Completed and not state.Held then
+				spring()
+			end
+		end)
+	else
+		spring()
+	end
 end
 
 local function hover(button: GuiButton, on: boolean)
@@ -156,7 +177,7 @@ local function hook(instance: Instance)
 	button.InputBegan:Connect(function(input)
 		local kind = input.UserInputType
 		if kind == Enum.UserInputType.MouseButton1 or (kind == Enum.UserInputType.Touch and freshTouch(input)) then
-			press(button)
+			press(button, kind == Enum.UserInputType.Touch)
 		elseif kind == Enum.UserInputType.MouseMovement and not UserInputService.TouchEnabled then
 			hover(button, true)
 		end
@@ -176,7 +197,7 @@ local function hook(instance: Instance)
 			input.UserInputType ~= Enum.UserInputType.MouseButton1
 			and input.UserInputType ~= Enum.UserInputType.Touch
 		then
-			press(button)
+			press(button, false)
 			task.delay(0.07, release, button)
 		end
 	end)

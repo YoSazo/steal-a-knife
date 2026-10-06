@@ -1793,7 +1793,12 @@ local function onShoot(player: Player, aim: unknown)
 	local hitBot = botAt(round, hit.Instance)
 	if hitBot then
 		if hitBot ~= round.MurdererBot then
-			Net.Notify(player, "Oops! That wasn't the Murderer.", "bad")
+			-- why you're out, on the top line where you'll see it (a toast got lost in the death)
+			Net.Remotes.Effect:FireClient(
+				player,
+				"Why",
+				"💥 You shot someone who WASN'T the Murderer, so you're out too!"
+			)
 			eliminate(round, player, nil, true)
 		end
 		killBot(round, hitBot, if hitBot == round.MurdererBot then player else nil)
@@ -1850,7 +1855,12 @@ local function onShoot(player: Player, aim: unknown)
 		Net.Notify(victim, "Your shield stopped a bullet!", "good")
 	else
 		-- Shot an innocent: both go down, and the Revolver drops where the shooter stood
-		Net.Notify(player, "Oops! That wasn't the Murderer.", "bad")
+		Net.Remotes.Effect:FireClient(
+			player,
+			"Why",
+			"💥 You shot someone who WASN'T the Murderer, so you're out too!"
+		)
+		Net.Remotes.Effect:FireClient(victim, "Why", "💥 The Sheriff shot you by mistake! (They're out too.)")
 		eliminate(round, victim, nil, true)
 		eliminate(round, player, nil, true)
 	end

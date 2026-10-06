@@ -559,14 +559,14 @@ function Transitions.Init()
 				shoe:Destroy()
 				bump.Scale = 1.25
 				TweenService:Create(bump, TweenInfo.new(0.12), { Scale = 1 }):Play()
-				if i % 3 == 0 then
-					local tick = Instance.new("Sound")
-					tick.SoundId = Sounds.Coin
-					tick.Volume = 0.25
-					tick.PlaybackSpeed = 1.2 + i / count * 0.5
-					tick.Parent = workspace.CurrentCamera
-					tick:Play()
-					Debris:AddItem(tick, 2)
+				-- one "got it" when the first shoe lands (it was a coin clink every third shoe)
+				if i == 1 then
+					local got = Instance.new("Sound")
+					got.SoundId = Sounds.PrizeLand
+					got.Volume = 0.5
+					got.Parent = workspace.CurrentCamera
+					got:Play()
+					Debris:AddItem(got, 4)
 				end
 			end)
 		end
@@ -583,6 +583,12 @@ function Transitions.Init()
 		prizeCard.BackgroundTransparency = 0.1
 		prizeCard.ZIndex = 45
 		prizeCard.Parent = Ui.root
+		local jingle = Instance.new("Sound")
+		jingle.SoundId = Sounds.Win
+		jingle.Volume = 0.5
+		jingle.Parent = workspace.CurrentCamera
+		jingle:Play()
+		Debris:AddItem(jingle, 6)
 		Instance.new("UICorner", prizeCard).CornerRadius = UDim.new(0, 18)
 		local stroke = Instance.new("UIStroke")
 		stroke.Thickness = 4

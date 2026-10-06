@@ -331,6 +331,45 @@ function Hud.Init()
 			local map = workspace:FindFirstChild("Map")
 			local bases = map and map:FindFirstChild("Bases")
 			local base = bases and type(index) == "number" and bases:FindFirstChild(`Base{index}`)
+			-- Only YOUR two upgrade signs exist for you: everyone else's are hidden on your screen
+			if bases then
+				for _, other in bases:GetChildren() do
+					for _, signName in { "UpgradeSign", "WheelUpgradeSign" } do
+						local sign = other:FindFirstChild(signName)
+						local mine = other == base
+						-- (checked part by part, every tick: with streaming a sign's parts arrive later
+						-- than the sign itself, and a once-per-sign flag left them showing)
+						if sign then
+							for _, d in sign:GetDescendants() do
+								if d:GetAttribute("ShownToMe") == mine then
+									continue
+								end
+								d:SetAttribute("ShownToMe", mine)
+								if d:IsA("BasePart") then
+									-- (a client-side change: only your own screen; LocalTransparencyModifier got reset)
+									local original = d:GetAttribute("ShownTransparency")
+									if original == nil then
+										original = d.Transparency
+										d:SetAttribute("ShownTransparency", original)
+									end
+									d.Transparency = if mine then original :: number else 1
+									d.CanQuery = mine
+									local collides = d:GetAttribute("ShownCollide")
+									if collides == nil then
+										collides = d.CanCollide
+										d:SetAttribute("ShownCollide", collides)
+									end
+									d.CanCollide = mine and collides == true
+								elseif d:IsA("SurfaceGui") or d:IsA("BillboardGui") or d:IsA("ProximityPrompt") then
+									(d :: any).Enabled = mine
+								elseif d:IsA("ClickDetector") then
+									d.MaxActivationDistance = if mine then 28 else 0
+								end
+							end
+						end
+					end
+				end
+			end
 			if not base then
 				continue
 			end
@@ -1000,6 +1039,27 @@ function Hud.Init()
 					end
 				end
 			end
+		end
+	end)
+
+	-- The bosses' speed boards (server GuardService): green with a tick once YOU are fast enough
+	task.spawn(function()
+		local CollectionService = game:GetService("CollectionService")
+		while true do
+			local speed = (player:GetAttribute("Speed") or 0) :: number
+			for _, sign in CollectionService:GetTagged("SpeedSign") do
+				local need = (sign:GetAttribute("Need") or 0) :: number
+				local surface = sign:FindFirstChildOfClass("SurfaceGui")
+				local title = surface and surface:FindFirstChild("Title") :: TextLabel?
+				local value = surface and surface:FindFirstChild("Value") :: TextLabel?
+				if title and value then
+					local fast = speed >= need
+					title.Text = if fast then "✓ YOU'RE FAST ENOUGH" else "SPEED NEEDED"
+					title.TextColor3 = if fast then Color3.fromRGB(120, 255, 140) else Color3.fromRGB(255, 225, 90)
+					value.TextColor3 = if fast then Color3.fromRGB(120, 255, 140) else Color3.new(1, 1, 1)
+				end
+			end
+			task.wait(1)
 		end
 	end)
 

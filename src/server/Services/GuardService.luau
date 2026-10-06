@@ -708,6 +708,58 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 	local chairFrame = post * CFrame.new(0, -4.9, 0.9)
 	mountChair(index, model, chairFrame)
 	buildFootstool(model, chairFrame, config.Color)
+	-- The speed board beside the chair (like the wheel's sign): how much Speed you need to outrun
+	-- this boss. Each player's own client turns it green with a tick once they have it (Hud).
+	do
+		local need = ((config :: any).SpeedNeeded or 0) :: number
+		-- on the side towards the middle of the runway, facing the way the boss faces
+		local towardMiddle = if (chairFrame * CFrame.new(7, 0, 0)).Position.X ^ 2
+				< (chairFrame * CFrame.new(-7, 0, 0)).Position.X ^ 2
+			then 7
+			else -7
+		local base = chairFrame * CFrame.new(towardMiddle, 0, -2.5)
+		local navy = Color3.fromRGB(22, 34, 70)
+		local pole = Instance.new("Part")
+		pole.Name = "SpeedSignPole"
+		pole.Anchored = true
+		pole.Size = Vector3.new(0.6, 5, 0.6)
+		pole.CFrame = base * CFrame.new(0, 2.5, 0)
+		pole.Color = navy
+		pole.Parent = model
+		local board = Instance.new("Part")
+		board.Name = "SpeedSign"
+		board.Anchored = true
+		board.Size = Vector3.new(7, 3.4, 0.4)
+		board.CFrame = base * CFrame.new(0, 6, 0)
+		board.Color = navy
+		board.Parent = model
+		board:SetAttribute("Need", need)
+		board:AddTag("SpeedSign")
+		local surface = Instance.new("SurfaceGui")
+		surface.Face = Enum.NormalId.Front
+		surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		surface.PixelsPerStud = 50
+		surface.LightInfluence = 0
+		surface.Parent = board
+		local function signText(name: string, y: number, h: number, value: string, color: Color3)
+			local label = Instance.new("TextLabel")
+			label.Name = name
+			label.BackgroundTransparency = 1
+			label.Position = UDim2.fromScale(0.04, y)
+			label.Size = UDim2.fromScale(0.92, h)
+			label.Font = Enum.Font.FredokaOne
+			label.TextScaled = true
+			label.Text = value
+			label.TextColor3 = color
+			local stroke = Instance.new("UIStroke")
+			stroke.Thickness = 3
+			stroke.Color = Color3.fromRGB(10, 14, 30)
+			stroke.Parent = label
+			label.Parent = surface
+		end
+		signText("Title", 0.06, 0.3, "SPEED NEEDED", Color3.fromRGB(255, 225, 90))
+		signText("Value", 0.4, 0.5, if need > 0 then `👟 {Format.Short(need)}` else "👟 ANY", Color3.new(1, 1, 1))
+	end
 	local boss: Boss = {
 		Index = index,
 		Zone = zone,

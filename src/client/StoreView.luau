@@ -72,11 +72,11 @@ function View.Build(actions: any): Frame
 	end
 	-- Steal An Egg's shop: Featured / Speed / Money (the cash cases and cash Lucky Blocks are
 	-- Mortimer's, on the plaza; consumables that fix one moment are offered at that moment instead)
-	for i, name in { "Featured", "Speed", "Money" } do
+	for i, name in { "Featured", "Speed", "Money" } do -- (the tab says "Top": "Featured" wrapped on phones)
 		pages[name] = page(body, { Name = name, Size = UDim2.fromScale(1, 1), Visible = i == 1 })
 		tabButtons[name] = Theme.button(
 			tabs,
-			name,
+			if name == "Featured" then "Top" else name,
 			({ Theme.Gold, Theme.Cyan, Theme.Green })[i],
 			{ Name = name, LayoutOrder = i, MaximumTextSize = 25 },
 			function()

@@ -224,6 +224,14 @@ function TopLine.Init()
 	if not band then
 		build()
 	end
+	-- "Why": the server telling you why something just happened to you (you're out because you shot
+	-- an innocent...) - on this line, where you're already looking, for a good while
+	local remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
+	remotes:WaitForChild("Effect").OnClientEvent:Connect(function(kind: string, text: unknown)
+		if kind == "Why" and type(text) == "string" then
+			TopLine.Show(text, 6, "Why")
+		end
+	end)
 	-- Resting: redraw when the words change (the timer ticks once a second)
 	RunService.RenderStepped:Connect(function()
 		local frame, text = band, label

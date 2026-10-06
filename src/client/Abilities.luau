@@ -866,7 +866,7 @@ function Abilities.Init()
 			spamThrow(nil)
 		end
 		cancelButton.Visible = false -- (no cancel: let go to throw, the rest of the screen just looks around)
-		chargeHint.Visible = gesture.mode == "charging" or gesture.mode == "spam"
+		chargeHint.Visible = false -- (no "Release to throw" under the stick: the button's own "Throw" says it)
 		chargeHint.Text = if gesture.mode == "charging"
 			then "Release to throw"
 			elseif gesture.mode == "spam" then "Drag: aim\nHold: throw"
