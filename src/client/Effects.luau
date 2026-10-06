@@ -723,6 +723,67 @@ local handlers: { [string]: (...any) -> () } = {
 		Effects.Sound(Sounds.GateHit, position, 0.4)
 		local _ = color
 	end,
+	-- A boss wakes up (GuardService sendChaser, before the chase): eyes glow red, a big "!!" pops
+	-- over the head, a rising sting, and a roar as they get out of the chair
+	BossWake = function(model: Model, duration: number)
+		local head = model and model:FindFirstChild("Head") :: BasePart?
+		if not head then
+			return
+		end
+		local eyes: { BasePart } = {}
+		for _, side in { -1, 1 } do
+			local eye = Instance.new("Part")
+			eye.Name = "WakeEye"
+			eye.Shape = Enum.PartType.Ball
+			eye.Material = Enum.Material.Neon
+			eye.Color = Color3.fromRGB(255, 30, 30)
+			eye.Size = Vector3.one * 0.05
+			eye.CanCollide, eye.CanQuery, eye.CanTouch, eye.Massless = false, false, false, true
+			eye.CastShadow = false
+			local offset = CFrame.new(side * head.Size.X * 0.17, head.Size.Y * 0.08, -head.Size.Z * 0.47)
+			eye.CFrame = head.CFrame * offset
+			local weld = Instance.new("Weld")
+			weld.Part0, weld.Part1, weld.C0 = head, eye, offset
+			weld.Parent = eye
+			eye.Parent = model
+			TweenService:Create(eye, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
+				Size = Vector3.one * head.Size.X * 0.2,
+			}):Play()
+			table.insert(eyes, eye)
+		end
+		local gui = Instance.new("BillboardGui")
+		gui.Name = "WakeMark"
+		gui.Size = UDim2.fromScale(3, 3)
+		gui.StudsOffset = Vector3.new(0, head.Size.Y * 1.6, 0)
+		gui.LightInfluence = 0
+		gui.MaxDistance = 220
+		local mark = Instance.new("TextLabel")
+		mark.Size = UDim2.fromScale(1, 1)
+		mark.BackgroundTransparency = 1
+		mark.Font = Enum.Font.LuckiestGuy
+		mark.TextScaled = true
+		mark.TextColor3 = Color3.fromRGB(255, 50, 50)
+		mark.TextStrokeTransparency = 0
+		mark.Text = "!!"
+		mark.Parent = gui
+		local pop = Instance.new("UIScale")
+		pop.Scale = 0.2
+		pop.Parent = mark
+		gui.Parent = head
+		TweenService:Create(pop, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+		Effects.Sound(Sounds.BossWake, head.Position, 0.8)
+		task.delay(duration * 0.6, function()
+			if head.Parent then
+				Effects.Sound(Sounds.BossRoar, head.Position, 0.45)
+			end
+		end)
+		task.delay(duration + 1.5, function()
+			gui:Destroy()
+			for _, eye in eyes do
+				eye:Destroy()
+			end
+		end)
+	end,
 	-- A boss is coming for you: a quick red flash (the alarm bell rang on every steal - too much)
 	Alarm = function()
 		flash(nil, 0.25, 0.8)

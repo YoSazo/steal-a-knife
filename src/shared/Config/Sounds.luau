@@ -21,6 +21,9 @@ return {
 
 	-- Raids
 	Alarm = "rbxassetid://9125544285", -- alarm bell (PSE): someone is robbing YOUR vault
+	-- A boss waking up (Effects BossWake): a rising gliss while the eyes go red, a roar as they stand
+	BossWake = "rbxassetid://1846544949", -- "Bass Gliss Up" (APM)
+	BossRoar = "rbxassetid://9116302511", -- Lion Roar, Short Blast (PSE)
 	GateHit = "rbxassetid://9116502787", -- metal drum bang (PSE)
 	GateBreak = "rbxassetid://9116635188", -- metal grate crash (PSE)
 	WoodBreak = "rbxassetid://9120801590", -- wood snap (PSE): barricades

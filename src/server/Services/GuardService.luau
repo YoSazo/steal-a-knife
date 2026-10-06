@@ -16,6 +16,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local InsertService = game:GetService("InsertService")
 
 local AnimLibrary = require(ReplicatedStorage.Shared.AnimLibrary)
 local Format = require(ReplicatedStorage.Shared.Format)
@@ -27,6 +28,8 @@ local SignTheme = require(ReplicatedStorage.Shared.SignTheme)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local ToyBlockModel = require(ReplicatedStorage.Shared.ToyBlockModel)
 local BossTitleModel = require(ReplicatedStorage.Shared.BossTitleModel)
+local BossChairs = require(ReplicatedStorage.Shared.Config.BossChairs)
+local BossChairModel = require(ReplicatedStorage.Shared.Assets.BossChairModel)
 
 -- Retained for side-by-side verification; production lair titles use physical voxel meshes.
 local Net = require(script.Parent.Parent.Remotes)
@@ -91,6 +94,7 @@ export type Guard = {
 	Target: Player?, -- the thief being chased
 	Returning: boolean, -- walking back to the post (shadows vanish instead)
 	AlertUntil: number,
+	WakeUntil: number, -- still sitting up in the chair (doesn't turn yet)
 	Alert: BillboardGui,
 	Dead: boolean, -- (kept for the powers' checks; bosses never die)
 	KnifeName: string,
@@ -395,6 +399,7 @@ local function newGuard(boss: Boss, shadow: boolean, at: CFrame): Guard
 		Target = nil,
 		Returning = false,
 		AlertUntil = 0,
+		WakeUntil = 0,
 		Alert = head:FindFirstChild("Alert") :: BillboardGui,
 		Dead = false,
 		KnifeName = model:GetAttribute("KnifeName") :: string,
@@ -516,6 +521,34 @@ local function announceIfRare(boss: Boss, item: string)
 	end
 end
 
+-- The boss's chair (Codex's per-biome chairs, Config/BossChairs): the native block version goes
+-- up straight away, then the uploaded mesh model replaces it once it has downloaded. Made 1.25x
+-- (seat top 3.25) to fit a BossScale boss: at 1x the boss overhung it on every side.
+local CHAIR_SCALE = 1.25
+local function mountChair(zone: number, parent: Instance, frame: CFrame)
+	local spec = BossChairs[zone]
+	if not spec then
+		return
+	end
+	local native = BossChairModel.Build(zone, parent, frame)
+	native:ScaleTo(CHAIR_SCALE)
+	task.spawn(function()
+		local loaded, asset = pcall(InsertService.LoadAsset, InsertService, spec.ModelAssetId)
+		if not loaded then
+			warn(`[GuardService] {spec.Boss}'s chair mesh didn't load ({asset}); keeping the block one`)
+			return
+		end
+		local prepared, result = pcall(BossChairModel.Prepare, asset :: Model, zone, parent, frame)
+		if prepared and parent.Parent then
+			(result :: Model):ScaleTo(CHAIR_SCALE)
+			native:Destroy()
+		else
+			warn(`[GuardService] {spec.Boss}'s chair mesh: {result}`)
+			asset:Destroy()
+		end
+	end)
+end
+
 -- The lair: a raised stage across the middle of the runway, a back wall with the knife slots on
 -- pedestals and a glowing plaque behind each, the boss's name in lights, torches either side
 local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfig): Boss
@@ -605,21 +638,10 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 	local endB = at(-(W / 2 + 3.5), HEIGHT, -D / 2 + 2).Position
 	local postPosition = if endA.Z > endB.Z then endA else endB
 	local post = CFrame.lookAt(postPosition, Vector3.new(0, postPosition.Y, postPosition.Z - 30))
-	local wood = Color3.fromRGB(120, 78, 44)
-	local function chairPart(name: string, size: Vector3, offset: CFrame)
-		local part = block(model, name, size, post * offset, wood)
-		part.CanCollide, part.CanQuery, part.CanTouch = false, false, false
-	end
-	-- (placeholder chair until Codex's biome chairs land. Measured on the seated rig: the floor is
-	-- 4.9 below the post (the boss's root), the hips rest 3.4 below it - seat top 1.5 above the
-	-- floor - and the back of the body is 0.9 behind it)
-	chairPart("ChairSeat", Vector3.new(4.4, 0.4, 2.8), CFrame.new(0, -3.6, -0.35))
-	chairPart("ChairBack", Vector3.new(4.4, 4.8, 0.5), CFrame.new(0, -1.2, 1.2))
-	for _, x in { -1.9, 1.9 } do
-		for _, z in { -1.5, 1.0 } do
-			chairPart("ChairLeg", Vector3.new(0.45, 1.1, 0.45), CFrame.new(x, -4.35, z))
-		end
-	end
+	-- The zone's own chair (Config/BossChairs: floor origin under the seat, front -Z, seat top 2.6).
+	-- Measured on the seated rig: the floor is 4.9 below the post (the boss's root) and the back of
+	-- the body 0.9 behind it, so the chair's backrest (2.1 behind the seat centre, scaled) sits there.
+	mountChair(index, model, post * CFrame.new(0, -4.9, -1.2))
 	local boss: Boss = {
 		Index = index,
 		Zone = zone,
@@ -759,10 +781,25 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 		guard = newGuard(boss, true, boss.Post)
 		Net.Remotes.Effect:FireAllClients("Smoke", boss.Post.Position)
 	end
+	-- Waking up is its own beat (see GameConfig.BossWake): red eyes, out of the chair, then the chase.
+	-- New players get longer. A chase picked back up after a round only gets the short "!".
+	local wake = GameConfig.GuardAlertTime
+	if not startAt then
+		local profile = DataService.Get(thief)
+		local knives = if profile then #profile.Knives else 0
+		wake = if knives < GameConfig.BossWake.NewcomerKnives
+			then GameConfig.BossWake.Newcomer
+			else GameConfig.BossWake.Time
+		local serverNow = workspace:GetServerTimeNow()
+		guard.Model:SetAttribute("WakeAt", serverNow)
+		guard.Model:SetAttribute("WakeEnd", serverNow + wake)
+		Net.Remotes.Effect:FireAllClients("BossWake", guard.Model, wake)
+	end
+	guard.WakeUntil = now() + wake * 0.6
 	setAsleep(guard, false)
 	guard.Target = thief
 	guard.Returning = false
-	guard.AlertUntil = now() + GameConfig.GuardAlertTime
+	guard.AlertUntil = now() + wake
 	guard.Alert.Enabled = true
 	showTag(guard, true)
 	guard.ThrowReadyAt = now() + 2
@@ -774,8 +811,15 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 		guard.Position = startAt.Position
 		guard.Model:PivotTo(startAt)
 	end
-	Net.Animate(guard.Model, "Alert")
+	-- (the "!" stretch once they're on their feet)
+	local model = guard.Model
+	task.delay(if startAt then 0 else wake * 0.6, function()
+		if model.Parent then
+			Net.Animate(model, "Alert")
+		end
+	end)
 	Analytics.Track(thief, "boss.chase", {
+		wake = wake,
 		zone = boss.Index,
 		shadow = guard.IsShadow == true,
 		resumed = startAt ~= nil,
@@ -1102,9 +1146,12 @@ local function step(guard: Guard, dt: number)
 		return
 	end
 
-	-- The "!" beat: a fair head start
+	-- The wake-up / "!" beat: a fair head start (still in the chair for the first part of it, so
+	-- they only turn towards you once they're getting up)
 	if t < guard.AlertUntil then
-		face(guard, targetRoot.Position)
+		if t >= guard.WakeUntil then
+			face(guard, targetRoot.Position)
+		end
 		animate(guard, "Idle")
 		return
 	end

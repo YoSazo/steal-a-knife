@@ -275,27 +275,38 @@ local function step(dt: number)
 				Waist = Vector3.new(6 + math.sin(now * 1.4 + s) * 3, math.sin(now * 0.6 + s) * 10, 0),
 			}, 1)
 		end
-		if
-			CollectionService:HasTag(model, "Guard")
-			and not busy
-			and not chargeStart
-			and model:GetAttribute("Asleep")
-		then
-			-- Dozing in the chair at its post (GuardService setAsleep): seated, head down, breathing
-			local breath = math.sin(now * 1.6 + rig.Seed)
+		-- Bosses doze in their chair (GuardService setAsleep). Waking is its own beat before the chase
+		-- (WakeAt..WakeEnd, Steal An Egg's chicken): the head snaps up first, then they get up
+		local seated, dozing = 0, 0
+		if CollectionService:HasTag(model, "Guard") then
+			if model:GetAttribute("Asleep") then
+				seated, dozing = 1, 1
+			else
+				local wakeAt, wakeEnd = model:GetAttribute("WakeAt"), model:GetAttribute("WakeEnd")
+				if type(wakeAt) == "number" and type(wakeEnd) == "number" and serverNow < wakeEnd then
+					local p = math.clamp((serverNow - wakeAt) / math.max(wakeEnd - wakeAt, 0.1), 0, 1)
+					dozing = math.clamp(1 - p / 0.2, 0, 1)
+					seated = if p < 0.5 then 1 else math.clamp(1 - (p - 0.5) / 0.4, 0, 1)
+				end
+			end
+		end
+		if seated > 0 and not chargeStart then
+			local breath = math.sin(now * 1.6 + rig.Seed) * dozing
+			local awake = 1 - dozing
+			-- (the hips rest on the chair's seat: BossChairs 2.6 x GuardService CHAIR_SCALE 1.25)
 			addPose(total, {
-				RootMove = Vector3.new(0, -1.55, 0),
+				RootMove = Vector3.new(0, 0.2, 0),
 				LeftHip = Vector3.new(90, 0, 0),
 				RightHip = Vector3.new(90, 0, 0),
-				LeftKnee = Vector3.new(-95, 0, 0),
-				RightKnee = Vector3.new(-95, 0, 0),
-				Waist = Vector3.new(-8 - breath * 2, 0, 0),
-				Neck = Vector3.new(-30 - breath * 3, 0, 0),
-				LeftShoulder = Vector3.new(25, 0, -6),
-				RightShoulder = Vector3.new(25, 0, 6),
-				LeftElbow = Vector3.new(40, 0, 0),
-				RightElbow = Vector3.new(40, 0, 0),
-			}, 1)
+				LeftKnee = Vector3.new(-80, 0, 0),
+				RightKnee = Vector3.new(-80, 0, 0),
+				Waist = Vector3.new(-8 * dozing - breath * 2 + 4 * awake, 0, 0),
+				Neck = Vector3.new(-30 * dozing - breath * 3 + 14 * awake, 0, 0),
+				LeftShoulder = Vector3.new(25 * dozing + 70 * awake, 0, -6 - 30 * awake),
+				RightShoulder = Vector3.new(25 * dozing + 70 * awake, 0, 6 + 30 * awake),
+				LeftElbow = Vector3.new(40 * dozing + 20 * awake, 0, 0),
+				RightElbow = Vector3.new(40 * dozing + 20 * awake, 0, 0),
+			}, seated)
 		elseif CollectionService:HasTag(model, "Guard") and not busy and not chargeStart then
 			local s = rig.Seed
 			addPose(total, {

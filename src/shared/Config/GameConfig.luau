@@ -562,8 +562,16 @@ local GameConfig = {
 	RoundCoins = 24,
 	CoinRespawn = 12,
 
-	-- Guards shout "!" and hesitate this long before they start chasing
+	-- Guards shout "!" and hesitate this long before they start chasing (a chase picked back up)
 	GuardAlertTime = 0.45,
+	-- Taking a knife wakes the boss: eyes go red, they get out of the chair, THEN they chase (Steal An
+	-- Egg's chicken). With the boss next to the stash and only the 0.45 s "!", 66% of first steals
+	-- were caught, half of them within a second - before the player had even turned round.
+	BossWake = {
+		Time = 1.5,
+		Newcomer = 2.5, -- until you own NewcomerKnives knives
+		NewcomerKnives = 3,
+	},
 	GuardAttackCooldown = 1.1, -- seconds between a guard's melee hits
 	GuardAttackRange = 5,
 	-- Hitting a guard or picking up its case alerts every guard in that zone and the zone in front
