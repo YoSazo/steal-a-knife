@@ -126,7 +126,8 @@ async function overviewPage(days) {
       <td class="muted">${secs(s.medianSeconds)}</td></tr>`;
   });
   const funnelTable = `<div class="scroll"><table class="funnel"><thead><tr><th>Step</th><th>Players</th><th></th><th>Of joined</th><th>Lost here</th><th>Median time to reach</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
-  return `<h1>Overview</h1>${kpis}${leak}${await robloxCard(days)}${card(
+  const reset = `<p class="muted">Counting from ${esc(Q.RESET.replace("T", " ").slice(0, 16))} UTC (version 531: the 4-step guide, first round as the Murderer, the Speed prize). Roblox's own numbers start the next full day.</p>`;
+  return `<h1>Overview</h1>${reset}${kpis}${leak}${await robloxCard(days)}${card(
     "First-session funnel",
     funnelTable,
     "New players in this window. Click a step to see what the people who never reached it did instead.",

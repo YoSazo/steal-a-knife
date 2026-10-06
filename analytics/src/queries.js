@@ -1,12 +1,21 @@
 // Every number the dashboard shows. `days` = the window; Studio test data is always left out.
 import { query } from "./db.js";
 
-const SINCE = "now() - ($1::int * interval '1 day')";
+// The dashboard's reset: nothing before this counts (the game changed too much for older players to
+// mean anything - the 4-step guide, the first round as the Murderer, the Speed prize). It's the
+// first event from place version 531. Override with the DATA_SINCE env var (an ISO time).
+const RESET_RAW = process.env.DATA_SINCE || "2026-10-06T21:45:07Z";
+if (Number.isNaN(Date.parse(RESET_RAW))) throw new Error(`DATA_SINCE is not a time: ${RESET_RAW}`);
+export const RESET = new Date(RESET_RAW).toISOString();
+const RESET_TS = `'${RESET}'::timestamptz`;
+// Roblox's numbers come by whole day: only full days after the reset
+const RESET_DAY = `((${RESET_TS} at time zone 'utc')::date + 1)`;
+
+const SINCE = `greatest(now() - ($1::int * interval '1 day'), ${RESET_TS})`;
 
 // The first-session funnel: milestones (Analytics.Milestone), in the order a new player meets them.
 // Keep in step with ONBOARDING in src/server/Services/Analytics.luau. Rebuilt 2026-10-06 for the
-// 4-step guide + the first round as the Murderer; FUNNEL_SINCE starts the count over from then
-// (players who joined under the old guide would muddle the new steps).
+// 4-step guide + the first round as the Murderer (counted from RESET, like everything else).
 export const FIRST_SESSION = [
   ["joined", "Joined"],
   ["spawned", "Spawned (loading done)"],
@@ -26,7 +35,7 @@ export const FIRST_SESSION = [
   ["zone_2", "Reached zone 2"],
   ["session_2", "Came back (2nd visit)"],
 ];
-export const FUNNEL_SINCE = process.env.FUNNEL_SINCE || "2026-10-06T23:00:00Z";
+
 
 export async function overview(days) {
   const [row] = await query(
@@ -56,6 +65,7 @@ export async function overview(days) {
                  and (s.started_at at time zone 'utc')::date = (p.first_seen at time zone 'utc')::date + 7) as back7
        from players p
        where not p.studio and p.first_seen >= now() - (($1::int + 7) * interval '1 day')
+         and p.first_seen >= ${RESET_TS}
      ) cohort`,
     [days],
   );
@@ -66,13 +76,13 @@ export async function overview(days) {
 export async function firstSession(days) {
   const rows = await query(
     `with cohort as (select id from players
-       where first_seen >= ${SINCE} and first_seen >= $3::timestamptz and not studio)
+       where first_seen >= ${SINCE} and not studio)
      select e.props->>'milestone' as step, count(distinct e.player)::int as players,
        round(percentile_cont(0.5) within group (order by (e.props->>'playtime_s')::float)::numeric) as median_s
      from events e join cohort c on c.id = e.player
      where e.event = 'milestone' and e.props->>'milestone' = any($2::text[])
      group by 1`,
-    [days, FIRST_SESSION.map(([id]) => id), FUNNEL_SINCE],
+    [days, FIRST_SESSION.map(([id]) => id)],
   );
   const byStep = Object.fromEntries(rows.map((r) => [r.step, r]));
   const steps = FIRST_SESSION.map(([id, label], i) => {
@@ -321,7 +331,7 @@ export async function campaigns(days) {
   );
   const spend = await query(
     `select campaign, channel, sum(spend)::float as spend, sum(impressions)::int as impressions, sum(clicks)::int as clicks
-     from ad_spend where day >= current_date - $1::int group by 1, 2`,
+     from ad_spend where day >= greatest(current_date - $1::int, ${RESET_DAY}) group by 1, 2`,
     [days],
   );
   return { players, spend };
@@ -427,7 +437,7 @@ export async function robloxSummary(days) {
        case when metric like 'UniqueUsers%' or metric in ('Visits', 'DailyRevenue', 'PayingUsers')
             then sum(v) else avg(v) end as v,
        count(*)::int as days, max(day) as last_day
-     from roblox_metrics where dim = '' and day >= current_date - $1::int
+     from roblox_metrics where dim = '' and day >= greatest(current_date - $1::int, ${RESET_DAY})
      group by metric`,
     [days],
   );
@@ -437,7 +447,7 @@ export async function robloxBy(days, dim) {
   return query(
     `select value, metric,
        case when metric like 'UniqueUsers%' then sum(v) else avg(v) end as v
-     from roblox_metrics where dim = $2 and day >= current_date - $1::int
+     from roblox_metrics where dim = $2 and day >= greatest(current_date - $1::int, ${RESET_DAY})
      group by value, metric order by value`,
     [days, dim],
   );
@@ -446,7 +456,7 @@ export async function robloxBy(days, dim) {
 export async function robloxDaily(days) {
   return query(
     `select to_char(day, 'Mon DD') as day, metric, v from roblox_metrics
-     where dim = '' and day >= current_date - $1::int
+     where dim = '' and day >= greatest(current_date - $1::int, ${RESET_DAY})
        and metric in ('UniqueUsersWithImpressions', 'UniqueUsersWithClicks', 'UniqueUsersWithPlaySessions', 'DailyActiveUsers')`,
     [days],
   );

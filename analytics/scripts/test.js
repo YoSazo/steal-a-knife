@@ -6,7 +6,7 @@ import { connect, query } from "../src/db.js";
 
 process.env.INGEST_KEY = "test-key";
 process.env.DASH_PASSWORD = "test-pass";
-process.env.FUNNEL_SINCE = "2000-01-01T00:00:00Z"; // (the test data is dated in the past)
+process.env.DATA_SINCE = "2000-01-01T00:00:00Z"; // (the test data is dated in the past)
 const { createApp } = await import("../src/server.js");
 const { client } = await import("../src/roblox.js");
 const { syncAll } = await import("../src/sync.js");
