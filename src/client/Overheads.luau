@@ -21,7 +21,7 @@ local function attach(owner: Player, character: Model)
 	gui:SetAttribute("Lines", 2)
 	gui:AddTag("ResponsiveWorldLabel")
 	gui.Size = UDim2.fromOffset(160, 64)
-	gui.StudsOffset = Vector3.new(0, 3.4, 0)
+	gui.StudsOffset = Vector3.new(0, 2.9, 0)
 	gui.MaxDistance = 80
 	gui.LightInfluence = 0
 	gui.Adornee = head

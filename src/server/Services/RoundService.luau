@@ -2469,8 +2469,11 @@ local function startRound(participants: { Player })
 		end
 	end
 
-	-- Everyone sees the knife they'd lose to the Murderer (client/Transitions spins a reel onto it)
-	for _, player in round.Innocents do
+	-- Everyone sees the knife they'd lose to the Murderer (client/Transitions spins a reel onto it).
+	-- Only when a real player has the knife: bot Murderers never loot, and the card promised a loss
+	-- that couldn't happen (then the death card said "your knives are safe")
+	local atRisk: { Player } = if next(round.Killers) ~= nil then round.Innocents else {}
+	for _, player in atRisk do
 		local profile = DataService.Get(player)
 		if not profile or DataService.IsNewPlayer(player, profile) then
 			continue
