@@ -59,7 +59,9 @@ function ShiftLock.Init()
 		local inset = GuiService.TopbarInset
 		local height = math.max(32, inset.Height - 8)
 		button.Size = UDim2.fromOffset(height, height)
-		button.Position = UDim2.fromOffset(inset.Min.X + 6, inset.Min.Y + (inset.Height - height) / 2)
+		-- (one button further right: Roblox's voice chat headphones appear after the inset is set and
+		-- covered it)
+		button.Position = UDim2.fromOffset(inset.Min.X + height + 14, inset.Min.Y + (inset.Height - height) / 2)
 	end
 	GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(place)
 	place()

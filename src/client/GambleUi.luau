@@ -441,7 +441,12 @@ local function buildLuckTimer()
 		if stats and holder and holder:IsA("GuiBase2d") then
 			local factor = Ui.Scale.Scale
 			local at = (stats.AbsolutePosition - holder.AbsolutePosition) / factor
-			pill.Position = UDim2.fromOffset(at.X, at.Y - 4)
+			-- (phones: the readout is up top-left, so above it ran under Roblox's own buttons -
+			-- go under it instead)
+			pill.Position = if Ui.Phone
+				then UDim2.fromOffset(at.X, at.Y + stats.AbsoluteSize.Y / factor + 4)
+				else UDim2.fromOffset(at.X, at.Y - 4)
+			pill.AnchorPoint = if Ui.Phone then Vector2.zero else Vector2.new(0, 1)
 		end
 		local text = table.concat(lines, "\n")
 		if text ~= last then
