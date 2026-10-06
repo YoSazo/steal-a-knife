@@ -10,6 +10,7 @@ local TweenService = game:GetService("TweenService")
 local Ui = require(script.Parent.Ui)
 local Theme = require(script.Parent.MenuTheme)
 local Effects = require(script.Parent.Effects)
+local TopLine = require(script.Parent.TopLine)
 local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("GameConfig"))
 local Sounds = require(ReplicatedStorage.Shared.Config:WaitForChild("Sounds"))
@@ -56,6 +57,21 @@ end
 local function show(info: Info)
 	local nothingNew = info.Offline <= 0 and not info.DailyReady and not info.Shielded and info.Away > 0
 	if nothingNew then
+		return
+	end
+	-- The very first join: no card at all - straight into the arrows to Frank (9 of 26 early quitters
+	-- left within 12 s having seen nothing but this card). Day 1 of the streak is claimed for them
+	-- and said on the top line; the card shows from the second visit.
+	if info.Away <= 0 then
+		task.spawn(function()
+			if info.DailyReady then
+				local ok = Remotes:WaitForChild("ClaimDaily"):InvokeServer()
+				if ok then
+					Effects.Sound(Sounds.Cash, nil, 0.6)
+					TopLine.Show("🎁 Come back tomorrow for your Day 2 reward!", 4, "Daily")
+				end
+			end
+		end)
 		return
 	end
 

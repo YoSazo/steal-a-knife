@@ -22,6 +22,7 @@ local RoundPrize = require(ReplicatedStorage.Shared.RoundPrize)
 local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
 local TopLine = require(script.Parent.TopLine)
+local Telemetry = require(script.Parent.Telemetry)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Effects = require(script.Parent.Effects)
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("GameConfig"))
@@ -170,90 +171,126 @@ function Hud.Init()
 		Text = "",
 	}, gui)
 
-	-- The round prize (Shared/RoundPrize), from AnnounceAt seconds before the round: ONE small line
-	-- under the timer ("🎁 Winners get: a Void Edge ($11B/s)", or what each side gets when they
-	-- differ) and a small "x2 R$25" pill beside it. (It was two big lines and a button right over
-	-- your character on a phone.)
-	local prizeBox = new("Frame", {
-		Name = "RoundPrize",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 98),
-		Size = UDim2.fromOffset(560, 24),
-		BackgroundTransparency = 1,
-		Visible = false,
-	}, gui)
-	local prizeLine = Ui.label({
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromScale(0.5, 0),
-		Size = UDim2.new(1, -96, 1, 0),
-		TextColor3 = Color3.fromRGB(255, 225, 120),
-		TextScaled = false,
-		TextSize = if Ui.Phone then 15 else 17,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		RichText = true,
-		Text = "",
-	}, prizeBox)
-	Ui.textStroke(prizeLine, 2)
+	-- The top line's resting text (client/TopLine; notices take its place for a few seconds):
+	--   * between rounds: "🔪 MURDER ROUND in 3:12"
+	--       - after the tutorial it takes turns with your next goal ("🎯 Next: steal from Ivy ...";
+	--         25 of 60 early quitters left right after placing their first knife: nothing said what next)
+	--       - the last AnnounceAt seconds it takes turns with what the Murder Round pays, one side at a
+	--         time, with a small "x2 R$25" pill (RoundPrize; the server pays the same numbers)
+	--       - the last 10 s: just the time, red and pulsing
+	--   * in a round: "2:15 · 4 alive" (the map's name too while you watch)
 	local doubleButton = Ui.button(
 		{
 			Name = "DoublePrize",
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
 			Size = UDim2.fromOffset(78, 22),
 			BackgroundColor3 = Color3.fromRGB(0, 176, 111),
 			Text = "x2 R$25",
 			TextScaled = false,
 			TextSize = 13,
 		},
-		prizeBox,
+		gui,
 		function()
 			if Ui.Buy and ((player:GetAttribute("Charge_DoublePrize") or 0) :: number) == 0 then
 				Ui.Buy("Product", "DoublePrize")
 			end
 		end
 	)
-	task.spawn(function()
-		while true do
-			task.wait(0.25)
-			local kind = ReplicatedStorage:GetAttribute("PrizeKind")
-			local endsAt = ReplicatedStorage:GetAttribute("PhaseEndsAt")
-			local left = if type(endsAt) == "number" then endsAt - workspace:GetServerTimeNow() else math.huge
-			local show = type(kind) == "string"
-				and ReplicatedStorage:GetAttribute("Phase") == "Intermission"
-				and ReplicatedStorage:GetAttribute("Status") == "🔪 MURDER ROUND in"
-				and left <= GameConfig.RoundPrize.AnnounceAt
-				and left > 0
-				and not player:GetAttribute("InRound")
-				and not Ui.menuOpen()
-			prizeBox.Visible = show
-			if show then
-				local jackpot = ReplicatedStorage:GetAttribute("PrizeJackpot") == true
-				local seed = (ReplicatedStorage:GetAttribute("PrizeSeed") or 1) :: number
-				local doubled = ((player:GetAttribute("Charge_DoublePrize") or 0) :: number) > 0
-				local stats = RoundPrize.Stats(player)
-				local innocent = RoundPrize.For(kind :: string, "Innocent", jackpot, seed, stats, doubled)
-				local murderer = RoundPrize.For(kind :: string, "Murderer", jackpot, seed, stats, doubled)
-				local star = if jackpot then "⭐ JACKPOT! " else "🎁 "
-				-- (two different knives don't fit on a phone with their $/s: just the names then)
-				local function short(text: string): string
-					return if Ui.Phone then (text:gsub(" that makes .*$", "")) else text
-				end
-				prizeLine.Text = if innocent.Text == murderer.Text
-					then `{star}Winners get: <b>{innocent.Text}</b>`
-					else `{star}<font color="#8CFF96">Innocents: <b>{short(innocent.Text)}</b></font>  <font color="#FF7878">Murderer: <b>{short(
-						murderer.Text
-					)}</b></font>`
-				-- the pill sits just after the words
-				local words = prizeLine.TextBounds.X / math.max(Ui.Scale.Scale, 0.01) -- (TextBounds is in screen pixels)
-				doubleButton.Position = UDim2.new(0.5, -44 + words / 2 + 8, 0.5, 0)
-				prizeLine.Position = UDim2.new(0.5, -44, 0, 0)
-				doubleButton.Visible = not doubled
-				if doubled then
-					prizeLine.Text ..= '  <font color="#78FF8C">✓ x2</font>'
-				end
-			end
+	TopLine.SetPill(doubleButton)
+	local lastGoal = ""
+	-- Your next goal after the tutorial: the next boss up from your best knife
+	local function nextGoal(): (string?, string?, number?)
+		if player:GetAttribute("TutorialDone") ~= true then
+			return nil
 		end
-	end)
+		local stats = RoundPrize.Stats(player)
+		local index = stats.BestRank + 1
+		local zone = GameConfig.Zones[index] :: any
+		if not zone then
+			return nil
+		end
+		local need = (zone.SpeedNeeded or 0) :: number
+		local tint = (zone.Color :: Color3):Lerp(Color3.new(1, 1, 1), 0.3):ToHex()
+		if stats.Speed < need then
+			return `🎯 Next: train to <b>{Ui.abbreviate(need)} Speed</b> on your wheel to outrun <font color="#{tint}">{zone.Boss}</font>`,
+				"train",
+				index
+		end
+		return `🎯 Next: steal from <font color="#{tint}"><b>{zone.Boss}</b></font> in {zone.Title}`, "steal", index
+	end
+	TopLine.Resting = function(): TopLine.Rest?
+		if Ui.menuOpen() or Ui.gui:GetAttribute("FadeCover") == true then
+			return nil
+		end
+		local phase = ReplicatedStorage:GetAttribute("Phase")
+		local status = (ReplicatedStorage:GetAttribute("Status") or "") :: string
+		local endsAt = (ReplicatedStorage:GetAttribute("PhaseEndsAt") or 0) :: number
+		local now = workspace:GetServerTimeNow()
+		local left = endsAt - now
+		local clock = Ui.clock(left)
+		if phase == "Round" then
+			local alive = ReplicatedStorage:GetAttribute("Alive") or 0
+			if player:GetAttribute("InRound") then
+				return { Text = `🔪 {clock}  ·  {alive} alive` }
+			end
+			return {
+				Text = `🔪 {ReplicatedStorage:GetAttribute("MapName") or "Murder Round"} {clock}  ·  {alive} alive  ·  steal while they're busy!`,
+			}
+		end
+		local raidEnds = ReplicatedStorage:GetAttribute("RaidEndsAt")
+		if type(raidEnds) == "number" then
+			return { Text = `<font color="#FF5050">🌕 BLOOD MOON</font> ends in {Ui.clock(raidEnds - now)}` }
+		end
+		if phase == "Results" then
+			return { Text = `<font color="#FFE678">{status}</font>` }
+		end
+		if status ~= "🔪 MURDER ROUND in" then
+			return if status ~= "" then { Text = status } else nil
+		end
+		if left <= 10 and left > 0 and not player:GetAttribute("InRound") then
+			return { Text = `<font color="#FF4646"><b>🔪 MURDER ROUND in {clock}</b></font>`, Pulse = true }
+		end
+		local timer = { Text = `🔪 MURDER ROUND in <b>{clock}</b>` }
+		local beat = os.clock() % 10
+		local kind = ReplicatedStorage:GetAttribute("PrizeKind")
+		if type(kind) == "string" and left <= GameConfig.RoundPrize.AnnounceAt and left > 0 then
+			if beat < 4 then
+				return timer
+			end
+			local jackpot = ReplicatedStorage:GetAttribute("PrizeJackpot") == true
+			local seed = (ReplicatedStorage:GetAttribute("PrizeSeed") or 1) :: number
+			local doubled = ((player:GetAttribute("Charge_DoublePrize") or 0) :: number) > 0
+			local stats = RoundPrize.Stats(player)
+			local star = if jackpot then "⭐ JACKPOT! " else ""
+			local done = if doubled then '  <font color="#78FF8C">✓ x2</font>' else ""
+			-- (phones: just the knife's name - "that makes $12K/s" doesn't fit on one line there)
+			local function short(prize: string): string
+				return if Ui.Phone then (prize:gsub(" that makes .*$", "")) else prize
+			end
+			-- (phones: "the round" - it takes turns with "MURDER ROUND in 0:49", so it's clear which)
+			local theRound = if Ui.Phone then "the round" else "the Murder Round"
+			if beat < 7 then
+				local innocent = RoundPrize.For(kind, "Innocent", jackpot, seed, stats, doubled)
+				return {
+					Text = `{star}If <font color="#8CFF96">Innocents</font> win {theRound}: <b>{short(innocent.Text)}</b>{done}`,
+					Pill = not doubled,
+				}
+			end
+			local murderer = RoundPrize.For(kind, "Murderer", jackpot, seed, stats, doubled)
+			return {
+				Text = `{star}If the <font color="#FF7878">Murderer</font> wins {theRound}: <b>{short(murderer.Text)}</b>{done}`,
+				Pill = not doubled,
+			}
+		end
+		local goal, goalKind, zone = nextGoal()
+		if goal and beat >= 6 then
+			if goal ~= lastGoal then
+				lastGoal = goal
+				Telemetry.Track("goal.shown", { kind = goalKind, zone = zone })
+			end
+			return { Text = goal }
+		end
+		return timer
+	end
 	-- The signs at your own vault (other vaults' signs stay blank): Upgrade Base by the gate (next
 	-- floor's price, how full you are) and Upgrade Wheel in front of the Haunted Wheel (Steal An Egg's
 	-- treadmill sign: "Lv 6 ➜ 7", the cash price, and R$ on the small board under it). A "!" when you
@@ -848,7 +885,10 @@ function Hud.Init()
 	local function refreshEnergy()
 		local energy = player:GetAttribute("Energy")
 		local cost, name = costOfRoundPower()
-		energyFrame.Visible = type(energy) == "number" and cost ~= nil and not Ui.menuOpen()
+		-- (not in a no-powers round, and not for the Murderer: same rules as the power button,
+		-- client/PowerBar - it said "MIMIC READY" in a Classic round)
+		local noPowers = ReplicatedStorage:GetAttribute("Classic") == true or player:GetAttribute("Role") == "Murderer"
+		energyFrame.Visible = type(energy) == "number" and cost ~= nil and not Ui.menuOpen() and not noPowers
 		if type(energy) ~= "number" or not cost or not name then
 			return
 		end
@@ -873,6 +913,8 @@ function Hud.Init()
 	end
 	player:GetAttributeChangedSignal("RoundPower"):Connect(refreshEnergy)
 	player:GetAttributeChangedSignal("Energy"):Connect(refreshEnergy)
+	player:GetAttributeChangedSignal("Role"):Connect(refreshEnergy)
+	ReplicatedStorage:GetAttributeChangedSignal("Classic"):Connect(refreshEnergy)
 	refreshEnergy()
 
 	-- The events board over the runway entrance: live countdowns, filled in on this client ------
@@ -934,7 +976,6 @@ function Hud.Init()
 
 	-- Timers, banners, every frame ------------------------------------------------------------
 	local freeChestLabel: TextLabel? = nil
-	local lastResults: number? = nil -- (the Results phase already announced on the top line)
 	RunService.RenderStepped:Connect(function()
 		local phase = ReplicatedStorage:GetAttribute("Phase")
 		local endsAt = ReplicatedStorage:GetAttribute("PhaseEndsAt") or 0
@@ -943,7 +984,7 @@ function Hud.Init()
 		local clock = Ui.clock(endsAt - now)
 		local inRound = player:GetAttribute("InRound")
 		local raidEnds = ReplicatedStorage:GetAttribute("RaidEndsAt")
-		timerFrame.Visible = not Ui.menuOpen() and Ui.gui:GetAttribute("ZoneNotice") ~= true
+		timerFrame.Visible = false -- (the time is on the top line now: client/TopLine, TopLine.Resting)
 		if phase == "Round" then
 			local map = ReplicatedStorage:GetAttribute("MapName") or ""
 			-- In a round the screen is for the game: just the time and who's left (MM2 shows less)
@@ -987,12 +1028,8 @@ function Hud.Init()
 		moonTitle.Visible = moon
 		timerLabel.Position = UDim2.fromScale(if moon then 0.5 else 0, 0)
 		timerLabel.Size = UDim2.fromScale(if moon then 0.5 else 1, 1)
-		-- "Innocents win!" etc. on the top line, once (it was big in the middle, on top of the VS card)
+		-- ("Innocents win!" etc. is the top line's resting text during Results: TopLine.Resting)
 		banner.Visible = false
-		if phase == "Results" and lastResults ~= endsAt then
-			lastResults = endsAt
-			TopLine.Show(`<font color="#FFE678">{status}</font>`, 4, "Results")
-		end
 		-- (not hidden while the knife is held: they never overlap, and taps made it flicker)
 		stats.Visible = not Ui.menuOpen() and Ui.inHub() -- (speed / cash: hub things; not while dead in a round)
 		timers.Visible = Ui.inHub()
@@ -1422,19 +1459,19 @@ function Hud.Init()
 		-- view of the world (boss stashes, knife labels) stays clear
 		-- (the tutorial's line runs across the very top while it's up: everything here moves under it)
 		-- (and under a TopLine notice: zone titles, announcements - client/TopLine)
-		local top = if Ui.gui:GetAttribute("TutorialBar") == true
-			then ((Ui.gui:GetAttribute("TutorialBarHeight") or 36) :: number) + 2
-			elseif Ui.gui:GetAttribute("TopLine") == true then (
-				(Ui.gui:GetAttribute("TopLineHeight") or 36) :: number
-			) + 2
-			else 0
+		-- Under the top line (and the tutorial's line above it): the Murderer chance, then the small
+		-- lines (revenge / events / server goal)
+		local top = (Ui.gui:GetAttribute("TopLineHeight") or 0) :: number
+		if top == 0 and Ui.gui:GetAttribute("TutorialBar") == true then
+			top = ((Ui.gui:GetAttribute("TutorialBarHeight") or 36) :: number) + 2
+		end
 		chanceLabel.Position, chanceLabel.Size = UDim2.fromOffset(center, top), UDim2.fromOffset(width, 20)
 		timerFrame.Position, timerFrame.Size = UDim2.fromOffset(center, top + 18), UDim2.fromOffset(width, 40)
-		subLabel.Position, subLabel.Size = UDim2.fromOffset(center, top + 68), UDim2.fromOffset(width, 20)
+		subLabel.Position, subLabel.Size = UDim2.fromOffset(center, top + 22), UDim2.fromOffset(width, 20)
 		subLabel.TextWrapped = false
-		eventLabel.Position, eventLabel.Size = UDim2.fromOffset(center, top + 90), UDim2.fromOffset(width, 20)
-		prizeBox.Position = UDim2.new(0.5, 0, 0, top + 98)
-		goalLabel.Position = UDim2.new(0.5, 0, 0, top + 122)
+		eventLabel.Position, eventLabel.Size = UDim2.fromOffset(center, top + 44), UDim2.fromOffset(width, 20)
+		goalLabel.Position = UDim2.new(0.5, 0, 0, top + 66)
+		Ui.gui:SetAttribute("HudTop", top) -- (under the top line: RoundIntro's rule line follows it)
 		eventLabel.TextScaled, eventLabel.TextSize, eventLabel.TextTruncate = false, 14, Enum.TextTruncate.AtEnd
 		banner.Size = UDim2.fromOffset(math.min(600, bounds.X - 24), 44)
 		announceHolder.Size = UDim2.fromOffset(math.min(480, bounds.X - 24), 60)

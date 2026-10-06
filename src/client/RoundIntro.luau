@@ -30,14 +30,12 @@ function RoundIntro.Init()
 		Visible = false,
 	}, Ui.gui)
 	Ui.textStroke(rule, 2)
-	-- under the prize line (which moves down under the tutorial's top line, client/Hud)
+	-- just under the Murderer chance (client/Hud publishes where its lines start: under the top line)
 	local function place()
-		local top = if Ui.gui:GetAttribute("TutorialBar") == true
-			then ((Ui.gui:GetAttribute("TutorialBarHeight") or 36) :: number) + 2
-			else 0
-		rule.Position = UDim2.new(0.5, 0, 0, top + 124)
+		local top = (Ui.gui:GetAttribute("HudTop") or 0) :: number
+		rule.Position = UDim2.new(0.5, 0, 0, top + 22)
 	end
-	Ui.gui:GetAttributeChangedSignal("TutorialBar"):Connect(place)
+	Ui.gui:GetAttributeChangedSignal("HudTop"):Connect(place)
 	Ui.Layout.Changed:Connect(place)
 	place()
 
