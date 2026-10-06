@@ -457,8 +457,11 @@ local function buildOffice(): Built
 		table.insert(spawns, at(x + 6, 3, 0))
 	end
 	-- upstairs: a few in every room (not on the landing)
+	-- (archives: in the aisle between the shelf rows; training: in front of the desks)
+	table.insert(spawns, at(-93.75, 3 + Kit.STOREY, 32))
+	table.insert(spawns, at(-56.25, 3 + Kit.STOREY, 22))
+	table.insert(spawns, at(-18.75, 3 + Kit.STOREY, 14))
 	for _, x in { -93.75, -56.25, -18.75 } do
-		table.insert(spawns, at(x, 3 + Kit.STOREY, 22))
 		table.insert(spawns, at(x + 6, 3 + Kit.STOREY, 0))
 	end
 	table.insert(spawns, at(-56.25, 3 + Kit.STOREY, -22))
@@ -467,12 +470,15 @@ local function buildOffice(): Built
 end
 
 -- Mansion ------------------------------------------------------------------------------------
--- A long central hall from the front doors to the fireplace, and a wing on each side:
---   west: kitchen (north) and dining room (south)
---   east: master bedroom (north) and library (south)
+-- A long central hall from the front doors to the fireplace, two wings on each side, and an
+-- upstairs over the west half and the hall, up the grand staircase:
+--   ground west:  wine cellar (north) | kitchen (north)   -- stair hall (south) | dining room (south)
+--   ground east:  master bedroom | study (north)           -- library | trophy room (south)
+--   upstairs north: nursery | guest bedroom | gallery
+--   upstairs south: landing | card room     | attic
 
 local function buildMansion(): Built
-	local W, D = 150, 110
+	local W, D = 230, 110
 	local trim = rgb(232, 222, 196)
 	local door = rgb(70, 40, 25)
 	local HALL: Kit.WallStyle = {
@@ -510,29 +516,57 @@ local function buildMansion(): Built
 		Crown = trim,
 		Door = door,
 	}
+	local WINE: Kit.WallStyle = { Color = rgb(128, 74, 60), Material = Enum.Material.Brick, Crown = trim, Door = door }
+	local STUDY: Kit.WallStyle = {
+		Color = rgb(58, 92, 72),
+		Material = Enum.Material.Plaster,
+		Wainscot = rgb(78, 48, 30),
+		Crown = trim,
+		Door = door,
+	}
+	local TROPHY: Kit.WallStyle = {
+		Color = rgb(150, 118, 64),
+		Material = Enum.Material.Plaster,
+		Wainscot = rgb(58, 36, 22),
+		Crown = trim,
+		Door = door,
+	}
 
+	-- Upstairs over the west wings and the hall
+	local UP: Kit.Rect = { X = -45, Z = 0, W = 140, D = D }
 	Kit.floor(0, 0, W, D, rgb(92, 58, 36), Enum.Material.WoodPlanks)
-	Kit.ceiling(W, D, rgb(196, 182, 160))
+	Kit.slab("Ceiling", Kit.WALL_HEIGHT + 0.5, { X = 0, Z = 0, W = W + 2, D = D + 2 }, { UP }, rgb(196, 182, 160))
 
 	-- Outer walls, papered per room
-	wall(-W / 2, D / 2, -25, D / 2, KITCHEN)
+	wall(-W / 2, D / 2, -75, D / 2, WINE)
+	wall(-75, D / 2, -25, D / 2, KITCHEN)
 	wall(-25, D / 2, 25, D / 2, HALL)
-	wall(25, D / 2, W / 2, D / 2, BEDROOM)
-	wall(-W / 2, -D / 2, -25, -D / 2, DINING)
+	wall(25, D / 2, 75, D / 2, BEDROOM)
+	wall(75, D / 2, W / 2, D / 2, STUDY)
+	wall(-W / 2, -D / 2, -75, -D / 2, HALL)
+	wall(-75, -D / 2, -25, -D / 2, DINING)
 	wall(-25, -D / 2, 25, -D / 2, HALL)
-	wall(25, -D / 2, W / 2, -D / 2, LIBRARY)
-	wall(-W / 2, -D / 2, -W / 2, 0, DINING)
-	wall(-W / 2, 0, -W / 2, D / 2, KITCHEN)
-	wall(W / 2, -D / 2, W / 2, 0, LIBRARY)
-	wall(W / 2, 0, W / 2, D / 2, BEDROOM)
+	wall(25, -D / 2, 75, -D / 2, LIBRARY)
+	wall(75, -D / 2, W / 2, -D / 2, TROPHY)
+	wall(-W / 2, -D / 2, -W / 2, 0, HALL)
+	wall(-W / 2, 0, -W / 2, D / 2, WINE)
+	wall(W / 2, -D / 2, W / 2, 0, TROPHY)
+	wall(W / 2, 0, W / 2, D / 2, STUDY)
+	-- the old ends of the house, now walls into the outer wings (a door each)
+	wall(-75, 0, -75, D / 2, KITCHEN, { 9 }, WINE) -- (clear of the counter and fridge)
+	wall(-75, -D / 2, -75, 0, DINING, { -45 }, HALL) -- (clear of the china cabinet)
+	wall(75, 0, 75, D / 2, STUDY, { 30 }, BEDROOM)
+	wall(75, -D / 2, 75, 0, TROPHY, { -47 }, LIBRARY) -- (clear of the bookshelves)
+	wall(-W / 2, 0, -75, 0, WINE, { -95 }, HALL)
+	wall(75, 0, W / 2, 0, STUDY, { 95 }, TROPHY)
 
 	-- The hall's side walls (two doors into each room) and the walls splitting each wing
 	wall(-25, -D / 2, -25, 0, HALL, { -38, -15 }, DINING)
 	wall(-25, 0, -25, D / 2, HALL, { 15, 38 }, KITCHEN)
 	wall(25, -D / 2, 25, 0, LIBRARY, { -38, -15 }, HALL)
 	wall(25, 0, 25, D / 2, BEDROOM, { 15, 38 }, HALL)
-	wall(-W / 2, 0, -25, 0, KITCHEN, { -50 }, DINING)
-	wall(25, 0, W / 2, 0, BEDROOM, { 50 }, LIBRARY)
+	wall(-75, 0, -25, 0, KITCHEN, { -50 }, DINING)
+	wall(25, 0, 75, 0, BEDROOM, { 50 }, LIBRARY)
 
 	local curtains = { Curtains = rgb(120, 20, 30), Frame = rgb(232, 222, 196) }
 
@@ -582,7 +616,6 @@ local function buildMansion(): Built
 	Kit.potRail(-63, 8, 54.5, 0, 14)
 	Kit.counter(-73.2, 35, 16, -90, { Microwave = 3 })
 	Kit.fridge(-72.9, 20, -90)
-	Kit.window(-74.5, 8, -90, { Frame = rgb(240, 240, 235) })
 	Kit.kitchenIsland(-50, 30, 10, 0)
 	Kit.pendant(-53, 30, 4.5)
 	Kit.pendant(-47, 30, 4.5)
@@ -601,8 +634,6 @@ local function buildMansion(): Built
 	Kit.chinaCabinet(-73.4, -28, -90)
 	Kit.window(-62, -54.5, 180, curtains)
 	Kit.window(-38, -54.5, 180, curtains)
-	Kit.window(-74.5, -12, -90, curtains)
-	Kit.window(-74.5, -44, -90, curtains)
 	Kit.picture(-50, 7.4, -54.5, 180, "Landscape", rgb(212, 175, 80))
 	Kit.counter(-62, -1.8, 10, 0, { Body = Kit.DARK_WOOD, Top = rgb(40, 26, 18) })
 	Kit.sideTable(-28.5, -50)
@@ -620,8 +651,6 @@ local function buildMansion(): Built
 	Kit.floorLamp(70.5, 36)
 	Kit.chandelier(50, 27)
 	Kit.window(35, 54.5, 0, curtains)
-	Kit.window(74.5, 38, 90, curtains)
-	Kit.window(74.5, 8, 90, curtains)
 	Kit.picture(25.5, 7.2, 48, -90, "Sea", rgb(212, 175, 80))
 	Kit.plant(28, 4, "Bush")
 
@@ -634,7 +663,6 @@ local function buildMansion(): Built
 	for _, z in { -12, -24, -36 } do
 		Kit.bookshelf(73.4, z, 90, rgb(60, 38, 25))
 	end
-	Kit.window(74.5, -47, 90, curtains)
 	Kit.window(35, -54.5, 180, curtains)
 	Kit.window(66, -54.5, 180, curtains)
 	Kit.armchair(33.5, -3, 0, rgb(30, 80, 60))
@@ -643,6 +671,173 @@ local function buildMansion(): Built
 	Kit.globe(64, -6)
 	Kit.chandelier(50, -27)
 	Kit.picture(25.5, 7.2, -27, -90, "Portrait", rgb(212, 175, 80))
+
+	-- Wine cellar: brick, barrels (crates), racks
+	Kit.roomFloor(-95, 27.5, 40, 55, rgb(110, 100, 92), Enum.Material.Slate)
+	Kit.shelfUnit(-113.5, 14, -90)
+	Kit.shelfUnit(-113.5, 28, -90)
+	Kit.shelfUnit(-113.5, 42, -90)
+	Kit.crates(-92, 48)
+	Kit.crates(-84, 20)
+	Kit.crates(-100, 34)
+	Kit.chandelier(-95, 27.5)
+	Kit.sideTable(-80, 50, true)
+
+	-- Grand stair hall: the staircase up, a clock, armour, portraits
+	Kit.checker(-95, -27.5, 40, 55, 5, rgb(235, 230, 218), rgb(40, 38, 40))
+	local stairHole = Kit.stairs(-105, -28, 180, 8, rgb(78, 48, 30), trim)
+	Kit.rug(-90, -48, 12, 8, rgb(140, 22, 32), rgb(212, 175, 80))
+	Kit.grandfatherClock(-80, -53.5, 180)
+	Kit.armor(-84, -4, 0)
+	Kit.picture(-76, 7.2, -40, 90, "Portrait", rgb(212, 175, 80))
+	Kit.window(-95, -54.5, 180, curtains)
+	Kit.chandelier(-90, -30)
+	Kit.plant(-80, -20, "Tall")
+
+	-- Study: a desk, shelves, a globe
+	Kit.roomFloor(95, 27.5, 40, 55, rgb(70, 46, 30), Enum.Material.WoodPlanks)
+	Kit.rug(95, 30, 20, 16, rgb(46, 70, 52), rgb(212, 175, 80))
+	Kit.executiveDesk(95, 40, 0, "STUDY")
+	Kit.bookshelf(113.4, 16, 90, rgb(60, 38, 25))
+	Kit.bookshelf(113.4, 30, 90, rgb(60, 38, 25))
+	Kit.globe(84, 14)
+	Kit.armchair(104, 14, 180, rgb(110, 30, 34))
+	Kit.window(95, 54.5, 0, curtains)
+	Kit.window(114.5, 44, 90, curtains)
+	Kit.chandelier(95, 27.5)
+
+	-- Trophy room: armour, portraits, a cabinet of silver
+	Kit.roomFloor(95, -27.5, 40, 55, rgb(120, 78, 46), Enum.Material.WoodPlanks)
+	Kit.rug(95, -28, 22, 30, rgb(120, 30, 35), rgb(212, 175, 80))
+	Kit.armor(84, -50, 180)
+	Kit.armor(95, -50, 180)
+	Kit.armor(106, -50, 180)
+	Kit.chinaCabinet(113.4, -20, 90)
+	Kit.picture(114.5, 7.2, -36, 90, "Landscape", rgb(212, 175, 80))
+	Kit.picture(95, 7.4, -54.5, 180, "Portrait", rgb(212, 175, 80), 1.2)
+	Kit.sideTable(84, -6, true)
+	Kit.chandelier(95, -27.5)
+
+	-- UPSTAIRS ------------------------------------------------------------------------------
+	Kit.Level(1)
+	local GALLERY: Kit.WallStyle = {
+		Color = rgb(150, 50, 56),
+		Material = Enum.Material.Plaster,
+		Wainscot = rgb(78, 48, 30),
+		Crown = trim,
+		Door = door,
+	}
+	local NURSERY: Kit.WallStyle = {
+		Color = rgb(170, 196, 214),
+		Material = Enum.Material.Plaster,
+		Wainscot = rgb(236, 234, 226),
+		Crown = trim,
+		Door = door,
+	}
+	local GUEST: Kit.WallStyle = {
+		Color = rgb(180, 150, 170),
+		Material = Enum.Material.Plaster,
+		Wainscot = rgb(226, 216, 192),
+		Crown = trim,
+		Door = door,
+	}
+	local ATTIC: Kit.WallStyle = { Color = rgb(120, 96, 70), Material = Enum.Material.Wood, Crown = trim, Door = door }
+	local x0, x1 = UP.X - UP.W / 2, UP.X + UP.W / 2 -- -115 .. 25
+	Kit.slab("Ceiling", -0.6, UP, { stairHole }, rgb(196, 182, 160), nil, 0.8)
+	Kit.slab("Floor", -0.1, UP, { stairHole }, rgb(92, 58, 36), Enum.Material.WoodPlanks, 0.2)
+	Kit.slab("Ceiling", Kit.WALL_HEIGHT + 0.5, { X = UP.X, Z = 0, W = UP.W + 2, D = D + 2 }, {}, rgb(196, 182, 160))
+	-- outer walls and the landing corridor
+	wall(x0, D / 2, -75, D / 2, NURSERY)
+	wall(-75, D / 2, -25, D / 2, GUEST)
+	wall(-25, D / 2, x1, D / 2, GALLERY)
+	wall(x0, -D / 2, -75, -D / 2, HALL)
+	wall(-75, -D / 2, -25, -D / 2, LIBRARY)
+	wall(-25, -D / 2, x1, -D / 2, ATTIC)
+	wall(x0, -D / 2, x0, 0, HALL)
+	wall(x0, 0, x0, D / 2, NURSERY)
+	wall(x1, -D / 2, x1, 0, ATTIC)
+	wall(x1, 0, x1, D / 2, GALLERY)
+	wall(x0, 7, x1, 7, NURSERY, { -95, -50, 0 }, HALL)
+	wall(x0, -7, x1, -7, HALL, { -95, -50, 0 })
+	wall(-75, 7, -75, D / 2, GUEST, { 31 }, NURSERY)
+	wall(-25, 7, -25, D / 2, GALLERY, { 31 }, GUEST)
+	wall(-75, -D / 2, -75, -7, LIBRARY, { -31 }, HALL)
+	wall(-25, -D / 2, -25, -7, ATTIC, { -31 }, LIBRARY)
+	-- the landing corridor: a long runner, sconces, a window at the end
+	Kit.rug(-45, 0, 130, 6, rgb(140, 22, 32), rgb(212, 175, 80))
+	for _, x in { -100, -70, -40, -10, 15 } do
+		Kit.sconce(x, 6.6, 6.5, Vector3.new(0, 0, -1))
+		Kit.sconce(x, 6.6, -6.5, Vector3.new(0, 0, 1))
+	end
+	Kit.window(24.5, 0, 90, curtains)
+	Kit.grandfatherClock(20, 4.5, 90)
+	Kit.picture(-60, 7.2, 6.5, 0, "Landscape", rgb(212, 175, 80))
+
+	-- Landing: a balustrade round the stairwell
+	Kit.railing(-111, -42, -99, -42, trim)
+	Kit.railing(-99, -42, -99, -14, trim)
+	Kit.railing(-111, -42, -111, -14, trim)
+	Kit.chandelier(-90, -30)
+	Kit.plant(-80, -50, "Tall")
+	Kit.armor(-80, -12, 0)
+
+	-- Nursery: a small bed, toys (crates), a wardrobe
+	Kit.roomFloor(-95, 31, 40, 48, rgb(220, 200, 210), Enum.Material.Carpet)
+	Kit.bed(-104, 44, 0, rgb(120, 170, 220))
+	Kit.nightstand(-96, 51.5, 0)
+	Kit.wardrobe(-113.3, 24, -90)
+	Kit.crates(-84, 20)
+	Kit.rug(-92, 28, 12, 10, rgb(250, 220, 120), rgb(240, 150, 150))
+	Kit.window(-95, 54.5, 0, curtains)
+	Kit.window(-114.5, 36, -90, curtains)
+	Kit.chandelier(-95, 31)
+
+	-- Guest bedroom
+	Kit.roomFloor(-50, 31, 50, 48, rgb(140, 100, 110), Enum.Material.Carpet)
+	Kit.fourPosterBed(-50, 47, 0, rgb(90, 40, 80))
+	Kit.nightstand(-55.5, 51.5, 0)
+	Kit.nightstand(-44.5, 51.5, 0)
+	Kit.wardrobe(-26.7, 20, 90)
+	Kit.vanity(-70, 53.4, 0)
+	Kit.armchair(-66, 24, -90, rgb(170, 140, 90))
+	Kit.window(-35, 54.5, 0, curtains)
+	Kit.chandelier(-50, 31)
+
+	-- Gallery: portraits all round, armour, benches
+	Kit.roomFloor(0, 31, 50, 48, rgb(80, 50, 32), Enum.Material.WoodPlanks)
+	for _, x in { -16, 0, 16 } do
+		Kit.picture(x, 7.4, 54.5, 0, "Portrait", rgb(212, 175, 80), 1.1)
+	end
+	Kit.picture(24.5, 7.2, 24, 90, "Landscape", rgb(212, 175, 80))
+	Kit.picture(24.5, 7.2, 40, 90, "Sea", rgb(212, 175, 80))
+	Kit.armor(-18, 12, 0)
+	Kit.armor(18, 12, 0)
+	Kit.sideTable(0, 30, true)
+	Kit.chandelier(0, 31)
+
+	-- Card room: a round table, armchairs, a bookshelf
+	Kit.roomFloor(-50, -31, 50, 48, rgb(46, 78, 58), Enum.Material.Carpet)
+	Kit.roundTable(-50, -31, 4)
+	Kit.armchair(-57, -31, 90, rgb(110, 30, 34))
+	Kit.armchair(-43, -31, -90, rgb(110, 30, 34))
+	Kit.bookshelf(-50, -53.5, 180, rgb(60, 38, 25))
+	Kit.bookshelf(-38, -53.5, 180, rgb(60, 38, 25))
+	Kit.piano(-30, -22, 90)
+	Kit.window(-66, -54.5, 180, curtains)
+	Kit.chandelier(-50, -31)
+
+	-- Attic: storage under the eaves - crates, a covered wardrobe, an old mirror
+	Kit.roomFloor(0, -31, 50, 48, rgb(120, 96, 70), Enum.Material.WoodPlanks)
+	Kit.crates(-14, -46)
+	Kit.crates(10, -40)
+	Kit.crates(16, -18)
+	Kit.wardrobe(24, -30, 90)
+	Kit.vanity(-6, -53.4, 180)
+	Kit.coatRack(-20, -16)
+	Kit.shelfUnit(-23.5, -36, -90)
+	Kit.window(4, -54.5, 180)
+	Kit.chandelier(0, -31)
+	Kit.Level(0)
 
 	local spawns = {}
 	for _, z in { -40, -20, 20, 40 } do
@@ -655,7 +850,18 @@ local function buildMansion(): Built
 		table.insert(spawns, at(x - 12, 3, 38))
 		table.insert(spawns, at(x + 12, 3, -40))
 	end
-	return { Name = "Mansion", Folder = folder, Spawns = spawns, Size = Vector2.new(W, D) }
+	for _, x in { -95, 95 } do
+		table.insert(spawns, at(x, 3, 20))
+		table.insert(spawns, at(x + 8, 3, -40))
+	end
+	-- upstairs
+	for _, x in { -95, -50, 0 } do
+		table.insert(spawns, at(x, 3 + Kit.STOREY, 22))
+	end
+	table.insert(spawns, at(-50, 3 + Kit.STOREY, -22))
+	table.insert(spawns, at(0, 3 + Kit.STOREY, -22))
+	table.insert(spawns, at(-60, 3 + Kit.STOREY, 0))
+	return { Name = "Mansion", Folder = folder, Spawns = spawns, Size = Vector2.new(W, D), Levels = 2 }
 end
 
 RoundMaps.Builders = {

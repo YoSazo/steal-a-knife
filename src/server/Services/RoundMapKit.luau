@@ -221,8 +221,8 @@ function Kit.wall(
 			return
 		end
 		local mid, len = (from + to) / 2, to - from
-		local back = sides[-1]
-		if back.Color ~= style.Color or back.Material ~= style.Material then
+		local backStyle = sides[-1]
+		if backStyle.Color ~= style.Color or backStyle.Material ~= style.Material then
 			-- Two rooms' wallpapers: two half-thickness slabs, each in its own room's paper. (A thin
 			-- layer laid over one face z-fought with the wall and flickered as the camera moved.)
 			for _, side in { -1, 1 } do
