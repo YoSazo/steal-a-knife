@@ -867,24 +867,31 @@ function Effects.Init()
 	end)
 
 	-- Surprise gifts are for one player: everyone else's are hidden on this screen
-	local function hideGift(gift: Instance)
-		if gift:GetAttribute("Owner") == player.UserId then
-			return
-		end
-		for _, d in gift:GetDescendants() do
-			if d:IsA("BasePart") then
-				d.LocalTransparencyModifier = 1
-			elseif d:IsA("ProximityPrompt") or d:IsA("Sparkles") then
-				(d :: any).Enabled = false
+	-- (the server builds them invisible: the owner's screen shows its own, everyone else's stays
+	-- invisible with no prompt - parts that streamed in late used to slip through the hiding)
+	local function showGiftPart(gift: Instance, d: Instance)
+		local mine = gift:GetAttribute("Owner") == player.UserId
+		if d:IsA("BasePart") then
+			local look = d:GetAttribute("Look")
+			if mine and type(look) == "number" then
+				d.Transparency = look
 			end
+		elseif d:IsA("Sparkles") or d:IsA("ProximityPrompt") then
+			(d :: any).Enabled = mine
 		end
+	end
+	local function watchGift(gift: Instance)
+		for _, d in gift:GetDescendants() do
+			showGiftPart(gift, d)
+		end
+		gift.DescendantAdded:Connect(function(d)
+			showGiftPart(gift, d)
+		end)
 	end
 	for _, gift in CollectionService:GetTagged("SurpriseGift") do
-		hideGift(gift)
+		watchGift(gift)
 	end
-	CollectionService:GetInstanceAddedSignal("SurpriseGift"):Connect(function(gift)
-		task.defer(hideGift, gift) -- (its parts stream in with it)
-	end)
+	CollectionService:GetInstanceAddedSignal("SurpriseGift"):Connect(watchGift)
 
 	-- Coins and the Revolver pickup spin locally (no server traffic)
 	local spinning: { [Instance]: CFrame } = {}

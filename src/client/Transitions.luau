@@ -714,6 +714,7 @@ function Transitions.Init()
 		local token = fadeToken
 		local wasInRound = player:GetAttribute("InRound") == true
 		cover.Visible = true
+		Ui.gui:SetAttribute("FadeCover", true) -- (the role reel waits for this to clear)
 		where.Text = if type(text) == "string" then text else ""
 		local stroke = where:FindFirstChildOfClass("UIStroke") :: UIStroke
 		TweenService:Create(cover, TweenInfo.new(0.3), { BackgroundTransparency = 0 }):Play()
@@ -738,6 +739,7 @@ function Transitions.Init()
 		task.delay(0.65, function()
 			if token == fadeToken then
 				cover.Visible = false
+				Ui.gui:SetAttribute("FadeCover", false)
 			end
 		end)
 	end)

@@ -1265,51 +1265,135 @@ function Hud.Init()
 			knifeArt.Visible = false
 		end
 	end)
+	-- "You are..." then a slot-machine reel (MM2 / The Mad Murderer): INNOCENT / SHERIFF / MURDERER
+	-- spin, slow down, sometimes slide just past MURDERER, and land - the role is already decided
+	-- (server), this is the moment. A second Role message (Innocent -> Sheriff) skips the spin.
+	local ROLES = {
+		Innocent = { Text = "INNOCENT", Color = Color3.fromRGB(90, 230, 120) },
+		Sheriff = { Text = "THE SHERIFF", Color = Color3.fromRGB(90, 170, 255) },
+		Murderer = { Text = "THE MURDERER", Color = Color3.fromRGB(255, 50, 60) },
+	}
+	local ORDER = { "Innocent", "Sheriff", "Murderer" }
+	local roleScale = new("UIScale", { Scale = 1 }, roleLabel) :: UIScale
+	local reelRng = Random.new()
+	local revealToken = 0
+	local function showRole(key: string)
+		local entry = ROLES[key]
+		roleLabel.Text = entry.Text
+		roleLabel.TextColor3 = entry.Color
+	end
 	Remotes.Role.OnClientEvent:Connect(function(role: string, disguise: string?)
+		revealToken += 1
+		local token = revealToken
+		local final = if ROLES[role] then role else "Innocent"
+		local respin = reveal.Visible -- (already showing: a role change, no second spin)
 		nameLabel.Text = `You are {disguise or player.DisplayName}`
-		if role == "Murderer" then
-			roleLabel.Text = "THE MURDERER"
-			roleLabel.TextColor3 = Color3.fromRGB(255, 50, 60)
+		local hint: string
+		local knifeImage = ""
+		if final == "Murderer" then
 			-- Make the link obvious: this is the knife from YOUR vault, with its power
 			local equipped = player:GetAttribute("Equipped")
 			local parsed = if type(equipped) == "string" and equipped ~= "" then Items.Parse(equipped) else nil
 			local perk = parsed and parsed.Perk and GameConfig.Perks[parsed.Perk]
-			hintLabel.Text = if parsed
+			hint = if parsed
 				then `You're fighting with YOUR {Items.DisplayName(equipped :: string)} from your vault{if perk
 					then ` - power: {perk.DisplayName}!`
 					else "!"} It arrives in {GameConfig.MurdererGrace}s.`
 				else `Blend in - your knife arrives in {GameConfig.MurdererGrace}s, and pulling it out shows everyone!`
-			knifeArt.Image = if parsed
+			knifeImage = if parsed
 				then (VoxelUi.Knives[parsed.Knife.Name] or KnifeIcons[parsed.Knife.Name] or "")
 				else ""
-			knifeArt.Visible = parsed ~= nil
-		elseif role == "Sheriff" then
-			knifeArt.Visible = false
-			roleLabel.Text = "THE SHERIFF"
-			roleLabel.TextColor3 = Color3.fromRGB(90, 170, 255)
-			hintLabel.Text =
-				"You have the Revolver! Find the Murderer and shoot them - but hit an innocent and you're out."
+		elseif final == "Sheriff" then
+			hint = "You have the Revolver! Find the Murderer and shoot them - but hit an innocent and you're out."
 		else
-			knifeArt.Visible = false
-			roleLabel.Text = "INNOCENT"
-			roleLabel.TextColor3 = Color3.fromRGB(90, 230, 120)
-			hintLabel.Text = "Survive. Grab coins to charge your powers. Find the Revolver!"
+			local power = player:GetAttribute("RoundPowerName")
+			hint = if type(power) == "string" and power ~= ""
+				then `Survive! Your power: {power}. Grab coins to charge it, and find the Revolver!`
+				else "Survive. Grab coins to charge your powers. Find the Revolver!"
 		end
-		Effects.Sound(Sounds.Sting, nil, 0.8)
+
+		-- The round teleport's loading cover goes first: a reel spun behind it was never seen
+		local waitedFrom = os.clock()
+		while Ui.gui:GetAttribute("FadeCover") and os.clock() - waitedFrom < 6 do
+			task.wait()
+		end
+		if token ~= revealToken then
+			return
+		end
 		reveal.Visible = true
 		reveal.BackgroundTransparency = 0.15
-		for _, label in { nameLabel, roleLabel, hintLabel } do
-			label.TextTransparency = 0
-			label.TextStrokeTransparency = if label == roleLabel then 0 else 1
+		knifeArt.Visible = false
+		nameLabel.TextTransparency = 0
+		roleLabel.TextTransparency = 0
+		roleLabel.TextStrokeTransparency = 0
+		hintLabel.Text = hint
+		hintLabel.TextTransparency = 1
+
+		if not respin then
+			-- The spin: ~2 s, fast to slow. Build it backwards from the result; half the time the
+			-- step before the landing is MURDERER (the near miss that makes you want the next one)
+			local steps = 14
+			local sequence: { string } = table.create(steps)
+			sequence[steps] = final
+			for i = steps - 1, 1, -1 do
+				local nextKey = sequence[i + 1]
+				local choice: string
+				if i == steps - 1 and final ~= "Murderer" and reelRng:NextNumber() < 0.5 then
+					choice = "Murderer"
+				else
+					repeat
+						choice = ORDER[reelRng:NextInteger(1, #ORDER)]
+					until choice ~= nextKey
+				end
+				sequence[i] = choice
+			end
+			for i, key in sequence do
+				if token ~= revealToken then
+					return
+				end
+				showRole(key)
+				roleScale.Scale = 1.12
+				TweenService:Create(roleScale, TweenInfo.new(0.08), { Scale = 1 }):Play()
+				Effects.Sound(Sounds.ReelTick, nil, 0.35)
+				if i < steps then
+					local t = i / steps
+					task.wait(0.05 + 0.3 * t * t * t)
+				end
+			end
+		else
+			showRole(final)
 		end
-		task.delay(3.5, function()
+		if token ~= revealToken then
+			return
+		end
+
+		-- The landing: a punch, its own sound, then the hint (and the Murderer's knife)
+		roleScale.Scale = 1.5
+		TweenService:Create(roleScale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+		if final == "Murderer" then
+			Effects.Sound(Sounds.RoleMurderer, nil, 0.8)
+			reveal.BackgroundColor3 = Color3.fromRGB(90, 0, 10)
+			TweenService:Create(reveal, TweenInfo.new(0.6), { BackgroundColor3 = Color3.new(0, 0, 0) }):Play()
+			knifeArt.Image = knifeImage
+			knifeArt.Visible = knifeImage ~= ""
+		else
+			Effects.Sound(if final == "Sheriff" then Sounds.RoleSheriff else Sounds.RoleInnocent, nil, 0.7)
+		end
+		TweenService:Create(hintLabel, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
+
+		task.delay(2.8, function()
+			if token ~= revealToken then
+				return
+			end
 			local info = TweenInfo.new(0.8)
 			TweenService:Create(reveal, info, { BackgroundTransparency = 1 }):Play()
 			for _, label in { nameLabel, roleLabel, hintLabel } do
 				TweenService:Create(label, info, { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
 			end
 			task.wait(0.8)
-			reveal.Visible = false
+			if token == revealToken then
+				reveal.Visible = false
+			end
 		end)
 	end)
 

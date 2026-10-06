@@ -29,6 +29,10 @@ return {
 
 	-- Cases and rewards
 	DrumRoll = "rbxassetid://1842251033", -- snare roll (APM) while the reel spins
+	-- The role reel's landing (client/Hud "You are..."), one per role (APM stings)
+	RoleMurderer = "rbxassetid://9047102381", -- "Game Day Warrior" sting: big and punchy
+	RoleSheriff = "rbxassetid://9047103106", -- "All It Takes" sting
+	RoleInnocent = "rbxassetid://9040476898", -- "Early Bird" hit: bouncy, upbeat
 	ReelTick = "rbxassetid://9120098629", -- a crisp little switch click (PSE) per knife going past
 	Reveal = "rbxassetid://4612374036", -- a quick sparkly "big diamond" ding: any reveal (case, power roll, gift)
 	Cheer = "rbxassetid://9112766176", -- crowd cheer (PSE) for the big ones

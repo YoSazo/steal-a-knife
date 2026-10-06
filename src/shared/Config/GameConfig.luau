@@ -289,7 +289,7 @@ local GameConfig = {
 		FirstMax = 180,
 		MinGap = 180,
 		MaxGap = 540,
-		Lifetime = 60, -- not opened in a minute: it's gone
+		Lifetime = 150, -- it waits at your vault this long (you might be out in the biomes)
 		MinCash = 500,
 		Prizes = {
 			{ Kind = "Cash", Seconds = 60, Weight = 30 },

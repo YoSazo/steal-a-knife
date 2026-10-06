@@ -1,8 +1,10 @@
 --!strict
 -- Surprise gifts (Steal An Egg's "keep playing, something might drop"): every few minutes of play,
--- at a random moment, a glowing present lands near you in the hub. Walk up and open it: usually
--- cash or a wheel spin, sometimes luck or a case, rarely a big case the whole server hears about.
--- Only its owner can open it (other clients hide it, client/Effects). Never during a round.
+-- at a random moment, a glowing present lands just outside YOUR vault's gate (a spot you can always
+-- reach - dropped in front of you, it landed in odd places or mid-chase). Usually cash or a wheel
+-- spin, sometimes luck or a case, rarely a big case the whole server hears about. Only its owner
+-- sees it: the parts are invisible on the server and the owner's client shows them (client/Effects),
+-- so nobody mistakes someone else's gift for theirs. Never during a round or while carrying a knife.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -68,6 +70,8 @@ local function buildGift(at: CFrame): (Model, BasePart)
 		p.Color = color
 		p.Material = if neon then Enum.Material.Neon else Enum.Material.SmoothPlastic
 		p.Anchored, p.CanCollide, p.CanTouch, p.CanQuery, p.CastShadow = true, false, false, false, false
+		p:SetAttribute("Look", 0)
+		p.Transparency = 1
 		p.Parent = model
 		return p
 	end
@@ -81,6 +85,7 @@ local function buildGift(at: CFrame): (Model, BasePart)
 	model.PrimaryPart = body
 	local sparkles = Instance.new("Sparkles")
 	sparkles.SparkleColor = gold
+	sparkles.Enabled = false
 	sparkles.Parent = body
 	return model, body
 end
@@ -130,19 +135,28 @@ local function drop(player: Player)
 	if not root or gifts[player] then
 		return
 	end
-	-- A few studs in front, on the ground
-	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
-	look = if look.Magnitude > 0.1 then look.Unit else Vector3.zAxis
-	local spot = root.Position + look * 9
+	local spot: Vector3
+	local base = BaseService.GetBase(player)
+	if base then
+		local gate = base.Gate:GetPivot().Position
+		local outward = base.Frame:VectorToWorldSpace(Vector3.zAxis)
+		local toWheel = base.Treadmill.Position - gate
+		local side = toWheel - outward * toWheel:Dot(outward)
+		side = if side.Magnitude > 0.1 then side.Unit else base.Frame.RightVector
+		spot = gate + outward * 8 - side * 7
+	else
+		local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+		look = if look.Magnitude > 0.1 then look.Unit else Vector3.zAxis
+		spot = root.Position + look * 9
+	end
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = { (player.Character :: any) :: Instance, folder }
-	-- From chest height down (higher, it lands on the vault floor above you), skipping invisible
-	-- walls and blockers
-	local ground = root.Position.Y - 3
-	local from = spot + Vector3.new(0, 1, 0)
+	-- Down from a little above, skipping invisible walls and blockers
+	local ground = spot.Y - 5
+	local from = Vector3.new(spot.X, spot.Y + 6, spot.Z)
 	for _ = 1, 6 do
-		local hit = workspace:Raycast(from, Vector3.new(0, -12, 0), params)
+		local hit = workspace:Raycast(from, Vector3.new(0, -30, 0), params)
 		if not hit then
 			break
 		end
@@ -166,7 +180,7 @@ local function drop(player: Player)
 	model.Parent = folder
 	gifts[player] = model
 	Net.Remotes.Effect:FireClient(player, "GiftDrop", body.Position)
-	Net.Notify(player, "🎁 A gift dropped near you!", "good")
+	Net.Notify(player, "🎁 A gift landed at your vault!", "good")
 	Analytics.Track(player, "gift.drop")
 	prompt.Triggered:Connect(function(who)
 		if who ~= player or gifts[player] ~= model then
@@ -225,7 +239,12 @@ function SurpriseGifts.Init()
 			task.wait(5)
 			for player, left in nextAt do
 				-- the clock only runs while you're playing in the hub
-				if player:GetAttribute("InRound") or not rootOf(player) or gifts[player] then
+				if
+					player:GetAttribute("InRound")
+					or not rootOf(player)
+					or gifts[player]
+					or StealService.IsCarrying(player)
+				then
 					continue
 				end
 				left -= 5

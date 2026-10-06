@@ -1,9 +1,7 @@
 --!strict
 -- The heads-up before your first Murder Mystery round of the session: for the last 10 seconds of
--- the intermission a big card counts down and says what's about to happen, so the teleport into
--- the round map is exciting instead of confusing. First-time players (attribute FirstVisit, set
--- by RoundService) get the full explanation; everyone else a short reminder with their chance of
--- being the Murderer.
+-- the intermission, big red text in the middle counts down (no box, no sting - kept simple).
+-- First-time players (attribute FirstVisit, set by RoundService) get one short line under it.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -25,36 +23,29 @@ function RoundIntro.Init()
 	local card = new("Frame", {
 		Name = "RoundIntro",
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.36),
-		Size = UDim2.fromOffset(620, 190),
-		BackgroundColor3 = Color3.new(1, 1, 1),
+		Position = UDim2.fromScale(0.5, 0.38),
+		Size = UDim2.fromOffset(760, 130),
+		BackgroundTransparency = 1,
 		Visible = false,
-		ZIndex = 60, -- over the welcome card (50s): it matters more right now
+		ZIndex = 60,
 	}, Ui.gui)
-	Ui.corner(card, 18)
-	Ui.fitMenu(card, Vector2.new(620, 190))
-	Ui.gradient(card, Color3.fromRGB(70, 16, 24), Color3.fromRGB(30, 8, 14))
-	new("UIStroke", { Thickness = 2, Color = Color3.fromRGB(255, 70, 70) }, card)
 	local scale = new("UIScale", {}, card)
 	local title = Ui.label({
-		Size = UDim2.new(1, -30, 0, 44),
-		Position = UDim2.fromOffset(15, 10),
-		Font = Ui.SPOOKY,
-		TextColor3 = Color3.fromRGB(255, 70, 70),
+		Size = UDim2.new(1, 0, 0, 80),
+		Font = Enum.Font.FredokaOne,
+		TextColor3 = Color3.fromRGB(255, 60, 60),
 		Text = "",
 		ZIndex = 61,
 	}, card)
 	Ui.textStroke(title, 4)
 	local body = Ui.label({
-		Size = UDim2.new(1, -40, 1, -68),
-		Position = UDim2.fromOffset(20, 60),
-		TextScaled = false,
-		TextSize = 16,
-		TextWrapped = true,
+		Size = UDim2.new(1, 0, 0, 34),
+		Position = UDim2.fromOffset(0, 86),
+		Font = Enum.Font.FredokaOne,
 		Text = "",
 		ZIndex = 61,
 	}, card)
-	Ui.textStroke(body, 2.5)
+	Ui.textStroke(body, 3)
 
 	local shownThisSession = false
 	local showing = false
@@ -101,22 +92,16 @@ function RoundIntro.Init()
 			card.Visible = true
 			scale.Scale = 0.6
 			TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-			Effects.Sound(Sounds.Sting, nil, 0.7)
-			if player:GetAttribute("FirstVisit") then
-				body.Text = "Everyone here is about to play MURDER MYSTERY! One player is secretly the MURDERER. "
-					.. "Everyone else: SURVIVE! Grab coins for powers - and if you find the Revolver, shoot the Murderer!"
-			else
-				local chance = player:GetAttribute("MurdererChance")
-				body.Text =
-					`Who's the Murderer this time? Your chance: {chance or "?"}%. Innocents: survive and find the Revolver!`
-			end
+			body.Text = if player:GetAttribute("FirstVisit")
+				then "One player is secretly the Murderer. Everyone else: survive!"
+				else ""
 		end
 		local second = math.ceil(left)
 		if second ~= lastSecond then
 			lastSecond = second
 			title.Text = `🔪 MURDER ROUND IN {second}`
-			if second <= 5 then
-				Effects.Sound(Sounds.Tick, nil, 0.6)
+			if second <= 3 then
+				Effects.Sound(Sounds.Tick, nil, 0.35)
 			end
 		end
 	end)

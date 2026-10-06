@@ -177,13 +177,9 @@ function Store.Init()
 		if showcase and (showcase :: GuiObject).Visible then
 			return true
 		end
-		local intro = playerGui and playerGui:FindFirstChild("RoundIntro") :: ScreenGui?
-		if intro and intro.Enabled then
-			for _, child in intro:GetChildren() do
-				if child:IsA("GuiObject") and child.Visible then
-					return true
-				end
-			end
+		local intro = playerGui and playerGui:FindFirstChild("RoundIntro", true)
+		if intro and intro:IsA("GuiObject") and intro.Visible then
+			return true
 		end
 		local endsAt = ReplicatedStorage:GetAttribute("PhaseEndsAt")
 		return ReplicatedStorage:GetAttribute("Phase") == "Intermission"
