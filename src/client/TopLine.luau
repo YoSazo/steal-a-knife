@@ -83,6 +83,22 @@ local function fit(text: string, withPill: boolean)
 	-- (phones: keep the words between the left and right button columns)
 	local maxLane = math.max(160, math.min(860, bounds.X - (if Ui.Phone then 2 * 175 else 2 * FADE + 24)) - pillWidth)
 	local plain = text:gsub("<[^>]->", "") -- (RichText tags take no space)
+	-- Phones: up in Roblox's top bar (Ui.topStrip) when the tutorial isn't using it and the line
+	-- fits there on one line (at 14 or bigger) - it frees a whole row in the middle of the screen
+	local tutorialInStrip = Ui.gui:GetAttribute("TutorialBar") == true
+		and Ui.gui:GetAttribute("TutorialInStrip") == true
+	local strip = if tutorialInStrip then nil else Ui.topStrip()
+	local fade = FADE
+	if strip then
+		local stripLane = strip.W - 2 * 16 - pillWidth
+		local smallest = TextService:GetTextSize(plain, 14, words.Font, Vector2.new(4000, 1000)).X
+		if smallest <= stripLane then
+			maxLane, fade = stripLane, 16
+		else
+			strip = nil
+		end
+	end
+	words.Position = UDim2.fromOffset(fade, 0)
 	-- A bit too long for one line: smaller words first (down to 14), wrapping only after that
 	local oneLine = TextService:GetTextSize(plain, words.TextSize, words.Font, Vector2.new(4000, 1000)).X
 	if oneLine > maxLane then
@@ -91,18 +107,25 @@ local function fit(text: string, withPill: boolean)
 	local size = TextService:GetTextSize(plain, words.TextSize, words.Font, Vector2.new(maxLane, 1000))
 	local lane = math.min(maxLane, size.X + 6)
 	local tall = math.max(baseHeight(), size.Y + 8)
-	frame.Size = UDim2.fromOffset(math.min(bounds.X, lane + pillWidth + 2 * FADE), tall)
+	if strip then
+		tall = math.min(tall, strip.H - 8)
+	end
+	frame.Size = UDim2.fromOffset(math.min(bounds.X, lane + pillWidth + 2 * fade), tall)
 	words.Size = UDim2.fromOffset(lane, tall)
 	if pill then
 		pill.Visible = withPill
 		pill.AnchorPoint = Vector2.new(0, 0.5)
-		pill.Position = UDim2.new(0, FADE + lane + 8, 0.5, 0)
+		pill.Position = UDim2.new(0, fade + lane + 8, 0.5, 0)
 	end
-	local top = if Ui.gui:GetAttribute("TutorialBar") == true
+	local top = if Ui.gui:GetAttribute("TutorialBar") == true and not tutorialInStrip
 		then ((Ui.gui:GetAttribute("TutorialBarHeight") or 36) :: number) + 2
 		else 0
-	frame.Position = UDim2.new(0.5, 0, 0, top)
-	local bottom = if frame.Visible then top + tall + 2 else top
+	if strip then
+		frame.Position = UDim2.fromOffset(strip.X, strip.Y + (strip.H - tall) / 2)
+	else
+		frame.Position = UDim2.new(0.5, 0, 0, top)
+	end
+	local bottom = if frame.Visible and not strip then top + tall + 2 else top
 	if Ui.gui:GetAttribute("TopLineHeight") ~= bottom then
 		Ui.gui:SetAttribute("TopLineHeight", bottom)
 	end
@@ -214,6 +237,7 @@ function TopLine.Init()
 	Ui.Layout.Changed:Connect(refit)
 	Ui.gui:GetAttributeChangedSignal("TutorialBar"):Connect(refit)
 	Ui.gui:GetAttributeChangedSignal("TutorialBarHeight"):Connect(refit)
+	Ui.gui:GetAttributeChangedSignal("TutorialInStrip"):Connect(refit)
 end
 
 return TopLine

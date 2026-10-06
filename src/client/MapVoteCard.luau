@@ -39,64 +39,35 @@ function MapVoteCard.Open(): number?
 end
 
 function MapVoteCard.Init()
-	-- Desktop: a card on the right. Phones: one slim row centred just under the timer lines
-	-- ([Office · 2] [Mansion · 3] [X]) - stress-tested at 600 x 300, smaller than any iPhone: a card
-	-- on the right ran into the knife stick
+	-- One slim row centred just under the timer lines, on every screen: [Office · 2] [Mansion · 3] [X]
+	-- (desktop had a card on the right that sat on the Knives / Powers buttons; on phones a card ran
+	-- into the knife stick). It takes the Murderer chance line's place while it's up (Hud VoteRow).
 	local phone = Ui.Phone
 	local count = #RoundMapInfo.List
-	local card: Frame
 	local closeSize = if phone then 30 else 38
-	if phone then
-		local rowW = 110 * count + closeSize + 8 * (count + 2)
-		card = Ui.new("Frame", {
-			Name = "MapVoteCard",
-			AnchorPoint = Vector2.new(0.5, 0),
-			Size = UDim2.fromOffset(rowW, closeSize + 10),
-			BackgroundColor3 = Color3.fromRGB(34, 38, 56),
-			BackgroundTransparency = 0.15,
-			Visible = false,
-			ZIndex = 20,
-		}, Ui.gui)
-		local function place()
-			-- in the Murderer chance line's place (hidden while the row is up), clear of your head
-			card.Position = UDim2.new(0.5, 0, 0, ((Ui.gui:GetAttribute("HudTop") or 60) :: number) + 2)
-		end
-		Ui.gui:GetAttributeChangedSignal("HudTop"):Connect(place)
-		place()
-	else
-		card = Ui.new("Frame", {
-			Name = "MapVoteCard",
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -84, 0.46, 0),
-			Size = UDim2.fromOffset(280, 54 + count * 66 + 4 + 34),
-			BackgroundColor3 = Color3.fromRGB(34, 38, 56),
-			BackgroundTransparency = 0.15,
-			Visible = false,
-			ZIndex = 20,
-		}, Ui.gui)
-		SimpleUi.text(card, "🗳️ Vote the murder map!", {
-			Position = UDim2.fromOffset(10, 7),
-			Size = UDim2.new(1, -(closeSize + 22), 0, 40),
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Max = 26,
-			ZIndex = 21,
-		})
-		SimpleUi.text(card, "or stand on a pad at the back of the plaza", {
-			AnchorPoint = Vector2.new(0, 1),
-			Position = UDim2.new(0, 10, 1, -6),
-			Size = UDim2.new(1, -20, 0, 22),
-			TextColor3 = Color3.fromRGB(205, 215, 240),
-			Max = 15,
-			ZIndex = 21,
-		})
+	local buttonW = if phone then 110 else 170
+	local gap = 8
+	local card: Frame = Ui.new("Frame", {
+		Name = "MapVoteCard",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Size = UDim2.fromOffset((buttonW + gap) * count + closeSize + gap * 2, closeSize + 10),
+		BackgroundColor3 = Color3.fromRGB(34, 38, 56),
+		BackgroundTransparency = 0.15,
+		Visible = false,
+		ZIndex = 20,
+	}, Ui.gui)
+	local function place()
+		card.Position = UDim2.new(0.5, 0, 0, ((Ui.gui:GetAttribute("HudTop") or 60) :: number) + 2)
 	end
-	Ui.corner(card, if phone then 10 else 14)
-	Ui.new("UIStroke", { Color = Color3.fromRGB(255, 225, 90), Thickness = if phone then 2 else 3 }, card)
+	Ui.gui:GetAttributeChangedSignal("HudTop"):Connect(place)
+	place()
+	Ui.corner(card, 10)
+	Ui.new("UIStroke", { Color = Color3.fromRGB(255, 225, 90), Thickness = 2 }, card)
 	local dismissed = false
 	SimpleUi.button(card, "X", Color3.fromRGB(230, 40, 50), {
 		Name = "Close",
-		AnchorPoint = if phone then Vector2.new(1, 0.5) else Vector2.new(1, 0),
-		Position = if phone then UDim2.new(1, -5, 0.5, 0) else UDim2.new(1, -7, 0, 7),
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -5, 0.5, 0),
 		Size = UDim2.fromOffset(closeSize, closeSize),
 		ZIndex = 22,
 		Max = 24,
@@ -108,10 +79,10 @@ function MapVoteCard.Init()
 	for i, info in RoundMapInfo.List do
 		local button = SimpleUi.button(card, "", info.Color, {
 			Name = `Vote{info.Name}`,
-			Position = if phone then UDim2.fromOffset(8 + (i - 1) * 118, 5) else UDim2.fromOffset(8, 54 + (i - 1) * 66),
-			Size = if phone then UDim2.fromOffset(110, closeSize) else UDim2.new(1, -16, 0, 60),
+			Position = UDim2.fromOffset(gap + (i - 1) * (buttonW + gap), 5),
+			Size = UDim2.fromOffset(buttonW, closeSize),
 			ZIndex = 21,
-			Max = if phone then 17 else 28,
+			Max = if phone then 17 else 22,
 		}, function()
 			Remotes.MapVote:FireServer(info.Name)
 		end)
@@ -131,7 +102,7 @@ function MapVoteCard.Init()
 		end
 		wasOpen = open
 		card.Visible = open and not dismissed and not Ui.menuOpen() and Ui.gui:GetAttribute("TutorialBar") ~= true
-		if phone and Ui.gui:GetAttribute("VoteRow") ~= card.Visible then
+		if Ui.gui:GetAttribute("VoteRow") ~= card.Visible then
 			Ui.gui:SetAttribute("VoteRow", card.Visible)
 		end
 		if not card.Visible then

@@ -387,12 +387,23 @@ local function run(startAt: number, replay: boolean)
 		stepLabel.TextSize = if phone then 19 else 20
 		-- Only as wide as the words (plus the fade at each end), never the whole screen
 		local reserve = if skip.Visible then 64 else 0
-		local maxLane = math.max(120, math.min(960, bounds.X - 24 - reserve - 2 * FADE))
+		-- Phones: up in Roblox's top bar (Ui.topStrip), with short fades so it fits
+		local strip = Ui.topStrip()
+		local fade = if strip then 16 else FADE
+		local room = if strip then strip.W else bounds.X - 24
+		local maxLane = math.max(120, math.min(960, room - reserve - 2 * fade))
 		local words =
 			TextService:GetTextSize(stepLabel.Text, stepLabel.TextSize, stepLabel.Font, Vector2.new(maxLane, height))
 		local lane = math.min(maxLane, words.X + 8)
-		banner.Size = UDim2.fromOffset(math.min(bounds.X, lane + reserve + 2 * FADE), height)
-		banner.Position = UDim2.fromScale(0.5, 0)
+		banner.Size = UDim2.fromOffset(math.min(bounds.X, lane + reserve + 2 * fade), height)
+		if strip then
+			height = math.min(height, strip.H - 8)
+			banner.Size = UDim2.fromOffset(lane + reserve + 2 * fade, height)
+			banner.Position = UDim2.fromOffset(strip.X, strip.Y + (strip.H - height) / 2)
+		else
+			banner.Position = UDim2.fromScale(0.5, 0)
+		end
+		Ui.gui:SetAttribute("TutorialInStrip", strip ~= nil)
 		stepLabel.Position = UDim2.new(0.5, -reserve / 2, 0, 0)
 		stepLabel.Size = UDim2.new(0, lane, 1, 0)
 		skip.AnchorPoint = Vector2.new(0, 0.5)

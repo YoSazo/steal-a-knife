@@ -5,6 +5,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local GuiService = game:GetService("GuiService")
 local UserInputService = game:GetService("UserInputService")
 local Layout = require(script.Parent.Layout)
 local MenuController = require(script.Parent.MenuController)
@@ -351,6 +352,43 @@ Ui.Menu = MenuController
 Ui.Panels = {} :: { [string]: GuiObject }
 Layout.bind(Ui.root)
 player:WaitForChild("PlayerGui").ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor
+-- Phones: the free strip of Roblox's top bar, between its buttons on the left and our shift-lock
+-- button on the right (Steal An Egg / Tsunami put their top text there). In Ui.gui coordinates:
+-- centre X, top Y (negative: above the HUD's safe area), width, height. Centred on the screen when
+-- there's room either side, else on the free span. nil off phones or when it's too narrow.
+export type Strip = { X: number, Y: number, W: number, H: number }
+function Ui.topStrip(): Strip?
+	if not Ui.Phone or Layout.debugSafe() then
+		return nil
+	end
+	local inset = GuiService.TopbarInset
+	if inset.Height < 24 then
+		return nil
+	end
+	local guiInset = GuiService:GetGuiInset()
+	local scale = math.max(Ui.Scale.Scale, 0.01)
+	local shiftLock = math.max(32, inset.Height - 8) + 16 -- (ShiftLock sits at the strip's right end)
+	local left, right = inset.Min.X + 8, inset.Max.X - shiftLock
+	local mid = workspace.CurrentCamera.ViewportSize.X / 2
+	local half = math.min(mid - left, right - mid)
+	local cx, width = mid, half * 2
+	if width < 300 then
+		cx, width = (left + right) / 2, right - left
+	end
+	if width < 200 then
+		return nil
+	end
+	return {
+		X = (cx - guiInset.X) / scale,
+		Y = (inset.Min.Y - guiInset.Y) / scale,
+		W = width / scale,
+		H = inset.Height / scale,
+	}
+end
+GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(function()
+	Layout.notify()
+end)
+
 function Ui.bounds(): (Vector2, Vector2)
 	return Layout.bounds()
 end

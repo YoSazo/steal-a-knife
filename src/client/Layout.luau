@@ -17,6 +17,10 @@ function Layout.metrics(size: Vector2)
 		NavigationWidth = if size.Y < 420 then 232 else 112,
 	}
 end
+-- Something outside the safe area moved (Roblox's top bar): everyone re-lays out
+function Layout.notify()
+	changed:Fire()
+end
 function Layout.bind(frame: GuiObject)
 	root = frame
 	frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
