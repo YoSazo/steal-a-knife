@@ -1294,15 +1294,18 @@ function ManorDecor.Build(root: Instance, arena: Bounds, _hideaways: { Bounds })
 		streetLamp(Vector3.new(-half + 4, 0, z))
 		streetLamp(Vector3.new(half - 4, 0, z))
 	end
-	local plinth = block("Plinth", Vector3.new(10, 6, 10), at(0, 3, -205), DARK_STONE, Enum.Material.Slate)
+	-- The knife monument stands in the middle of the plaza (the map vote boards have its old spot
+	-- at the back: server MapVote)
+	local MONUMENT_Z = -105
+	local plinth = block("Plinth", Vector3.new(10, 6, 10), at(0, 3, MONUMENT_Z), DARK_STONE, Enum.Material.Slate)
 	glow(plinth, Color3.fromRGB(170, 70, 255), 30, 2)
 	local statueKnife = KnifeModel.Build("VoidEdge", true)
 	statueKnife:ScaleTo(7)
-	statueKnife:PivotTo(CFrame.new(0, 6 + 7 * 0.9, -205) * CFrame.Angles(0, math.rad(90), 0))
+	statueKnife:PivotTo(CFrame.new(0, 6 + 7 * 0.9, MONUMENT_Z) * CFrame.Angles(0, math.rad(90), 0))
 	statueKnife.Name = "Statue"
 	statueKnife.Parent = folder
 	for _, x in { -8, 8 } do
-		torch(Vector3.new(x, 0, -199))
+		torch(Vector3.new(x, 0, MONUMENT_Z + 6))
 	end
 
 	manor(Vector3.new(0, 0, arena.MaxZ + 6))

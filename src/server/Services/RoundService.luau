@@ -53,6 +53,7 @@ local StealService = require(script.Parent.StealService)
 local RoundBots = require(script.Parent.RoundBots)
 local Ragdoll = require(script.Parent.Ragdoll)
 local Analytics = require(script.Parent.Analytics)
+local MapVote = require(script.Parent.MapVote)
 local Gamble = require(script.Parent.Gamble)
 local SurpriseGifts = require(script.Parent.SurpriseGifts)
 
@@ -2206,7 +2207,7 @@ local function giveWeapon(round: Round)
 end
 
 local function startRound(participants: { Player })
-	local built = MapService.BuildRoundMap()
+	local built = MapService.BuildRoundMap(MapVote.TakeWinner())
 	ReplicatedStorage:SetAttribute("MapName", built.Name)
 	RoundBots.SetMap(built.Folder)
 	-- A Studio bot round: the person who asked picks their side; bots fill in the rest

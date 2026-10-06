@@ -23,6 +23,8 @@ local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
 local TopLine = require(script.Parent.TopLine)
 local Telemetry = require(script.Parent.Telemetry)
+local MapVoteCard = require(script.Parent.MapVoteCard)
+local RoundMapInfo = require(ReplicatedStorage.Shared.Config.RoundMapInfo)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Effects = require(script.Parent.Effects)
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("GameConfig"))
@@ -251,6 +253,22 @@ function Hud.Init()
 		end
 		local timer = { Text = `🔪 MURDER ROUND in <b>{clock}</b>` }
 		local beat = os.clock() % 10
+		-- the map vote: half the time, with the counts
+		if left <= GameConfig.MapVoteWindow and left > GameConfig.RoundPrize.AnnounceAt and beat >= 5 then
+			local tally = MapVoteCard.Counts()
+			local bits = {}
+			for _, info in RoundMapInfo.List do
+				table.insert(
+					bits,
+					if Ui.Phone
+						then `{info.Name} <b>{tally[info.Name] or 0}</b>`
+						else `{info.Emoji} {info.Name} <b>{tally[info.Name] or 0}</b>`
+				)
+			end
+			-- (phones: short, it has to fit one line on an iPhone 13)
+			local lead = if Ui.Phone then "🗳️ Vote the map:" else "🗳️ Vote for the murder map!"
+			return { Text = `{lead}  {table.concat(bits, "  ·  ")}` }
+		end
 		local kind = ReplicatedStorage:GetAttribute("PrizeKind")
 		if type(kind) == "string" and left <= GameConfig.RoundPrize.AnnounceAt and left > 0 then
 			if beat < 4 then
