@@ -39,39 +39,63 @@ function MapVoteCard.Open(): number?
 end
 
 function MapVoteCard.Init()
-	-- Phones (iPhone 13 landscape is ~750 x 340 points): small, up on the right under the top line,
-	-- clear of the knife stick, the jump button and the Knives / Powers buttons
+	-- Desktop: a card on the right. Phones: one slim row centred just under the timer lines
+	-- ([Office · 2] [Mansion · 3] [X]) - stress-tested at 600 x 300, smaller than any iPhone: a card
+	-- on the right ran into the knife stick
 	local phone = Ui.Phone
-	local width = if phone then 190 else 280
-	local rowH = if phone then 36 else 60
-	local titleH = if phone then 26 else 40
-	local closeSize = if phone then 26 else 38
-	local footerH = if phone then 0 else 34
-	local top = titleH + 14
-	local card: Frame = Ui.new("Frame", {
-		Name = "MapVoteCard",
-		AnchorPoint = if phone then Vector2.new(1, 0) else Vector2.new(1, 0.5),
-		Position = if phone then UDim2.new(1, -70, 0, 92) else UDim2.new(1, -84, 0.46, 0),
-		Size = UDim2.fromOffset(width, top + #RoundMapInfo.List * (rowH + 6) + 4 + footerH),
-		BackgroundColor3 = Color3.fromRGB(34, 38, 56),
-		BackgroundTransparency = 0.15,
-		Visible = false,
-		ZIndex = 20,
-	}, Ui.gui)
-	Ui.corner(card, 14)
-	Ui.new("UIStroke", { Color = Color3.fromRGB(255, 225, 90), Thickness = 3 }, card)
-	SimpleUi.text(card, if phone then "🗳️ Vote the map!" else "🗳️ Vote the murder map!", {
-		Position = UDim2.fromOffset(10, 7),
-		Size = UDim2.new(1, -(closeSize + 22), 0, titleH),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Max = if phone then 18 else 26,
-		ZIndex = 21,
-	})
+	local count = #RoundMapInfo.List
+	local card: Frame
+	local closeSize = if phone then 30 else 38
+	if phone then
+		local rowW = 110 * count + closeSize + 8 * (count + 2)
+		card = Ui.new("Frame", {
+			Name = "MapVoteCard",
+			AnchorPoint = Vector2.new(0.5, 0),
+			Size = UDim2.fromOffset(rowW, closeSize + 10),
+			BackgroundColor3 = Color3.fromRGB(34, 38, 56),
+			BackgroundTransparency = 0.15,
+			Visible = false,
+			ZIndex = 20,
+		}, Ui.gui)
+		local function place()
+			card.Position = UDim2.new(0.5, 0, 0, ((Ui.gui:GetAttribute("HudTop") or 60) :: number) + 24)
+		end
+		Ui.gui:GetAttributeChangedSignal("HudTop"):Connect(place)
+		place()
+	else
+		card = Ui.new("Frame", {
+			Name = "MapVoteCard",
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -84, 0.46, 0),
+			Size = UDim2.fromOffset(280, 54 + count * 66 + 4 + 34),
+			BackgroundColor3 = Color3.fromRGB(34, 38, 56),
+			BackgroundTransparency = 0.15,
+			Visible = false,
+			ZIndex = 20,
+		}, Ui.gui)
+		SimpleUi.text(card, "🗳️ Vote the murder map!", {
+			Position = UDim2.fromOffset(10, 7),
+			Size = UDim2.new(1, -(closeSize + 22), 0, 40),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Max = 26,
+			ZIndex = 21,
+		})
+		SimpleUi.text(card, "or stand on a pad at the back of the plaza", {
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.new(0, 10, 1, -6),
+			Size = UDim2.new(1, -20, 0, 22),
+			TextColor3 = Color3.fromRGB(205, 215, 240),
+			Max = 15,
+			ZIndex = 21,
+		})
+	end
+	Ui.corner(card, if phone then 10 else 14)
+	Ui.new("UIStroke", { Color = Color3.fromRGB(255, 225, 90), Thickness = if phone then 2 else 3 }, card)
 	local dismissed = false
 	SimpleUi.button(card, "X", Color3.fromRGB(230, 40, 50), {
 		Name = "Close",
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -7, 0, 7),
+		AnchorPoint = if phone then Vector2.new(1, 0.5) else Vector2.new(1, 0),
+		Position = if phone then UDim2.new(1, -5, 0.5, 0) else UDim2.new(1, -7, 0, 7),
 		Size = UDim2.fromOffset(closeSize, closeSize),
 		ZIndex = 22,
 		Max = 24,
@@ -83,24 +107,15 @@ function MapVoteCard.Init()
 	for i, info in RoundMapInfo.List do
 		local button = SimpleUi.button(card, "", info.Color, {
 			Name = `Vote{info.Name}`,
-			Position = UDim2.fromOffset(8, top + (i - 1) * (rowH + 6)),
-			Size = UDim2.new(1, -16, 0, rowH),
+			Position = if phone then UDim2.fromOffset(8 + (i - 1) * 118, 5) else UDim2.fromOffset(8, 54 + (i - 1) * 66),
+			Size = if phone then UDim2.fromOffset(110, closeSize) else UDim2.new(1, -16, 0, 60),
 			ZIndex = 21,
-			Max = if phone then 18 else 28,
+			Max = if phone then 17 else 28,
 		}, function()
 			Remotes.MapVote:FireServer(info.Name)
 		end)
 		table.insert(rows, { Button = button, Name = info.Name })
 	end
-	local footer = SimpleUi.text(card, "or stand on a pad at the back of the plaza", {
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 10, 1, -6),
-		Size = UDim2.new(1, -20, 0, 22),
-		TextColor3 = Color3.fromRGB(205, 215, 240),
-		Max = 15,
-		ZIndex = 21,
-	})
-	footer.Visible = not phone -- (no room on a phone; the top line says it too)
 
 	local lastRefresh = 0
 	local wasOpen = false
@@ -125,7 +140,9 @@ function MapVoteCard.Init()
 			local n = tally[row.Name] or 0
 			SimpleUi.set(
 				row.Button,
-				`{if mine == row.Name then "✓ " else ""}{info.Emoji} {row.Name}  ·  {n}`,
+				if phone
+					then `{if mine == row.Name then "✓ " else ""}{row.Name} · {n}`
+					else `{if mine == row.Name then "✓ " else ""}{info.Emoji} {row.Name}  ·  {n}`,
 				info.Color,
 				true
 			)

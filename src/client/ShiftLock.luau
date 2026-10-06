@@ -61,9 +61,13 @@ function ShiftLock.Init()
 		button.Size = UDim2.fromOffset(height, height)
 		-- Top right, at the far end of the topbar's free space: on the left it sat under Roblox's voice
 		-- chat icon and in the way of the top line (tutorial, notices) in the middle
-		button.Position = UDim2.fromOffset(inset.Max.X - height - 8, inset.Min.Y + (inset.Height - height) / 2)
+		-- (the Studio phone emulator moves the screen's right edge in: Layout.debugSafe)
+		local sim = Ui.Layout.debugSafe()
+		local right = if sim then sim.X + 47 else inset.Max.X
+		button.Position = UDim2.fromOffset(right - height - 8, inset.Min.Y + (inset.Height - height) / 2)
 	end
 	GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(place)
+	ReplicatedStorage:GetAttributeChangedSignal("DebugSafe"):Connect(place)
 	place()
 
 	local function humanoidOf(): Humanoid?

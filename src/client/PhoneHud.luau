@@ -92,7 +92,7 @@ function PhoneHud.Init()
 	local function layout()
 		local origin, bounds = Ui.bounds()
 		-- The HUD lives inside the safe area; reach past it to sit right against the screen edges
-		local viewport = workspace.CurrentCamera.ViewportSize
+		local viewport = Ui.Layout.viewport()
 		local leftEdge = -origin.X + 8
 		local rightEdge = (viewport.X - (origin.X + bounds.X)) - 8
 		-- Left: one slim column against the left edge, a third of the way down

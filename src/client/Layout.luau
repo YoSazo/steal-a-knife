@@ -1,6 +1,7 @@
 --!strict
 -- Safe-area geometry, independent of whether a keyboard/controller is attached.
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Layout = {}
 Layout.KnifeSize = require(script.Parent.KnifeAim).ButtonSize
@@ -25,6 +26,23 @@ function Layout.bind(frame: GuiObject)
 		changed:Fire()
 	end)
 end
+-- Studio phone emulator: ReplicatedStorage DebugSafe = Vector2(w, h) shrinks the HUD's safe area to
+-- that phone's (iPhone 13 landscape ~750 x 340, SE ~667 x 335) in the top-left corner, next to
+-- Roblox's own buttons like on the phone, and Layout.viewport() pretends the screen ends just
+-- past it (a notch's width), so things placed against the screen edge land there too.
+-- (Use with DebugPhone = true for the touch layout.)
+function Layout.debugSafe(): Vector2?
+	local sim = ReplicatedStorage:GetAttribute("DebugSafe")
+	return if RunService:IsStudio() and typeof(sim) == "Vector2" then sim else nil
+end
+function Layout.viewport(): Vector2
+	local sim = Layout.debugSafe()
+	if sim and root then
+		return root.AbsolutePosition + sim + Vector2.new(47, 21)
+	end
+	return workspace.CurrentCamera.ViewportSize
+end
+
 function Layout.bounds(): (Vector2, Vector2)
 	if root then
 		return root.AbsolutePosition, root.AbsoluteSize

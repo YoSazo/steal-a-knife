@@ -305,6 +305,30 @@ Ui.gui = Ui.new("ScreenGui", {
 Ui.root =
 	Ui.new("Frame", { Name = "SafeRoot", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, Ui.gui) :: Frame
 Ui.Scale = Ui.new("UIScale", { Scale = 1 }, Ui.gui)
+-- Studio phone emulator (Layout.debugSafe): the safe area becomes the phone's, top-left, with a
+-- magenta outline where its screen ends
+do
+	local outline: Frame? = nil
+	local function emulate()
+		local sim = Layout.debugSafe()
+		if sim then
+			Ui.root.Size = UDim2.fromOffset(sim.X, sim.Y)
+			if not outline then
+				outline = Ui.new("Frame", { Name = "PhoneEdge", BackgroundTransparency = 1, ZIndex = 1000 }, Ui.gui)
+				Ui.new("UIStroke", { Color = Color3.fromRGB(255, 0, 255), Thickness = 3 }, outline)
+			end
+			(outline :: Frame).Size = UDim2.fromOffset(sim.X + 47, sim.Y + 21);
+			(outline :: Frame).Visible = true
+		else
+			Ui.root.Size = UDim2.fromScale(1, 1)
+			if outline then
+				outline.Visible = false
+			end
+		end
+	end
+	ReplicatedStorage:GetAttributeChangedSignal("DebugSafe"):Connect(emulate)
+	emulate()
+end
 -- Feedback (toasts, announcements, offer cards) lives on its own layer ABOVE every menu and screen:
 -- a message must never be hidden behind the window you clicked in (Steal An Egg does the same).
 -- Same safe area and scale as the HUD, so positions mean the same thing.
