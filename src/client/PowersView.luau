@@ -251,7 +251,7 @@ function View.Build(): (Frame, () -> ())
 		if power then
 			local tier = KnifePowers.TierById[power.Tier]
 			mineIcon.Image = Icons.KnifePowers[power.Id] or VoxelUi.Hud.Powers
-			mineName.Text = `Your power: <font color="#{tier.Color:ToHex()}">{power.Name}</font>  Lv {level}`
+			mineName.Text = `Your power: <font color="#{tier.Color:ToHex()}">{power.Name}</font>  Level {level}`
 		else
 			mineIcon.Image = VoxelUi.Hud.Powers
 			mineName.Text = "Steal a knife to get a power!"
@@ -260,7 +260,7 @@ function View.Build(): (Frame, () -> ())
 		local ratio = if level >= 100 then 1 else math.clamp((xp - from) / math.max(1, to - from), 0, 1)
 		fill.Size = UDim2.fromScale(ratio, 1)
 		fill.Visible = ratio > 0
-		barText.Text = if level >= 100 then "MAX LEVEL" else `Lv {level + 1}: {xp - from} / {to - from}`
+		barText.Text = if level >= 100 then "MAX LEVEL" else `Next level: {xp - from} / {to - from}`
 		local fighting = player:GetAttribute("FightingKnife")
 		local cost = if type(fighting) == "string" and Items.Parse(fighting)
 			then math.max(
@@ -268,9 +268,9 @@ function View.Build(): (Frame, () -> ())
 				math.floor(Items.Income(fighting) * GameConfig.Enchant.CostSeconds)
 			)
 			else GameConfig.Enchant.MinCost
-		SimpleUi.set(reroll, `🔮 Re-roll ${Ui.abbreviate(cost)}`, PURPLE, power ~= nil and cash >= cost)
+		SimpleUi.set(reroll, `🔮 New power ${Ui.abbreviate(cost)}`, PURPLE, power ~= nil and cash >= cost)
 		local tokens = (player:GetAttribute("Charge_Reroll") or 0) :: number
-		SimpleUi.set(token, if tokens > 0 then `🔮 Token ({tokens})` else "Get Tokens", GREEN, true)
+		SimpleUi.set(token, if tokens > 0 then `🔮 Free new power ({tokens})` else "🔮 Get more", GREEN, true)
 	end
 	for _, attribute in
 		{

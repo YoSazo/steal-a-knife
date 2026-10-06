@@ -226,7 +226,7 @@ local function show(info: Info)
 	local heading = Ui.label({
 		Size = UDim2.new(1, -40, 0, 28),
 		Position = UDim2.fromOffset(20, y),
-		Text = "DAILY STREAK - log in every day, miss one and it starts over",
+		Text = "Come back every day for bigger prizes!",
 		TextColor3 = Color3.fromRGB(230, 220, 255),
 		ZIndex = 52,
 	}, card)

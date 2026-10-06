@@ -119,7 +119,7 @@ local function spin(player: Player): (boolean, string, number?)
 			Net.Notify(player, `Lucky Wheel: +{Format.Cash(cash)}!`, "good")
 		elseif prize.Kind == "Luck" then
 			Gamble.AddLuck(player, prize.Seconds)
-			Net.Notify(player, `Lucky Wheel: 2x Luck for {prize.Seconds // 60} minutes!`, "good")
+			Net.Notify(player, `Lucky Wheel: better cases for {prize.Seconds // 60} minutes!`, "good")
 		elseif prize.Kind == "Spin" then
 			Gamble.AddSpins(player, prize.Count)
 			Net.Notify(player, `Lucky Wheel: +{prize.Count} spins!`, "good")

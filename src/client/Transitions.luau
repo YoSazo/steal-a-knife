@@ -135,7 +135,7 @@ function Transitions.Init()
 	label(riskCard, {
 		Position = UDim2.fromOffset(10, 8),
 		Size = UDim2.new(1, -20, 0, 50),
-		Text = "If the Murderer gets you, they take this!",
+		Text = "Don't get caught! The Murderer wants this:",
 		TextWrapped = true,
 		TextColor3 = Color3.fromRGB(255, 120, 120),
 		ZIndex = 31,
@@ -416,10 +416,7 @@ function Transitions.Init()
 		local knife = if type(info.Knife) == "string" then info.Knife else ""
 		local parsed = Items.Parse(knife)
 		revealArt.Image = if parsed then (VoxelKnives[parsed.Name] or KnifeIcons[parsed.Name] or "") else ""
-		revealName.Text =
-			`<font color="#FFC8C8">🔪 Murderer has</font> {string.upper(tostring(info.Name or "?"))} Lv {tonumber(
-				info.Level
-			) or 1}`
+		revealName.Text = `<font color="#FFC8C8">🔪 Murderer has</font> {string.upper(tostring(info.Name or "?"))}`
 		revealText.Text = tostring(info.Description or "")
 		reveal.Visible = true
 		local scale = reveal:FindFirstChild("Pop") :: UIScale? or Instance.new("UIScale")

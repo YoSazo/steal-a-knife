@@ -159,7 +159,7 @@ function View.Build(): (Frame, () -> number)
 		Theme.enabled(
 			claim,
 			known and not claimed[selected.Name],
-			if not known then "UNDISCOVERED" elseif claimed[selected.Name] then "CLAIMED" else "CLAIM"
+			if not known then "NOT FOUND YET" elseif claimed[selected.Name] then "CLAIMED" else "CLAIM"
 		)
 		for name, tile in tiles do
 			tile.Border.Color = if name == selected.Name then Theme.Gold else Theme.Black
@@ -246,7 +246,7 @@ function View.Build(): (Frame, () -> number)
 		end
 		fill.Size = UDim2.new(count / #Knives.List, -10 * count / #Knives.List, 1, -10)
 		fill.Visible = count > 0
-		progress.Text = `Discovered: {count} / {#Knives.List}`
+		progress.Text = `Found: {count} / {#Knives.List}`
 		Theme.enabled(all, claimable > 0, `Claim all ({claimable})`)
 		inspect()
 		return claimable

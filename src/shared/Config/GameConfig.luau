@@ -321,12 +321,12 @@ local GameConfig = {
 		EarnEvery = 900,
 		RevealDelay = 4.2, -- the wheel's spin on the client; the prize lands when it stops
 		Prizes = {
-			{ Kind = "Cash", Seconds = 60, Weight = 26, Label = "1 min cash" },
+			{ Kind = "Cash", Seconds = 60, Weight = 26, Label = "$ Cash" },
 			{ Kind = "Spin", Count = 1, Weight = 14, Label = "+1 Spin" },
-			{ Kind = "Cash", Seconds = 300, Weight = 18, Label = "5 min cash" },
-			{ Kind = "Luck", Seconds = 900, Weight = 12, Label = "2x Luck 15m" },
+			{ Kind = "Cash", Seconds = 300, Weight = 18, Label = "$$ Cash" },
+			{ Kind = "Luck", Seconds = 900, Weight = 12, Label = "Lucky Cases" },
 			{ Kind = "Case", Tier = "Rare", Weight = 12, Label = "Rare Case" },
-			{ Kind = "Cash", Seconds = 1800, Weight = 7, Label = "30 min cash" },
+			{ Kind = "Cash", Seconds = 1800, Weight = 7, Label = "$$$ CASH" },
 			{ Kind = "Case", Tier = "Epic", Weight = 6, Label = "Epic Case" },
 			{ Kind = "Lucky", Tier = "Legendary", Weight = 3, Label = "Legendary Block" },
 			{ Kind = "Case", Tier = "Legendary", Weight = 1.5, Label = "Legendary Case" },

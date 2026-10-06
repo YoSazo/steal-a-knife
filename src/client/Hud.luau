@@ -345,7 +345,7 @@ function Hud.Init()
 			if labels then
 				local slots = (player:GetAttribute("Slots") or GameConfig.StartingSlots) :: number
 				local knives = (player:GetAttribute("KnifeCount") or 0) :: number
-				labels.Title.Text = "Upgrade Base"
+				labels.Title.Text = "Bigger Vault"
 				labels.Count.Text = `{knives}/{slots}`
 				if slots >= GameConfig.MaxSlots then
 					labels.Price.Text = "MAX"
@@ -363,7 +363,7 @@ function Hud.Init()
 					(player:GetAttribute("TreadmillLevel") or 1) :: number,
 					(player:GetAttribute("TrailLevel") or 0) :: number
 				)
-				wheelLabels.Title.Text = "Upgrade Wheel"
+				wheelLabels.Title.Text = "Faster Wheel"
 				if nextUpgrade then
 					wheelLabels.Count.Text = `Level {nextUpgrade.Level} > {nextUpgrade.Level + 1}`
 					wheelLabels.Price.Text = `${Ui.abbreviate(nextUpgrade.Cost)}`

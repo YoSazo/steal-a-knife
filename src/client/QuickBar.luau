@@ -40,17 +40,23 @@ local function bestKnife(owned: { string }): string?
 	return best
 end
 
+-- Sizes: phones get their own smaller design, so the window shrinks far less to fit and the words
+-- stay readable (the desktop design was scaled to 0.4 on a 640 x 300 screen)
+local PHONE = { Window = Vector2.new(560, 420), Top = 54, RowH = 70, Art = 58, Equip = 120, Sell = 108, ButtonH = 54 }
+local DESKTOP = { Window = Vector2.new(720, 700), Top = 64, RowH = 92, Art = 80, Equip = 180, Sell = 150, ButtonH = 70 }
+
 local function buildKnivesPanel(): (Frame, () -> ())
-	local frame, body = SimpleUi.window("QuickKnives", "Your Knives", VoxelUi.Hud.Knives, GOLD, Vector2.new(720, 700))
-	-- Top: how full your wall is, Equip Best, and the next floor
+	local S = if Ui.Phone then PHONE else DESKTOP
+	local frame, body = SimpleUi.window("QuickKnives", "Your Knives", VoxelUi.Hud.Knives, GOLD, S.Window)
+	-- Top: how full your vault is, Equip Best, and more room
 	local count = SimpleUi.text(body, "", {
-		Size = UDim2.new(0.34, 0, 0, 64),
+		Size = UDim2.new(0.34, 0, 0, S.Top),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Max = 34,
 	})
 	local equipBest = SimpleUi.button(body, "Equip Best", BLUE, {
 		Position = UDim2.fromScale(0.35, 0),
-		Size = UDim2.new(0.3, -8, 0, 64),
+		Size = UDim2.new(0.3, -8, 0, S.Top),
 		Max = 30,
 	}, function()
 		local best = bestKnife(Ui.list(player:GetAttribute("Knives")))
@@ -60,14 +66,14 @@ local function buildKnivesPanel(): (Frame, () -> ())
 	end)
 	local floorButton = SimpleUi.button(body, "", GREEN, {
 		Position = UDim2.fromScale(0.65, 0),
-		Size = UDim2.new(0.35, 0, 0, 64),
+		Size = UDim2.new(0.35, 0, 0, S.Top),
 		Max = 28,
 	}, function()
 		Remotes.Purchase:InvokeServer("Slot")
 	end)
 	local list = new("ScrollingFrame", {
-		Position = UDim2.fromOffset(0, 76),
-		Size = UDim2.new(1, 0, 1, -76),
+		Position = UDim2.fromOffset(0, S.Top + 12),
+		Size = UDim2.new(1, 0, 1, -(S.Top + 12)),
 		BackgroundTransparency = 1,
 		ScrollBarThickness = 6,
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
@@ -127,27 +133,30 @@ local function buildKnivesPanel(): (Frame, () -> ())
 			local knife = parsed.Knife
 			local row = new("Frame", {
 				LayoutOrder = order,
-				Size = UDim2.new(1, 0, 0, 92),
+				Size = UDim2.new(1, 0, 0, S.RowH),
 				BackgroundColor3 = Color3.fromRGB(34, 38, 56),
 				BackgroundTransparency = 0.2,
 				ZIndex = 6,
 			}, list)
 			Ui.corner(row, 12)
 			Ui.art(row, knife.Name, {
-				Position = UDim2.fromOffset(8, 6),
-				Size = UDim2.fromOffset(80, 80),
+				AnchorPoint = Vector2.new(0, 0.5),
+				Position = UDim2.new(0, 6, 0.5, 0),
+				Size = UDim2.fromOffset(S.Art, S.Art),
 				ZIndex = 7,
 			})
+			local textX = S.Art + 16
+			local textW = -(textX + S.Equip + S.Sell + 30)
 			SimpleUi.text(row, Items.DisplayName(item), {
-				Position = UDim2.fromOffset(98, 8),
-				Size = UDim2.new(1, -460, 0, 40),
+				Position = UDim2.fromOffset(textX, 6),
+				Size = UDim2.new(1, textW, 0.45, 0),
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextColor3 = Knives.RarityColors[knife.Rarity],
 				Max = 30,
 			})
 			SimpleUi.text(row, `+${Ui.abbreviate(Items.Income(item))}/s  ·  {knife.Rarity}`, {
-				Position = UDim2.fromOffset(98, 50),
-				Size = UDim2.new(1, -460, 0, 32),
+				Position = UDim2.new(0, textX, 0.52, 0),
+				Size = UDim2.new(1, textW, 0.38, 0),
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextColor3 = Color3.fromRGB(120, 255, 140),
 				Max = 24,
@@ -157,7 +166,7 @@ local function buildKnivesPanel(): (Frame, () -> ())
 			SimpleUi.button(row, if isEquipped then "Equipped ✓" else "Equip", if isEquipped then GREEN else BLUE, {
 				AnchorPoint = Vector2.new(1, 0.5),
 				Position = UDim2.new(1, -10, 0.5, 0),
-				Size = UDim2.fromOffset(180, 70),
+				Size = UDim2.fromOffset(S.Equip, S.ButtonH),
 				ZIndex = 7,
 				Max = 30,
 			}, function()
@@ -168,8 +177,8 @@ local function buildKnivesPanel(): (Frame, () -> ())
 			-- Sell, same as More > Knives
 			SimpleUi.button(row, `Sell ${Ui.abbreviate(Items.Income(item) * GameConfig.SellSeconds)}`, ORANGE, {
 				AnchorPoint = Vector2.new(1, 0.5),
-				Position = UDim2.new(1, -198, 0.5, 0),
-				Size = UDim2.fromOffset(150, 70),
+				Position = UDim2.new(1, -(S.Equip + 18), 0.5, 0),
+				Size = UDim2.fromOffset(S.Sell, S.ButtonH),
 				ZIndex = 7,
 				Max = 24,
 			}, function()
