@@ -1,7 +1,8 @@
 --!strict
 -- How much money everyone has, floating over their head (Tsunami style), with a gold "VIP" above it
 -- for VIP pass owners. One tag, so the two never overlap. Shown in rounds too: the rich ones are the
--- juicy targets. Drawn on each client from the player's Cash and Pass_VIP attributes.
+-- juicy targets. Drawn on each client from the player's Cash and Pass_VIP attributes - and on round
+-- bots from FakeCash / FakeVIP (RoundService), so a tag never tells a real player from a bot.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,7 +11,10 @@ local Format = require(ReplicatedStorage.Shared.Format)
 
 local Overheads = {}
 
-local function attach(owner: Player, character: Model)
+-- owner: the Player (Cash, Pass_VIP) or a round bot's model (FakeCash, FakeVIP)
+local function attach(owner: Instance, character: Model)
+	local cashKey = if owner:IsA("Player") then "Cash" else "FakeCash"
+	local vipKey = if owner:IsA("Player") then "Pass_VIP" else "FakeVIP"
 	local head = character:WaitForChild("Head", 10) :: BasePart?
 	if not head or not character.Parent then
 		return
@@ -52,14 +56,14 @@ local function attach(owner: Player, character: Model)
 	stroke.Color = Color3.fromRGB(15, 60, 20)
 	stroke.Parent = text
 	local function refresh()
-		local cash = (owner:GetAttribute("Cash") or 0) :: number
+		local cash = (owner:GetAttribute(cashKey) or 0) :: number
 		text.Text = `${Format.Short(cash)}`
-		vip.Visible = owner:GetAttribute("Pass_VIP") == true
+		vip.Visible = owner:GetAttribute(vipKey) == true
 	end
 	refresh()
 	local connections = {
-		owner:GetAttributeChangedSignal("Cash"):Connect(refresh),
-		owner:GetAttributeChangedSignal("Pass_VIP"):Connect(refresh),
+		owner:GetAttributeChangedSignal(cashKey):Connect(refresh),
+		owner:GetAttributeChangedSignal(vipKey):Connect(refresh),
 	}
 	gui.Destroying:Connect(function()
 		for _, connection in connections do
@@ -84,7 +88,7 @@ function Overheads.Init()
 	end
 	Players.PlayerAdded:Connect(track)
 	-- Round disguises rebuild the head (and the tag with it) without a new character: put the tag
-	-- back on whoever's missing one
+	-- back on whoever's missing one. Round bots (workspace.RoundBots) get theirs here too.
 	task.spawn(function()
 		while true do
 			task.wait(1)
@@ -93,6 +97,18 @@ function Overheads.Init()
 				local head = character and character:FindFirstChild("Head")
 				if head and not head:FindFirstChild("CashTag") then
 					task.spawn(attach, owner, character :: Model)
+				end
+			end
+			local bots = workspace:FindFirstChild("RoundBots")
+			for _, bot in if bots then bots:GetChildren() else {} do
+				local head = bot:FindFirstChild("Head")
+				if
+					bot:IsA("Model")
+					and head
+					and bot:GetAttribute("FakeCash")
+					and not head:FindFirstChild("CashTag")
+				then
+					task.spawn(attach, bot, bot)
 				end
 			end
 		end

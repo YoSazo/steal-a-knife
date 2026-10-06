@@ -74,6 +74,9 @@ function PhoneHud.Init()
 		end
 	end
 	local chest = timers and timers:FindFirstChild("ChestPill")
+	if phone and chest and chest:IsA("GuiObject") then
+		caption(chest, "Free Chest")
+	end
 	if chest and chest:IsA("GuiObject") and not chest:GetAttribute("HudSkinned") then
 		for _, child in chest:GetChildren() do
 			local keep = child.Name == "Badge" or child.Name == "Studs"

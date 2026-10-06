@@ -2398,9 +2398,25 @@ local function startRound(participants: { Player })
 		for i = 1, botCount do
 			table.insert(roles, if i == 1 and not murderer then "Murderer" else "Innocent")
 		end
+		-- Bots wear a believable money tag (and now and then VIP) like everyone else's, or the
+		-- tagless ones gave away who the real players - the only possible Murderers and Sheriffs.
+		-- Each is somewhere around what the real players here have (log-scale spread).
+		local low, high = math.huge, 0
+		for _, player in participants do
+			local cash = player:GetAttribute("Cash")
+			if type(cash) == "number" and cash > 0 then
+				low, high = math.min(low, cash), math.max(high, cash)
+			end
+		end
+		if high <= 0 then
+			low, high = 1e3, 1e6
+		end
+		local logLow, logHigh = math.log10(math.max(low / 4, 100)), math.log10(math.max(high * 3, 1000))
 		for i, role in roles do
 			local at = spawns[(#participants + i - 1) % #spawns + 1]
 			local bot = RoundBots.Spawn(at, role, taken, botFolder)
+			bot.Model:SetAttribute("FakeCash", math.floor(10 ^ rng:NextNumber(logLow, logHigh)))
+			bot.Model:SetAttribute("FakeVIP", rng:NextNumber() < 0.15)
 			table.insert(round.Bots, bot)
 			if role == "Murderer" then
 				round.MurdererBot = bot

@@ -17,7 +17,7 @@ local function restyle(button: GuiObject, icon: string, color: Color3)
 	button.BackgroundTransparency = 1
 	for _, child in button:GetChildren() do
 		local name = child.Name
-		if name == "Badge" or name == "Label" then
+		if name == "Badge" or name == "Label" or name == "Tap" then
 			continue
 		end
 		if child:IsA("UIGradient") or child:IsA("UICorner") then

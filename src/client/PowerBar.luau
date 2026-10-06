@@ -189,7 +189,7 @@ function PowerBar.Init()
 				local level = GameConfig.RoundPowerLevel -- the same for everyone in rounds
 				local cost = power.Energy[math.clamp(level, 1, #power.Energy)]
 				slot.Shade.Size = UDim2.fromScale(1, if energy >= cost then 0 else 1 - energy / cost)
-				slot.Count.Text = `⚡{cost}`
+				slot.Count.Text = if energy >= cost then "" else `💀{cost}`
 			else
 				-- In the arena: cooldown, the shade drains as it recharges
 				local readyAt = player:GetAttribute(`PowerReady_{id}`)

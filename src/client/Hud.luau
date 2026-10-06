@@ -631,12 +631,14 @@ function Hud.Init()
 		{ Position = UDim2.fromOffset(2, 4), Size = UDim2.fromOffset(32, 36), ZIndex = 2 }
 	)
 	chestText.ZIndex = 2
+	-- Named "Label" so HudSkin keeps and styles it like Upgrades/Spin/Merchant's words (it hid it
+	-- before: the click-catcher below had that name, so the chest showed no text at all)
+	chestText.Name = "Label"
 	-- It looked like a button (same skin as Upgrades/Spin/Merchant) but did nothing when tapped;
 	-- tapping it now claims the chest directly, same as walking up and holding E.
-	-- Named "Label": HudSkin's restyle skips hiding anything by that name (it otherwise hides
-	-- every plain child when it skins this pill), so this click-catcher survives the restyle.
+	-- Named "Tap": HudSkin's restyle skips it too, so this click-catcher survives the restyle.
 	local chestButton = new("TextButton", {
-		Name = "Label",
+		Name = "Tap",
 		Text = "",
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
@@ -945,32 +947,51 @@ function Hud.Init()
 		Ui.textStroke(label, 2)
 		return label
 	end
-	energyText("⚡ ENERGY", 0, ENERGY_ON)
-	new("Frame", { Size = UDim2.fromOffset(4, 1), BackgroundTransparency = 1, LayoutOrder = 1 }, energyFrame)
-	local cells: { Frame } = {}
-	for i = 1, GameConfig.MaxEnergy do
-		local cell = new("Frame", {
-			Size = UDim2.fromOffset(16, 20),
-			BackgroundColor3 = ENERGY_OFF,
-			LayoutOrder = 1 + i,
-		}, energyFrame)
-		Ui.corner(cell, 4)
-		new("UIStroke", { Thickness = 1.5, Color = Color3.fromRGB(14, 10, 20) }, cell)
-		table.insert(cells, cell)
-	end
-	new("Frame", { Size = UDim2.fromOffset(4, 1), BackgroundTransparency = 1, LayoutOrder = 98 }, energyFrame)
-	local countLabel = energyText("0/" .. GameConfig.MaxEnergy, 99, Color3.fromRGB(235, 230, 245))
+	-- Plain words instead of an abstract meter: [skull coin] 2/3 to use VANISH -> VANISH READY!
+	-- (the coins on the floor are what fill it; the goal is the power you actually have)
+	local coin = new("Frame", {
+		Size = UDim2.fromOffset(26, 26),
+		BackgroundColor3 = Color3.fromRGB(255, 200, 50),
+		LayoutOrder = 0,
+	}, energyFrame)
+	Ui.corner(coin, 13)
+	new("UIStroke", { Thickness = 2, Color = Color3.fromRGB(120, 80, 10) }, coin)
+	Ui.label({ Size = UDim2.fromScale(0.8, 0.8), Position = UDim2.fromScale(0.1, 0.1), Text = "💀" }, coin)
+	local countLabel = energyText("0/0", 1, ENERGY_ON)
+	local powerGoal = energyText("", 2, Color3.fromRGB(235, 230, 245))
+	local _ = ENERGY_OFF
 	local lastEnergy = 0
+	local function costOfRoundPower(): (number?, string?)
+		local id = player:GetAttribute("RoundPower")
+		for _, power in GameConfig.Powers do
+			if power.Id == id then
+				local energy = (power :: any).Energy :: { number }
+				local name = player:GetAttribute("RoundPowerName")
+				return energy[math.clamp(GameConfig.RoundPowerLevel, 1, #energy)],
+					if type(name) == "string" then name else power.DisplayName
+			end
+		end
+		return nil, nil
+	end
 	local function refreshEnergy()
 		local energy = player:GetAttribute("Energy")
-		energyFrame.Visible = type(energy) == "number" and not Ui.menuOpen()
-		if type(energy) ~= "number" then
+		local cost, name = costOfRoundPower()
+		energyFrame.Visible = type(energy) == "number" and cost ~= nil and not Ui.menuOpen()
+		if type(energy) ~= "number" or not cost or not name then
 			return
 		end
-		for i, cell in cells do
-			cell.BackgroundColor3 = if i <= energy then ENERGY_ON else ENERGY_OFF
+		local upper = string.upper(name :: string)
+		if energy >= cost then
+			coin.Visible = false
+			countLabel.Text = ""
+			powerGoal.Text = `{upper} READY!`
+			powerGoal.TextColor3 = Color3.fromRGB(120, 255, 140)
+		else
+			coin.Visible = true
+			countLabel.Text = `{math.floor(energy)}/{cost}`
+			powerGoal.Text = `to use {upper}`
+			powerGoal.TextColor3 = Color3.fromRGB(235, 230, 245)
 		end
-		countLabel.Text = `{math.floor(energy)}/{GameConfig.MaxEnergy}`
 		if energy > lastEnergy then
 			local scale = energyFrame:FindFirstChildOfClass("UIScale") or new("UIScale", {}, energyFrame)
 			scale.Scale = 1.12
@@ -978,6 +999,7 @@ function Hud.Init()
 		end
 		lastEnergy = energy
 	end
+	player:GetAttributeChangedSignal("RoundPower"):Connect(refreshEnergy)
 	player:GetAttributeChangedSignal("Energy"):Connect(refreshEnergy)
 	refreshEnergy()
 
@@ -1106,8 +1128,9 @@ function Hud.Init()
 			else `Murder in {clock}`
 		local nextChest = (player:GetAttribute("NextFreeChest") or 0) :: number
 		local chestLeft = nextChest - now
-		chestText.Text = if chestLeft <= 0 then "Free chest\nREADY!" else `Free chest\n{Ui.clock(chestLeft)}`
-		chestText.TextColor3 = if chestLeft <= 0 then Color3.fromRGB(120, 255, 140) else Color3.new(1, 1, 1)
+		chestText.Text = if chestLeft <= 0 then "Free!" else Ui.clock(chestLeft)
+		chestText.TextColor3 = Color3.new(1, 1, 1)
+		chestText.TextScaled = true -- (something resets it once after the skin; keep it like the others)
 		chestPill.Visible = chestLeft <= 0
 		shieldPill.Visible = false -- remaining shield/boost times are available in Stats
 		raidPill.Visible = false -- the top timer already reports active raids
@@ -1470,27 +1493,24 @@ function Hud.Init()
 	chestPill.Size = UDim2.fromOffset(120, 44)
 	chestIcon.Size, chestIcon.Position = UDim2.fromOffset(26, 32), UDim2.fromOffset(2, 6)
 	chestText.Position, chestText.Size = UDim2.fromOffset(36, 4), UDim2.fromOffset(80, 36)
-	chestText.TextScaled, chestText.TextSize, chestText.TextWrapped = false, 14, true
+	chestText.TextScaled, chestText.TextWrapped = true, false
 	goalLabel.Visible = false
 	goalLabel:GetPropertyChangedSignal("Visible"):Connect(function()
 		if goalLabel.Visible then
 			goalLabel.Visible = false
 		end
 	end)
+	-- The coin pill (rounds): a slim line just above the health bar, sized to its words
 	energyFrame.AnchorPoint, energyFrame.Position, energyFrame.Size =
-		Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -38), UDim2.fromOffset(180, 20)
-	energyFrame.AutomaticSize = Enum.AutomaticSize.None
+		Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -38), UDim2.fromOffset(0, 26)
+	energyFrame.AutomaticSize = Enum.AutomaticSize.X
 	for _, child in energyFrame:GetChildren() do
 		if child:IsA("TextLabel") then
-			child.TextSize = 14
-			child.Size = UDim2.fromOffset(36, 20)
-			child.AutomaticSize = Enum.AutomaticSize.None
-			if child ~= countLabel then
-				child.Text = "⚡"
-				child.Size = UDim2.fromOffset(16, 20)
-			end
+			child.TextSize = 16
+			child.Size = UDim2.fromOffset(0, 22)
+			child.AutomaticSize = Enum.AutomaticSize.X
 		elseif child:IsA("Frame") then
-			child.Size = UDim2.fromOffset(if table.find(cells, child) then 10 else 1, 14)
+			child.Size = UDim2.fromOffset(20, 20)
 		end
 	end
 	healthFrame.AnchorPoint, healthFrame.Position, healthFrame.Size =
