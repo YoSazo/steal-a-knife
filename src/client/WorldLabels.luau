@@ -5,6 +5,10 @@ local Ui = require(script.Parent.Ui)
 local WorldLabels = {}
 local originals: { [BillboardGui]: UDim2 } = {}
 local function resize(gui: BillboardGui)
+	-- Sized in studs: already shrinks with distance, nothing to cap
+	if originals[gui].X.Scale > 0 then
+		return
+	end
 	if not Ui.Phone then
 		gui.Size = originals[gui]
 		return

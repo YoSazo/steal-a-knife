@@ -464,7 +464,7 @@ function GambleUi.Init()
 	-- Over the wheel: "🎁 2 FREE SPINS!" (just yours), and the wheel face turns slowly
 	local badgeGui = new("BillboardGui", {
 		Name = "FreeSpins",
-		Size = UDim2.fromOffset(260, 46),
+		Size = UDim2.fromScale(9, 1.6), -- (studs: shrinks with distance)
 		LightInfluence = 0,
 		MaxDistance = 260,
 		Enabled = false,

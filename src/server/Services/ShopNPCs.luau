@@ -178,7 +178,7 @@ local function buildStall(folder: Instance, spec: Spec, frame: CFrame)
 	anchor.Transparency = 1
 	anchor.CanCollide, anchor.CanQuery, anchor.CanTouch = false, false, false
 	local title = Instance.new("BillboardGui")
-	title.Size = UDim2.fromOffset(280, 54)
+	title.Size = UDim2.fromScale(11, 2.1) -- (studs: shrinks with distance)
 	title:SetAttribute("LabelCategory", "Shop")
 	title:AddTag("ResponsiveWorldLabel")
 	title.MaxDistance = 140
@@ -297,7 +297,7 @@ end
 -- A floating title like the stalls' (white into the colour), over a part
 local function floatingTitle(anchor: BasePart, text: string, color: Color3)
 	local title = Instance.new("BillboardGui")
-	title.Size = UDim2.fromOffset(280, 54)
+	title.Size = UDim2.fromScale(11, 2.1) -- (studs: shrinks with distance)
 	title:SetAttribute("LabelCategory", "Shop")
 	title:AddTag("ResponsiveWorldLabel")
 	title.MaxDistance = 140

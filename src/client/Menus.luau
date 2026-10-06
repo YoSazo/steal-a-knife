@@ -1193,31 +1193,26 @@ function Menus.Init()
 	slowToggle.Activated:Connect(function()
 		setSlow(not player:GetAttribute("SlowMode"))
 	end)
-	-- Under the left column, wherever the layout puts it
+	-- Above the left column (Steal An Egg puts it there too): under it, it sat right by the move
+	-- thumbstick on phones and got hit while running
 	game:GetService("RunService").Heartbeat:Connect(function()
 		local nav = Ui.Navigation :: GuiObject?
 		local holder = slowToggle.Parent :: GuiObject?
 		slowToggle.Visible = nav ~= nil and nav.Visible and Ui.inHub()
 		if nav and holder then
-			local last: GuiObject? = nil
+			local first: GuiObject? = nil
 			for _, child in nav:GetChildren() do
 				if child:IsA("GuiObject") and child.Visible and child ~= slowButton then
-					if not last or child.AbsolutePosition.Y > last.AbsolutePosition.Y then
-						last = child
+					if not first or child.AbsolutePosition.Y < first.AbsolutePosition.Y then
+						first = child
 					end
 				end
 			end
 			local factor = Ui.Scale.Scale
-			local bottom = if last then last.AbsolutePosition.Y + last.AbsoluteSize.Y else nav.AbsolutePosition.Y
-			-- The spectate eye sits under More while a round is on: Slow Mode goes under it
-			local spectate = player.PlayerGui:FindFirstChild("Spectate")
-			local eye = spectate and spectate:FindFirstChild("SpectateButton") :: GuiObject?
-			if eye and eye.Visible then
-				bottom = eye.AbsolutePosition.Y + eye.AbsoluteSize.Y
-			end
+			local top = if first then first.AbsolutePosition.Y else nav.AbsolutePosition.Y
 			slowToggle.Position = UDim2.fromOffset(
 				(nav.AbsolutePosition.X - holder.AbsolutePosition.X) / factor,
-				(bottom - holder.AbsolutePosition.Y) / factor + 8
+				(top - holder.AbsolutePosition.Y) / factor - 30 - 6
 			)
 		end
 	end)

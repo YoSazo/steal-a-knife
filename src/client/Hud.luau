@@ -21,6 +21,7 @@ local CoinIcon = require(ReplicatedStorage.Shared.Config.CoinIcon)
 local RoundPrize = require(ReplicatedStorage.Shared.RoundPrize)
 local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
+local TopLine = require(script.Parent.TopLine)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Effects = require(script.Parent.Effects)
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("GameConfig"))
@@ -197,7 +198,7 @@ function Hud.Init()
 		{
 			Name = "DoublePrize",
 			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0.5, 0, 0.5, 0),
+			Position = UDim2.fromScale(0.5, 0.5),
 			Size = UDim2.fromOffset(78, 22),
 			BackgroundColor3 = Color3.fromRGB(0, 176, 111),
 			Text = "x2 R$25",
@@ -772,73 +773,15 @@ function Hud.Init()
 		Size = UDim2.fromOffset(720, 70),
 		BackgroundTransparency = 1,
 	}, Ui.feedback) -- (above every menu: never hidden behind a window)
-	local announceQueue: { { Text: string, Color: Color3, Hype: number } } = {}
-	local announcing = false
-	local function nextAnnouncement()
-		local entry = table.remove(announceQueue, 1)
-		if not entry then
-			announcing = false
-			return
-		end
-		announcing = true
-		local frame = new("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0, -90),
-			Size = UDim2.fromScale(1, 1),
-			BackgroundColor3 = entry.Color:Lerp(Color3.new(0, 0, 0), 0.55),
-			BackgroundTransparency = 0.15,
-		}, announceHolder)
-		Ui.corner(frame, 16)
-		new("UIStroke", { Thickness = 3, Color = entry.Color }, frame)
-		local label = Ui.label({
-			Size = UDim2.new(1, -24, 1, -12),
-			Position = UDim2.fromOffset(12, 6),
-			TextColor3 = Color3.new(1, 1, 1),
-			Text = entry.Text,
-		}, frame)
-		Ui.textStroke(label, 2.5)
-		if entry.Hype >= 3 then
-			-- Rainbow sweep for the really big ones
-			local gradient = new("UIGradient", {
-				Color = ColorSequence.new({
-					ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 120, 120)),
-					ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 150)),
-					ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 200, 255)),
-				}),
-			}, label)
-			task.spawn(function()
-				while gradient.Parent do
-					gradient.Offset = Vector2.new(math.sin(os.clock() * 3) * 0.5, 0)
-					task.wait()
-				end
-			end)
-		end
-		Effects.Sound(if entry.Hype >= 2 then Sounds.Announce else Sounds.Coin, nil, 0.4)
-		TweenService:Create(frame, TweenInfo.new(0.4, Enum.EasingStyle.Back), { Position = UDim2.fromScale(0.5, 0) })
-			:Play()
-		task.delay(if Ui.Phone then 2.2 else 2.6 + entry.Hype * 0.5, function()
-			local out = TweenService:Create(
-				frame,
-				TweenInfo.new(0.3),
-				{ Position = UDim2.new(0.5, 0, 0, -90), BackgroundTransparency = 1 }
-			)
-			out:Play()
-			out.Completed:Wait()
-			frame:Destroy()
-			nextAnnouncement()
-		end)
-	end
+	-- (announcements go on the top line now - client/TopLine - one at a time, in their colour; they
+	-- used to be a big coloured pill dropping in under the timer, over the middle of the screen)
 	Remotes.Effect.OnClientEvent:Connect(function(kind: string, text: string, color: Color3, hype: number)
-		if kind ~= "Announce" then
+		if kind ~= "Announce" or type(text) ~= "string" then
 			return
 		end
-		table.insert(announceQueue, { Text = text, Color = color, Hype = hype or 1 })
-		if #announceQueue > (if Ui.Phone then 2 else 4) then
-			table.remove(announceQueue, 1)
-		end
-		if not announcing then
-			nextAnnouncement()
-		end
+		local tint = if typeof(color) == "Color3" then color:Lerp(Color3.new(1, 1, 1), 0.35) else Color3.new(1, 1, 1)
+		Effects.Sound(if (hype or 1) >= 2 then Sounds.Announce else Sounds.Coin, nil, 0.4)
+		TopLine.Show(`<font color="#{tint:ToHex()}">{text}</font>`, 2.4 + (hype or 1) * 0.4)
 	end)
 
 	-- Energy (rounds): the charge your Innocent Powers spend; coins fill it -----------------------
@@ -991,6 +934,7 @@ function Hud.Init()
 
 	-- Timers, banners, every frame ------------------------------------------------------------
 	local freeChestLabel: TextLabel? = nil
+	local lastResults: number? = nil -- (the Results phase already announced on the top line)
 	RunService.RenderStepped:Connect(function()
 		local phase = ReplicatedStorage:GetAttribute("Phase")
 		local endsAt = ReplicatedStorage:GetAttribute("PhaseEndsAt") or 0
@@ -1043,9 +987,11 @@ function Hud.Init()
 		moonTitle.Visible = moon
 		timerLabel.Position = UDim2.fromScale(if moon then 0.5 else 0, 0)
 		timerLabel.Size = UDim2.fromScale(if moon then 0.5 else 1, 1)
-		banner.Visible = phase == "Results" and not Ui.menuOpen()
-		if phase == "Results" then
-			banner.Text = status
+		-- "Innocents win!" etc. on the top line, once (it was big in the middle, on top of the VS card)
+		banner.Visible = false
+		if phase == "Results" and lastResults ~= endsAt then
+			lastResults = endsAt
+			TopLine.Show(`<font color="#FFE678">{status}</font>`, 4, "Results")
 		end
 		-- (not hidden while the knife is held: they never overlap, and taps made it flicker)
 		stats.Visible = not Ui.menuOpen() and Ui.inHub() -- (speed / cash: hub things; not while dead in a round)
@@ -1475,8 +1421,12 @@ function Hud.Init()
 		-- The Murderer chance sits above the timer, so the timer is the lowest line up there and the
 		-- view of the world (boss stashes, knife labels) stays clear
 		-- (the tutorial's line runs across the very top while it's up: everything here moves under it)
+		-- (and under a TopLine notice: zone titles, announcements - client/TopLine)
 		local top = if Ui.gui:GetAttribute("TutorialBar") == true
 			then ((Ui.gui:GetAttribute("TutorialBarHeight") or 36) :: number) + 2
+			elseif Ui.gui:GetAttribute("TopLine") == true then (
+				(Ui.gui:GetAttribute("TopLineHeight") or 36) :: number
+			) + 2
 			else 0
 		chanceLabel.Position, chanceLabel.Size = UDim2.fromOffset(center, top), UDim2.fromOffset(width, 20)
 		timerFrame.Position, timerFrame.Size = UDim2.fromOffset(center, top + 18), UDim2.fromOffset(width, 40)
@@ -1524,6 +1474,8 @@ function Hud.Init()
 	Ui.Layout.Changed:Connect(layout)
 	Ui.gui:GetAttributeChangedSignal("TutorialBar"):Connect(layout)
 	Ui.gui:GetAttributeChangedSignal("TutorialBarHeight"):Connect(layout)
+	Ui.gui:GetAttributeChangedSignal("TopLine"):Connect(layout)
+	Ui.gui:GetAttributeChangedSignal("TopLineHeight"):Connect(layout)
 	layout()
 	Ui.Menu.Changed:Connect(function()
 		-- (toasts and announcements stay up with a menu open: they're how a click answers you)

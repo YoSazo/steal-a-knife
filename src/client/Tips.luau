@@ -11,9 +11,9 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 local Ui = require(script.Parent.Ui)
+local TopLine = require(script.Parent.TopLine)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
@@ -62,36 +62,9 @@ local TEXT: { [string]: { string } } = {
 }
 
 function Tips.Init()
-	local bar = Ui.new("Frame", {
-		Name = "Tip",
-		AnchorPoint = Vector2.new(0.5, 0),
-		BackgroundColor3 = Color3.fromRGB(30, 20, 60),
-		BackgroundTransparency = 0.3,
-		Visible = false,
-	}, Ui.gui)
-	Ui.corner(bar, 10)
-	Ui.new("UIStroke", { Color = Color3.fromRGB(255, 220, 90), Thickness = 2 }, bar)
-	local label = Ui.label({
-		Position = UDim2.fromOffset(10, 0),
-		Size = UDim2.new(1, -20, 1, 0),
-		Text = "",
-		TextColor3 = Color3.new(1, 1, 1),
-	}, bar)
-	label.TextScaled, label.TextWrapped = false, true
-	Ui.textStroke(label, 2)
-	local function layout()
-		local _, bounds = Ui.bounds()
-		local width = math.min(if Ui.Phone then 460 else 620, math.max(240, bounds.X - (if Ui.Phone then 280 else 380)))
-		bar.Size = UDim2.fromOffset(width, if Ui.Phone then 40 else 46)
-		-- under the tutorial bar's spot, so both can show at once
-		bar.Position = UDim2.new(0.5, 0, 0, if Ui.Phone then 132 else 164)
-		label.TextSize = if Ui.Phone then 14 else 18
-	end
-	Ui.Layout.Changed:Connect(layout)
-	layout()
-
+	-- (tips go on the top line - client/TopLine - like the tutorial; they had their own bar under
+	-- the timer, on top of whatever else was there)
 	local shown: { [string]: boolean } = {}
-	local token = 0
 	local function show(id: string)
 		local text = TEXT[id]
 		if not text or shown[id] or table.find(Ui.list(player:GetAttribute("TipsSeen")), id) then
@@ -99,23 +72,7 @@ function Tips.Init()
 		end
 		shown[id] = true
 		Remotes.Tutorial:FireServer("Tip", id)
-		token += 1
-		local mine = token
-		label.Text = "💡 " .. (if touch() then text[1] else text[2])
-		bar.Visible = true
-		bar.BackgroundTransparency = 0.3
-		label.TextTransparency = 0
-		task.delay(8, function()
-			if token ~= mine then
-				return
-			end
-			TweenService:Create(bar, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
-			TweenService:Create(label, TweenInfo.new(0.5), { TextTransparency = 1 }):Play()
-			task.wait(0.5)
-			if token == mine then
-				bar.Visible = false
-			end
-		end)
+		TopLine.Show("💡 " .. (if touch() then text[1] else text[2]), 7, "Tip")
 	end
 	Tips.Show = show
 

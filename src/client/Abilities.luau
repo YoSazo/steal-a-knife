@@ -558,6 +558,7 @@ function Abilities.Init()
 		Ui.corner(segment, 2)
 		chargeSegments[i] = segment
 	end
+	local overCancel = false -- the aiming thumb is on the X right now (let go = cancel)
 	local cancelButton = Ui.button({
 		Name = "CancelKnife",
 		Text = "X",
@@ -683,6 +684,7 @@ function Abilities.Init()
 			return
 		end
 		if KnifeGesture.press(gesture, input, os.clock()) then
+			overCancel = false
 			takeCameraHook()
 			gui:SetAttribute("KnifeGestureActive", true)
 			gestureTool = tool
@@ -701,14 +703,15 @@ function Abilities.Init()
 		end
 		local at = Vector2.new(input.Position.X, input.Position.Y)
 		local pos, size = cancelButton.AbsolutePosition, cancelButton.AbsoluteSize
-		if
-			cancelButton.Visible
+		-- Over the X: it lights up, and letting go THERE cancels (it used to cancel the moment the
+		-- thumb slid across it - and aiming up-right runs straight over it)
+		overCancel = cancelButton.Visible
 			and at.X >= pos.X
 			and at.X <= pos.X + size.X
 			and at.Y >= pos.Y
 			and at.Y <= pos.Y + size.Y
-		then
-			cancelKnife()
+		cancelButton.BackgroundColor3 = if overCancel then Color3.fromRGB(220, 50, 60) else Color3.fromRGB(43, 55, 80)
+		if overCancel then
 			return
 		end
 		aimDelta += at - lastPointer
@@ -765,6 +768,12 @@ function Abilities.Init()
 	end
 	UserInputService.InputEnded:Connect(function(input)
 		if input ~= gesture.owner then
+			return
+		end
+		if overCancel then
+			overCancel = false
+			cancelButton.BackgroundColor3 = Color3.fromRGB(43, 55, 80)
+			cancelKnife()
 			return
 		end
 		-- Consume the final movement before sampling the release crosshair.

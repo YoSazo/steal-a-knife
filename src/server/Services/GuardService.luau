@@ -318,7 +318,7 @@ local function buildRig(config: ZoneConfig, shadow: boolean): Model
 
 	local head = rig:FindFirstChild("Head") :: BasePart
 	-- Name + title (visible from across the zone)
-	local tag = billboard(head, UDim2.fromOffset(150, 40), Vector3.new(0, 3, 0), 60)
+	local tag = billboard(head, UDim2.fromScale(6, 1.6), Vector3.new(0, 3, 0), 60) -- (studs)
 	tag.Name = "BossTag"
 	-- At home the lair sign and ribbon already name them; the tag only shows while they're out
 	-- chasing (shadows always have theirs)
@@ -384,7 +384,7 @@ local function setAsleep(guard: Guard, asleep: boolean)
 	elseif head and asleep then
 		local gui = Instance.new("BillboardGui")
 		gui.Name = "Zzz"
-		gui.Size = UDim2.fromOffset(56, 56)
+		gui.Size = UDim2.fromScale(2.4, 2.4) -- (studs)
 		gui.StudsOffset = Vector3.new(1.6, 2.2, 0)
 		gui.MaxDistance = 140
 		gui.LightInfluence = 0

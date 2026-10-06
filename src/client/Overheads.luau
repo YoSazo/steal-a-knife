@@ -24,7 +24,7 @@ local function attach(owner: Instance, character: Model)
 	gui:SetAttribute("LabelCategory", "Utility")
 	gui:SetAttribute("Lines", 2)
 	gui:AddTag("ResponsiveWorldLabel")
-	gui.Size = UDim2.fromOffset(160, 64)
+	gui.Size = UDim2.fromScale(4.6, 1.85) -- (studs: shrinks with distance)
 	gui.StudsOffset = Vector3.new(0, 2.9, 0)
 	gui.MaxDistance = 80
 	gui.LightInfluence = 0

@@ -78,10 +78,12 @@ end
 -- The floating tag over a drop: a few lines of coloured text
 local function tag(adornee: BasePart, lines: { { Text: string, Color: Color3, Height: number } })
 	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(240, 0)
+	-- (studs, ~30 px a stud: shrinks with distance)
+	local height = 0
 	for _, line in lines do
-		gui.Size += UDim2.fromOffset(0, line.Height)
+		height += line.Height
 	end
+	gui.Size = UDim2.fromScale(8, height / 30)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, 4.5, 0)
 	gui.MaxDistance = 120
 	gui.AlwaysOnTop = true
@@ -94,7 +96,7 @@ local function tag(adornee: BasePart, lines: { { Text: string, Color: Color3, He
 	for i, line in lines do
 		local label = Instance.new("TextLabel")
 		label.LayoutOrder = i
-		label.Size = UDim2.new(1, 0, 0, line.Height)
+		label.Size = UDim2.fromScale(1, line.Height / height)
 		label.BackgroundTransparency = 1
 		label.Font = Enum.Font.FredokaOne
 		label.TextScaled = true
@@ -480,10 +482,11 @@ startCarry = function(
 	player:SetAttribute("Carrying", if kind == "Case" then `Case:{item}` else item)
 	player:SetAttribute("StolenFrom", stolenFrom) -- the UserId it was taken from, if anyone
 	BaseService.RefreshWalkSpeed(player)
+	-- (a boss steal gets no toast: GuardService already says "<BOSS> IS COMING! RUN HOME!")
 	if kind == "Case" then
 		Net.Notify(player, `You got a {item} Case! RUN HOME!`, "good")
 	elseif boss then
-		-- (no toast: GuardService already says "<BOSS> IS COMING! RUN HOME!" - two said it at once)
+		return
 	elseif stolenFrom then
 		Net.Notify(player, `You took a {Items.DisplayName(item)}! RUN HOME!`, "good")
 	else

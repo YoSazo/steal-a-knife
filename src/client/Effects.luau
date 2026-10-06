@@ -20,6 +20,7 @@ local Items = require(ReplicatedStorage.Shared:WaitForChild("Items"))
 local KnifeModel = require(ReplicatedStorage.Shared:WaitForChild("KnifeModel"))
 local Lod = require(script.Parent.Lod)
 local Ui = require(script.Parent.Ui)
+local TopLine = require(script.Parent.TopLine)
 local WorldSignInput = require(script.Parent.WorldSignInput)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
@@ -511,62 +512,16 @@ local handlers: { [string]: (...any) -> () } = {
 		if who ~= player then
 			return
 		end
-		-- Your own screen: the knife's name, big, in its colour, and its Murderer power
-		local gui = Instance.new("ScreenGui")
-		gui.Name = "EquipBanner"
-		Ui.fitPhone(gui)
-		gui.ResetOnSpawn = false
-		gui.DisplayOrder = 40
-		gui.Parent = player:WaitForChild("PlayerGui")
-		local function line(text: string, y: number, height: number, color: Color3): TextLabel
-			local label = Instance.new("TextLabel")
-			label.AnchorPoint = Vector2.new(0.5, 0.5)
-			label.Position = UDim2.fromScale(0.5, y)
-			label.Size = UDim2.fromOffset(700, height)
-			label.BackgroundTransparency = 1
-			label.Font = Enum.Font.FredokaOne
-			label.TextScaled = true
-			label.TextColor3 = color
-			label.Text = text
-			label.ZIndex = 2
-			label.Parent = gui
-			local stroke = Instance.new("UIStroke")
-			stroke.Thickness = 3
-			stroke.Color = Color3.fromRGB(20, 16, 26)
-			stroke.Parent = label
-			return label
-		end
+		-- Your own screen: one line on the top line (client/TopLine) - the knife's name in its colour
+		-- and its Murderer power. (It was three big lines in a card in the middle of the screen.)
 		local parsed = Items.Parse(item)
 		local perk = parsed and parsed.Perk and GameConfig.Perks[parsed.Perk]
-		local fadeCard = bannerCard(gui, 0.265, if perk then 0.45 else 0.4, 740, Items.Color(item))
-		local labels = {
-			line("EQUIPPED", 0.3, 34, Color3.fromRGB(255, 230, 120)),
-			line(Items.DisplayName(item), 0.36, 56, Items.Color(item)),
-		}
+		local tint = Items.Color(item):Lerp(Color3.new(1, 1, 1), 0.25)
+		local text = `⚔️ Equipped <font color="#{tint:ToHex()}"><b>{Items.DisplayName(item)}</b></font>`
 		if perk then
-			table.insert(
-				labels,
-				line(`🔪 Murderer power: {perk.DisplayName}`, 0.42, 30, Color3.fromRGB(255, 120, 140))
-			)
+			text ..= `  <font color="#FF8C9E">🔪 {perk.DisplayName}</font>`
 		end
-		for _, label in labels do
-			local scale = Instance.new("UIScale")
-			scale.Scale = 0.4
-			scale.Parent = label
-			TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-		end
-		task.delay(2.2, function()
-			fadeCard()
-			for _, label in labels do
-				TweenService:Create(label, TweenInfo.new(0.5), { TextTransparency = 1 }):Play()
-				local stroke = label:FindFirstChildOfClass("UIStroke")
-				if stroke then
-					TweenService:Create(stroke, TweenInfo.new(0.5), { Transparency = 1 }):Play()
-				end
-			end
-			task.wait(0.55)
-			gui:Destroy()
-		end)
+		TopLine.Show(text, 2.4, "Equipped")
 	end,
 	-- A surprise gift landed by you: a pop, a chime and a burst of light
 	GiftDrop = function(at: Vector3)

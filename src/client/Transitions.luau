@@ -14,6 +14,7 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local Items = require(ReplicatedStorage.Shared.Items)
 
 local Ui = require(script.Parent.Ui)
+local TopLine = require(script.Parent.TopLine)
 local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 local VoxelKnives = require(ReplicatedStorage.Shared.Config.VoxelUi).Knives :: { [string]: string }
 local Transitions = {}
@@ -58,89 +59,22 @@ function Transitions.Init()
 	gui.Parent = player:WaitForChild("PlayerGui")
 
 	-- Zone title ----------------------------------------------------------------------------------
-	local banner = Instance.new("Frame")
-	banner.AnchorPoint = Vector2.new(0.5, 0)
-	-- Just under the Murderer chance + round timer (they end ~64px down), big
-	banner.Position = UDim2.new(0.5, 0, 0, 78)
-	banner.Size = UDim2.new(0.6, 0, 0, 120)
-	banner.BackgroundTransparency = 1
-	banner.Visible = false
-	banner.Parent = Ui.root
-	banner.ZIndex = 3
-	local title = label(banner, { Size = UDim2.fromScale(1, 0.68) })
-	local subtitle = label(banner, {
-		Position = UDim2.fromScale(0, 0.68),
-		Size = UDim2.fromScale(1, 0.32),
-		TextColor3 = Color3.fromRGB(255, 90, 90),
-	})
-	local bannerToken = 0
-	if Ui.Phone then
-		local function fitZone()
-			local _, bounds = Ui.bounds()
-			banner.Position = UDim2.new(0.5, 0, 0, 70)
-			banner.Size = UDim2.fromOffset(math.min(620, math.max(300, bounds.X - 300)), 80)
-		end
-		Ui.Layout.Changed:Connect(fitZone)
-		fitZone()
-		title.Size = UDim2.new(1, 0, 0, 52)
-		subtitle.Position, subtitle.Size = UDim2.fromOffset(0, 54), UDim2.new(1, 0, 0, 24)
-		for _, text in { title, subtitle } do
-			text.TextScaled, text.TextTruncate = false, Enum.TextTruncate.AtEnd
-		end
-		title.TextSize, subtitle.TextSize = 46, 20
-	end
-	Ui.Menu.Changed:Connect(function()
-		if Ui.menuOpen() then
-			bannerToken += 1
-			banner.Visible = false
-			Ui.gui:SetAttribute("ZoneNotice", false)
-		end
-	end)
+	-- On the top line (client/TopLine), like the tutorial: "Gardens 🌸 · Needs 4K speed" - it was a
+	-- big title under the timer, over the middle of the screen
 	local function showZone(index: number)
 		if Ui.menuOpen() then
 			return
 		end
 		local zone = GameConfig.Zones[index] :: any
-		title.Text = `{zone.Title or zone.Rarity} {ZONE_EMOJI[zone.Rarity] or ""}`
-		title.TextColor3 = zone.Color:Lerp(Color3.new(1, 1, 1), 0.35)
+		local tint = (zone.Color :: Color3):Lerp(Color3.new(1, 1, 1), 0.35)
+		local text =
+			`<font color="#{tint:ToHex()}"><b>{zone.Title or zone.Rarity} {ZONE_EMOJI[zone.Rarity] or ""}</b></font>`
 		local need = zone.SpeedNeeded or 0
 		local speed = (player:GetAttribute("Speed") or 0) :: number
-		subtitle.Text = if need > speed
-			then (if Ui.Phone
-				then `Needs {Format.Short(need)} speed`
-				else `Needs {Format.Short(need)} speed to outrun the boss!`)
-			else ""
-		bannerToken += 1
-		local token = bannerToken
-		banner.Visible = true
-		Ui.gui:SetAttribute("ZoneTitle", true) -- (the tutorial line steps aside meanwhile)
-		for _, text in { title, subtitle } do
-			text.TextTransparency = 0
-			local stroke = text:FindFirstChildOfClass("UIStroke") :: UIStroke
-			stroke.Transparency = 0
+		if need > speed then
+			text ..= `  <font color="#FF6E6E">Needs {Format.Short(need)} speed</font>`
 		end
-		-- (below the timer now, so the timer stays up)
-		local rest = UDim2.new(0.5, 0, 0, if Ui.Phone then 70 else 78)
-		banner.Position = rest - UDim2.fromOffset(0, 16)
-		TweenService:Create(banner, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Position = rest }):Play()
-		task.delay(1.8, function()
-			if token ~= bannerToken then
-				return
-			end
-			for _, text in { title, subtitle } do
-				TweenService:Create(text, TweenInfo.new(0.5), { TextTransparency = 1 }):Play()
-				TweenService:Create(text:FindFirstChildOfClass("UIStroke") :: UIStroke, TweenInfo.new(0.5), {
-					Transparency = 1,
-				}):Play()
-			end
-		end)
-		task.delay(2.3, function()
-			if token == bannerToken then
-				banner.Visible = false
-				Ui.gui:SetAttribute("ZoneNotice", false)
-				Ui.gui:SetAttribute("ZoneTitle", false)
-			end
-		end)
+		TopLine.Show(text, 2.2, "Zone")
 	end
 	local lastZone = 0
 	task.spawn(function()
