@@ -11,7 +11,6 @@ local TweenService = game:GetService("TweenService")
 local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
 local Sounds = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Sounds"))
-local RoundPrize = require(ReplicatedStorage.Shared.RoundPrize)
 local player = Players.LocalPlayer
 local new = Ui.new
 
@@ -24,7 +23,7 @@ function RoundIntro.Init()
 	local card = new("Frame", {
 		Name = "RoundIntro",
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.38),
+		Position = UDim2.fromScale(0.5, 0.3),
 		Size = UDim2.fromOffset(760, 190),
 		BackgroundTransparency = 1,
 		Visible = false,
@@ -93,22 +92,14 @@ function RoundIntro.Init()
 			Ui.Menu.Close()
 			card.Visible = true
 			scale.Scale = 0.6
-			TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-			-- What each side wins (the same line as under the timer), plus the rule for first-timers
+			-- (smaller on phones: it sat right over your character)
+			TweenService
+				:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = if Ui.Phone then 0.65 else 1 })
+				:Play()
+			-- (the prize is the small line under the timer: not repeated here over your character)
 			local lines = {}
 			if player:GetAttribute("FirstVisit") then
 				table.insert(lines, "One player is secretly the Murderer. Everyone else: survive!")
-			end
-			local kind = ReplicatedStorage:GetAttribute("PrizeKind")
-			if type(kind) == "string" then
-				local jackpot = ReplicatedStorage:GetAttribute("PrizeJackpot") == true
-				local seed = (ReplicatedStorage:GetAttribute("PrizeSeed") or 1) :: number
-				local doubled = ((player:GetAttribute("Charge_DoublePrize") or 0) :: number) > 0
-				local stats = RoundPrize.Stats(player)
-				local innocent = RoundPrize.For(kind, "Innocent", jackpot, seed, stats, doubled)
-				local murderer = RoundPrize.For(kind, "Murderer", jackpot, seed, stats, doubled)
-				table.insert(lines, `<font color="#8CFF96">😇 If Innocents win: {innocent.Text}</font>`)
-				table.insert(lines, `<font color="#FF7878">🔪 If the Murderer wins: {murderer.Text}</font>`)
 			end
 			body.Text = table.concat(lines, "\n")
 		end

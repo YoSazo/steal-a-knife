@@ -169,38 +169,40 @@ function Hud.Init()
 		Text = "",
 	}, gui)
 
-	-- The round prize (Shared/RoundPrize), from AnnounceAt seconds before the round: what each side
-	-- wins in your own numbers, and "Double it!" (Robux). The big red countdown repeats it at 10 s.
+	-- The round prize (Shared/RoundPrize), from AnnounceAt seconds before the round: ONE small line
+	-- under the timer ("🎁 Winners get: a Void Edge ($11B/s)", or what each side gets when they
+	-- differ) and a small "x2 R$25" pill beside it. (It was two big lines and a button right over
+	-- your character on a phone.)
 	local prizeBox = new("Frame", {
 		Name = "RoundPrize",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 98),
-		Size = UDim2.fromOffset(560, 92),
+		Size = UDim2.fromOffset(560, 24),
 		BackgroundTransparency = 1,
 		Visible = false,
 	}, gui)
-	local function prizeLine(y: number, color: Color3): TextLabel
-		local label = Ui.label({
-			Position = UDim2.fromOffset(0, y),
-			Size = UDim2.new(1, 0, 0, 24),
-			TextColor3 = color,
-			RichText = true,
-			Text = "",
-		}, prizeBox)
-		Ui.textStroke(label, 2.5)
-		return label
-	end
-	local jackpotLine = prizeLine(0, Color3.fromRGB(255, 215, 70))
-	local innocentLine = prizeLine(0, Color3.fromRGB(140, 255, 150))
-	local murdererLine = prizeLine(26, Color3.fromRGB(255, 120, 120))
+	local prizeLine = Ui.label({
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0),
+		Size = UDim2.new(1, -96, 1, 0),
+		TextColor3 = Color3.fromRGB(255, 225, 120),
+		TextScaled = false,
+		TextSize = if Ui.Phone then 15 else 17,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		RichText = true,
+		Text = "",
+	}, prizeBox)
+	Ui.textStroke(prizeLine, 2)
 	local doubleButton = Ui.button(
 		{
 			Name = "DoublePrize",
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0, 56),
-			Size = UDim2.fromOffset(190, 32),
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0.5, 0, 0.5, 0),
+			Size = UDim2.fromOffset(78, 22),
 			BackgroundColor3 = Color3.fromRGB(0, 176, 111),
-			Text = "🎁 Double it! R$25",
+			Text = "x2 R$25",
+			TextScaled = false,
+			TextSize = 13,
 		},
 		prizeBox,
 		function()
@@ -230,20 +232,17 @@ function Hud.Init()
 				local stats = RoundPrize.Stats(player)
 				local innocent = RoundPrize.For(kind :: string, "Innocent", jackpot, seed, stats, doubled)
 				local murderer = RoundPrize.For(kind :: string, "Murderer", jackpot, seed, stats, doubled)
-				jackpotLine.Visible = jackpot
-				jackpotLine.Text = "⭐ JACKPOT ROUND! ⭐"
-				local y = if jackpot then 26 else 0
-				innocentLine.Position = UDim2.fromOffset(0, y)
-				murdererLine.Position = UDim2.fromOffset(0, y + 26)
-				doubleButton.Position = UDim2.new(0.5, 0, 0, y + 56)
-				innocentLine.Text = `😇 If Innocents win: <b>{innocent.Text}</b>`
-				murdererLine.Text = `🔪 If the Murderer wins: <b>{murderer.Text}</b>`
-				local label = doubleButton:FindFirstChild("Label") :: TextLabel?
-				local text = if doubled then "✓ Prize doubled!" else "🎁 Double it! R$25"
-				if label then
-					label.Text = text
-				else
-					doubleButton.Text = text
+				local star = if jackpot then "⭐ JACKPOT! " else "🎁 "
+				prizeLine.Text = if innocent.Text == murderer.Text
+					then `{star}Winners get: <b>{innocent.Text}</b>`
+					else `{star}<font color="#8CFF96">Innocents: <b>{innocent.Text}</b></font>  <font color="#FF7878">Murderer: <b>{murderer.Text}</b></font>`
+				-- the pill sits just after the words
+				local words = prizeLine.TextBounds.X / math.max(Ui.Scale.Scale, 0.01) -- (TextBounds is in screen pixels)
+				doubleButton.Position = UDim2.new(0.5, -44 + words / 2 + 8, 0.5, 0)
+				prizeLine.Position = UDim2.new(0.5, -44, 0, 0)
+				doubleButton.Visible = not doubled
+				if doubled then
+					prizeLine.Text ..= '  <font color="#78FF8C">✓ x2</font>'
 				end
 			end
 		end
