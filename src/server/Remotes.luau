@@ -48,6 +48,7 @@ local Remotes = {
 	Trade = func("Trade"), -- client -> server: (action, ...) -> ok, see TradeService
 	SellSign = event("SellSign"), -- client -> server: (sign: BasePart) tapped a Sell sign with a tool in hand
 	SlowMode = event("SlowMode"), -- client -> server: (on: boolean) walk at normal speed in the hub
+	Drop = event("Drop"), -- client -> server: () put down what you're carrying (boss knives go back on the wall)
 	Gamble = func("Gamble"), -- client -> server: (action, arg) -> (ok, message, extra), see Gamble
 	StoreTest = func("StoreTest"), -- client -> server: (kind, key) Studio-only fake purchase for unset ids
 	Track = event("Track"), -- client -> server: (event, props) analytics from the client (server/Analytics whitelists)

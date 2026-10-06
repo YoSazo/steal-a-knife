@@ -1018,12 +1018,23 @@ function StealService.CancelBossCarry(player: Player)
 	end
 end
 
+-- The Drop button (Tsunami style): don't want it after all? A boss's knife goes straight back on
+-- its wall (the chase ends, nothing lost); anything else lands at your feet.
+function StealService.Drop(player: Player)
+	if not carriers[player] or player:GetAttribute("InRound") then
+		return
+	end
+	local root = rootPart(player)
+	endCarry(player, false, if root then root.Position else nil, "drop")
+end
+
 function StealService.ForceDrop(player: Player)
 	local root = rootPart(player)
 	endCarry(player, false, if root then root.Position else nil, "forced")
 end
 
 function StealService.Init()
+	Net.Remotes.Drop.OnServerEvent:Connect(StealService.Drop)
 	-- Carriers are hub-knife targets (CombatService swings and throws ask Targets)
 	Targets.AddProvider(function()
 		local list = {}

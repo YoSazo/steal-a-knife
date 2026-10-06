@@ -1411,6 +1411,18 @@ local function onBossCarryEnded(zone: number, slotIndex: number, item: string, d
 		slot.RestockAt = now() + boss.Config.Restock * (if rush then 0.1 else 1)
 	else
 		setSlot(boss, slot, item)
+		-- Put down (the Drop button) or lost: whoever was chasing for this boss and whose thief no
+		-- longer holds one of its knives gives up and heads back
+		for _, guard in table.clone(chasers) do
+			local thief = guard.Target
+			if guard.Boss == boss and thief and StealService.BossCarry(thief) == nil then
+				stopChase(guard, false)
+			end
+		end
+		local guard = boss.Guard
+		if guard.Target and StealService.BossCarry(guard.Target) == nil then
+			stopChase(guard, false)
+		end
 	end
 end
 
