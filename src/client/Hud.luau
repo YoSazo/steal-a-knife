@@ -18,6 +18,7 @@ local Theme = require(script.Parent.MenuTheme)
 local CartoonArt = require(ReplicatedStorage.Shared.Config.CartoonArt)
 local SimpleUi = require(script.Parent.SimpleUi)
 local VoxelUi = require(ReplicatedStorage.Shared.Config.VoxelUi)
+local CoinIcon = require(ReplicatedStorage.Shared.Config.CoinIcon)
 local Icons2 = require(ReplicatedStorage.Shared.Config.VoxelIcons2).Icons
 local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 local WheelModel = require(ReplicatedStorage.Shared.WheelModel)
@@ -949,14 +950,13 @@ function Hud.Init()
 	end
 	-- Plain words instead of an abstract meter: [skull coin] 2/3 to use VANISH -> VANISH READY!
 	-- (the coins on the floor are what fill it; the goal is the power you actually have)
-	local coin = new("Frame", {
+	local coin = new("ImageLabel", {
 		Size = UDim2.fromOffset(26, 26),
-		BackgroundColor3 = Color3.fromRGB(255, 200, 50),
+		BackgroundTransparency = 1,
+		Image = CoinIcon.Image, -- the real round coin, rendered (Config/CoinIcon)
+		ScaleType = Enum.ScaleType.Fit,
 		LayoutOrder = 0,
 	}, energyFrame)
-	Ui.corner(coin, 13)
-	new("UIStroke", { Thickness = 2, Color = Color3.fromRGB(120, 80, 10) }, coin)
-	Ui.label({ Size = UDim2.fromScale(0.8, 0.8), Position = UDim2.fromScale(0.1, 0.1), Text = "💀" }, coin)
 	local countLabel = energyText("0/0", 1, ENERGY_ON)
 	local powerGoal = energyText("", 2, Color3.fromRGB(235, 230, 245))
 	local _ = ENERGY_OFF
@@ -1128,7 +1128,7 @@ function Hud.Init()
 			else `Murder in {clock}`
 		local nextChest = (player:GetAttribute("NextFreeChest") or 0) :: number
 		local chestLeft = nextChest - now
-		chestText.Text = if chestLeft <= 0 then "Free!" else Ui.clock(chestLeft)
+		chestText.Text = if chestLeft <= 0 then "Free Chest" else Ui.clock(chestLeft)
 		chestText.TextColor3 = Color3.new(1, 1, 1)
 		chestText.TextScaled = true -- (something resets it once after the skin; keep it like the others)
 		chestPill.Visible = chestLeft <= 0
@@ -1509,8 +1509,8 @@ function Hud.Init()
 			child.TextSize = 16
 			child.Size = UDim2.fromOffset(0, 22)
 			child.AutomaticSize = Enum.AutomaticSize.X
-		elseif child:IsA("Frame") then
-			child.Size = UDim2.fromOffset(20, 20)
+		elseif child:IsA("ImageLabel") then
+			child.Size = UDim2.fromOffset(22, 22)
 		end
 	end
 	healthFrame.AnchorPoint, healthFrame.Position, healthFrame.Size =

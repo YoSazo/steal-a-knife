@@ -11,6 +11,7 @@ local UserInputService = game:GetService("UserInputService")
 local Ui = require(script.Parent.Ui)
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("GameConfig"))
 local PowerIcons = require(ReplicatedStorage.Shared.Config.VoxelPowerIcons)
+local CoinIcon = require(ReplicatedStorage.Shared.Config.CoinIcon)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
 local new = Ui.new
@@ -109,11 +110,28 @@ function PowerBar.Init()
 		}, button)
 		Ui.corner(shade, 14)
 		local count = Ui.label({
-			Position = UDim2.new(0, 4, 1, -22),
-			Size = UDim2.new(1, -8, 0, 20),
+			Position = UDim2.new(0, 22, 1, -22),
+			Size = UDim2.new(1, -26, 0, 20),
 			Text = "",
 			ZIndex = 4,
 		}, button)
+		-- the coin it costs, next to the number (Config/CoinIcon: the real round coin)
+		new("ImageLabel", {
+			Name = "Coin",
+			Position = UDim2.new(0, 3, 1, -22),
+			Size = UDim2.fromOffset(20, 20),
+			BackgroundTransparency = 1,
+			Image = CoinIcon.Image,
+			ScaleType = Enum.ScaleType.Fit,
+			Visible = false,
+			ZIndex = 4,
+		}, count.Parent :: Instance)
+		count:GetPropertyChangedSignal("Text"):Connect(function()
+			local coin = button:FindFirstChild("Coin") :: ImageLabel?
+			if coin then
+				coin.Visible = count.Text ~= "" and tonumber(count.Text) ~= nil
+			end
+		end)
 		button.Activated:Connect(function()
 			use(i)
 		end)
@@ -189,7 +207,7 @@ function PowerBar.Init()
 				local level = GameConfig.RoundPowerLevel -- the same for everyone in rounds
 				local cost = power.Energy[math.clamp(level, 1, #power.Energy)]
 				slot.Shade.Size = UDim2.fromScale(1, if energy >= cost then 0 else 1 - energy / cost)
-				slot.Count.Text = if energy >= cost then "" else `💀{cost}`
+				slot.Count.Text = if energy >= cost then "" else tostring(cost)
 			else
 				-- In the arena: cooldown, the shade drains as it recharges
 				local readyAt = player:GetAttribute(`PowerReady_{id}`)
