@@ -24,6 +24,8 @@ return {
 	-- A boss waking up (Effects BossWake): a rising gliss while the eyes go red, a roar as they stand
 	BossWake = "rbxassetid://1846544949", -- "Bass Gliss Up" (APM)
 	BossRoar = "rbxassetid://9116302511", -- Lion Roar, Short Blast (PSE)
+	-- You just stole from a boss: one quick siren whoop (Steal An Egg's alarm), cut to ~1 s
+	StealSiren = "rbxassetid://3261279556", -- "Professional Swedish Ambulance - Whoop 1" (1.4 s)
 	GateHit = "rbxassetid://9116502787", -- metal drum bang (PSE)
 	GateBreak = "rbxassetid://9116635188", -- metal grate crash (PSE)
 	WoodBreak = "rbxassetid://9120801590", -- wood snap (PSE): barricades

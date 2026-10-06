@@ -20,6 +20,7 @@ local Items = require(ReplicatedStorage.Shared:WaitForChild("Items"))
 local KnifeModel = require(ReplicatedStorage.Shared:WaitForChild("KnifeModel"))
 local Lod = require(script.Parent.Lod)
 local Ui = require(script.Parent.Ui)
+local WorldSignInput = require(script.Parent.WorldSignInput)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
 
@@ -767,6 +768,16 @@ local handlers: { [string]: (...any) -> () } = {
 	-- A boss is coming for you: a quick red flash (the alarm bell rang on every steal - too much)
 	Alarm = function()
 		flash(nil, 0.25, 0.8)
+		-- One quick siren whoop, faded out after a second (no ringing: the old bell rang on and on)
+		local siren = Instance.new("Sound")
+		siren.SoundId = Sounds.StealSiren
+		siren.Volume = 0.55
+		siren.Parent = SoundService
+		siren:Play()
+		task.delay(0.9, function()
+			TweenService:Create(siren, TweenInfo.new(0.25), { Volume = 0 }):Play()
+		end)
+		Debris:AddItem(siren, 1.3)
 	end,
 	Stolen = function(position: Vector3, color: Color3)
 		Effects.Burst(position + Vector3.new(0, 3, 0), color, 40, 16, 0.7)
@@ -1277,37 +1288,7 @@ function Effects.Init()
 	end
 	workspace.DescendantAdded:Connect(filterPrompt)
 
-	-- Sell signs are ClickDetectors, which Roblox ignores while you hold a tool (your knife is always
-	-- out): spot the click / tap on one of your own signs here and tell the server
-	local UserInputService = game:GetService("UserInputService")
-	UserInputService.InputBegan:Connect(function(input, processed)
-		if processed then
-			return
-		end
-		local touch = input.UserInputType == Enum.UserInputType.Touch
-		if input.UserInputType ~= Enum.UserInputType.MouseButton1 and not touch then
-			return
-		end
-		local character = player.Character
-		if not character or not character:FindFirstChildOfClass("Tool") then
-			return -- (no tool: the ClickDetector works by itself)
-		end
-		local camera = workspace.CurrentCamera
-		local ray = if touch
-			then camera:ScreenPointToRay(input.Position.X, input.Position.Y)
-			else (function()
-				local at = UserInputService:GetMouseLocation()
-				return camera:ViewportPointToRay(at.X, at.Y)
-			end)()
-		local params = RaycastParams.new()
-		params.FilterType = Enum.RaycastFilterType.Exclude
-		params.FilterDescendantsInstances = { character }
-		local hit = workspace:Raycast(ray.Origin, ray.Direction * 60, params)
-		local part = hit and hit.Instance
-		if part and part:GetAttribute("SellOwner") == player.UserId then
-			Remotes:WaitForChild("SellSign"):FireServer(part)
-		end
-	end)
+	WorldSignInput.Init()
 end
 
 return Effects

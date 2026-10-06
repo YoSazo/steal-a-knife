@@ -19,6 +19,7 @@ local Ui = require(script.Parent.Ui)
 local Moves = require(script.Parent.Moves)
 local KnifeGesture = require(script.Parent.KnifeGesture)
 local KnifeAim = require(script.Parent.KnifeAim)
+local WorldSignInput = require(script.Parent.WorldSignInput)
 local KNIFE_SIZE = KnifeAim.ButtonSize
 local AnimLibrary = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("AnimLibrary"))
 local GameConfig = require(ReplicatedStorage.Shared:WaitForChild("Config"):WaitForChild("GameConfig"))
@@ -413,6 +414,12 @@ function Abilities.Init()
 	UserInputService.InputBegan:Connect(function(input, processed)
 		if processed or Ui.menuOpen() or not isPrimary(input) or not knifeInHand() then
 			return
+		end
+		if
+			input.UserInputType == Enum.UserInputType.MouseButton1
+			and WorldSignInput.Target(UserInputService:GetMouseLocation())
+		then
+			return -- a world-sign purchase/sale must not also swing or wind up the knife
 		end
 		if spamMode() then
 			spamThrow(nil)

@@ -308,42 +308,61 @@ local function run(startAt: number, replay: boolean)
 		},
 	}
 
-	-- The instruction: one line in a slim see-through bar under the timer
+	-- The instruction: Steal An Egg's top line - one thin dark band right across the top of the
+	-- screen that fades out at both ends (no pill, no box), plain white words on it. The timer lines
+	-- move down under it while it's up (client/Hud, Ui.gui TutorialBar).
 	local banner = new("Frame", {
+		Name = "TutorialBar",
 		AnchorPoint = Vector2.new(0.5, 0),
-		BackgroundColor3 = Color3.fromRGB(10, 10, 16),
-		BackgroundTransparency = 0.45,
+		BackgroundColor3 = Color3.fromRGB(8, 10, 22),
+		BackgroundTransparency = 0,
+		BorderSizePixel = 0,
 	}, Ui.gui)
-	Ui.corner(banner, 10)
+	new("UIGradient", {
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.18, 0.45),
+			NumberSequenceKeypoint.new(0.82, 0.45),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+	}, banner)
 	local stepLabel = Ui.label({
-		Position = UDim2.fromOffset(12, 0),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0),
 		TextXAlignment = Enum.TextXAlignment.Center,
+		TextColor3 = Color3.new(1, 1, 1),
 		Text = "",
 	}, banner)
-	Ui.textStroke(stepLabel, 2)
+	Ui.textStroke(stepLabel, 1.5)
 	local skip = Ui.button({
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -6, 0.5, 0),
-		Size = UDim2.fromOffset(58, 26),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Size = UDim2.fromOffset(52, 24),
 		BackgroundColor3 = Color3.fromRGB(90, 90, 110),
-		BackgroundTransparency = 0.3,
+		BackgroundTransparency = 0.4,
 		Text = "Skip",
-		TextSize = 14,
+		TextSize = 13,
 		TextScaled = false,
 	}, banner)
-	stepLabel.TextScaled, stepLabel.TextWrapped = false, true
+	stepLabel.TextScaled, stepLabel.TextWrapped = true, false
+	local textLimit = stepLabel:FindFirstChildOfClass("UITextSizeConstraint")
+	if textLimit then
+		textLimit.MinTextSize, textLimit.MaxTextSize = 12, 20
+	end
 	local function layout()
 		local _, bounds = Ui.bounds()
 		local phone = Ui.Phone
-		-- between the left and right button columns, under the timer lines
-		-- (phones: the most important words a new player reads, so big - 14 px was too small)
-		local width =
-			math.min(if phone then 600 else 640, math.max(240, bounds.X - (if phone then 2 * 130 else 2 * 190)))
-		local height = if phone then 56 else 44
-		banner.Size = UDim2.fromOffset(width, height)
-		banner.Position = UDim2.new(0.5, 0, 0, if phone then 88 else 116)
-		stepLabel.Size = UDim2.new(1, -84, 1, 0)
-		stepLabel.TextSize = if phone then 21 else 19
+		local height = if phone then 36 else 34
+		banner.Size = UDim2.fromOffset(bounds.X, height)
+		banner.Position = UDim2.new(0.5, 0, 0, 0)
+		-- This top strip has the full safe-area width; side navigation sits lower on the screen.
+		local reserve = if skip.Visible then 64 else 0
+		local lane = math.max(120, math.min(960, bounds.X - 24 - reserve))
+		stepLabel.Position = UDim2.new(0.5, -reserve / 2, 0, 0)
+		stepLabel.Size = UDim2.new(0, lane, 1, 0)
+		stepLabel.TextSize = if phone then 19 else 20
+		skip.AnchorPoint = Vector2.new(1, 0.5)
+		skip.Position = UDim2.new(1, -12, 0.5, 0)
+		Ui.gui:SetAttribute("TutorialBarHeight", height)
 	end
 	own(Ui.Layout.Changed:Connect(layout))
 	layout()
@@ -480,6 +499,7 @@ local function run(startAt: number, replay: boolean)
 		end
 		table.clear(connections)
 		Ui.gui:SetAttribute("TutorialBar", false)
+		skip.Visible = false
 		if not replay then
 			Remotes.Tutorial:FireServer(if skipped then "Skip" else "Done")
 		end
@@ -489,8 +509,8 @@ local function run(startAt: number, replay: boolean)
 			banner:Destroy()
 			return
 		end
-		stepLabel.Text =
-			"You've got it! Steal better knives - the best one you equip is your Murderer weapon. Good luck!"
+		stepLabel.Text = "You've got it! Steal better knives and get stronger!"
+		layout()
 		-- (its own sound: the power-reveal sting here made equipping sound like the steal again)
 		Effects.Sound(Sounds.Cheer, nil, 0.5)
 		-- Then what that knife's power actually does, with a one-tap demo
@@ -508,6 +528,7 @@ local function run(startAt: number, replay: boolean)
 	local function showStep()
 		-- The first steal and placing it can't be skipped: that's the whole game in 60 seconds
 		skip.Visible = current > 2
+		layout()
 		local compact = {
 			"Go to the glowing circle at Frank's stash.",
 			"Run home to the glowing plate!",
@@ -515,8 +536,9 @@ local function run(startAt: number, replay: boolean)
 			"Run in your wheel to train Speed.",
 		}
 
-		stepLabel.Text =
-			`{current}/{#steps}  {if Ui.Layout.get().Compact then compact[current] else steps[current].Text}`
+		stepLabel.Text = `{current}/{#steps}  {if Ui.Phone or Ui.Layout.get().Compact
+			then compact[current]
+			else steps[current].Text}`
 		if not replay then
 			Remotes.Tutorial:FireServer("Step", current) -- saved: leaving midway resumes here
 		end

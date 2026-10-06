@@ -1459,19 +1459,25 @@ function Hud.Init()
 		end
 		-- The Murderer chance sits above the timer, so the timer is the lowest line up there and the
 		-- view of the world (boss stashes, knife labels) stays clear
-		chanceLabel.Position, chanceLabel.Size = UDim2.fromOffset(center, 0), UDim2.fromOffset(width, 20)
-		timerFrame.Position, timerFrame.Size = UDim2.fromOffset(center, 18), UDim2.fromOffset(width, 40)
-		subLabel.Position, subLabel.Size = UDim2.fromOffset(center, 68), UDim2.fromOffset(width, 20)
+		-- (the tutorial's line runs across the very top while it's up: everything here moves under it)
+		local top = if Ui.gui:GetAttribute("TutorialBar") == true
+			then ((Ui.gui:GetAttribute("TutorialBarHeight") or 36) :: number) + 2
+			else 0
+		chanceLabel.Position, chanceLabel.Size = UDim2.fromOffset(center, top), UDim2.fromOffset(width, 20)
+		timerFrame.Position, timerFrame.Size = UDim2.fromOffset(center, top + 18), UDim2.fromOffset(width, 40)
+		subLabel.Position, subLabel.Size = UDim2.fromOffset(center, top + 68), UDim2.fromOffset(width, 20)
 		subLabel.TextWrapped = false
-		eventLabel.Position, eventLabel.Size = UDim2.fromOffset(center, 90), UDim2.fromOffset(width, 20)
+		eventLabel.Position, eventLabel.Size = UDim2.fromOffset(center, top + 90), UDim2.fromOffset(width, 20)
+		prizeBox.Position = UDim2.new(0.5, 0, 0, top + 98)
+		goalLabel.Position = UDim2.new(0.5, 0, 0, top + 122)
 		eventLabel.TextScaled, eventLabel.TextSize, eventLabel.TextTruncate = false, 14, Enum.TextTruncate.AtEnd
 		banner.Size = UDim2.fromOffset(math.min(600, bounds.X - 24), 44)
 		announceHolder.Size = UDim2.fromOffset(math.min(480, bounds.X - 24), 60)
 		if Ui.Phone then
 			-- Between the left buttons and the right ones, under the timer: never mid-screen
 			local lane = math.max(220, math.min(420, bounds.X - 2 * 150))
-			-- the tutorial line sits at 92-126: everything else goes under it while it's up
-			local below = if Ui.gui:GetAttribute("TutorialBar") == true then 44 else 0
+			-- Keep other messages below the tutorial and timer while the top strip is showing.
+			local below = top
 			announceHolder.Position, announceHolder.Size =
 				UDim2.fromOffset(center, 66 + below), UDim2.fromOffset(lane, 30)
 			toasts.AnchorPoint = Vector2.new(0.5, 0)
@@ -1502,6 +1508,7 @@ function Hud.Init()
 	end
 	Ui.Layout.Changed:Connect(layout)
 	Ui.gui:GetAttributeChangedSignal("TutorialBar"):Connect(layout)
+	Ui.gui:GetAttributeChangedSignal("TutorialBarHeight"):Connect(layout)
 	layout()
 	Ui.Menu.Changed:Connect(function()
 		-- (toasts and announcements stay up with a menu open: they're how a click answers you)

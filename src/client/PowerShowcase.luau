@@ -81,6 +81,10 @@ function PowerShowcase.Show()
 	local tier = KnifePowers.TierById[power.Tier]
 	local short = KnifePowers.Short[power.Id] or { "", "" }
 	local demo = DEMOS[power.Id]
+	local function targetScale(): number
+		local _, bounds = Ui.bounds()
+		return math.min(0.85, bounds.Y * 0.6 / 400, bounds.X * 0.5 / 560)
+	end
 
 	local card: Frame = Ui.new("Frame", {
 		Name = "PowerShowcase",
@@ -93,7 +97,17 @@ function PowerShowcase.Show()
 	}, Ui.gui)
 	Ui.corner(card, 18)
 	Ui.new("UIStroke", { Color = PURPLE, Thickness = 4, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, card)
-	local scale = Ui.new("UIScale", { Scale = 0.6 }, card) :: UIScale
+	local scale = Ui.new("UIScale", { Scale = targetScale() * 0.85 }, card) :: UIScale
+	local opening: Tween? = nil
+	local closed = false
+	local layoutWatch = Ui.Layout.Changed:Connect(function()
+		if not closed then
+			if opening then
+				opening:Cancel()
+			end
+			scale.Scale = targetScale()
+		end
+	end)
 	SimpleUi.text(card, "Your knife's power:", {
 		Position = UDim2.fromOffset(20, 14),
 		Size = UDim2.new(1, -40, 0, 36),
@@ -132,11 +146,15 @@ function PowerShowcase.Show()
 	})
 
 	local function close()
-		if not card.Parent then
+		if closed or not card.Parent then
 			return
 		end
+		closed = true
+		if opening then
+			opening:Cancel()
+		end
 		showing = false
-		TweenService:Create(scale, TweenInfo.new(0.15), { Scale = 0.8 }):Play()
+		TweenService:Create(scale, TweenInfo.new(0.15), { Scale = scale.Scale * 0.8 }):Play()
 		task.delay(0.15, function()
 			card:Destroy()
 		end)
@@ -174,10 +192,15 @@ function PowerShowcase.Show()
 	end)
 	card.Destroying:Connect(function()
 		roundWatch:Disconnect()
+		layoutWatch:Disconnect()
 	end)
 
 	Effects.Sound(Sounds.Reveal, nil, 0.6)
-	TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play() -- (Ui.gui already scales to the screen)
+	-- A card in the middle, not the whole screen: at most ~60% of the height and half the width
+	-- (at full size it filled a phone screen)
+	local tween = TweenService:Create(scale, TweenInfo.new(0.25, Enum.EasingStyle.Quad), { Scale = targetScale() })
+	opening = tween
+	tween:Play()
 end
 
 return PowerShowcase
