@@ -8,6 +8,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Format = require(ReplicatedStorage.Shared.Format)
+local Ui = require(script.Parent.Ui)
 
 local Overheads = {}
 
@@ -29,6 +30,10 @@ local function attach(owner: Instance, character: Model)
 	gui.MaxDistance = 80
 	gui.LightInfluence = 0
 	gui.Adornee = head
+	-- Your own tag isn't drawn on a phone: the camera sits close behind you there and it landed right
+	-- behind the timer lines (checked on an iPhone 13). Your cash is in the corner anyway; everyone
+	-- else still sees your tag.
+	gui.Enabled = not (owner == Players.LocalPlayer and Ui.Phone)
 	-- VIP on top, cash underneath (close to the head)
 	local vip = Instance.new("TextLabel")
 	vip.Size = UDim2.fromScale(1, 0.45)

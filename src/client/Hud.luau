@@ -453,10 +453,14 @@ function Hud.Init()
 	-- (plain text, centred: no icon beside it)
 	local function refreshChance()
 		local chance = player:GetAttribute("MurdererChance")
-		chanceLabel.Visible = type(chance) == "number" and Ui.inHub()
+		-- (phones: the map vote row takes this line's place while it's up - client/MapVoteCard)
+		chanceLabel.Visible = type(chance) == "number"
+			and Ui.inHub()
+			and not (Ui.Phone and gui:GetAttribute("VoteRow") == true)
 		chanceLabel.Text = `Murderer chance: {chance or 0}%`
 	end
 	player:GetAttributeChangedSignal("MurdererChance"):Connect(refreshChance)
+	gui:GetAttributeChangedSignal("VoteRow"):Connect(refreshChance)
 	player:GetAttributeChangedSignal("InRound"):Connect(refreshChance)
 	refreshChance()
 	Ui.textStroke(subLabel, 2)

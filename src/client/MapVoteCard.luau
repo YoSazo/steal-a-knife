@@ -58,7 +58,8 @@ function MapVoteCard.Init()
 			ZIndex = 20,
 		}, Ui.gui)
 		local function place()
-			card.Position = UDim2.new(0.5, 0, 0, ((Ui.gui:GetAttribute("HudTop") or 60) :: number) + 24)
+			-- in the Murderer chance line's place (hidden while the row is up), clear of your head
+			card.Position = UDim2.new(0.5, 0, 0, ((Ui.gui:GetAttribute("HudTop") or 60) :: number) + 2)
 		end
 		Ui.gui:GetAttributeChangedSignal("HudTop"):Connect(place)
 		place()
@@ -130,6 +131,9 @@ function MapVoteCard.Init()
 		end
 		wasOpen = open
 		card.Visible = open and not dismissed and not Ui.menuOpen() and Ui.gui:GetAttribute("TutorialBar") ~= true
+		if phone and Ui.gui:GetAttribute("VoteRow") ~= card.Visible then
+			Ui.gui:SetAttribute("VoteRow", card.Visible)
+		end
 		if not card.Visible then
 			return
 		end

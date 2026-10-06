@@ -145,7 +145,19 @@ function PhoneHud.Init()
 	Ui.Layout.Changed:Connect(function()
 		task.defer(layout) -- after the modules' own layout handlers
 	end)
-	task.defer(layout)
+	-- ...and whenever the screen itself changes size: on a phone the camera can report a 1-pixel
+	-- screen at the first layout, which put the right-hand column off the left edge
+	local function watchCamera()
+		local camera = workspace.CurrentCamera
+		if camera then
+			camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+				task.defer(layout)
+			end)
+		end
+		task.defer(layout)
+	end
+	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(watchCamera)
+	watchCamera()
 end
 
 return PhoneHud
