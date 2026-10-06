@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RoundMapInfo = require(ReplicatedStorage.Shared.Config.RoundMapInfo)
+local VaultModel = require(ReplicatedStorage.Shared.VaultModel)
 local Net = require(script.Parent.Parent.Remotes)
 local Analytics = require(script.Parent.Analytics)
 
@@ -183,31 +184,17 @@ local function buildBoards()
 		billboard.Adornee = board
 		billboard.Parent = board
 		text(billboard, { Size = UDim2.fromScale(1, 1), Text = "VOTE", TextColor3 = Color3.fromRGB(255, 225, 90) })
-		-- the pad: a glowing disc on the ground in front of the board
+		-- the pad: a vault plate (the gold-framed octagon knives sit on), twice the size, glowing in
+		-- the map's colour
 		local padAt = Vector3.new(x, 0, ROW_Z + 11)
-		local pad = part(
-			"Pad",
-			Vector3.new(0.3, PAD_RADIUS * 2, PAD_RADIUS * 2),
-			CFrame.new(padAt + Vector3.new(0, 0.32, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-			info.Color,
-			Enum.Material.Neon
-		)
-		pad.Shape = Enum.PartType.Cylinder
-		pad.Transparency = 0.25
-		pad.CanCollide = false
-		pad.CanQuery = false
-		pad.Parent = model
-		local ring = part(
-			"PadRing",
-			Vector3.new(0.12, PAD_RADIUS * 2 + 1.2, PAD_RADIUS * 2 + 1.2),
-			CFrame.new(padAt + Vector3.new(0, 0.06, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-			Color3.new(1, 1, 1),
-			Enum.Material.Neon
-		)
-		ring.Shape = Enum.PartType.Cylinder
-		ring.CanCollide = false
-		ring.CanQuery = false
-		ring.Parent = model
+		local plate = Instance.new("Model")
+		plate.Name = "VotePlate"
+		local built = VaultModel.BuildPlate(plate, CFrame.new(padAt), i)
+		built.Rim.Color = info.Color
+		VaultModel.SetPlateGlow(built.Rim)
+		plate.WorldPivot = CFrame.new(padAt)
+		plate:ScaleTo(PAD_RADIUS * 2 / 7.15) -- (the plate's foot is 7.15 studs across)
+		plate.Parent = model
 		pads[info.Name] = padAt
 		model.Parent = folder
 	end
