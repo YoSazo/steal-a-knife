@@ -561,70 +561,111 @@ local function buildBases()
 		-- is what counts as "on it"). Clients spin it while its owner is training. It stands just
 		-- outside the vault's gate, so the inside is nothing but knives.
 		local wheelCenter = Vector3.new(-13, 6.6, VAULT_DEPTH / 2 + 7.5)
-		-- The Upgrade Base sign on the other side of the gate (client/Hud fills it in for its owner)
-		local upgradeSign = Instance.new("Model")
-		upgradeSign.Name = "UpgradeSign"
-		-- Tsunami's Upgrade Base sign: a dark post and board (3D), the info flat on its face (2D):
-		-- a white title over one bright green pill with a house, the price and the floor count
-		local SIGN_DARK = Color3.fromRGB(26, 28, 38)
-		block("Post", Vector3.new(0.7, 3, 0.7), at(13, 1.5, VAULT_DEPTH / 2 + 6), SIGN_DARK, upgradeSign)
-		local signBoard = block(
-			"Board",
-			Vector3.new(7, 4, 0.35),
-			-- Standing straight up (not leaning back) on top of the post, not sunk into it
-			at(13, 5, VAULT_DEPTH / 2 + 6) * CFrame.Angles(0, math.pi, 0),
-			SIGN_DARK,
-			upgradeSign
+		-- Tsunami / Steal An Egg signs (client/Hud fills them in for their owner): Upgrade Base on the
+		-- other side of the gate (the next floor), Upgrade Wheel in front of the Haunted Wheel (the next
+		-- wheel or trail, with a small Robux board under it: RobuxBoard)
+		local function upgradeSignAt(signName: string, x: number, z: number, titleText: string): Model
+			local upgradeSign = Instance.new("Model")
+			upgradeSign.Name = signName
+			-- Tsunami's Upgrade Base sign: a dark post and board (3D), the info flat on its face (2D):
+			-- a white title over one bright green pill with a house, the price and the floor count
+			local SIGN_DARK = Color3.fromRGB(26, 28, 38)
+			block("Post", Vector3.new(0.7, 3, 0.7), at(x, 1.5, z), SIGN_DARK, upgradeSign)
+			local signBoard = block(
+				"Board",
+				Vector3.new(7, 4, 0.35),
+				-- Standing straight up (not leaning back) on top of the post, not sunk into it
+				at(x, 5, z) * CFrame.Angles(0, math.pi, 0),
+				SIGN_DARK,
+				upgradeSign
+			)
+			local signGui = Instance.new("SurfaceGui")
+			signGui.Name = "Gui"
+			signGui.Face = Enum.NormalId.Front
+			signGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+			signGui.PixelsPerStud = 60
+			signGui.LightInfluence = 0
+			signGui.MaxDistance = 80
+			signGui.Parent = signBoard
+			local function signText(
+				name: string,
+				parent: Instance,
+				text: string,
+				tint: Color3,
+				font: Enum.Font
+			): TextLabel
+				local label = Instance.new("TextLabel")
+				label.Name = name
+				label.BackgroundTransparency = 1
+				label.Font = font
+				label.TextScaled = true
+				label.TextColor3 = tint
+				label.Text = text
+				local stroke = Instance.new("UIStroke")
+				stroke.Color, stroke.Thickness = Color3.fromRGB(14, 16, 24), 3
+				stroke.Parent = label
+				label.Parent = parent
+				return label
+			end
+			local title = signText("Title", signGui, titleText, Color3.new(1, 1, 1), Enum.Font.FredokaOne)
+			title.Position, title.Size = UDim2.fromScale(0.04, 0.04), UDim2.fromScale(0.8, 0.28) -- (clear of the "!")
+			-- The same pill as the vault's cash pads (SignTheme.cashPill), a touch darker: mint with a
+			-- violet edge and the big green number, the floor count under it
+			local pillHolder = Instance.new("Frame")
+			pillHolder.Name = "PillHolder"
+			pillHolder.BackgroundTransparency = 1
+			pillHolder.Position, pillHolder.Size = UDim2.fromScale(0.04, 0.34), UDim2.fromScale(0.92, 0.62)
+			pillHolder.Parent = signGui
+			local price = SignTheme.cashPill(pillHolder)
+			price.Name = "Price"
+			price.Position, price.Size = UDim2.fromScale(0.5, 0.4), UDim2.fromScale(0.9, 0.62)
+			local pill = price.Parent :: Frame
+			pill.Name = "Pill"
+			pill.BackgroundColor3 = Color3.fromRGB(105, 185, 115)
+			pill.BackgroundTransparency = 0.05
+			local count = signText("Count", pill, "", Color3.fromRGB(30, 110, 30), Enum.Font.GothamBlack)
+			count.AnchorPoint = Vector2.new(0.5, 0)
+			count.Position, count.Size = UDim2.fromScale(0.5, 0.7), UDim2.fromScale(0.6, 0.26)
+			local countStroke = count:FindFirstChildOfClass("UIStroke")
+			if countStroke then
+				countStroke.Thickness = 0
+			end
+			local alert = signText("Alert", signGui, "!", Color3.fromRGB(255, 60, 60), Enum.Font.LuckiestGuy)
+			alert.Position, alert.Size = UDim2.fromScale(0.86, -0.08), UDim2.fromScale(0.14, 0.4)
+			alert.Visible = false
+			upgradeSign.Parent = folder
+			return upgradeSign
+		end
+		upgradeSignAt("UpgradeSign", 13, VAULT_DEPTH / 2 + 6, "Upgrade Base")
+		local wheelUpgrade = upgradeSignAt("WheelUpgradeSign", -13, VAULT_DEPTH / 2 + 15.5, "Upgrade Wheel")
+		local robuxBoard = block(
+			"RobuxBoard",
+			Vector3.new(3.2, 1.2, 0.35),
+			at(-13, 2.3, VAULT_DEPTH / 2 + 16.1) * CFrame.Angles(0, math.pi, 0),
+			Color3.fromRGB(0, 176, 111),
+			wheelUpgrade
 		)
-		local signGui = Instance.new("SurfaceGui")
-		signGui.Name = "Gui"
-		signGui.Face = Enum.NormalId.Front
-		signGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		signGui.PixelsPerStud = 60
-		signGui.LightInfluence = 0
-		signGui.MaxDistance = 80
-		signGui.Parent = signBoard
-		local function signText(name: string, parent: Instance, text: string, tint: Color3, font: Enum.Font): TextLabel
-			local label = Instance.new("TextLabel")
-			label.Name = name
-			label.BackgroundTransparency = 1
-			label.Font = font
-			label.TextScaled = true
-			label.TextColor3 = tint
-			label.Text = text
-			local stroke = Instance.new("UIStroke")
-			stroke.Color, stroke.Thickness = Color3.fromRGB(14, 16, 24), 3
-			stroke.Parent = label
-			label.Parent = parent
-			return label
-		end
-		local title = signText("Title", signGui, "Upgrade Base", Color3.new(1, 1, 1), Enum.Font.FredokaOne)
-		title.Position, title.Size = UDim2.fromScale(0.05, 0.04), UDim2.fromScale(0.9, 0.28)
-		-- The same pill as the vault's cash pads (SignTheme.cashPill), a touch darker: mint with a
-		-- violet edge and the big green number, the floor count under it
-		local pillHolder = Instance.new("Frame")
-		pillHolder.Name = "PillHolder"
-		pillHolder.BackgroundTransparency = 1
-		pillHolder.Position, pillHolder.Size = UDim2.fromScale(0.04, 0.34), UDim2.fromScale(0.92, 0.62)
-		pillHolder.Parent = signGui
-		local price = SignTheme.cashPill(pillHolder)
-		price.Name = "Price"
-		price.Position, price.Size = UDim2.fromScale(0.5, 0.4), UDim2.fromScale(0.9, 0.62)
-		local pill = price.Parent :: Frame
-		pill.Name = "Pill"
-		pill.BackgroundColor3 = Color3.fromRGB(105, 185, 115)
-		pill.BackgroundTransparency = 0.05
-		local count = signText("Count", pill, "", Color3.fromRGB(30, 110, 30), Enum.Font.GothamBlack)
-		count.AnchorPoint = Vector2.new(0.5, 0)
-		count.Position, count.Size = UDim2.fromScale(0.5, 0.7), UDim2.fromScale(0.6, 0.26)
-		local countStroke = count:FindFirstChildOfClass("UIStroke")
-		if countStroke then
-			countStroke.Thickness = 0
-		end
-		local alert = signText("Alert", signGui, "!", Color3.fromRGB(255, 60, 60), Enum.Font.LuckiestGuy)
-		alert.Position, alert.Size = UDim2.fromScale(0.86, -0.08), UDim2.fromScale(0.14, 0.4)
-		alert.Visible = false
-		upgradeSign.Parent = folder
+		local robuxGui = Instance.new("SurfaceGui")
+		robuxGui.Name = "Gui"
+		robuxGui.Face = Enum.NormalId.Front
+		robuxGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		robuxGui.PixelsPerStud = 60
+		robuxGui.LightInfluence = 0
+		robuxGui.MaxDistance = 80
+		robuxGui.Parent = robuxBoard
+		local robuxText = Instance.new("TextLabel")
+		robuxText.Name = "Price"
+		robuxText.Size = UDim2.fromScale(1, 1)
+		robuxText.BackgroundTransparency = 1
+		robuxText.Font = Enum.Font.FredokaOne
+		robuxText.TextScaled = true
+		robuxText.TextColor3 = Color3.new(1, 1, 1)
+		robuxText.Text = ""
+		robuxText.Parent = robuxGui
+		local robuxStroke = Instance.new("UIStroke")
+		robuxStroke.Thickness = 3
+		robuxStroke.Color = Color3.fromRGB(10, 60, 40)
+		robuxStroke.Parent = robuxText
 		local builtWheel = WheelModel.Build(1, at(wheelCenter.X, wheelCenter.Y, wheelCenter.Z))
 		local wheel = builtWheel.Rotor
 		wheel:AddTag("HauntedWheel")

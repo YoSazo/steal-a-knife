@@ -523,6 +523,16 @@ Monetization.Products = {
 		Charge = { Name = "DoublePrize", Count = 1 },
 	},
 	{
+		-- The Robux button on the "Upgrade Wheel" sign (Steal An Egg's treadmill sign: cash or R$)
+		Key = "SpeedUpgrade",
+		Id = 0,
+		Price = 49,
+		Name = "Upgrade Wheel",
+		Description = "Your Haunted Wheel's next speed upgrade, right now: you train Speed faster.",
+		Icon = "⚡",
+		Color = rgb(80, 200, 255),
+	},
+	{
 		Key = "BloodMoon",
 		Id = 3716624594,
 		Price = 99,

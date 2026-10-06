@@ -322,6 +322,9 @@ Ui.Scale:GetPropertyChangedSignal("Scale"):Connect(function()
 end)
 Ui.Layout = Layout
 Ui.Menu = MenuController
+-- Panels other modules can open by name (the plaza's rings: ShopPanel "Spin" / "Merchant", and the
+-- right-side quick buttons)
+Ui.Panels = {} :: { [string]: GuiObject }
 Layout.bind(Ui.root)
 player:WaitForChild("PlayerGui").ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor
 function Ui.bounds(): (Vector2, Vector2)

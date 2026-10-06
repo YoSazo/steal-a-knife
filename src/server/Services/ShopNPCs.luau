@@ -2,6 +2,8 @@
 -- The plaza's shopkeepers. Instead of a Shop button, you walk up and talk to someone:
 --   Mortimer, the Knife Merchant: sealed knife cases (the Case Shop) and Health upgrades
 --   Madame Vesper, the Enchanter: knife powers (see yours and every power, re-roll a knife's power)
+--   Silas, the Mystery Merchant: the rotating half-price deals (was a HUD button)
+-- plus the Lucky Wheel standing between them (also was a HUD button)
 -- Each stands at a little stall with a glowing ring on the floor in front: step onto it and the
 -- client opens that shop panel (ShopRing tag, ShopPanel attribute); step off and it closes. Purchases still go
 -- through the usual server remotes, so standing here grants nothing by itself.
@@ -9,6 +11,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local ToyBlockModel = require(ReplicatedStorage.Shared.ToyBlockModel)
 local Disguises = require(script.Parent.Disguises)
@@ -53,7 +56,7 @@ local SPECS: { Spec } = {
 		Lines = {
 			"Fresh cases, sealed tight! What'll it be?",
 			"Every case has a knife inside... maybe a Rainbow one!",
-			"Getting hurt out there? I sell Health too.",
+			"A better knife makes more cash on your wall!",
 			"Mutations, sizes, Godly blades... step right up!",
 		},
 	},
@@ -75,7 +78,31 @@ local SPECS: { Spec } = {
 			"Equip your powers wisely. The night is long.",
 		},
 	},
+	{
+		-- The Mystery Merchant used to be a HUD button; now he's a stall on the plaza (less is more:
+		-- Steal An Egg's right side only has what you use all the time)
+		Name = "Silas",
+		Title = "Mystery Merchant",
+		Panel = "Merchant",
+		Position = Vector3.new(20, 0, -36),
+		Facing = 20,
+		Color = rgb(150, 80, 255),
+		Skin = rgb(220, 170, 130),
+		Coat = rgb(50, 30, 80),
+		Pants = rgb(30, 24, 40),
+		Wear = { { Prop = "TopHat", Color = rgb(60, 30, 100) } },
+		Lines = {
+			"New deals every 20 minutes... half price!",
+			"Psst. Lucky potions. Cheap.",
+		},
+	},
 }
+
+-- The Lucky Wheel: a big wheel standing on the plaza (it was a HUD button). Standing on its ring opens
+-- the spin panel; the badge over it (filled in by client/GambleUi) says how many free spins you have.
+local LUCKY_WHEEL = { Position = Vector3.new(-20, 0, -36), Facing = -20, Color = rgb(255, 90, 190) }
+-- (the same wedge picture as the panel's wheel, client/GambleUi)
+local WEDGE_IMAGE = "rbxassetid://136440766940606"
 
 local function block(
 	parent: Instance,
@@ -244,7 +271,7 @@ local function buildKeeper(folder: Instance, spec: Spec, frame: CFrame)
 	local head = rig:FindFirstChild("Head") :: BasePart
 	head = CharacterFaces.Apply(
 		head,
-		if spec.Panel == "Shop" then "rbxassetid://93391310013128" else "rbxassetid://137483136763270"
+		if spec.Panel == "Powers" then "rbxassetid://137483136763270" else "rbxassetid://93391310013128"
 	)
 	Disguises.AddAccessories(head, spec.Wear)
 	CharacterDetails.Apply(rig, spec.Name)
@@ -265,6 +292,165 @@ local function buildKeeper(folder: Instance, spec: Spec, frame: CFrame)
 	end
 end
 
+-- A floating title like the stalls' (white into the colour), over a part
+local function floatingTitle(anchor: BasePart, text: string, color: Color3)
+	local title = Instance.new("BillboardGui")
+	title.Size = UDim2.fromOffset(280, 54)
+	title:SetAttribute("LabelCategory", "Shop")
+	title:AddTag("ResponsiveWorldLabel")
+	title.MaxDistance = 140
+	title.LightInfluence = 0
+	title.Adornee = anchor
+	title.Parent = anchor
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.Text = text
+	label.Parent = title
+	local gradient = Instance.new("UIGradient")
+	gradient.Rotation = 90
+	gradient.Color = ColorSequence.new(Color3.new(1, 1, 1), color:Lerp(Color3.new(1, 1, 1), 0.35))
+	gradient.Parent = label
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = 3
+	stroke.Color = color:Lerp(Color3.new(0, 0, 0), 0.65)
+	stroke.Parent = label
+end
+
+-- The Lucky Wheel on the plaza: two posts, the wheel face (the panel's own wedges and prize names on
+-- a round board, turned slowly by client/GambleUi: tag LuckyWheelFace), a pointer at the top,
+-- a glowing ring in front (ShopPanel "Spin") and a free-spins badge over it (LuckyWheelBadge)
+local function buildLuckyWheel(folder: Instance)
+	local spec = LUCKY_WHEEL
+	local frame = CFrame.new(spec.Position) * CFrame.Angles(0, math.rad(spec.Facing), 0)
+	local function at(x: number, y: number, z: number): CFrame
+		return frame * CFrame.new(x, y, z)
+	end
+	local navy = rgb(32, 36, 60)
+	local radius = 6
+	local hubY = radius + 2.2
+	for _, x in { -radius - 0.6, radius + 0.6 } do
+		block(folder, "Post", Vector3.new(1, hubY + 1, 1), at(x, (hubY + 1) / 2, 0.8), navy)
+	end
+	block(folder, "Axle", Vector3.new(2 * radius + 2.2, 0.8, 0.8), at(0, hubY, 0.8), navy)
+	block(folder, "Base", Vector3.new(2 * radius + 4, 0.6, 4), at(0, 0.3, 0.8), navy)
+	-- The face: a thin disc (cylinder along local Z), the wedges drawn on its front
+	local face = block(
+		folder,
+		"WheelFace",
+		Vector3.new(0.5, 2 * radius, 2 * radius),
+		at(0, hubY, 0) * CFrame.Angles(0, math.rad(90), 0),
+		Color3.new(1, 1, 1)
+	)
+	face.Shape = Enum.PartType.Cylinder
+	face.CanCollide = false
+	local board = block(folder, "WheelBoard", Vector3.new(2 * radius, 2 * radius, 0.05), at(0, hubY, -0.3), navy)
+	board.Transparency = 1
+	board.CanCollide, board.CanQuery, board.CanTouch = false, false, false
+	board:AddTag("LuckyWheelFace")
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 40
+	gui.LightInfluence = 0
+	gui.MaxDistance = 160
+	gui.Parent = board
+	local disc = Instance.new("Frame")
+	disc.Name = "Disc"
+	disc.AnchorPoint = Vector2.new(0.5, 0.5)
+	disc.Position = UDim2.fromScale(0.5, 0.5)
+	disc.Size = UDim2.fromScale(1, 1)
+	disc.BackgroundColor3 = navy
+	disc.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = disc
+	local rim = Instance.new("UIStroke")
+	rim.Thickness = 10
+	rim.Color = rgb(255, 215, 70)
+	rim.Parent = disc
+	local prizes = GameConfig.Spin.Prizes
+	local step = 360 / #prizes
+	local colors = { rgb(255, 90, 190), rgb(80, 200, 255), rgb(255, 200, 60), rgb(120, 230, 110) }
+	for i, prize in prizes do
+		local layer = Instance.new("Frame")
+		layer.AnchorPoint = Vector2.new(0.5, 0.5)
+		layer.Position = UDim2.fromScale(0.5, 0.5)
+		layer.Size = UDim2.fromScale(1, 1)
+		layer.Rotation = (i - 1) * step
+		layer.BackgroundTransparency = 1
+		layer.Parent = disc
+		local slice = Instance.new("ImageLabel")
+		slice.AnchorPoint = Vector2.new(0.5, 1)
+		slice.Position = UDim2.fromScale(0.5, 0.5)
+		slice.Size = UDim2.fromScale(2 * 0.48 * math.tan(math.rad(step / 2)), 0.48)
+		slice.BackgroundTransparency = 1
+		slice.Image = WEDGE_IMAGE
+		slice.ImageColor3 = colors[(i - 1) % #colors + 1]
+		slice.ScaleType = Enum.ScaleType.Stretch
+		slice.Parent = layer
+		local text = Instance.new("TextLabel")
+		text.AnchorPoint = Vector2.new(0.5, 0)
+		text.Position = UDim2.new(0.5, 0, 0, 8)
+		text.Size = UDim2.fromScale(0.86, 0.42)
+		text.BackgroundTransparency = 1
+		text.Font = Enum.Font.FredokaOne
+		text.TextScaled = true
+		text.TextColor3 = Color3.new(1, 1, 1)
+		text.Text = prize.Label
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 2
+		stroke.Parent = text
+		text.Parent = slice
+	end
+	local hub = Instance.new("Frame")
+	hub.AnchorPoint = Vector2.new(0.5, 0.5)
+	hub.Position = UDim2.fromScale(0.5, 0.5)
+	hub.Size = UDim2.fromScale(0.16, 0.16)
+	hub.BackgroundColor3 = rgb(255, 215, 70)
+	hub.Parent = disc
+	local hubCorner = Instance.new("UICorner")
+	hubCorner.CornerRadius = UDim.new(0.5, 0)
+	hubCorner.Parent = hub
+	-- The pointer at the top
+	local pointer = block(
+		folder,
+		"Pointer",
+		Vector3.new(1.2, 1.6, 0.8),
+		at(0, hubY + radius + 0.4, -0.5) * CFrame.Angles(0, 0, math.rad(45)),
+		rgb(255, 60, 60),
+		Enum.Material.Neon
+	)
+	pointer.CanCollide = false
+	-- Stand here to spin
+	local ring = block(
+		folder,
+		"GlowRing",
+		Vector3.new(0.1, 9, 9),
+		at(0, 0.25, -6.5) * CFrame.Angles(0, 0, math.rad(90)),
+		spec.Color:Lerp(Color3.new(1, 1, 1), 0.3),
+		Enum.Material.Neon
+	)
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Transparency = 0.55
+	ring.CanCollide = false
+	ring.CanQuery = false
+	ring:SetAttribute("ShopPanel", "Spin")
+	ring:AddTag("ShopRing")
+	local anchor = block(folder, "TitleAnchor", Vector3.one * 0.2, at(0, hubY + radius + 4.4, 0), spec.Color)
+	anchor.Transparency = 1
+	anchor.CanCollide, anchor.CanQuery, anchor.CanTouch = false, false, false
+	floatingTitle(anchor, "Lucky Wheel", spec.Color)
+	-- "🎁 2 FREE SPINS!" just under the title (client/GambleUi fills it in for you)
+	local badgeAnchor = block(folder, "BadgeAnchor", Vector3.one * 0.2, at(0, hubY + radius + 2.3, -0.5), spec.Color)
+	badgeAnchor.Transparency = 1
+	badgeAnchor.CanCollide, badgeAnchor.CanQuery, badgeAnchor.CanTouch = false, false, false
+	badgeAnchor:AddTag("LuckyWheelBadge")
+end
+
 function ShopNPCs.Init()
 	local map = workspace:FindFirstChild("Map")
 	local folder = Instance.new("Folder")
@@ -278,6 +464,11 @@ function ShopNPCs.Init()
 		buildStall(stall, spec, frame)
 		buildKeeper(stall, spec, frame)
 	end
+	local wheel = Instance.new("Model")
+	wheel.Name = "LuckyWheel"
+	wheel.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+	wheel.Parent = folder
+	buildLuckyWheel(wheel)
 end
 
 return ShopNPCs

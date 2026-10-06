@@ -16,13 +16,11 @@ local TweenService = game:GetService("TweenService")
 local Ui = require(script.Parent.Ui)
 local Theme = require(script.Parent.MenuTheme)
 local CartoonArt = require(ReplicatedStorage.Shared.Config.CartoonArt)
-local SimpleUi = require(script.Parent.SimpleUi)
 local VoxelUi = require(ReplicatedStorage.Shared.Config.VoxelUi)
 local CoinIcon = require(ReplicatedStorage.Shared.Config.CoinIcon)
 local RoundPrize = require(ReplicatedStorage.Shared.RoundPrize)
-local Icons2 = require(ReplicatedStorage.Shared.Config.VoxelIcons2).Icons
 local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
-local WheelModel = require(ReplicatedStorage.Shared.WheelModel)
+local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Effects = require(script.Parent.Effects)
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("GameConfig"))
@@ -250,51 +248,89 @@ function Hud.Init()
 			end
 		end
 	end)
-	-- The Upgrade Base sign by your own gate: next floor's price, how full you are, a "!" when you
-	-- can afford it (the prompt on it buys it; other vaults' signs stay blank)
+	-- The signs at your own vault (other vaults' signs stay blank): Upgrade Base by the gate (next
+	-- floor's price, how full you are) and Upgrade Wheel in front of the Haunted Wheel (Steal An Egg's
+	-- treadmill sign: "Lv 6 ➜ 7", the cash price, and R$ on the small board under it). A "!" when you
+	-- can afford it; clicking the sign buys it.
+	type SignLabels = { Title: TextLabel, Price: TextLabel, Count: TextLabel, Alert: TextLabel }
+	local function signLabels(surface: SurfaceGui): SignLabels?
+		-- The sign's labels are built in the world (MapService); this only fills them in
+		local signPill = surface:FindFirstChild("Pill", true)
+		local labels = {
+			Title = surface:FindFirstChild("Title"),
+			Price = signPill and signPill:FindFirstChild("Price"),
+			Count = signPill and signPill:FindFirstChild("Count"),
+			Alert = surface:FindFirstChild("Alert"),
+		}
+		return if labels.Price and labels.Count and labels.Title and labels.Alert then labels :: any else nil
+	end
+	local robuxClick: ClickDetector? = nil
 	task.spawn(function()
-		local built: { Title: TextLabel, Price: TextLabel, Count: TextLabel, Alert: TextLabel }? = nil
-		local builtFor: Instance? = nil
 		while true do
 			task.wait(0.5)
 			local index = player:GetAttribute("VaultIndex")
 			local map = workspace:FindFirstChild("Map")
 			local bases = map and map:FindFirstChild("Bases")
 			local base = bases and type(index) == "number" and bases:FindFirstChild(`Base{index}`)
-			local sign = base and base:FindFirstChild("UpgradeSign")
-			local board = sign and sign:FindFirstChild("Board")
-			local surface = board and board:FindFirstChild("Gui") :: SurfaceGui?
-			if not surface then
+			if not base then
 				continue
 			end
-			if builtFor ~= surface then
-				builtFor = surface
-				-- The sign's labels are built in the world (MapService); this only fills them in
-				local signPill = (surface :: SurfaceGui):FindFirstChild("Pill", true)
-				built = {
-					Title = (surface :: SurfaceGui):FindFirstChild("Title"),
-					Price = signPill and signPill:FindFirstChild("Price"),
-					Count = signPill and signPill:FindFirstChild("Count"),
-					Alert = (surface :: SurfaceGui):FindFirstChild("Alert"),
-				} :: any
-				if not (built :: any).Price then
-					builtFor = nil
-					continue
+			local cash = (player:GetAttribute("Cash") or 0) :: number
+			local function surfaceOf(signName: string): SurfaceGui?
+				local sign = base:FindFirstChild(signName)
+				local board = sign and sign:FindFirstChild("Board")
+				return board and board:FindFirstChild("Gui") :: SurfaceGui?
+			end
+			local floorSurface = surfaceOf("UpgradeSign")
+			local labels = floorSurface and signLabels(floorSurface)
+			if labels then
+				local slots = (player:GetAttribute("Slots") or GameConfig.StartingSlots) :: number
+				local knives = (player:GetAttribute("KnifeCount") or 0) :: number
+				labels.Title.Text = "Upgrade Base"
+				labels.Count.Text = `{knives}/{slots}`
+				if slots >= GameConfig.MaxSlots then
+					labels.Price.Text = "MAX"
+					labels.Alert.Visible = false
+				else
+					local cost = GameConfig.SlotCost(slots)
+					labels.Price.Text = `${Ui.abbreviate(cost)}`
+					labels.Alert.Visible = cash >= cost
 				end
 			end
-			local labels = built :: any
-			local slots = (player:GetAttribute("Slots") or GameConfig.StartingSlots) :: number
-			local knives = (player:GetAttribute("KnifeCount") or 0) :: number
-			local cash = (player:GetAttribute("Cash") or 0) :: number
-			labels.Title.Text = "Upgrade Base"
-			labels.Count.Text = `{knives}/{slots}`
-			if slots >= GameConfig.MaxSlots then
-				labels.Price.Text = "MAX"
-				labels.Alert.Visible = false
-			else
-				local cost = GameConfig.SlotCost(slots)
-				labels.Price.Text = `${Ui.abbreviate(cost)}`
-				labels.Alert.Visible = cash >= cost
+			local wheelSurface = surfaceOf("WheelUpgradeSign")
+			local wheelLabels = wheelSurface and signLabels(wheelSurface)
+			if wheelLabels then
+				local nextUpgrade = GameConfig.NextSpeedUpgrade(
+					(player:GetAttribute("TreadmillLevel") or 1) :: number,
+					(player:GetAttribute("TrailLevel") or 0) :: number
+				)
+				wheelLabels.Title.Text = "Upgrade Wheel"
+				if nextUpgrade then
+					wheelLabels.Count.Text = `Level {nextUpgrade.Level} > {nextUpgrade.Level + 1}`
+					wheelLabels.Price.Text = `${Ui.abbreviate(nextUpgrade.Cost)}`
+					wheelLabels.Alert.Visible = cash >= nextUpgrade.Cost
+				else
+					wheelLabels.Count.Text = "Max level"
+					wheelLabels.Price.Text = "MAX"
+					wheelLabels.Alert.Visible = false
+				end
+			end
+			local wheelSign = base:FindFirstChild("WheelUpgradeSign")
+			local robuxBoard = wheelSign and wheelSign:FindFirstChild("RobuxBoard")
+			local robuxPrice = robuxBoard and robuxBoard:FindFirstChild("Price", true) :: TextLabel?
+			if robuxPrice then
+				local product = Monetization.ProductByKey.SpeedUpgrade
+				robuxPrice.Text = if product then `R${product.Price}` else ""
+			end
+			-- The Robux board's click (the server only adds the detector for the owner)
+			local click = robuxBoard and robuxBoard:FindFirstChild("BuyWheel") :: ClickDetector?
+			if click and click ~= robuxClick then
+				robuxClick = click
+				click.MouseClick:Connect(function()
+					if Ui.Buy then
+						Ui.Buy("Product", "SpeedUpgrade")
+					end
+				end)
 			end
 		end
 	end)
@@ -526,141 +562,8 @@ function Hud.Init()
 		end
 	end)
 
-	-- Right side: upgrades, folded behind one "Upgrades" button (a badge counts what you can afford)
-	-- so the screen stays clear; the list drops down under it when opened
-	local upgradePanel, upgradeBody = SimpleUi.window(
-		"Upgrades",
-		"Upgrades",
-		VoxelUi.Hud.Upgrades,
-		Color3.fromRGB(70, 200, 50),
-		Vector2.new(900, 640)
-	)
-	local shop: ScrollingFrame
-	local upgradesButton = Theme.button(gui, "Upgrades", Theme.Green, {
-		AnchorPoint = Vector2.new(1, 0),
-		Name = "UpgradesButton",
-		Position = UDim2.new(1, -12, 0, 56),
-		Size = UDim2.fromOffset(120, 44),
-		MaximumTextSize = 20,
-	}, function()
-		Ui.Menu.Toggle(upgradePanel)
-	end, "Upgrades")
-	local upgradesBadge = Theme.badge(upgradesButton)
-	shop = new("ScrollingFrame", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		ZIndex = 6,
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		CanvasSize = UDim2.new(),
-		ScrollBarThickness = 4,
-	}, upgradeBody)
-	Ui.new(
-		"UIPadding",
-		{ PaddingTop = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4) },
-		shop
-	)
-	new("UIListLayout", {
-		Padding = UDim.new(0, 10),
-		VerticalAlignment = Enum.VerticalAlignment.Top,
-		SortOrder = Enum.SortOrder.LayoutOrder,
-	}, shop)
-	-- Tsunami-simple rows: icon, name, what you get now -> next, and ONE big price button
-	type UpgradeRow = { Detail: TextLabel, Buy: TextButton }
-	local upgradeRows: { [string]: UpgradeRow } = {}
-	local order = 0
-	-- The training wheel has 13 very different real tiers (Shared/WheelModel), so its row shows
-	-- a live spin of the actual tier instead of one generic icon that can't match all of them.
-	local function wheelViewport(parent: Instance): (level: number) -> ()
-		local frame = new("ViewportFrame", {
-			BackgroundTransparency = 1,
-			Position = UDim2.fromOffset(10, 10),
-			Size = UDim2.fromOffset(92, 92),
-			Ambient = Color3.fromRGB(200, 200, 200),
-			LightColor = Color3.new(1, 1, 1),
-			ZIndex = 7,
-		}, parent)
-		local world = Instance.new("WorldModel")
-		world.Parent = frame
-		local camera = new("Camera", { FieldOfView = 35 }, frame)
-		frame.CurrentCamera = camera
-		local shown = -1
-		return function(level: number)
-			if level == shown then
-				return
-			end
-			shown = level
-			world:ClearAllChildren()
-			local built = WheelModel.Build(level, CFrame.new())
-			built.Rotor.Parent = world
-			built.Stand.Parent = world
-			local cf, size = (world :: any):GetBoundingBox()
-			-- A 3/4 angled "product shot", not a flat side-on view of the rungs.
-			local offset = CFrame.Angles(math.rad(-18), math.rad(35), 0) * Vector3.new(0, 0, size.Magnitude * 1.6)
-			camera.CFrame = CFrame.lookAt(cf.Position + offset, cf.Position)
-		end
-	end
-	local setWheelLevel: ((number) -> ())? = nil
-	local function shopButton(kind: string, title: string, icon: string)
-		order += 1
-		local row = new("Frame", {
-			Name = kind,
-			LayoutOrder = order,
-			Size = UDim2.new(1, -10, 0, 112),
-			BackgroundColor3 = Color3.fromRGB(34, 38, 56),
-			BackgroundTransparency = 0.2,
-			ZIndex = 6,
-		}, shop)
-		Ui.corner(row, 12)
-		if kind == "Treadmill" then
-			setWheelLevel = wheelViewport(row)
-		else
-			new("ImageLabel", {
-				BackgroundTransparency = 1,
-				Position = UDim2.fromOffset(10, 10),
-				Size = UDim2.fromOffset(92, 92),
-				Image = icon,
-				ScaleType = Enum.ScaleType.Fit,
-				ZIndex = 7,
-			}, row)
-		end
-		SimpleUi.text(row, title, {
-			Position = UDim2.fromOffset(114, 10),
-			Size = UDim2.new(1, -420, 0, 46),
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Max = 40,
-		})
-		local detail = SimpleUi.text(row, "", {
-			Position = UDim2.fromOffset(114, 60),
-			Size = UDim2.new(1, -420, 0, 38),
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextColor3 = Color3.fromRGB(205, 215, 240),
-			Max = 28,
-		})
-		local buy = SimpleUi.button(row, "", Color3.fromRGB(80, 210, 50), {
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -12, 0.5, 0),
-			Size = UDim2.fromOffset(280, 84),
-			ZIndex = 7,
-			Max = 38,
-		}, function()
-			Remotes.Purchase:InvokeServer(kind)
-		end)
-		upgradeRows[kind] = { Detail = detail, Buy = buy }
-	end
-	shopButton("Treadmill", "Training Wheel", Icons2.Wheel)
-	shopButton("Trail", "Knife Trail", Icons2.Trail)
-	shopButton("Health", "Max Health", Icons2.Health)
-	shopButton("Slot", "Vault Floor", Icons2.Floor)
-	-- detail line + price (nil price = maxed)
-	local function setRow(kind: string, detail: string, price: number?, cash: number)
-		local row = upgradeRows[kind]
-		row.Detail.Text = detail
-		if price then
-			SimpleUi.set(row.Buy, `${Ui.abbreviate(price)}`, Color3.fromRGB(80, 210, 50), cash >= price)
-		else
-			SimpleUi.set(row.Buy, "MAX", Color3.fromRGB(255, 185, 30), false)
-		end
-	end
+	-- (No Upgrades button any more: the wheel + trail are one "Upgrade Wheel" sign by your Haunted
+	-- Wheel, the vault floor is the Upgrade Base sign / the Knives panel, and Health is gone.)
 
 	-- Bottom right: event timers ----------------------------------------------------------------
 	-- (phones: top right, out from under the jump button)
@@ -745,7 +648,12 @@ function Hud.Init()
 		cashLabel.Text = `${Ui.abbreviate(cash)}`
 		speedLabel.Text = Ui.abbreviate(speed)
 		local training = player:GetAttribute("Training")
-		local rate = GameConfig.Treadmills[treadmill].Rate * (1 + rebirths * GameConfig.Rebirth.SpeedBonus)
+		local rate = GameConfig.Treadmills[treadmill].Rate
+			* (1 + rebirths * GameConfig.Rebirth.SpeedBonus)
+			* GameConfig.TrailMultiplier(
+				(player:GetAttribute("TrailLevel") or 0) :: number,
+				player:GetAttribute("Pass_PhantomTrail") == true
+			)
 		trainLabel.Text = if training
 			then `+{Ui.abbreviate(rate)}/s  running!`
 			else `{math.floor(GameConfig.WalkSpeedFor(speed))} walk speed`
@@ -753,72 +661,7 @@ function Hud.Init()
 		rackLabel.Text = `Wall {player:GetAttribute("KnifeCount") or 0}/{slots}  ·  Luck {player:GetAttribute("Luck") or 0}`
 			.. (if rebirths > 0 then `  ·  Rebirth {rebirths}` else "")
 
-		local nextWheel = GameConfig.Treadmills[treadmill + 1]
-		local wheel = GameConfig.Treadmills[treadmill]
-		setRow(
-			"Treadmill",
-			if nextWheel then `{wheel.Name} → <font color="#78FF6E">{nextWheel.Name}</font>` else `{wheel.Name} (max)`,
-			if nextWheel then nextWheel.Cost else nil,
-			cash
-		)
-		if setWheelLevel then
-			-- Shows the wheel you're buying; once maxed, shows the one you're standing in.
-			setWheelLevel(if nextWheel then treadmill + 1 else treadmill)
-		end
-		local trailLevel = (player:GetAttribute("TrailLevel") or 0) :: number
-		local nextTrail = GameConfig.Trails[trailLevel + 1]
-		setRow(
-			"Trail",
-			if nextTrail
-				then `Next: <font color="#78FF6E">{nextTrail.Name} x{nextTrail.Multiplier} speed</font>`
-				else "All trails owned",
-			if nextTrail then nextTrail.Cost else nil,
-			cash
-		)
-		local healthLevel = (player:GetAttribute("HealthLevel") or 0) :: number
-		local titan = if player:GetAttribute("Pass_Titan") then 2 else 1
-		local maxedHealth = healthLevel >= GameConfig.Health.MaxLevel
-		setRow(
-			"Health",
-			if maxedHealth
-				then `{GameConfig.MaxHealthFor(healthLevel, titan)} health (max)`
-				else `{GameConfig.MaxHealthFor(healthLevel, titan)} → <font color="#78FF6E">{GameConfig.MaxHealthFor(
-					healthLevel + 1,
-					titan
-				)}</font> health`,
-			if maxedHealth then nil else GameConfig.HealthCost(healthLevel),
-			cash
-		)
-		-- How many upgrades you could buy right now (the badge on the Upgrades button)
-		local costs = {
-			if nextWheel then nextWheel.Cost else math.huge,
-			if nextTrail then nextTrail.Cost else math.huge,
-			if healthLevel < GameConfig.Health.MaxLevel then GameConfig.HealthCost(healthLevel) else math.huge,
-			if slots < GameConfig.MaxSlots then GameConfig.SlotCost(slots) else math.huge,
-		}
-		local affordable = 0
-		for _, cost in costs do
-			if cash >= cost then
-				affordable += 1
-			end
-		end
-		upgradesBadge.Visible = affordable > 0
-		upgradesBadge.Text = tostring(affordable)
 		local _ = walls -- (vault walls are gone: open vaults, nothing to upgrade)
-		setRow(
-			"Slot",
-			if slots >= GameConfig.MaxSlots
-				then `{slots} plates (max)`
-				else `{slots} → <font color="#78FF6E">{slots + GameConfig.SlotsPerFloor}</font> plates`,
-			if slots >= GameConfig.MaxSlots then nil else GameConfig.SlotCost(slots),
-			cash
-		)
-		-- Floors 3 and 4 wait for rebirths (Steal a Brainrot style)
-		local floorRebirths = GameConfig.FloorRebirthsFor(slots)
-		if slots < GameConfig.MaxSlots and ((player:GetAttribute("Rebirths") or 0) :: number) < floorRebirths then
-			upgradeRows.Slot.Detail.Text = `Needs <font color="#C882FF">Rebirth {floorRebirths}</font> first`
-			SimpleUi.set(upgradeRows.Slot.Buy, `Rebirth {floorRebirths}`, Color3.fromRGB(160, 70, 235), false)
-		end
 	end
 	for _, attribute in
 		{
@@ -1190,7 +1033,6 @@ function Hud.Init()
 			banner.Text = status
 		end
 		-- (not hidden while the knife is held: they never overlap, and taps made it flicker)
-		upgradesButton.Visible = Ui.inHub() -- (stays with a menu open: tap it to switch menus)
 		stats.Visible = not Ui.menuOpen() and not player:GetAttribute("InRound") -- (speed / cash: hub things)
 		timers.Visible = Ui.inHub()
 
@@ -1212,7 +1054,8 @@ function Hud.Init()
 		chestText.Text = if chestLeft <= 0 then "Free Chest" else Ui.clock(chestLeft)
 		chestText.TextColor3 = Color3.new(1, 1, 1)
 		chestText.TextScaled = true -- (something resets it once after the skin; keep it like the others)
-		chestPill.Visible = chestLeft <= 0
+		-- (no HUD chest button any more: the chest itself on the plaza says FREE! - less is more)
+		chestPill.Visible = false
 		shieldPill.Visible = false -- remaining shield/boost times are available in Stats
 		raidPill.Visible = false -- the top timer already reports active raids
 		-- The chest's own label on the plaza counts down for you too

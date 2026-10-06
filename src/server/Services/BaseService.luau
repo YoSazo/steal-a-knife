@@ -42,6 +42,8 @@ BaseService.OnUpgradeWalls = nil :: ((Player) -> ())?
 BaseService.OnPlacePrompt = nil :: ((Player, number) -> ())?
 -- Set by UpgradeService: the owner pressed Upgrade Base at the sign by their gate
 BaseService.OnUpgradeBase = nil :: ((Player) -> ())?
+-- Set by UpgradeService: the owner clicked the Upgrade Wheel sign in front of their Haunted Wheel
+BaseService.OnUpgradeWheel = nil :: ((Player) -> ())?
 
 -- Rebirths multiply everything a vault earns
 -- Consumable bookkeeping (for offers and boost expiry)
@@ -140,29 +142,44 @@ function BaseService.RefreshWalls(base: MapService.BaseSite)
 	base.Blocker:SetAttribute("Owner", if owner then owner.UserId else nil)
 	base.Blocker:SetAttribute("OwnerName", if owner then owner.DisplayName else nil)
 	-- (no wall upgrades any more: vaults are open, Tsunami style)
-	-- The Upgrade Base sign by the gate: the owner buys the next floor there
-	local upgradeSign = base.Folder:FindFirstChild("UpgradeSign")
-	local board = upgradeSign and upgradeSign:FindFirstChild("Board") :: BasePart?
-	if board then
-		local old = board:FindFirstChild("UpgradeBase")
+	-- The Upgrade Base sign by the gate (the next floor) and the Upgrade Wheel sign in front of the
+	-- Haunted Wheel (the next wheel or trail). Same as the sell sign: click the sign itself (its green
+	-- pill is the button), no separate hold-E prompt to explain. The wheel sign's small Robux board
+	-- (RobuxBoard) gets a click detector too; the owner's client turns that click into the purchase.
+	local function signClick(signName: string, partName: string, clickName: string, onClick: ((Player) -> ())?)
+		local sign = base.Folder:FindFirstChild(signName)
+		local part = sign and sign:FindFirstChild(partName) :: BasePart?
+		if not part then
+			return
+		end
+		local old = part:FindFirstChild(clickName)
 		if old then
 			old:Destroy()
 		end
 		if owner then
-			-- Same as the sell sign: click the sign itself (its green pill is the button), no
-			-- separate hold-E prompt to explain.
 			local click = Instance.new("ClickDetector")
-			click.Name = "UpgradeBase"
+			click.Name = clickName
 			click.MaxActivationDistance = 28
 			click:SetAttribute("Owner", owner.UserId)
 			click.MouseClick:Connect(function(player)
-				if player == owner and not player:GetAttribute("InRound") and BaseService.OnUpgradeBase then
-					BaseService.OnUpgradeBase(player)
+				if player == owner and not player:GetAttribute("InRound") and onClick then
+					onClick(player)
 				end
 			end)
-			click.Parent = board
+			click.Parent = part
 		end
 	end
+	signClick("UpgradeSign", "Board", "UpgradeBase", function(player)
+		if BaseService.OnUpgradeBase then
+			BaseService.OnUpgradeBase(player)
+		end
+	end)
+	signClick("WheelUpgradeSign", "Board", "UpgradeWheel", function(player)
+		if BaseService.OnUpgradeWheel then
+			BaseService.OnUpgradeWheel(player)
+		end
+	end)
+	signClick("WheelUpgradeSign", "RobuxBoard", "BuyWheel", nil)
 	-- The vault's sign rides on top of its back wall
 	base.SignPart.CFrame = base.Frame * CFrame.new(0, built.BackHeight + 2.4, -22)
 	WorldSignModel.MoveAttached(base.SignPart)

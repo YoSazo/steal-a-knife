@@ -45,6 +45,16 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 		return Rewards.BuyCase(player, caseRarity)
 	end
 
+	-- The "Upgrade Wheel" sign: the cheaper of the next wheel and the next trail
+	if kind == "Speed" then
+		local nextUpgrade = GameConfig.NextSpeedUpgrade(profile.TreadmillLevel, profile.TrailLevel)
+		if not nextUpgrade then
+			return false, "Your wheel is maxed!"
+		end
+		lastRequest[player] = 0
+		return purchase(player, nextUpgrade.Kind)
+	end
+
 	if kind == "Treadmill" then
 		local nextTier = GameConfig.Treadmills[profile.TreadmillLevel + 1]
 		if not nextTier then
@@ -74,27 +84,6 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			Net.Remotes.Effect:FireAllClients("Deposit", player, "Epic")
 		end
 		return true, `{nextTrail.Name}! Your wheel now trains Speed x{nextTrail.Multiplier}`
-	elseif kind == "Health" then
-		if profile.HealthLevel >= GameConfig.Health.MaxLevel then
-			return false, "Your health is maxed!"
-		end
-		local cost = GameConfig.HealthCost(profile.HealthLevel)
-		if not DataService.TrySpend(player, cost, "upgrade_health") then
-			Offers.Show(player, "HealthBoost", "Need more health now? +3 Health levels instantly.")
-			return short(player, cost)
-		end
-		DataService.Update(player, function(p)
-			p.HealthLevel += 1
-		end)
-		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if root then
-			Net.Remotes.Effect:FireAllClients("Heal", root.Position)
-		end
-		return true,
-			`Max health {GameConfig.MaxHealthFor(
-				profile.HealthLevel,
-				if player:GetAttribute("Pass_Titan") then 2 else 1
-			)}!`
 	elseif kind == "Walls" then
 		local nextTier = GameConfig.Walls[profile.WallLevel + 1]
 		if not nextTier then
@@ -228,6 +217,9 @@ function UpgradeService.Init()
 	end
 	BaseService.OnUpgradeBase = function(player: Player)
 		buy(player, "Slot")
+	end
+	BaseService.OnUpgradeWheel = function(player: Player)
+		buy(player, "Speed")
 	end
 	game:GetService("Players").PlayerRemoving:Connect(function(player)
 		lastRequest[player] = nil

@@ -272,48 +272,7 @@ function Menus.Init()
 		end
 	)
 
-	-- Health upgrades, at the top of the merchant's list. Same philosophy as the case rows below
-	-- it: a solid colour card with a black outline, not a gradient-to-dark card with a coloured
-	-- stroke (whose default BorderSizePixel drew a stray line past the rounded corner).
-	do
-		local color = Color3.fromRGB(235, 70, 90)
-		local row = Theme.surface(shopList, { LayoutOrder = 0, Size = UDim2.new(1, -12, 0, 86), ZIndex = 5 }, color)
-		local label = Theme.text(row, "", {
-			Position = UDim2.fromOffset(16, 8),
-			Size = UDim2.new(1, -190, 1, -16),
-			TextXAlignment = Enum.TextXAlignment.Left,
-			MaximumTextSize = 26,
-			ZIndex = 6,
-		})
-		local buy = Theme.button(row, "", Theme.Red, {
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -12, 0.5, 0),
-			Size = UDim2.fromOffset(150, 60),
-			ZIndex = 7,
-			MaximumTextSize = 34,
-		}, function()
-			Remotes.Purchase:InvokeServer("Health")
-		end, "Health")
-		local function refreshHealth()
-			local level = (player:GetAttribute("HealthLevel") or 0) :: number
-			local titan = if player:GetAttribute("Pass_Titan") then 2 else 1
-			local now = GameConfig.MaxHealthFor(level, titan)
-			if level >= GameConfig.Health.MaxLevel then
-				label.Text = `❤️ MAX HEALTH {now} (maxed!)`
-				buy.Visible = false
-			else
-				label.Text =
-					`❤️ MAX HEALTH {now} → {GameConfig.MaxHealthFor(level + 1, titan)}\nBosses and vault owners need more hits to take you down`
-				local text = buy:FindFirstChild("Label") :: TextLabel?
-				if text then
-					text.Text = `${Ui.abbreviate(GameConfig.HealthCost(level))}`
-				end
-			end
-		end
-		player:GetAttributeChangedSignal("HealthLevel"):Connect(refreshHealth)
-		player:GetAttributeChangedSignal("Pass_Titan"):Connect(refreshHealth)
-		refreshHealth()
-	end
+	-- (Health is gone: bosses never kill you, so it bought nothing you could feel)
 	for order, entry in GameConfig.CaseShop do
 		local row = CaseShowcase.Build(shopList, entry.Rarity, "$" .. Ui.abbreviate(entry.Cost), function()
 			Remotes.Purchase:InvokeServer("Case:" .. entry.Rarity)
@@ -432,6 +391,13 @@ function Menus.Init()
 	local function refreshPowers()
 		refreshPowersView()
 	end
+	-- The right side's Powers button (client/QuickBar) opens the same Power Mystic panel
+	Ui.Panels.Powers = powersFrame
+	powersFrame:GetPropertyChangedSignal("Visible"):Connect(function()
+		if powersFrame.Visible then
+			refreshPowers()
+		end
+	end)
 
 	-- RebirthView owns its live requirement and bonus displays.
 
@@ -1320,7 +1286,10 @@ function Menus.Init()
 		onRing = standing
 		if standing then
 			local which = standing:GetAttribute("ShopPanel")
-			local frame = if which == "Shop" then shopFrame elseif which == "Powers" then powersFrame else nil
+			local frame: Frame? = if which == "Shop"
+				then shopFrame
+				elseif which == "Powers" then powersFrame
+				else Ui.Panels[tostring(which)] :: any -- the Lucky Wheel / Mystery Merchant (client/GambleUi)
 			if frame then
 				if which == "Powers" then
 					refreshPowers()

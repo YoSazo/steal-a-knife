@@ -1001,6 +1001,32 @@ function GameConfig.TrailMultiplier(level: number, phantom: boolean?): number
 	return multiplier
 end
 
+-- The "Upgrade Wheel" sign by your Haunted Wheel (Steal An Egg's treadmill sign): one button, one
+-- level number. Each press buys whichever is cheaper of the next wheel and the next knife trail, so
+-- the economy is the same as buying both separately (the Upgrades menu is gone).
+export type SpeedUpgrade = { Kind: string, Name: string, Cost: number, Level: number, MaxLevel: number }
+function GameConfig.SpeedLevel(treadmillLevel: number, trailLevel: number): number
+	return treadmillLevel + trailLevel
+end
+function GameConfig.NextSpeedUpgrade(treadmillLevel: number, trailLevel: number): SpeedUpgrade?
+	local wheel = GameConfig.Treadmills[treadmillLevel + 1]
+	local trail = GameConfig.Trails[trailLevel + 1]
+	local level = GameConfig.SpeedLevel(treadmillLevel, trailLevel)
+	local maxLevel = #GameConfig.Treadmills + #GameConfig.Trails
+	if wheel and (not trail or wheel.Cost <= trail.Cost) then
+		return { Kind = "Treadmill", Name = wheel.Name, Cost = wheel.Cost, Level = level, MaxLevel = maxLevel }
+	elseif trail then
+		return {
+			Kind = "Trail",
+			Name = `{trail.Name} (x{trail.Multiplier})`,
+			Cost = trail.Cost,
+			Level = level,
+			MaxLevel = maxLevel,
+		}
+	end
+	return nil
+end
+
 -- Power level (1..100) for an amount of power XP
 function GameConfig.PowerLevelFor(xp: number): number
 	local config = GameConfig.PowerXP

@@ -181,7 +181,25 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 		DataService.AddCharge(player, charge.Name, charge.Count)
 		table.insert(got, product.Name)
 	end
-	if key == "Mount" then
+	if key == "SpeedUpgrade" then
+		local nextUpgrade = GameConfig.NextSpeedUpgrade(profile.TreadmillLevel, profile.TrailLevel)
+		if nextUpgrade then
+			DataService.Update(player, function(p)
+				if nextUpgrade.Kind == "Treadmill" then
+					p.TreadmillLevel += 1
+				else
+					p.TrailLevel += 1
+				end
+			end)
+			BaseService.RefreshRack(player) -- the wheel's look and sign
+			table.insert(got, nextUpgrade.Name)
+		else
+			-- Already maxed: their Robux turn into cash instead
+			local value = GameConfig.Pay({ Min = 50000, Seconds = 1200 }, BaseService.RackIncome(player))
+			DataService.AddCash(player, value, "robux_product")
+			table.insert(got, `{Format.Cash(value)} (your wheel was already maxed)`)
+		end
+	elseif key == "Mount" then
 		if profile.Slots < GameConfig.MaxSlots then
 			DataService.Update(player, function(p)
 				p.Slots = math.min(GameConfig.MaxSlots, p.Slots + GameConfig.SlotsPerFloor)

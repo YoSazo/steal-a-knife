@@ -1,9 +1,10 @@
 --!strict
 -- The gambling panels (server: Gamble): the Lucky Wheel, the Mystery Merchant, the luck-potion
--- timer and the gift picker. Buttons sit on the right under Upgrades.
+-- timer and the gift picker. No HUD buttons: the wheel and the merchant are places on the plaza.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
 local TweenService = game:GetService("TweenService")
 
 local Ui = require(script.Parent.Ui)
@@ -26,17 +27,6 @@ local WEDGE_IMAGE = "rbxassetid://136440766940606"
 
 local function today(): number
 	return math.floor(workspace:GetServerTimeNow()) // 86400
-end
-
-local function sideButton(name: string, color: Color3, icon: string, y: number, onClick: () -> ()): TextButton
-	local button = Theme.button(Ui.gui, name, color, {
-		AnchorPoint = Vector2.new(1, 0),
-		Name = name .. "Button",
-		Position = UDim2.new(1, -12, 0, y),
-		Size = UDim2.fromOffset(120, 44),
-		MaximumTextSize = 20,
-	}, onClick, icon)
-	return button
 end
 
 -- Lucky Wheel ---------------------------------------------------------------------------------------
@@ -467,28 +457,45 @@ function GambleUi.Init()
 	local merchant = buildMerchant()
 	buildGifts()
 	buildLuckTimer()
-	local spinButton = sideButton("Spin", PINK, "CaseEpic", 108, function()
-		Ui.Menu.Toggle(wheel)
-	end)
-	local badge = Theme.badge(spinButton)
-	local function refreshBadge()
+	-- No HUD buttons any more: the Lucky Wheel and Silas the Mystery Merchant stand on the plaza
+	-- (server ShopNPCs); stepping onto their rings opens these panels (client/Menus)
+	Ui.Panels.Spin = wheel
+	Ui.Panels.Merchant = merchant
+	-- Over the wheel: "🎁 2 FREE SPINS!" (just yours), and the wheel face turns slowly
+	local badgeGui = new("BillboardGui", {
+		Name = "FreeSpins",
+		Size = UDim2.fromOffset(260, 46),
+		LightInfluence = 0,
+		MaxDistance = 260,
+		Enabled = false,
+	}, player:WaitForChild("PlayerGui"))
+	local badgeText = new("TextLabel", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.FredokaOne,
+		TextScaled = true,
+		TextColor3 = Color3.fromRGB(255, 235, 90),
+		Text = "",
+	}, badgeGui)
+	Ui.textStroke(badgeText, 3)
+	local function spinCount(): number
 		local spins = (player:GetAttribute("Spins") or 0) :: number
 		local free = player:GetAttribute("FreeSpinDay") ~= today()
-		local count = spins + (if free then 1 else 0)
-		badge.Visible = count > 0
-		badge.Text = tostring(count)
+		return spins + (if free then 1 else 0)
 	end
-	player:GetAttributeChangedSignal("Spins"):Connect(refreshBadge)
-	player:GetAttributeChangedSignal("FreeSpinDay"):Connect(refreshBadge)
-	refreshBadge()
-	local merchantButton = sideButton("Merchant", PURPLE, "Merchant", 160, function()
-		Ui.Menu.Toggle(merchant)
-	end)
-	-- Out of the way during rounds and while menus are open
-	RunService.Heartbeat:Connect(function()
-		local show = Ui.inHub() and not Ui.menuOpen()
-		spinButton.Visible = show
-		merchantButton.Visible = show
+	local turn = 0
+	RunService.Heartbeat:Connect(function(dt: number)
+		local anchor = CollectionService:GetTagged("LuckyWheelBadge")[1]
+		local count = spinCount()
+		badgeGui.Adornee = anchor
+		badgeGui.Enabled = anchor ~= nil and count > 0 and Ui.inHub()
+		badgeText.Text = if count == 1 then "🎁 1 FREE SPIN!" else `🎁 {count} FREE SPINS!`
+		turn = (turn + dt * 12) % 360
+		local face = CollectionService:GetTagged("LuckyWheelFace")[1]
+		local disc = face and face:FindFirstChild("Disc", true) :: GuiObject?
+		if disc and not wheel.Visible then
+			disc.Rotation = turn
+		end
 	end)
 end
 

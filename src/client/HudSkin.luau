@@ -120,9 +120,8 @@ function HudSkin.Init()
 		end
 	end
 	local right: { [string]: { Icon: string, Color: Color3 } } = {
-		UpgradesButton = { Icon = hud.Upgrades, Color = Color3.fromRGB(70, 210, 60) },
-		SpinButton = { Icon = hud.Spin, Color = Color3.fromRGB(255, 80, 180) },
-		MerchantButton = { Icon = hud.Merchant, Color = Color3.fromRGB(150, 90, 240) },
+		KnivesButton = { Icon = hud.Knives, Color = Color3.fromRGB(255, 190, 40) },
+		PowersButton = { Icon = hud.Powers, Color = Color3.fromRGB(255, 148, 28) },
 	}
 	for name, look in right do
 		local button = root:FindFirstChild(name, true)

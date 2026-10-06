@@ -12,9 +12,8 @@ local SQUARE, SQUARE_GAP = 46, 6
 -- Phones: a small outlined word under each square ("how do I upgrade?" - icons alone weren't enough)
 local CAPTION = 14
 local CAPTIONS: { [string]: string } = {
-	UpgradesButton = "Upgrades",
-	SpinButton = "Spin",
-	MerchantButton = "Merchant",
+	KnivesButton = "Knives",
+	PowersButton = "Powers",
 }
 
 local function caption(button: GuiObject, text: string)
@@ -63,7 +62,7 @@ function PhoneHud.Init()
 	local right: { GuiObject } = {}
 	-- the free chest pill first (only shown when it's ready), then the buttons
 	local timers = gui:FindFirstChild("Timers", true)
-	for _, name in { "UpgradesButton", "SpinButton", "MerchantButton" } do
+	for _, name in { "KnivesButton", "PowersButton" } do
 		local button = gui:FindFirstChild(name, true)
 		if button and button:IsA("GuiObject") then
 			if phone then
