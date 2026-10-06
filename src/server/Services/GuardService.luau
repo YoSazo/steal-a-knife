@@ -81,8 +81,6 @@ type Boss = {
 	Name: string,
 	Post: CFrame, -- where they stand guard, facing the plaza
 	Folder: Model, -- the lair
-	Stool: Model, -- the footstool in front of the chair (kicked aside when he gets up)
-	StoolHome: CFrame,
 	Slots: { Slot },
 	Guard: Guard, -- the boss in person
 }
@@ -545,11 +543,16 @@ end
 -- up straight away, then the uploaded mesh model replaces it once it has downloaded. Made 1.25x
 -- (seat top 3.25) to fit a BossScale boss: at 1x the boss overhung it on every side.
 local CHAIR_SCALE = 1.25
--- Getting up: slides this far forward out of the chair while standing (client/Moves), then walks on
--- out to CHAIR_EXIT in front of it before turning (the torch post stands beside the chair)
-local CHAIR_STEP = 3
+-- Getting up: hops out forward over the footstool (GameConfig.BossHop, client/Moves poses it), then
+-- walks on out to CHAIR_EXIT in front of the chair before turning (the torch post stands beside it)
 local CHAIR_EXIT = 7
-local SIT_TIME = 1.2 -- back home: turning round and sitting back down
+
+-- Where the hop has got to at share p of the wake (in the air from TakeOff to Land)
+local function hopPosition(post: CFrame, p: number): Vector3
+	local hop = GameConfig.BossHop
+	local x = math.clamp((p - hop.TakeOff) / (hop.Land - hop.TakeOff), 0, 1)
+	return post.Position + post.LookVector * hop.Distance * x + Vector3.yAxis * (4 * hop.Height * x * (1 - x))
+end
 local function mountChair(zone: number, parent: Instance, frame: CFrame)
 	local spec = BossChairs[zone]
 	if not spec then
@@ -576,7 +579,7 @@ end
 
 -- The footstool his feet rest on (a boss's legs are too short for the 1.25x seat): wooden legs and
 -- top, a cushion in the zone's colour. Cosmetic only.
-local function buildFootstool(parent: Instance, chairFrame: CFrame, cushion: Color3): Model
+local function buildFootstool(parent: Instance, chairFrame: CFrame, cushion: Color3)
 	local stool = Instance.new("Model")
 	stool.Name = "Footstool"
 	local wood = Color3.fromRGB(110, 70, 40)
@@ -603,29 +606,6 @@ local function buildFootstool(parent: Instance, chairFrame: CFrame, cushion: Col
 	end
 	stool.PrimaryPart = top
 	stool.Parent = parent
-	return stool
-end
-
--- Kicked aside as he gets up, slid back as he sits down
-local function moveStool(boss: Boss, away: boolean, delay: number)
-	task.delay(delay, function()
-		local stool = boss.Stool
-		if not stool.Parent then
-			return
-		end
-		local goal = if away
-			then boss.StoolHome * CFrame.new(2.8, 0, -0.9) * CFrame.Angles(0, math.rad(28), 0)
-			else boss.StoolHome
-		local from = stool:GetPivot()
-		local start = os.clock()
-		local length = if away then 0.25 else 0.5
-		while os.clock() - start < length do
-			local x = (os.clock() - start) / length
-			stool:PivotTo(from:Lerp(goal, x * x * (3 - 2 * x)))
-			task.wait()
-		end
-		stool:PivotTo(goal)
-	end)
 end
 
 -- The lair: a raised stage across the middle of the runway, a back wall with the knife slots on
@@ -723,7 +703,7 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 	-- forward on it, slouched back (client/Moves), knees over the front edge, feet on a footstool.
 	local chairFrame = post * CFrame.new(0, -4.9, 0.9)
 	mountChair(index, model, chairFrame)
-	local stool = buildFootstool(model, chairFrame, config.Color)
+	buildFootstool(model, chairFrame, config.Color)
 	local boss: Boss = {
 		Index = index,
 		Zone = zone,
@@ -733,8 +713,6 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 		Folder = model,
 		Slots = {},
 		Guard = nil :: any,
-		Stool = stool,
-		StoolHome = stool:GetPivot(),
 	}
 
 	-- The wall slots: pedestals in a line in front of the wall, a glowing plaque behind each
@@ -887,12 +865,11 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 			guard.Model:SetAttribute("SitEnd", nil)
 			guard.InChair = true
 			guard.ExitAt = (guard.Boss.Post * CFrame.new(0, 0, -CHAIR_EXIT)).Position
-			moveStool(guard.Boss, true, wake * 0.6)
 		end
 		Net.Remotes.Effect:FireAllClients("BossWake", guard.Model, wake)
 	end
 	guard.WakeStart = now()
-	guard.WakeUntil = now() + wake * 0.85
+	guard.WakeUntil = now() + wake * GameConfig.BossHop.Done
 	setAsleep(guard, false)
 	guard.Target = thief
 	guard.Returning = false
@@ -911,7 +888,7 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 	end
 	-- (the "!" stretch once they're on their feet)
 	local model = guard.Model
-	task.delay(if startAt then 0 else wake * 0.85, function()
+	task.delay(if startAt then 0 else wake * GameConfig.BossHop.Done, function()
 		if model.Parent then
 			Net.Animate(model, "Alert")
 		end
@@ -1191,16 +1168,17 @@ local function step(guard: Guard, dt: number)
 
 	-- Walking back to the post after a chase
 	if guard.Returning then
-		-- Walk back round to the front of the chair, turn round and sit back down into it (client/Moves
-		-- plays getting up backwards while this backs them into the seat)
+		-- Walk back round to the front of the chair, turn round and hop backwards into it over the
+		-- footstool (client/Moves plays the hop out backwards)
+		local hop = GameConfig.BossHop
 		local post = guard.Boss.Post
-		local front = post.Position + post.LookVector * CHAIR_STEP
+		local front = hopPosition(post, 1)
 		local sitStart = guard.SitStart
 		if not sitStart then
 			local approach = post.Position + post.LookVector * CHAIR_EXIT
 			-- (come in from out front, not through the torch post)
 			local towardsFront = (front - guard.Position) * Vector3.new(1, 0, 1)
-			if towardsFront.Magnitude > CHAIR_EXIT - CHAIR_STEP + 1 then
+			if towardsFront.Magnitude > CHAIR_EXIT - hop.Distance + 1 then
 				moveTowards(guard, approach, guard.Config.GuardSpeed * 0.6, dt)
 				return
 			end
@@ -1213,16 +1191,12 @@ local function step(guard: Guard, dt: number)
 				guard.Model:SetAttribute("WakeAt", nil)
 				guard.Model:SetAttribute("WakeEnd", nil)
 				guard.Model:SetAttribute("SitAt", serverNow)
-				guard.Model:SetAttribute("SitEnd", serverNow + SIT_TIME)
-				moveStool(guard.Boss, false, SIT_TIME * 0.6)
+				guard.Model:SetAttribute("SitEnd", serverNow + hop.SitTime)
 			end
 			return
 		end
-		local x = math.clamp((t - sitStart) / SIT_TIME, 0, 1)
-		-- (backs in while the knees bend: the last two thirds of sitting down)
-		local u = math.clamp((x - 0.3) / 0.6, 0, 1)
-		local back = u * u * (3 - 2 * u)
-		guard.Position = front:Lerp(post.Position, back)
+		local x = math.clamp((t - sitStart) / hop.SitTime, 0, 1)
+		guard.Position = hopPosition(post, hop.Done - x * (hop.Done - hop.Crouch))
 		guard.Model:PivotTo(post.Rotation + guard.Position)
 		if x >= 1 then
 			guard.Returning = false
@@ -1281,12 +1255,10 @@ local function step(guard: Guard, dt: number)
 	-- they only turn towards you once they're getting up)
 	if t < guard.AlertUntil then
 		if guard.InChair then
-			-- Standing up (client/Moves, 0.55-0.85 of the wake): slide forward out of the chair
+			-- Hopping out of the chair over the footstool (client/Moves poses it)
 			local post = guard.Boss.Post
 			local p = (t - guard.WakeStart) / math.max(guard.AlertUntil - guard.WakeStart, 0.1)
-			local x = math.clamp((p - 0.55) / 0.3, 0, 1)
-			local slide = x * x * (3 - 2 * x)
-			guard.Position = post.Position + post.LookVector * CHAIR_STEP * slide
+			guard.Position = hopPosition(post, p)
 			guard.Model:PivotTo(post.Rotation + guard.Position)
 		elseif t >= guard.WakeUntil then
 			face(guard, targetRoot.Position)

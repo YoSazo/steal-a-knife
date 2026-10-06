@@ -568,9 +568,22 @@ local GameConfig = {
 	-- Egg's chicken). With the boss next to the stash and only the 0.45 s "!", 66% of first steals
 	-- were caught, half of them within a second - before the player had even turned round.
 	BossWake = {
-		Time = 1.5,
-		Newcomer = 2.5, -- until you own NewcomerKnives knives
+		Time = 1.3,
+		Newcomer = 2.2, -- until you own NewcomerKnives knives
 		NewcomerKnives = 3,
+	},
+	-- How a boss gets out of / back into his chair: he hops out forward over his footstool and hops
+	-- back in backwards. Shares of the wake time (client/Moves poses, GuardService flies the body):
+	-- crouch from Crouch, in the air TakeOff..Land, back upright by Done. Back home the same hop plays
+	-- backwards over SitTime seconds.
+	BossHop = {
+		Crouch = 0.38,
+		TakeOff = 0.5,
+		Land = 0.76,
+		Done = 0.88,
+		Distance = 5, -- studs forward: clears the footstool
+		Height = 2.4,
+		SitTime = 0.8,
 	},
 	GuardAttackCooldown = 1.1, -- seconds between a guard's melee hits
 	GuardAttackRange = 5,
