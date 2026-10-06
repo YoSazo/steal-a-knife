@@ -900,6 +900,15 @@ function MapService.BuildRoundMap(name: string?): RoundMaps.Built
 		for i, spawn in built.Spawns do
 			built.Spawns[i] = CFrame.new(center + (spawn.Position - center) * ROUND_SCALE) * spawn.Rotation
 		end
+		-- The rooms are lit by the sun shining through the ceiling (it casts no shadow). An upstairs
+		-- - its floor, walls and furniture - would block that and leave the ground floor gloomy, so
+		-- nothing at the ceiling's height or above casts a shadow either: same light as before.
+		local ceilingY = center.Y + (RoundMaps.STOREY - 1) * ROUND_SCALE - 0.5
+		for _, part in folder:GetDescendants() do
+			if part:IsA("BasePart") and part.Position.Y > ceilingY then
+				part.CastShadow = false
+			end
+		end
 		built.Size *= ROUND_SCALE
 	end
 	MapService.RoundSpawns = built.Spawns
