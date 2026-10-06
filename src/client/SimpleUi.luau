@@ -89,16 +89,12 @@ function SimpleUi.button(
 		Max = maximum,
 	})
 	label.Name = "Label"
-	local scale = Ui.new("UIScale", {}, button)
+	-- (press feel: client/Juice, for every button)
 	button.Activated:Connect(function()
 		-- Greyed out still answers: the click goes through and the server's message says why not
 		if button:GetAttribute("Busy") then
 			return
 		end
-		scale.Scale = 0.93
-		task.delay(0.08, function()
-			scale.Scale = 1
-		end)
 		if action then
 			local run = action :: () -> ()
 			button:SetAttribute("Busy", true)

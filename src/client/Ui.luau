@@ -236,18 +236,8 @@ function Ui.chunky(
 	end
 	Ui.textStroke(label, 1.5)
 	Ui.new("UITextSizeConstraint", { MaxTextSize = 34 }, label)
-	local scale = Ui.new("UIScale", {}, button)
-	button.MouseEnter:Connect(function()
-		scale.Scale = 1.05
-	end)
-	button.MouseLeave:Connect(function()
-		scale.Scale = 1
-	end)
+	-- (press / hover feel: client/Juice, for every button)
 	button.Activated:Connect(function()
-		scale.Scale = 0.92
-		task.delay(0.08, function()
-			scale.Scale = 1
-		end)
 		if onClick then
 			onClick()
 		end
