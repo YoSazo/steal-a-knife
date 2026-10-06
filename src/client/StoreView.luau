@@ -121,7 +121,7 @@ function View.Build(actions: any): Frame
 			actions.odds(rarity)
 				.. "\n\nKnife, mutation and size are separate rolls. Current rebirth and server luck apply to mutations and sizes. Murderer powers are rolled separately at your vault.",
 			{
-				TextSize = 16,
+				TextSize = 19,
 				TextYAlignment = Enum.TextYAlignment.Top,
 				Size = UDim2.new(1, -12, 0, 0),
 				AutomaticSize = Enum.AutomaticSize.Y,
@@ -181,8 +181,8 @@ function View.Build(actions: any): Frame
 		})
 		local detail = label(item, entry.Description, {
 			Position = UDim2.fromOffset(112, 62),
-			Size = UDim2.new(1, -290, 0, 42),
-			TextSize = 16,
+			Size = UDim2.new(1, -290, 0, 46),
+			TextSize = 20, -- (16 was ~8 px once the Shop is scaled to a phone)
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextYAlignment = Enum.TextYAlignment.Top,
 			TextColor3 = Color3.fromRGB(215, 225, 245),
@@ -354,15 +354,19 @@ function View.Build(actions: any): Frame
 		"CaseRare",
 		{ Position = UDim2.fromOffset(8, 8), Size = UDim2.fromOffset(80, 90), ZIndex = 6 }
 	)
+	-- (big type: the Shop is scaled down to fit a phone, and 16 pt came out ~8 px on an iPhone 7)
 	label(starterRow, "Starter Pack · once per player", {
 		Position = UDim2.fromOffset(96, 8),
 		Size = UDim2.new(1, -252, 0, 40),
 		TextXAlignment = Enum.TextXAlignment.Left,
+		TextSize = 28,
 	})
 	local contents = label(starterRow, "", {
-		Position = UDim2.fromOffset(96, 48),
-		Size = UDim2.new(1, -252, 0, 56),
+		Position = UDim2.fromOffset(96, 50),
+		Size = UDim2.new(1, -252, 0, 52),
 		TextXAlignment = Enum.TextXAlignment.Left,
+		TextSize = 28,
+		TextColor3 = Color3.fromRGB(140, 255, 150),
 	})
 	actions.price(
 		starterRow,

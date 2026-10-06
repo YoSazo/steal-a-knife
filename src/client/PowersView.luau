@@ -50,10 +50,39 @@ local function bestKnives(): { [string]: string }
 	return best
 end
 
+-- Sizes: phones get their own, smaller design (it's scaled down to fit far less, so the words stay
+-- readable: checked on an iPhone 7 in Studio's emulator, where the desktop design shrank to 0.38)
+local PHONE = {
+	Window = Vector2.new(600, 440),
+	RowH = 92,
+	Icon = 76,
+	TextX = 92,
+	Button = Vector2.new(124, 60),
+	NameH = 34,
+	LineH = 22,
+	Bar = 86,
+	Reroll = 138,
+	Token = 128,
+}
+local DESKTOP = {
+	Window = Vector2.new(1000, 760),
+	RowH = 110,
+	Icon = 94,
+	TextX = 116,
+	Button = Vector2.new(240, 78),
+	NameH = 42,
+	LineH = 26,
+	Bar = 112,
+	Reroll = 220,
+	Token = 212,
+}
+
 function View.Build(): (Frame, () -> ())
-	local frame, body = SimpleUi.window("Innocent Powers", "Powers", VoxelUi.Hud.Powers, PURPLE, Vector2.new(1000, 760))
+	local S = if Ui.Phone then PHONE else DESKTOP
+	local frame, body = SimpleUi.window("Innocent Powers", "Powers", VoxelUi.Hud.Powers, PURPLE, S.Window)
+	local textW = -(S.TextX + S.Button.X + 28) -- the room left for the words beside the icon and button
 	local list: ScrollingFrame = Ui.new("ScrollingFrame", {
-		Size = UDim2.new(1, 0, 1, -128),
+		Size = UDim2.new(1, 0, 1, -(S.Bar + 16)),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ScrollBarThickness = 8,
@@ -72,7 +101,7 @@ function View.Build(): (Frame, () -> ())
 		local short = KnifePowers.Short[power.Id] or { "", "" }
 		local row: Frame = Ui.new("Frame", {
 			LayoutOrder = KnifePowers.TierRank(power.Tier) * 100 + i,
-			Size = UDim2.new(1, 0, 0, 110),
+			Size = UDim2.new(1, 0, 0, S.RowH),
 			BackgroundColor3 = Color3.fromRGB(34, 38, 56),
 			BackgroundTransparency = 0.2,
 			ZIndex = 6,
@@ -81,29 +110,30 @@ function View.Build(): (Frame, () -> ())
 		Ui.new("UIStroke", { Color = tier.Color, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, row)
 		local icon: ImageLabel = Ui.new("ImageLabel", {
 			BackgroundTransparency = 1,
-			Position = UDim2.fromOffset(10, 8),
-			Size = UDim2.fromOffset(94, 94),
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, 8, 0.5, 0),
+			Size = UDim2.fromOffset(S.Icon, S.Icon),
 			Image = Icons.KnifePowers[power.Id] or VoxelUi.Hud.Powers,
 			ScaleType = Enum.ScaleType.Fit,
 			ZIndex = 7,
 		}, row)
 		local name = SimpleUi.text(row, power.Name, {
-			Position = UDim2.fromOffset(116, 6),
-			Size = UDim2.new(1, -380, 0, 42),
+			Position = UDim2.fromOffset(S.TextX, 6),
+			Size = UDim2.new(1, textW, 0, S.NameH),
 			TextXAlignment = Enum.TextXAlignment.Left,
 			RichText = true,
 			Max = 38,
 		})
 		SimpleUi.text(row, `Murderer power: {short[1]}`, {
-			Position = UDim2.fromOffset(116, 50),
-			Size = UDim2.new(1, -380, 0, 26),
+			Position = UDim2.fromOffset(S.TextX, S.NameH + 8),
+			Size = UDim2.new(1, textW, 0, S.LineH),
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextColor3 = MURDERER,
 			Max = 22,
 		})
 		SimpleUi.text(row, `Innocent power: {short[2]}`, {
-			Position = UDim2.fromOffset(116, 78),
-			Size = UDim2.new(1, -380, 0, 26),
+			Position = UDim2.fromOffset(S.TextX, S.NameH + S.LineH + 10),
+			Size = UDim2.new(1, textW, 0, S.LineH),
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextColor3 = INNOCENT,
 			Max = 22,
@@ -111,9 +141,9 @@ function View.Build(): (Frame, () -> ())
 		local main = SimpleUi.button(row, "", BLUE, {
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, -12, 0.5, 0),
-			Size = UDim2.fromOffset(240, 78),
+			Size = UDim2.fromOffset(S.Button.X, S.Button.Y),
 			ZIndex = 7,
-			Max = 30,
+			Max = if Ui.Phone then 24 else 30,
 		}, function()
 			local item = equipItem[power.Id]
 			if item then
@@ -127,7 +157,7 @@ function View.Build(): (Frame, () -> ())
 	local mine: Frame = Ui.new("Frame", {
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.new(1, 0, 0, 112),
+		Size = UDim2.new(1, 0, 0, S.Bar),
 		BackgroundColor3 = Color3.fromRGB(34, 38, 56),
 		BackgroundTransparency = 0.2,
 		ZIndex = 6,
@@ -136,22 +166,23 @@ function View.Build(): (Frame, () -> ())
 	Ui.new("UIStroke", { Color = PURPLE, Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, mine)
 	local mineIcon: ImageLabel = Ui.new("ImageLabel", {
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(10, 9),
-		Size = UDim2.fromOffset(94, 94),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 8, 0.5, 0),
+		Size = UDim2.fromOffset(S.Bar - 16, S.Bar - 16),
 		ScaleType = Enum.ScaleType.Fit,
 		ZIndex = 7,
 	}, mine)
 	local mineName = SimpleUi.text(mine, "", {
-		Position = UDim2.fromOffset(116, 8),
-		Size = UDim2.new(1, -580, 0, 48),
+		Position = UDim2.fromOffset(S.Bar, 6),
+		Size = UDim2.new(1, -(S.Bar + S.Reroll + S.Token + 40), 0, S.Bar * 0.42),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		RichText = true,
 		Max = 38,
 	})
 	-- XP to the next level
 	local bar: Frame = Ui.new("Frame", {
-		Position = UDim2.fromOffset(116, 62),
-		Size = UDim2.new(1, -580, 0, 34),
+		Position = UDim2.new(0, S.Bar, 1, -(S.Bar * 0.36 + 8)),
+		Size = UDim2.new(1, -(S.Bar + S.Reroll + S.Token + 40), 0, S.Bar * 0.36),
 		BackgroundColor3 = Color3.fromRGB(20, 18, 30),
 		ZIndex = 7,
 	}, mine)
@@ -165,8 +196,8 @@ function View.Build(): (Frame, () -> ())
 	local barText = SimpleUi.text(bar, "", { Size = UDim2.fromScale(1, 1), Max = 22, ZIndex = 9 })
 	local reroll = SimpleUi.button(mine, "", PURPLE, {
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -232, 0.5, 0),
-		Size = UDim2.fromOffset(220, 80),
+		Position = UDim2.new(1, -(S.Token + 20), 0.5, 0),
+		Size = UDim2.fromOffset(S.Reroll, S.Bar - 22),
 		ZIndex = 7,
 		Max = 28,
 	}, function()
@@ -176,7 +207,7 @@ function View.Build(): (Frame, () -> ())
 	local token = SimpleUi.button(mine, "", GREEN, {
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -10, 0.5, 0),
-		Size = UDim2.fromOffset(212, 80),
+		Size = UDim2.fromOffset(S.Token, S.Bar - 22),
 		ZIndex = 7,
 		Max = 26,
 	}, function()
