@@ -54,14 +54,14 @@ function ShiftLock.Init()
 	ring.Enabled = false
 	ring.Parent = button
 
-	-- Sits just right of Roblox's top-left buttons, the same height as them
+	-- Top right of the screen, the same height as Roblox's topbar buttons
 	local function place()
 		local inset = GuiService.TopbarInset
 		local height = math.max(32, inset.Height - 8)
 		button.Size = UDim2.fromOffset(height, height)
-		-- (one button further right: Roblox's voice chat headphones appear after the inset is set and
-		-- covered it)
-		button.Position = UDim2.fromOffset(inset.Min.X + height + 14, inset.Min.Y + (inset.Height - height) / 2)
+		-- Top right, at the far end of the topbar's free space: on the left it sat under Roblox's voice
+		-- chat icon and in the way of the top line (tutorial, notices) in the middle
+		button.Position = UDim2.fromOffset(inset.Max.X - height - 8, inset.Min.Y + (inset.Height - height) / 2)
 	end
 	GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(place)
 	place()
