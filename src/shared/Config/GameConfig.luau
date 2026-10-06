@@ -607,6 +607,9 @@ local GameConfig = {
 	-- Boss knife throws lead the thief (Lead = how much of their run they predict) and curve gently
 	-- after them in flight (TurnRate, radians/s): a sharp sidestep dodges, running straight doesn't
 	GuardThrow = {
+		-- OFF: bosses only catch you by touching you (Steal An Egg's one rule). Throws tripped you from
+		-- a distance, which nobody could guess was a thing - it made running home two problems.
+		Enabled = false,
 		Windup = 0.6,
 		Cooldown = 2.8,
 		MinRange = 10,

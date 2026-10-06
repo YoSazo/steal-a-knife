@@ -9,7 +9,8 @@
 -- straight back on the wall) and it hurts. Make it home and the empty slot restocks a little later
 -- with a freshly rolled knife (rare mutations get announced to the server).
 --
--- Deeper bosses are faster (GuardSpeed), hit harder (Damage) and throw knives (Throws). Hitting a
+-- Deeper bosses are faster (GuardSpeed) and hit harder (Damage). They only catch you by touch: knife
+-- throws (Throws) are off (GameConfig.GuardThrow.Enabled). Hitting a
 -- chaser with your knife staggers it: better knives stagger longer (Damage vs the zone's Health).
 -- Bosses are anchored and moved by the server, so nobody can push or fling them.
 
@@ -1324,7 +1325,8 @@ local function step(guard: Guard, dt: number)
 	end
 	local throwConfig = GameConfig.GuardThrow
 	if
-		guard.Config.Throws
+		GameConfig.GuardThrow.Enabled
+		and guard.Config.Throws
 		and guard.WindupUntil == 0
 		and t >= guard.ThrowReadyAt
 		and distance > throwConfig.MinRange
