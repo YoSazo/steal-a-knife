@@ -510,8 +510,12 @@ local GameConfig = {
 	-- (was 180: the first real players reset out of 5 rounds within seconds - every ~3.5 min pulled
 	-- them off the steal/vault loop they were enjoying. The hub is where progress happens.)
 	IntermissionTime = 360,
-	NewcomerRoundIn = 100, -- a first-time player joining pulls the next round in to at most this (s)
-	NewcomerMinBreak = 240, -- ...but never to a hub break shorter than this (s) for everyone else
+	-- A first-time player's first knife home pulls the next round in to at most NewcomerRoundIn (s),
+	-- but never to a hub break shorter than NewcomerMinBreak (s) for everyone else. (Were 100 / 240:
+	-- new players landed their first knife ~1 min in and left ~2 min in, before any round - only 37%
+	-- ever saw the murder half.)
+	NewcomerRoundIn = 45,
+	NewcomerMinBreak = 180,
 	RoundJoinGrace = 90, -- nobody is pulled into a round in their first this many seconds in a server
 	RoundTime = 150,
 	ResultsTime = 8,

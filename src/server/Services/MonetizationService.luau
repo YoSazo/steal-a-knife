@@ -399,18 +399,38 @@ function MonetizationService.Init()
 		lastTest[player] = nil
 	end)
 
-	-- The Starter Pack, once, right after the guide (they know the game by then)
+	-- The Starter Pack, once, after the new player's FIRST MURDER ROUND (back in the hub, both halves
+	-- seen). It used to pop right after the 4-step guide - ~80 s in, the moment most new players
+	-- were deciding whether to stay - and 188 showings sold nothing. Never reached a round: 6 min in.
 	Net.Remotes.Tutorial.OnServerEvent:Connect(function(player: Player, step: unknown)
-		if step == "Done" or step == "Skip" then
-			task.delay(6, function()
-				Offers.Show(
-					player,
-					"Starter",
-					"Welcome to Blackwood! A one-time head start, just for new players.",
-					true
-				)
-			end)
+		if (step ~= "Done" and step ~= "Skip") or player:GetAttribute("StarterQueued") then
+			return
 		end
+		player:SetAttribute("StarterQueued", true)
+		local shown = false
+		local function show()
+			if shown or not player.Parent then
+				return
+			end
+			shown = true
+			Offers.Show(player, "Starter", "Welcome to Blackwood! A one-time head start, just for new players.", true)
+		end
+		local wasInRound = player:GetAttribute("InRound") == true
+		local connection: RBXScriptConnection
+		connection = player:GetAttributeChangedSignal("InRound"):Connect(function()
+			local inRound = player:GetAttribute("InRound") == true
+			if wasInRound and not inRound then
+				connection:Disconnect()
+				task.delay(8, show) -- (after the round card and the trip home)
+			end
+			wasInRound = inRound
+		end)
+		task.delay(360, function()
+			if not player:GetAttribute("InRound") then
+				connection:Disconnect()
+				show()
+			end -- (mid-round: the round's end shows it)
+		end)
 	end)
 end
 
