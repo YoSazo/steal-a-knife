@@ -285,7 +285,9 @@ local GameConfig = {
 	-- The round prize (Shared/RoundPrize): "Win the round: +X Speed", the same promise for everyone
 	-- on the winning side, sized to the next boss you can't outrun yet
 	RoundPrize = {
-		GapShare = 0.3, -- of the Speed still missing for the next boss (about 3 wins = one boss)
+		-- of the step from the last boss's Speed to the next boss's: every win on the way is worth
+		-- the same, ~5 wins = one boss (a tuning guess: compare with how fast players train on the wheel)
+		StepShare = 0.2,
 		PastLastShare = 0.1, -- past the last boss: of your Speed
 		MinSpeed = 300,
 		JackpotChance = 0.1, -- a JACKPOT round: x3

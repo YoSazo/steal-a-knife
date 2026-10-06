@@ -283,7 +283,11 @@ function Hud.Init()
 			-- One promise for everyone: "Win the round: +1.9K Speed" (+ "outrun Ivy!" when it gets you
 			-- there). No sides to work out - whoever wins gets it.
 			local prize = RoundPrize.For(kind, "", jackpot, seed, stats, doubled)
-			local outrun = if prize.Boss then ` - outrun {prize.Boss}!` else ""
+			-- (always says what the Speed is for: the next boss you can't outrun yet)
+			local outrun = if prize.Boss and prize.Reaches
+				then ` - outrun {prize.Boss}!`
+				elseif prize.Boss then ` toward {prize.Boss}`
+				else ""
 			return {
 				Text = `{star}Win the round: <font color="#8CFF96"><b>{prize.Text}</b></font>{outrun}{done}`,
 				Pill = not doubled,
@@ -945,8 +949,6 @@ function Hud.Init()
 			local now = workspace:GetServerTimeNow()
 			local left = (ReplicatedStorage:GetAttribute("PhaseEndsAt") or 0) - now
 			local status = ReplicatedStorage:GetAttribute("Status") or ""
-			local raidEnds = ReplicatedStorage:GetAttribute("RaidEndsAt")
-			local nextRaid = ReplicatedStorage:GetAttribute("NextRaidAt")
 			-- Tsunami style: each event's name in its own colour, then the time in white
 			local function line(color: string, name: string, rest: string): string
 				return `<font color="{color}">{name}</font> {rest}`
@@ -956,18 +958,19 @@ function Hud.Init()
 				elseif phase == "Results" then line("#FF5A5A", "MURDER ROUND", "OVER")
 				elseif status:find("Waiting") then line("#FF5A5A", string.upper(status), "")
 				else line("#FF5A5A", "MURDER ROUND", `IN {Ui.clock(left)}`)
-			local line2 = if type(raidEnds) == "number"
-				then line("#FF4646", "BLOOD MOON", `ENDS IN {Ui.clock(raidEnds - now)}`)
-				elseif type(nextRaid) == "number" then line(
-					"#FF4646",
-					"BLOOD MOON",
-					`IN {Ui.clock(nextRaid - now)}`
-				)
-				else line("#FF4646", "BLOOD MOON", "SOON")
+			-- (no Blood Moon any more: line 2 is what winning the round gets you)
+			local prize = RoundPrize.For(
+				"Speed",
+				"",
+				ReplicatedStorage:GetAttribute("PrizeJackpot") == true,
+				1,
+				RoundPrize.Stats(player),
+				false
+			)
 			local texts = {
 				line1,
-				line2,
-				line("#FFE14B", "SURVIVORS", "EARN 2X CASH"),
+				line("#8CFF96", "WIN IT:", `{string.upper(prize.Text)}`),
+				if prize.Boss then line("#FFE14B", "OUTRUN", string.upper(prize.Boss)) else "",
 				line(
 					"#5AF08C",
 					"SERVER GOAL",

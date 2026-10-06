@@ -586,9 +586,24 @@ local function payPrize(
 	elseif prize.Kind == "Spins" then
 		Gamble.AddSpins(player, prize.Amount)
 	end
-	local text = if prize.Boss then `{prize.Text}\nNow you can outrun {prize.Boss}!` else prize.Text
+	local text = if prize.Boss and prize.Reaches
+		then `{prize.Text}\nNow you can outrun {prize.Boss}!`
+		elseif prize.Boss then `{prize.Text}\n{Format.Short(prize.Left)} more to outrun {prize.Boss}`
+		else prize.Text
+	-- Did the Speed get used? StealService tracks the next steal from that boss (prize.followup)
+	if prize.Kind == "Speed" and prize.Zone then
+		player:SetAttribute("PrizeTargetZone", prize.Zone)
+	end
 	Net.Remotes.Effect:FireClient(player, "PrizeWon", text, prize.Kind, prize.Knife, jackpot)
-	Analytics.Track(player, "round.prize", { kind = prize.Kind, side = side, jackpot = jackpot, doubled = doubled })
+	Analytics.Track(player, "round.prize", {
+		kind = prize.Kind,
+		side = side,
+		jackpot = jackpot,
+		doubled = doubled,
+		amount = prize.Amount,
+		target_zone = prize.Zone,
+		reaches = prize.Reaches,
+	})
 end
 
 local spawnRevolver: (Round, Vector3?) -> ()

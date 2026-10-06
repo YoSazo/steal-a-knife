@@ -243,7 +243,7 @@ function View.Build(): (Frame, () -> ())
 				equipItem[pid] = best[pid]
 				SimpleUi.set(row.Main, "Equip", BLUE, true)
 			else
-				SimpleUi.set(row.Main, "🔒 Steal one", GREY, false)
+				SimpleUi.set(row.Main, "🔒 Locked", GREY, false) -- (powers are random rolls on knives you bring home)
 			end
 		end
 

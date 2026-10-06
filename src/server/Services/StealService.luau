@@ -361,6 +361,11 @@ local function endCarry(player: Player, deposited: boolean, dropAt: Vector3?, wh
 		Analytics.Milestone(player, "knife_home", carryProps(carry))
 		if carry.Source == "boss" then
 			Analytics.Milestone(player, "boss_steal_home_zone_" .. carry.Zone)
+			local target = player:GetAttribute("PrizeTargetZone")
+			if type(target) == "number" and carry.Zone >= target then
+				Analytics.Track(player, "prize.followup", { stage = "home", zone = carry.Zone, target = target })
+				player:SetAttribute("PrizeTargetZone", nil)
+			end
 		elseif carry.Source == "vault" then
 			Analytics.Milestone(player, "vault_steal_home")
 		end
@@ -476,6 +481,11 @@ startCarry = function(
 		Analytics.Milestone(player, "steal_started", carryProps(carry))
 		if carry.Source == "boss" then
 			Analytics.Milestone(player, "boss_steal_zone_" .. carry.Zone)
+			-- the round prize's Speed in use: a steal from the boss it was for (or deeper)
+			local target = player:GetAttribute("PrizeTargetZone")
+			if type(target) == "number" and carry.Zone >= target then
+				Analytics.Track(player, "prize.followup", { stage = "attempt", zone = carry.Zone, target = target })
+			end
 		end
 	end
 	Net.Animate(character, "Pickup")
