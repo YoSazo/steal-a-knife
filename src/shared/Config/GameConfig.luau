@@ -481,7 +481,7 @@ local GameConfig = {
 	BossWallSlots = 5, -- knives on each boss's wall
 	-- Lairs stand against the runway's side walls (odd zones left, even zones right) so the run down
 	-- the middle stays clear: centre (fraction into its zone), Width along the wall, Depth out from it
-	BossLair = { At = 0.6, FirstAt = 0.3, Width = 42, Depth = 14 },
+	BossLair = { At = 0.6, FirstAt = 0.6, Width = 42, Depth = 14 }, -- (FirstAt 0.3 put Frank behind the Courtyard shell's hedges - the shell art is built around 0.6)
 
 	-- Rounds
 	-- (was 180: the first real players reset out of 5 rounds within seconds - every ~3.5 min pulled
