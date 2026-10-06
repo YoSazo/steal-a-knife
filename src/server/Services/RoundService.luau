@@ -1497,7 +1497,12 @@ local function randomFloorPoint(): Vector3?
 	local half = MapService.RoundMapSize / 2 - Vector2.new(3, 3)
 	for _ = 1, 20 do
 		local x, z = rng:NextNumber(-half.X, half.X), rng:NextNumber(-half.Y, half.Y)
-		local hit = workspace:Raycast(Vector3.new(center.X + x, 12, center.Z + z), Vector3.new(0, -20, 0))
+		-- a storey too (upstairs covers only part of the plan: misses just try again)
+		local level = if MapService.RoundLevels > 1 and rng:NextNumber() < 0.4
+			then rng:NextInteger(1, MapService.RoundLevels - 1)
+			else 0
+		local y = 12 + level * MapService.RoundStorey
+		local hit = workspace:Raycast(Vector3.new(center.X + x, y, center.Z + z), Vector3.new(0, -20, 0))
 		local parent = hit and hit.Instance.Parent
 		if hit and hit.Instance.Name == "Floor" and parent and parent.Name == "RoundMap" then
 			return hit.Position

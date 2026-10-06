@@ -25,12 +25,22 @@ local DOOR_WIDTH = Kit.DOOR_WIDTH
 local DOOR_HEIGHT = Kit.DOOR_HEIGHT
 local T = 1 -- wall thickness
 
+Kit.STOREY = Kit.WALL_HEIGHT + 1 -- floor to floor: the walls plus the slab between storeys
+
 local folder: Folder
 local origin: Vector3
+local groundOrigin: Vector3
 
 function Kit.Begin(into: Folder, center: Vector3)
 	folder = into
 	origin = center
+	groundOrigin = center
+end
+
+-- Build on storey `n` (0 = ground, 1 = upstairs): everything after this call sits n storeys up,
+-- so the same walls and furniture work on every floor
+function Kit.Level(n: number)
+	origin = groundOrigin + Vector3.new(0, n * Kit.STOREY, 0)
 end
 
 local function rgb(r: number, g: number, b: number): Color3
@@ -63,10 +73,12 @@ local function part(name: string, size: Vector3, cframe: CFrame, color: Color3, 
 end
 Kit.part = part
 
--- A part nobody collides with or raycasts against (trim, clutter, lights)
+-- Detail parts (trim, clutter, lights): solid - nothing in a map can be walked through - but
+-- raycasts ignore them (the camera, coin drops). Only rugs stay flat and non-solid, so they
+-- aren't little steps to trip over.
 local function deco(name: string, size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material?): Part
 	local p = part(name, size, cframe, color, material)
-	p.CanCollide = false
+	p.CanCollide = name ~= "Rug" and name ~= "CeilingGrid"
 	p.CanQuery = false
 	p.CanTouch = false
 	return p
@@ -209,15 +221,24 @@ function Kit.wall(
 			return
 		end
 		local mid, len = (from + to) / 2, to - from
-		local size = if alongX then Vector3.new(len, y1 - y0, T) else Vector3.new(T, y1 - y0, len)
-		local cf = if alongX then at(mid, (y0 + y1) / 2, fixed) else at(fixed, (y0 + y1) / 2, mid)
-		part("Wall", size, cf, style.Color, style.Material)
+		local back = sides[-1]
+		if back.Color ~= style.Color or back.Material ~= style.Material then
+			-- Two rooms' wallpapers: two half-thickness slabs, each in its own room's paper. (A thin
+			-- layer laid over one face z-fought with the wall and flickered as the camera moved.)
+			for _, side in { -1, 1 } do
+				local s = sides[side]
+				local offset = fixed + side * T / 4
+				local half = if alongX then Vector3.new(len, y1 - y0, T / 2) else Vector3.new(T / 2, y1 - y0, len)
+				local hcf = if alongX then at(mid, (y0 + y1) / 2, offset) else at(offset, (y0 + y1) / 2, mid)
+				part("Wall", half, hcf, s.Color, s.Material)
+			end
+		else
+			local size = if alongX then Vector3.new(len, y1 - y0, T) else Vector3.new(T, y1 - y0, len)
+			local cf = if alongX then at(mid, (y0 + y1) / 2, fixed) else at(fixed, (y0 + y1) / 2, mid)
+			part("Wall", size, cf, style.Color, style.Material)
+		end
 		for _, side in { -1, 1 } do
 			local s = sides[side]
-			if s ~= style and (s.Color ~= style.Color or s.Material ~= style.Material) then
-				-- the other room's wallpaper, a thin layer on its face
-				strip(alongX, fixed, from, to, (y0 + y1) / 2, y1 - y0, 0.04, side, s.Color, s.Material)
-			end
 			strip(alongX, fixed, from, to, WALL_HEIGHT - 0.35, 0.7, 0.35, side, s.Crown or rgb(245, 243, 236))
 			if y0 == 0 then
 				if s.Wainscot then
@@ -333,15 +354,15 @@ end
 function Kit.rug(x: number, z: number, sizeX: number, sizeZ: number, color: Color3, border: Color3?)
 	if border then
 		deco("Rug", Vector3.new(sizeX, 0.1, sizeZ), at(x, 0.12, z), border, Enum.Material.Fabric)
-		deco("Rug", Vector3.new(sizeX - 1.6, 0.1, sizeZ - 1.6), at(x, 0.14, z), color, Enum.Material.Fabric)
+		deco("Rug", Vector3.new(sizeX - 1.6, 0.1, sizeZ - 1.6), at(x, 0.19, z), color, Enum.Material.Fabric)
 		deco(
 			"Rug",
 			Vector3.new(sizeX - 3.4, 0.1, sizeZ - 3.4),
-			at(x, 0.16, z),
+			at(x, 0.26, z),
 			darker(color, 0.15),
 			Enum.Material.Fabric
 		)
-		deco("Rug", Vector3.new(sizeX - 4.2, 0.1, sizeZ - 4.2), at(x, 0.18, z), color, Enum.Material.Fabric)
+		deco("Rug", Vector3.new(sizeX - 4.2, 0.1, sizeZ - 4.2), at(x, 0.33, z), color, Enum.Material.Fabric)
 	else
 		deco("Rug", Vector3.new(sizeX, 0.1, sizeZ), at(x, 0.12, z), color, Enum.Material.Fabric)
 	end
@@ -352,6 +373,169 @@ function Kit.ceiling(sizeX: number, sizeZ: number, color: Color3)
 	-- Solid and queryable: the camera bumps into it instead of poking out above the rooms.
 	-- (Coins and spawns raycast from below it.)
 	p.CastShadow = false
+end
+
+export type Rect = { X: number, Z: number, W: number, D: number } -- centre + size, studs
+
+-- A 1-stud slab over a rectangle with rectangular holes cut out (a stairwell, the upstairs
+-- footprint above a ceiling): split along every hole edge into cells, keep the cells outside the
+-- holes. `y` is the slab's centre height on the current storey.
+function Kit.slab(
+	name: string,
+	y: number,
+	area: Rect,
+	holes: { Rect },
+	color: Color3,
+	material: Enum.Material?,
+	thickness: number?
+)
+	local xs = { area.X - area.W / 2, area.X + area.W / 2 }
+	local zs = { area.Z - area.D / 2, area.Z + area.D / 2 }
+	for _, h in holes do
+		table.insert(xs, math.clamp(h.X - h.W / 2, xs[1], xs[2]))
+		table.insert(xs, math.clamp(h.X + h.W / 2, xs[1], xs[2]))
+		table.insert(zs, math.clamp(h.Z - h.D / 2, zs[1], zs[2]))
+		table.insert(zs, math.clamp(h.Z + h.D / 2, zs[1], zs[2]))
+	end
+	table.sort(xs)
+	table.sort(zs)
+	local function inHole(x: number, z: number): boolean
+		for _, h in holes do
+			if math.abs(x - h.X) < h.W / 2 and math.abs(z - h.Z) < h.D / 2 then
+				return true
+			end
+		end
+		return false
+	end
+	for i = 1, #xs - 1 do
+		-- merge the kept cells of this column into runs along Z (fewer parts)
+		local runStart: number? = nil
+		local x0, x1 = xs[i], xs[i + 1]
+		if x1 - x0 < 0.05 then
+			continue
+		end
+		for j = 1, #zs do
+			local keep = j < #zs and zs[j + 1] - zs[j] >= 0.05 and not inHole((x0 + x1) / 2, (zs[j] + zs[j + 1]) / 2)
+			if keep and not runStart then
+				runStart = zs[j]
+			elseif not keep and runStart then
+				local z0, z1 = runStart, zs[j]
+				local p = part(
+					name,
+					Vector3.new(x1 - x0, thickness or 1, z1 - z0),
+					at((x0 + x1) / 2, y, (z0 + z1) / 2),
+					color,
+					material
+				)
+				p.CastShadow = false
+				runStart = nil
+			end
+		end
+	end
+end
+
+-- A straight flight of stairs up one storey. Built in a local frame like furniture: the bottom
+-- step at local +Z, climbing towards local -Z (rotation 0 climbs towards -Z, 180 towards +Z), `width`
+-- across. Visible steps are solid blocks; an invisible ramp over their noses is what feet (and
+-- the bots' pathfinding) walk on. Returns the hole the floor above needs, as a Rect.
+Kit.STAIR_RUN = 28
+function Kit.stairs(x: number, z: number, rotation: number, width: number, color: Color3, rail: Color3?): Rect
+	local b = frame(x, z, rotation)
+	local L, H, n = Kit.STAIR_RUN, Kit.STOREY, 20
+	local rise, run = H / n, L / n
+	for i = 0, n - 1 do
+		local top = (i + 1) * rise
+		local step = piece(
+			b,
+			"Step",
+			Vector3.new(width, top, run),
+			Vector3.new(0, top / 2, L / 2 - (i + 0.5) * run),
+			color,
+			Enum.Material.Wood
+		)
+		step.CanQuery = false
+		bit(
+			b,
+			"StepNose",
+			Vector3.new(width + 0.1, 0.18, 0.3),
+			Vector3.new(0, top - 0.09, L / 2 - i * run - 0.15),
+			darker(color, 0.25),
+			Enum.Material.Wood
+		)
+	end
+	-- the walking surface: through every step's front-top corner, starting on the floor one
+	-- step-length in front of the first step (a lip at step height can't be walked onto)
+	local z0, y0 = L / 2 + run, 0
+	local z1, y1 = -L / 2 + run, H
+	local length = math.sqrt((z0 - z1) ^ 2 + (y1 - y0) ^ 2)
+	local ramp = Instance.new("Part")
+	ramp.Name = "Ramp"
+	ramp.Anchored = true
+	ramp.Size = Vector3.new(width, 0.4, length)
+	ramp.CFrame = b
+		* CFrame.new(0, (y0 + y1) / 2 - 0.2, (z0 + z1) / 2)
+		* CFrame.Angles(math.atan2(y1 - y0, z0 - z1), 0, 0)
+	ramp.Transparency = 1
+	ramp.CanQuery = false
+	ramp.Parent = folder
+	-- handrails on both sides: posts every few steps and a sloped rail
+	local railColor = rail or darker(color, 0.35)
+	for _, side in { -1, 1 } do
+		local sx = side * (width / 2 - 0.2)
+		for i = 0, n - 1, 4 do
+			local top = (i + 1) * rise
+			bit(
+				b,
+				"RailPost",
+				Vector3.new(0.3, 3.2, 0.3),
+				Vector3.new(sx, top + 1.6, L / 2 - (i + 0.5) * run),
+				railColor,
+				Enum.Material.Wood
+			)
+		end
+		local rp = bit(b, "Handrail", Vector3.new(0.35, 0.3, length), Vector3.zero, railColor, Enum.Material.Wood)
+		rp.CFrame = b
+			* CFrame.new(sx, (y0 + y1) / 2 + 3.1, (z0 + z1) / 2)
+			* CFrame.Angles(math.atan2(y1 - y0, z0 - z1), 0, 0)
+	end
+	-- the hole above, in map coordinates (rotation 0/180 keep it along Z, 90/-90 along X)
+	-- (2 studs wider than the flight each side: bot pathfinding works on a coarse grid and read a
+	-- hole exactly the stairs' width as no headroom)
+	local alongX = math.abs(rotation) % 180 == 90
+	return { X = x, Z = z, W = if alongX then L else width + 4, D = if alongX then width + 4 else L }
+end
+
+-- A waist-high railing (collides) along a straight line on the current storey - round a stairwell
+function Kit.railing(x1: number, z1: number, x2: number, z2: number, color: Color3)
+	local mid = Vector3.new((x1 + x2) / 2, 0, (z1 + z2) / 2)
+	local len = math.sqrt((x2 - x1) ^ 2 + (z2 - z1) ^ 2)
+	local alongX = math.abs(x2 - x1) > math.abs(z2 - z1)
+	local guard = part(
+		"Railing",
+		if alongX then Vector3.new(len, 3.4, 0.3) else Vector3.new(0.3, 3.4, len),
+		at(mid.X, 1.7, mid.Z),
+		color,
+		Enum.Material.Wood
+	)
+	guard.Transparency = 1 -- invisible stop; the rail and balusters below are what you see
+	deco(
+		"Handrail",
+		if alongX then Vector3.new(len, 0.35, 0.45) else Vector3.new(0.45, 0.35, len),
+		at(mid.X, 3.4, mid.Z),
+		color,
+		Enum.Material.Wood
+	)
+	local count = math.max(2, math.floor(len / 1.6))
+	for i = 0, count do
+		local t = i / count
+		deco(
+			"Baluster",
+			Vector3.new(0.22, 3.2, 0.22),
+			at(x1 + (x2 - x1) * t, 1.6, z1 + (z2 - z1) * t),
+			lighter(color, 0.15),
+			Enum.Material.Wood
+		)
+	end
 end
 
 -- Drop-ceiling grid lines (offices)

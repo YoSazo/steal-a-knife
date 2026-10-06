@@ -70,6 +70,8 @@ MapService.Bases = {} :: { BaseSite }
 MapService.RoundSpawns = {} :: { CFrame }
 MapService.RoundCenter = Vector3.new(3000, 0, 0)
 MapService.RoundMapSize = Vector2.new(150, 110)
+MapService.RoundLevels = 1 -- storeys in the current round map
+MapService.RoundStorey = 15 -- floor-to-floor height in the current round map (scaled)
 MapService.LobbySpawn = CFrame.new(0, 4, -110)
 -- Biomes dressed by a Codex-built shell (src/shared/Assets/<Name>Shell): zone index -> module name.
 -- Their old wall looks and ManorDecor's random props are switched off (ManorDecor reads this too).
@@ -902,6 +904,8 @@ function MapService.BuildRoundMap(name: string?): RoundMaps.Built
 	end
 	MapService.RoundSpawns = built.Spawns
 	MapService.RoundMapSize = built.Size
+	MapService.RoundLevels = built.Levels or 1
+	MapService.RoundStorey = RoundMaps.STOREY * ROUND_SCALE
 	return built
 end
 

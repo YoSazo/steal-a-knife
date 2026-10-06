@@ -12,11 +12,14 @@ local Kit = require(script.Parent.RoundMapKit)
 
 local RoundMaps = {}
 
+RoundMaps.STOREY = Kit.STOREY -- floor-to-floor height at 1x (MapService scales it with the map)
+
 export type Built = {
 	Name: string,
 	Folder: Folder,
 	Spawns: { CFrame },
 	Size: Vector2, -- floor size (x, z) around the centre, for coin placement
+	Levels: number?, -- storeys (coins land on every one); 1 if left out
 }
 
 local rgb = Kit.rgb
@@ -26,13 +29,16 @@ local wall = Kit.wall
 local folder: Folder
 
 -- Office -------------------------------------------------------------------------------------
--- A marble corridor through the middle with four rooms on each side. Two doors per room
--- (corridor + neighbour) so there's always a way to loop away from the Murderer.
---   north: open-plan office | staff lounge | meeting room | the boss's office
---   south: storage          | office       | break room   | reception
+-- A long marble corridor with six rooms on each side, and an upstairs over the west half reached
+-- by the stairs in the stair hall. Two doors per room (corridor + neighbour) so there's always a
+-- way to loop away from the Murderer.
+--   ground north: IT room | open-plan office | staff lounge | meeting room | the boss's office | cafeteria
+--   ground south: stairs  | storage          | office       | break room   | reception         | mail room
+--   upstairs north: archives | conference hall | training room
+--   upstairs south: landing  | game room       | library
 
 local function buildOffice(): Built
-	local W, D = 150, 110
+	local W, D = 225, 110
 	local WALL: Kit.WallStyle = {
 		Color = rgb(218, 216, 208),
 		Material = Enum.Material.Plaster,
@@ -47,26 +53,37 @@ local function buildOffice(): Built
 	}
 	local BOSS: Kit.WallStyle = { Color = rgb(70, 52, 40), Material = Enum.Material.Wood, Wainscot = rgb(50, 32, 22) }
 
+	-- Upstairs covers the west half: the stairs come up in the stair hall (south-west)
+	local UP: Kit.Rect = { X = -56.25, Z = 0, W = 112.5, D = D }
 	Kit.floor(0, 0, W, D, rgb(232, 226, 212), Enum.Material.Marble)
-	Kit.ceiling(W, D, rgb(240, 240, 238))
-	Kit.ceilingGrid(0, 0, W, D, 6, rgb(205, 205, 205))
+	Kit.slab("Ceiling", Kit.WALL_HEIGHT + 0.5, { X = 0, Z = 0, W = W + 2, D = D + 2 }, { UP }, rgb(240, 240, 238))
+	-- (the grid only where there's a ceiling: the west half's ceiling is upstairs' floor, with the
+	-- stairwell through it)
+	Kit.ceilingGrid(W / 4, 0, W / 2, D, 6, rgb(205, 205, 205))
 
 	-- Outer walls (the boss and the storage room get their own panelling)
 	wall(-W / 2, D / 2, 37.5, D / 2, WALL)
-	wall(37.5, D / 2, W / 2, D / 2, WALL, nil, BOSS)
-	wall(-W / 2, -D / 2, -37.5, -D / 2, STORAGE)
+	wall(37.5, D / 2, 75, D / 2, WALL, nil, BOSS)
+	wall(75, D / 2, W / 2, D / 2, WALL)
+	wall(-W / 2, -D / 2, -75, -D / 2, WALL)
+	wall(-75, -D / 2, -37.5, -D / 2, STORAGE)
 	wall(-37.5, -D / 2, W / 2, -D / 2, WALL)
-	wall(-W / 2, -D / 2, -W / 2, -7, STORAGE)
-	wall(-W / 2, -7, -W / 2, D / 2, WALL)
-	wall(W / 2, -D / 2, W / 2, 7, WALL)
-	wall(W / 2, 7, W / 2, D / 2, WALL, nil, BOSS)
+	wall(-W / 2, -D / 2, -W / 2, D / 2, WALL)
+	wall(W / 2, -D / 2, W / 2, D / 2, WALL)
+	-- the old ends of the building, now walls into the new end rooms
+	wall(-75, 7, -75, D / 2, WALL, { 31 })
+	wall(-75, -D / 2, -75, -7, STORAGE, { -31 }, WALL)
+	wall(75, 7, 75, D / 2, WALL, { 31 }, BOSS)
+	wall(75, -D / 2, 75, -7, WALL, { -31 })
 
 	-- Corridor walls and the walls between rooms
 	local roomX = { -56.25, -18.75, 18.75, 56.25 }
-	wall(-W / 2, 7, 37.5, 7, WALL, roomX)
-	wall(37.5, 7, W / 2, 7, BOSS, { 56.25 }, WALL)
-	wall(-W / 2, -7, -37.5, -7, WALL, { -56.25 }, STORAGE)
-	wall(-37.5, -7, W / 2, -7, WALL, { -18.75, 18.75, 56.25 })
+	wall(-W / 2, 7, 37.5, 7, WALL, { -93.75, -56.25, -18.75, 18.75 })
+	wall(37.5, 7, 75, 7, BOSS, { 56.25 }, WALL)
+	wall(75, 7, W / 2, 7, WALL, { 93.75 })
+	wall(-W / 2, -7, -75, -7, WALL, { -93.75 })
+	wall(-75, -7, -37.5, -7, WALL, { -56.25 }, STORAGE)
+	wall(-37.5, -7, W / 2, -7, WALL, { -18.75, 18.75, 56.25, 93.75 })
 	wall(-37.5, 7, -37.5, D / 2, WALL, { 31 })
 	wall(0, 7, 0, D / 2, WALL, { 31 })
 	wall(37.5, 7, 37.5, D / 2, BOSS, { 31 }, WALL)
@@ -86,7 +103,7 @@ local function buildOffice(): Built
 	Kit.roomFloor(56.25, -31, 37.5, 48, rgb(205, 200, 190), Enum.Material.Marble)
 
 	-- Lights: strip lights in the rooms, downlights down the corridor, bare bulbs in storage
-	for x = -66, 66, 12 do
+	for x = -104, 104, 12 do
 		Kit.downlight(x, 0, nil, 0.15)
 	end
 	for i, x in roomX do
@@ -101,10 +118,6 @@ local function buildOffice(): Built
 	Kit.pendant(-56, -42, 3, 0.7)
 
 	-- Corridor: lift at one end, glass front doors at the other, plates over every door
-	Kit.elevator(-W / 2 + 0.5, 0, -90)
-	Kit.glassDoors(W / 2 - 0.5, 0, 90, "BLACKWOOD & CO.")
-	Kit.exitSign(W / 2 - 0.5, 11.6, 0, 90)
-	Kit.exitSign(-W / 2 + 0.5, 11.6, 4.5, -90)
 	local plates =
 		{ "OPEN OFFICE", "LOUNGE", "MEETING", "MR. BLACKWOOD", "STORAGE", "OFFICE B", "BREAK ROOM", "RECEPTION" }
 	for i, x in roomX do
@@ -148,7 +161,6 @@ local function buildOffice(): Built
 	)
 	Kit.window(-64.25, 54.5, 0)
 	Kit.window(-48.25, 54.5, 0)
-	Kit.window(-74.5, 31, -90)
 	Kit.clock(-74.5, 10.4, 45, -90)
 	Kit.plant(-72, 52, "Bush")
 	Kit.plant(-40, 52, "Tall")
@@ -186,7 +198,6 @@ local function buildOffice(): Built
 	Kit.executiveDesk(56.25, 40, 0, "THE BOSS")
 	Kit.bookshelf(73.4, 24, 90, rgb(60, 38, 25))
 	Kit.bookshelf(73.4, 38, 90, rgb(60, 38, 25))
-	Kit.window(74.5, 31, 90, { Curtains = rgb(110, 25, 30) })
 	Kit.window(46, 54.5, 0, { Curtains = rgb(110, 25, 30) })
 	Kit.window(66.5, 54.5, 0, { Curtains = rgb(110, 25, 30) })
 	Kit.sofa(42, 22, -90, rgb(90, 30, 25), 10)
@@ -254,8 +265,6 @@ local function buildOffice(): Built
 		{ Font = Enum.Font.Garamond }
 	)
 	Kit.sofa(56.25, -14, 0, rgb(120, 30, 35), 12)
-	Kit.window(74.5, -20, 90)
-	Kit.window(74.5, -42, 90)
 	Kit.plant(42, -52, "Tall")
 	Kit.plant(70.5, -52, "Tall")
 	Kit.waterCooler(72, -11)
@@ -265,14 +274,196 @@ local function buildOffice(): Built
 	Kit.clock(38, 10.4, -15, -90)
 	Kit.picture(38, 7, -42, -90, "Abstract")
 
+	-- New north-west: IT room - racks of kit, a help desk, cables everywhere
+	Kit.roomFloor(-93.75, 31, 37.5, 48, rgb(70, 74, 82), carpet)
+	Kit.fluorescent(-102.75, 31, 0)
+	Kit.fluorescent(-84.75, 31, 0)
+	for _, z in { 18, 30, 42 } do
+		Kit.shelfUnit(-104, z, 90)
+	end
+	Kit.desk(-86, 46, 0)
+	Kit.desk(-86, 34, 0)
+	Kit.printer(-78.5, 14, 90)
+	Kit.sign(-93.75, 10.9, 6.5, 0, "IT", Vector2.new(4, 0.8), rgb(40, 40, 46), rgb(235, 235, 235))
+	Kit.whiteboard(-93.75, 6.6, 54.5, 0, "  HAVE YOU TRIED\n  TURNING IT OFF\n  AND ON AGAIN?")
+	Kit.window(-111.5, 24, -90)
+	Kit.window(-111.5, 42, -90)
+
+	-- New south-west: the stair hall - the way up
+	Kit.roomFloor(-93.75, -31, 37.5, 48, rgb(205, 200, 190), Enum.Material.Marble)
+	local stairHole = Kit.stairs(-106, -34, 180, 8, rgb(150, 110, 75))
+	Kit.sign(-93.75, 10.9, -6.5, 180, "STAIRS", Vector2.new(4, 0.8), rgb(40, 40, 46), rgb(235, 235, 235))
+	Kit.fluorescent(-88, -31, 0)
+	Kit.plant(-80, -52, "Tall")
+	Kit.bench(-86, -52.5, 180)
+	Kit.extinguisher(-76, -40, 90)
+	Kit.window(-90, -54.5, 180)
+
+	-- New north-east: cafeteria - long tables, a serving counter, vending machines
+	Kit.checker(93.75, 31, 37.5, 48, 4.7, rgb(235, 235, 230), rgb(200, 60, 60))
+	Kit.fluorescent(84.75, 31, 0)
+	Kit.fluorescent(102.75, 31, 0)
+	Kit.counter(93.75, 53.2, 26, 0, { Coffee = -8, Microwave = 6, Sink = 0 })
+	Kit.tableWithChairs(87, 24, 8, 4, rgb(240, 240, 240))
+	Kit.tableWithChairs(87, 38, 8, 4, rgb(240, 240, 240))
+	Kit.tableWithChairs(102, 24, 8, 4, rgb(240, 240, 240))
+	Kit.tableWithChairs(102, 38, 8, 4, rgb(240, 240, 240))
+	Kit.vending(111, 14, 90, rgb(30, 160, 80))
+	Kit.vending(111, 19, 90, rgb(200, 30, 40))
+	Kit.sign(93.75, 10.9, 6.5, 0, "CAFETERIA", Vector2.new(4, 0.8), rgb(40, 40, 46), rgb(235, 235, 235))
+	Kit.window(111.5, 34, 90)
+	Kit.window(111.5, 46, 90)
+	Kit.trashBin(78, 50)
+
+	-- New south-east: mail room - sorting shelves, parcels, a counter
+	Kit.roomFloor(93.75, -31, 37.5, 48, rgb(120, 120, 118), Enum.Material.Concrete)
+	Kit.fluorescent(93.75, -31, 0)
+	Kit.shelfUnit(111.5, -20, 90)
+	Kit.shelfUnit(111.5, -34, 90)
+	Kit.shelfUnit(93.75, -53.5, 180)
+	Kit.crates(84, -44)
+	Kit.crates(100, -26)
+	Kit.receptionDesk(88, -16, 0)
+	Kit.sign(93.75, 10.9, -6.5, 180, "MAIL ROOM", Vector2.new(4, 0.8), rgb(40, 40, 46), rgb(235, 235, 235))
+	Kit.window(111.5, -46, 90)
+	Kit.plant(78, -52, "Bush")
+
+	Kit.elevator(-W / 2 + 0.5, 0, -90)
+	Kit.glassDoors(W / 2 - 0.5, 0, 90, "BLACKWOOD & CO.")
+	Kit.exitSign(W / 2 - 0.5, 11.6, 0, 90)
+	Kit.exitSign(-W / 2 + 0.5, 11.6, 4.5, -90)
+
+	-- UPSTAIRS ------------------------------------------------------------------------------
+	Kit.Level(1)
+	local UPWALL: Kit.WallStyle = {
+		Color = rgb(196, 206, 214),
+		Material = Enum.Material.Plaster,
+		Base = rgb(60, 66, 74),
+		Door = rgb(120, 80, 48),
+	}
+	local x0, x1 = UP.X - UP.W / 2, UP.X + UP.W / 2 -- -112.5 .. 0
+	-- the slab between the storeys is white underneath (the ground floor's ceiling); the carpet is
+	-- a thin layer on top
+	Kit.slab("Ceiling", -0.6, UP, { stairHole }, rgb(240, 240, 238), nil, 0.8)
+	Kit.slab("Floor", -0.1, UP, { stairHole }, rgb(84, 96, 118), Enum.Material.Carpet, 0.2)
+	Kit.slab("Ceiling", Kit.WALL_HEIGHT + 0.5, { X = UP.X, Z = 0, W = UP.W + 2, D = D + 2 }, {}, rgb(240, 240, 238))
+	Kit.ceilingGrid(UP.X, 0, UP.W, D, 6, rgb(205, 205, 205))
+	wall(x0, D / 2, x1, D / 2, UPWALL)
+	wall(x0, -D / 2, x1, -D / 2, UPWALL)
+	wall(x0, -D / 2, x0, D / 2, UPWALL)
+	wall(x1, -D / 2, x1, D / 2, UPWALL)
+	wall(x0, 7, x1, 7, UPWALL, { -93.75, -56.25, -18.75 })
+	wall(x0, -7, x1, -7, UPWALL, { -93.75, -56.25, -18.75 })
+	for _, x in { -75, -37.5 } do
+		wall(x, 7, x, D / 2, UPWALL, { 31 })
+		wall(x, -D / 2, x, -7, UPWALL, { -31 })
+	end
+	-- the corridor: a runner, downlights, a window at the end
+	Kit.roomFloor(UP.X, 0, UP.W, 14, rgb(205, 200, 190), Enum.Material.Marble)
+	Kit.rug(UP.X, 0, UP.W - 10, 6, rgb(40, 70, 130), rgb(25, 45, 90))
+	for x = -104, -8, 12 do
+		Kit.downlight(x, 0, nil, 0.15)
+	end
+	Kit.window(-0.5, 0, 90)
+	Kit.plant(-4, 4.8, "Tall")
+	Kit.plant(-4, -4.8, "Fern")
+	Kit.picture(-56.25, 7, 6.5, 0, "Landscape", rgb(212, 175, 80))
+	Kit.clock(-18.75, 10.6, -6.5, 180)
+	local upPlates = { "ARCHIVES", "CONFERENCE", "TRAINING", "STAIRS", "GAME ROOM", "LIBRARY" }
+	for i, x in { -93.75, -56.25, -18.75 } do
+		Kit.sign(x, 10.9, 6.5, 0, upPlates[i], Vector2.new(4, 0.8), rgb(40, 40, 46), rgb(235, 235, 235))
+		Kit.sign(x, 10.9, -6.5, 180, upPlates[i + 3], Vector2.new(4, 0.8), rgb(40, 40, 46), rgb(235, 235, 235))
+	end
+
+	-- Landing: a railing round the stairwell
+	Kit.railing(-112, -48, -100, -48, rgb(120, 80, 48))
+	Kit.railing(-100, -48, -100, -20, rgb(120, 80, 48))
+	Kit.fluorescent(-90, -31, 0)
+	Kit.plant(-80, -50, "Tall")
+	Kit.window(-90, -54.5, 180)
+
+	-- Archives: rows of shelves and filing cabinets - good for hiding
+	for _, x in { -104, -94, -84 } do
+		Kit.bookshelf(x, 24, 0, rgb(60, 38, 25))
+		Kit.bookshelf(x, 40, 0, rgb(60, 38, 25))
+	end
+	for _, z in { 14, 18 } do
+		Kit.filingCabinet(-78.5, z, 90)
+	end
+	Kit.crates(-106, 50)
+	Kit.fluorescent(-93.75, 31, 0)
+	Kit.window(-111.5, 31, -90)
+
+	-- Conference hall: one huge table
+	Kit.rug(-56.25, 31, 30, 34, rgb(60, 70, 90), rgb(212, 175, 80))
+	Kit.tableWithChairs(-56.25, 31, 22, 8, rgb(60, 40, 28))
+	Kit.projectorScreen(-56.25, 8.4, 54.5, 0)
+	Kit.fluorescent(-65, 31, 0)
+	Kit.fluorescent(-47, 31, 0)
+	Kit.window(-70, 54.5, 0)
+	Kit.window(-42, 54.5, 0)
+	Kit.plant(-72, 12, "Tall")
+	Kit.waterCooler(-40, 12)
+
+	-- Training room: rows of desks facing a whiteboard
+	for _, z in { 22, 32, 42 } do
+		Kit.desk(-28, z, 0)
+		Kit.desk(-18.75, z, 0)
+		Kit.desk(-9.5, z, 0)
+	end
+	Kit.whiteboard(
+		-18.75,
+		6.6,
+		54.5,
+		0,
+		"  WELCOME, NEW HIRES!\n  rule 1: stay together\n  rule 2: don't go upstairs alone"
+	)
+	Kit.fluorescent(-27.75, 31, 0)
+	Kit.fluorescent(-9.75, 31, 0)
+	Kit.window(-0.5, 31, 90)
+
+	-- Game room: arcade machines, a big sofa, a TV
+	Kit.roomFloor(-56.25, -31, 37.5, 48, rgb(90, 30, 110), carpet)
+	Kit.arcade(-72, -20, -90)
+	Kit.arcade(-72, -28, -90)
+	Kit.arcade(-72, -36, -90)
+	Kit.sofa(-52, -48, 180, rgb(30, 36, 48), 14)
+	Kit.coffeeTable(-52, -40, 6, 3)
+	Kit.tv(-52, -8.6, 0)
+	Kit.vending(-41, -50, 90, rgb(30, 90, 190))
+	Kit.fluorescent(-56.25, -31, 0)
+	Kit.window(-56.25, -54.5, 180)
+
+	-- Library: bookshelves, armchairs, a globe
+	Kit.roomFloor(-18.75, -31, 37.5, 48, rgb(150, 110, 75), Enum.Material.WoodPlanks)
+	for _, z in { -16, -28, -40 } do
+		Kit.bookshelf(-1.6, z, 90, rgb(60, 38, 25))
+	end
+	Kit.bookshelf(-30, -53.5, 180, rgb(60, 38, 25))
+	Kit.bookshelf(-20, -53.5, 180, rgb(60, 38, 25))
+	Kit.armchair(-26, -30, -90, rgb(30, 80, 60))
+	Kit.armchair(-26, -38, -90, rgb(30, 80, 60))
+	Kit.sideTable(-26, -34, true)
+	Kit.globe(-12, -20)
+	Kit.floorLamp(-32, -46)
+	Kit.fluorescent(-18.75, -31, 0)
+	Kit.Level(0)
+
 	local spawns = {}
-	for _, x in roomX do
+	for _, x in { -93.75, -56.25, -18.75, 18.75, 56.25, 93.75 } do
 		table.insert(spawns, at(x, 3, 22))
 		table.insert(spawns, at(x, 3, -22))
 		table.insert(spawns, at(x - 6, 3, 0))
 		table.insert(spawns, at(x + 6, 3, 0))
 	end
-	return { Name = "Office", Folder = folder, Spawns = spawns, Size = Vector2.new(W, D) }
+	-- upstairs: a few in every room (not on the landing)
+	for _, x in { -93.75, -56.25, -18.75 } do
+		table.insert(spawns, at(x, 3 + Kit.STOREY, 22))
+		table.insert(spawns, at(x + 6, 3 + Kit.STOREY, 0))
+	end
+	table.insert(spawns, at(-56.25, 3 + Kit.STOREY, -22))
+	table.insert(spawns, at(-18.75, 3 + Kit.STOREY, -22))
+	return { Name = "Office", Folder = folder, Spawns = spawns, Size = Vector2.new(W, D), Levels = 2 }
 end
 
 -- Mansion ------------------------------------------------------------------------------------
