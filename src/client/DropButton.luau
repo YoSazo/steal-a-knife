@@ -12,14 +12,15 @@ local player = Players.LocalPlayer
 local DropButton = {}
 
 function DropButton.Init()
+	-- Tsunami's size: a slim pill low in the middle, under your character, not over it
 	local button = SimpleUi.button(Ui.gui, "🗑️ Drop", Color3.fromRGB(240, 60, 120), {
 		Name = "DropButton",
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -96),
-		Size = UDim2.fromOffset(240, 64),
+		Position = if Ui.Phone then UDim2.new(0.5, 0, 1, -14) else UDim2.new(0.5, 0, 1, -80),
+		Size = if Ui.Phone then UDim2.fromOffset(132, 40) else UDim2.fromOffset(190, 52),
 		Visible = false,
 		ZIndex = 20,
-		Max = 34,
+		Max = if Ui.Phone then 24 else 30,
 	}, function()
 		Remotes:WaitForChild("Drop"):FireServer()
 	end)
