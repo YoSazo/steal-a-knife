@@ -17,6 +17,9 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local TextService = game:GetService("TextService")
+-- Room at each end of the top line for its fade to nothing
+local FADE = 60
 
 local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
@@ -352,19 +355,24 @@ local function run(startAt: number, replay: boolean)
 		local _, bounds = Ui.bounds()
 		local phone = Ui.Phone
 		local height = if phone then 36 else 34
-		banner.Size = UDim2.fromOffset(bounds.X, height)
-		banner.Position = UDim2.new(0.5, 0, 0, 0)
-		-- This top strip has the full safe-area width; side navigation sits lower on the screen.
+		stepLabel.TextSize = if phone then 19 else 20
+		-- Only as wide as the words (plus the fade at each end), never the whole screen
 		local reserve = if skip.Visible then 64 else 0
-		local lane = math.max(120, math.min(960, bounds.X - 24 - reserve))
+		local maxLane = math.max(120, math.min(960, bounds.X - 24 - reserve - 2 * FADE))
+		local words =
+			TextService:GetTextSize(stepLabel.Text, stepLabel.TextSize, stepLabel.Font, Vector2.new(maxLane, height))
+		local lane = math.min(maxLane, words.X + 8)
+		banner.Size = UDim2.fromOffset(math.min(bounds.X, lane + reserve + 2 * FADE), height)
+		banner.Position = UDim2.new(0.5, 0, 0, 0)
 		stepLabel.Position = UDim2.new(0.5, -reserve / 2, 0, 0)
 		stepLabel.Size = UDim2.new(0, lane, 1, 0)
-		stepLabel.TextSize = if phone then 19 else 20
-		skip.AnchorPoint = Vector2.new(1, 0.5)
-		skip.Position = UDim2.new(1, -12, 0.5, 0)
+		skip.AnchorPoint = Vector2.new(0, 0.5)
+		skip.Position = UDim2.new(0.5, lane / 2 - reserve / 2 + 8, 0.5, 0)
 		Ui.gui:SetAttribute("TutorialBarHeight", height)
 	end
 	own(Ui.Layout.Changed:Connect(layout))
+	own(stepLabel:GetPropertyChangedSignal("Text"):Connect(layout))
+	own(skip:GetPropertyChangedSignal("Visible"):Connect(layout))
 	layout()
 
 	-- The trail: red chevrons lying on the ground from you towards the target, sliding forwards
