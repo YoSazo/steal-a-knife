@@ -118,7 +118,8 @@ function ShiftLock.Init()
 			and humanoid ~= nil
 			and root ~= nil
 			and humanoid.Health > 0
-			and camera.CameraType == Enum.CameraType.Custom
+			-- (or the knife stick's aim camera: letting go of shift lock there centred you)
+			and (camera.CameraType == Enum.CameraType.Custom or camera:GetAttribute("KnifeAim") == true)
 			and not Ui.menuOpen()
 			and not player:GetAttribute("Training")
 			and not player:GetAttribute("Spectating")

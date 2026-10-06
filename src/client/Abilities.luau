@@ -734,11 +734,14 @@ function Abilities.Init()
 		aimPitch = math.asin(math.clamp(look.Y, -1, 1))
 		aimDistance = math.max(0.5, (camera.CFrame.Position - camera.Focus.Position).Magnitude)
 		camera.CameraType = Enum.CameraType.Scriptable
+		-- (client/ShiftLock keeps going while this is set: the aim camera is still "your" camera)
+		camera:SetAttribute("KnifeAim", true)
 		owningCamera = true
 	end
 	releaseCamera = function()
 		if owningCamera then
 			owningCamera = false
+			workspace.CurrentCamera:SetAttribute("KnifeAim", nil)
 			workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
 		end
 	end
@@ -761,8 +764,12 @@ function Abilities.Init()
 			aimPitch = math.clamp(aimPitch - delta.Y, math.rad(-80), math.rad(80))
 			aimDelta = Vector2.zero
 		end
-		local focus = head.Position + Vector3.new(0, 0.5, 0)
 		local rotation = CFrame.fromOrientation(aimPitch, aimYaw, 0)
+		-- Shift lock's over-the-shoulder offset (Humanoid.CameraOffset only moves Roblox's own camera,
+		-- so the aim camera adds it itself; without it you snapped to the middle of the screen)
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		local shoulder = if humanoid then rotation:VectorToWorldSpace(humanoid.CameraOffset) else Vector3.zero
+		local focus = head.Position + Vector3.new(0, 0.5, 0) + shoulder
 		camera.CFrame = CFrame.new(focus - rotation.LookVector * aimDistance) * rotation
 		camera.Focus = CFrame.new(focus)
 	end
