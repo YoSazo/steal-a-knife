@@ -19,6 +19,7 @@ local CartoonArt = require(ReplicatedStorage.Shared.Config.CartoonArt)
 local SimpleUi = require(script.Parent.SimpleUi)
 local VoxelUi = require(ReplicatedStorage.Shared.Config.VoxelUi)
 local CoinIcon = require(ReplicatedStorage.Shared.Config.CoinIcon)
+local RoundPrize = require(ReplicatedStorage.Shared.RoundPrize)
 local Icons2 = require(ReplicatedStorage.Shared.Config.VoxelIcons2).Icons
 local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 local WheelModel = require(ReplicatedStorage.Shared.WheelModel)
@@ -169,6 +170,86 @@ function Hud.Init()
 		Size = UDim2.fromOffset(460, 26),
 		Text = "",
 	}, gui)
+
+	-- The round prize (Shared/RoundPrize), from AnnounceAt seconds before the round: what each side
+	-- wins in your own numbers, and "Double it!" (Robux). The big red countdown repeats it at 10 s.
+	local prizeBox = new("Frame", {
+		Name = "RoundPrize",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 98),
+		Size = UDim2.fromOffset(560, 92),
+		BackgroundTransparency = 1,
+		Visible = false,
+	}, gui)
+	local function prizeLine(y: number, color: Color3): TextLabel
+		local label = Ui.label({
+			Position = UDim2.fromOffset(0, y),
+			Size = UDim2.new(1, 0, 0, 24),
+			TextColor3 = color,
+			RichText = true,
+			Text = "",
+		}, prizeBox)
+		Ui.textStroke(label, 2.5)
+		return label
+	end
+	local jackpotLine = prizeLine(0, Color3.fromRGB(255, 215, 70))
+	local innocentLine = prizeLine(0, Color3.fromRGB(140, 255, 150))
+	local murdererLine = prizeLine(26, Color3.fromRGB(255, 120, 120))
+	local doubleButton = Ui.button(
+		{
+			Name = "DoublePrize",
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, 56),
+			Size = UDim2.fromOffset(190, 32),
+			BackgroundColor3 = Color3.fromRGB(0, 176, 111),
+			Text = "🎁 Double it! R$25",
+		},
+		prizeBox,
+		function()
+			if Ui.Buy and ((player:GetAttribute("Charge_DoublePrize") or 0) :: number) == 0 then
+				Ui.Buy("Product", "DoublePrize")
+			end
+		end
+	)
+	task.spawn(function()
+		while true do
+			task.wait(0.25)
+			local kind = ReplicatedStorage:GetAttribute("PrizeKind")
+			local endsAt = ReplicatedStorage:GetAttribute("PhaseEndsAt")
+			local left = if type(endsAt) == "number" then endsAt - workspace:GetServerTimeNow() else math.huge
+			local show = type(kind) == "string"
+				and ReplicatedStorage:GetAttribute("Phase") == "Intermission"
+				and ReplicatedStorage:GetAttribute("Status") == "🔪 MURDER ROUND in"
+				and left <= GameConfig.RoundPrize.AnnounceAt
+				and left > 0
+				and not player:GetAttribute("InRound")
+				and not Ui.menuOpen()
+			prizeBox.Visible = show
+			if show then
+				local jackpot = ReplicatedStorage:GetAttribute("PrizeJackpot") == true
+				local seed = (ReplicatedStorage:GetAttribute("PrizeSeed") or 1) :: number
+				local doubled = ((player:GetAttribute("Charge_DoublePrize") or 0) :: number) > 0
+				local stats = RoundPrize.Stats(player)
+				local innocent = RoundPrize.For(kind :: string, "Innocent", jackpot, seed, stats, doubled)
+				local murderer = RoundPrize.For(kind :: string, "Murderer", jackpot, seed, stats, doubled)
+				jackpotLine.Visible = jackpot
+				jackpotLine.Text = "⭐ JACKPOT ROUND! ⭐"
+				local y = if jackpot then 26 else 0
+				innocentLine.Position = UDim2.fromOffset(0, y)
+				murdererLine.Position = UDim2.fromOffset(0, y + 26)
+				doubleButton.Position = UDim2.new(0.5, 0, 0, y + 56)
+				innocentLine.Text = `😇 If Innocents win: <b>{innocent.Text}</b>`
+				murdererLine.Text = `🔪 If the Murderer wins: <b>{murderer.Text}</b>`
+				local label = doubleButton:FindFirstChild("Label") :: TextLabel?
+				local text = if doubled then "✓ Prize doubled!" else "🎁 Double it! R$25"
+				if label then
+					label.Text = text
+				else
+					doubleButton.Text = text
+				end
+			end
+		end
+	end)
 	-- The Upgrade Base sign by your own gate: next floor's price, how full you are, a "!" when you
 	-- can afford it (the prompt on it buys it; other vaults' signs stay blank)
 	task.spawn(function()

@@ -568,6 +568,59 @@ function Transitions.Init()
 			end
 		end
 	)
+	-- The round prize, paid once you're home: "You won! +$4.2M" (a knife shows its picture)
+	local function showPrize(text: string, kind: unknown, knife: unknown, jackpot: boolean)
+		local prizeCard = Instance.new("Frame")
+		prizeCard.Name = "PrizeWon"
+		prizeCard.AnchorPoint = Vector2.new(0.5, 0.5)
+		prizeCard.Position = UDim2.fromScale(0.5, 0.4)
+		prizeCard.Size = UDim2.fromOffset(440, if type(knife) == "string" then 260 else 150)
+		prizeCard.BackgroundColor3 = Color3.fromRGB(22, 16, 28)
+		prizeCard.BackgroundTransparency = 0.1
+		prizeCard.ZIndex = 45
+		prizeCard.Parent = Ui.root
+		Instance.new("UICorner", prizeCard).CornerRadius = UDim.new(0, 18)
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 4
+		stroke.Color = Color3.fromRGB(255, 205, 60)
+		stroke.Parent = prizeCard
+		label(prizeCard, {
+			Position = UDim2.fromOffset(16, 12),
+			Size = UDim2.new(1, -32, 0, 48),
+			Text = if jackpot then "⭐ JACKPOT! You won! ⭐" else "🎉 You won!",
+			TextColor3 = Color3.fromRGB(255, 215, 70),
+			ZIndex = 46,
+		})
+		if type(knife) == "string" then
+			local parsed = Items.Parse(knife)
+			Ui.art(prizeCard, "", {
+				AnchorPoint = Vector2.new(0.5, 0),
+				Position = UDim2.new(0.5, 0, 0, 64),
+				Size = UDim2.fromOffset(120, 120),
+				Image = if parsed then (VoxelKnives[parsed.Name] or KnifeIcons[parsed.Name] or "") else "",
+				ZIndex = 46,
+			})
+		end
+		label(prizeCard, {
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.new(0, 16, 1, -16),
+			Size = UDim2.new(1, -32, 0, 56),
+			Text = text,
+			TextWrapped = true,
+			TextColor3 = if kind == "Speed" then Color3.fromRGB(120, 200, 255) else Color3.fromRGB(120, 255, 140),
+			ZIndex = 46,
+		})
+		local pop = Instance.new("UIScale")
+		pop.Scale = 0.6
+		pop.Parent = prizeCard
+		TweenService:Create(pop, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+		task.delay(4.5, function()
+			TweenService:Create(pop, TweenInfo.new(0.2), { Scale = 0.8 }):Play()
+			task.wait(0.2)
+			prizeCard:Destroy()
+		end)
+	end
+
 	-- The Murderer's haul: "You stole 3 knives!" with every knife's picture and name (up to 5, then
 	-- "+N more"), for a few seconds once you're back in the hub
 	local function showHaul(items: { string })
@@ -673,7 +726,7 @@ function Transitions.Init()
 		end)
 	end
 
-	Remotes:WaitForChild("Effect").OnClientEvent:Connect(function(kind: string, text: any, extra: any)
+	Remotes:WaitForChild("Effect").OnClientEvent:Connect(function(kind: string, text: any, extra: any, ...)
 		if kind == "PowerReveal" then
 			if type(text) == "table" then
 				showReveal(text)
@@ -692,6 +745,13 @@ function Transitions.Init()
 			kill.Visible = false
 			if type(text) == "table" then
 				showCard(text)
+			end
+			return
+		end
+		if kind == "PrizeWon" then
+			if type(text) == "string" then
+				local args = { ... }
+				task.spawn(showPrize, text, extra, args[1], args[2] == true)
 			end
 			return
 		end

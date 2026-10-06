@@ -28,6 +28,7 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local AnimLibrary = require(ReplicatedStorage.Shared.AnimLibrary)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
+local RoundPrize = require(ReplicatedStorage.Shared.RoundPrize)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local Props = require(ReplicatedStorage.Shared.Props)
@@ -52,6 +53,7 @@ local StealService = require(script.Parent.StealService)
 local RoundBots = require(script.Parent.RoundBots)
 local Ragdoll = require(script.Parent.Ragdoll)
 local Analytics = require(script.Parent.Analytics)
+local Gamble = require(script.Parent.Gamble)
 local SurpriseGifts = require(script.Parent.SurpriseGifts)
 
 local RoundService = {}
@@ -77,6 +79,7 @@ type Round = {
 	Snares: { { Part: BasePart, Stun: number } }?, -- the Murderer's hidden snares (Snare power)
 	Bots: { Bot },
 	BotFolder: Folder,
+	PrizeStats: { [Player]: RoundPrize.Stats }, -- each player's numbers when the round began
 	Innocents: { Player },
 	Alive: { [Player]: boolean },
 	Kills: number,
@@ -550,6 +553,40 @@ local function giveKnife(player: Player, item: string)
 		DataService.AddCash(player, value, "round_loot_sold")
 		Net.Notify(player, `Your vault is full, so you got {Format.Cash(value)} instead`, "info")
 	end
+end
+
+-- Hands a round prize over (RoundPrize: the same numbers the countdown showed) and pops it up
+local function payPrize(
+	player: Player,
+	kind: string,
+	side: string,
+	jackpot: boolean,
+	seed: number,
+	stats: RoundPrize.Stats
+)
+	if not player.Parent or not DataService.Get(player) then
+		return
+	end
+	local doubled = DataService.UseCharge(player, "DoublePrize")
+	local prize = RoundPrize.For(kind, side, jackpot, seed, stats, doubled)
+	if prize.Kind == "Cash" then
+		DataService.AddCash(player, prize.Amount, "round_prize")
+	elseif prize.Kind == "Speed" then
+		DataService.Update(player, function(p)
+			p.Speed += prize.Amount
+		end)
+		BaseService.RefreshWalkSpeed(player)
+	elseif prize.Kind == "Knife" and prize.Knife then
+		for _ = 1, prize.Amount do
+			giveKnife(player, Fuel.RollPower(player, Items.Make(prize.Knife, nil, nil, "?")))
+		end
+	elseif prize.Kind == "Boost" then
+		DataService.AddBoost(player, "Cash", prize.Amount)
+	elseif prize.Kind == "Spins" then
+		Gamble.AddSpins(player, prize.Amount)
+	end
+	Net.Remotes.Effect:FireClient(player, "PrizeWon", prize.Text, prize.Kind, prize.Knife, jackpot)
+	Analytics.Track(player, "round.prize", { kind = prize.Kind, side = side, jackpot = jackpot, doubled = doubled })
 end
 
 local spawnRevolver: (Round, Vector3?) -> ()
@@ -2230,6 +2267,7 @@ local function startRound(participants: { Player })
 		Coins = coins,
 		Bodies = bodies,
 		Loot = {},
+		PrizeStats = {},
 		Names = {},
 		Revolver = nil,
 		Gunner = nil,
@@ -2330,6 +2368,7 @@ local function startRound(participants: { Player })
 			table.insert(round.Innocents, player)
 		end
 		round.Alive[player] = true
+		round.PrizeStats[player] = RoundPrize.Stats(player)
 		player:SetAttribute("InRound", true)
 		player:SetAttribute("Role", if isMurderer then "Murderer" else "Innocent")
 		DataService.Update(player, function(p)
@@ -2629,6 +2668,21 @@ local function endRound(round: Round)
 			)
 		end)
 	end
+	-- The round prize: the winning side gets what the countdown promised, once they're home
+	local prizeKind = ReplicatedStorage:GetAttribute("PrizeKind")
+	if type(prizeKind) == "string" then
+		local jackpot = ReplicatedStorage:GetAttribute("PrizeJackpot") == true
+		local seed = (ReplicatedStorage:GetAttribute("PrizeSeed") or 1) :: number
+		for player in round.Names do
+			local role = roleOf(round, player)
+			local side = if role == "murderer" then "Murderer" else "Innocent"
+			local won = if side == "Murderer" then not innocentsWon else innocentsWon
+			local stats = round.PrizeStats[player]
+			if won and stats then
+				task.delay(GameConfig.ResultsTime + 2, payPrize, player, prizeKind, side, jackpot, seed, stats)
+			end
+		end
+	end
 	if hero and hero.Parent then
 		local amount = pay(round, hero, GameConfig.RoundPay.Hero)
 		Net.Notify(hero, `HERO! +{Format.Cash(amount)}`, "good")
@@ -2847,6 +2901,10 @@ local function loop()
 	while true do
 		-- Intermission: steal knives, earn cash, buy upgrades and round items
 		setPhase("Intermission", GameConfig.IntermissionTime, INTERMISSION_STATUS)
+		local prizeKind, jackpot, seed = RoundPrize.Roll(rng)
+		ReplicatedStorage:SetAttribute("PrizeKind", prizeKind)
+		ReplicatedStorage:SetAttribute("PrizeJackpot", jackpot)
+		ReplicatedStorage:SetAttribute("PrizeSeed", seed)
 		local startedAt = os.clock()
 		local endsAt = startedAt + GameConfig.IntermissionTime
 		local insuranceOffered = false

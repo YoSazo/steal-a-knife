@@ -282,6 +282,29 @@ local GameConfig = {
 		Cosmic = 3e12,
 	} :: { [string]: number },
 	-- The Lucky Wheel (Gamble): a free spin a day, one per EarnEvery seconds played, Robux packs
+	-- The round prize (Shared/RoundPrize): one type per round for the whole server, in each
+	-- player's own numbers. Innocent = everyone on the Innocents' side when they win (dead ones
+	-- too); Murderer = the winning Murderer(s), who get more.
+	RoundPrize = {
+		Kinds = {
+			{ Kind = "Cash", Weight = 30 },
+			{ Kind = "Speed", Weight = 20 },
+			{ Kind = "Knife", Weight = 20 },
+			{ Kind = "Boost", Weight = 15 },
+			{ Kind = "Spins", Weight = 15 },
+		},
+		JackpotChance = 0.1, -- a JACKPOT round: everything x3 (knives one more step up)
+		JackpotMultiplier = 3,
+		AnnounceAt = 60, -- the line under the timer shows this many seconds before the round
+		CashMinutes = { Innocent = 10, Murderer = 25 }, -- minutes of your own vault income
+		MinCash = { Innocent = 1000, Murderer = 3000 },
+		SpeedShare = { Innocent = 0.15, Murderer = 0.35 }, -- of your current Speed
+		MinSpeed = { Innocent = 200, Murderer = 500 },
+		KnifeStep = { Innocent = 1, Murderer = 2 }, -- rarities above your best knife
+		BoostMinutes = { Innocent = 5, Murderer = 10 }, -- of 2x cash
+		Spins = { Innocent = 3, Murderer = 8 },
+	},
+
 	-- Surprise gifts (server SurpriseGifts): a present drops near you at random moments while you
 	-- play in the hub. Gaps are seconds of hub play; prizes are weighted (Seconds = of income)
 	SurpriseGift = {

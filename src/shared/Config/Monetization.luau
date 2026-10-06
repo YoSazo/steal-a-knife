@@ -513,6 +513,16 @@ Monetization.Products = {
 		Color = rgb(255, 200, 70),
 	},
 	{
+		Key = "DoublePrize",
+		Id = 3716821469,
+		Price = 25,
+		Name = "Double Your Round Prize",
+		Description = "Win the next murder round and get double the prize - double the cash, Speed, knives, spins or boost.",
+		Icon = "🎁",
+		Color = rgb(255, 200, 60),
+		Charge = { Name = "DoublePrize", Count = 1 },
+	},
+	{
 		Key = "BloodMoon",
 		Id = 3716624594,
 		Price = 99,

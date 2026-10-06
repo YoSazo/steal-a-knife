@@ -61,6 +61,7 @@ const ICON = {
   ServerLuck: CASES + "Godly.png",
   ChestRefill: HUD + "FreeChest.png",
   BloodMoon: CASES + "Mythic.png",
+  DoublePrize: ICONS + "Gift.png",
 };
 
 // (the grey cube has a real asset id too, so "already has an icon" can't be told apart: upload all,

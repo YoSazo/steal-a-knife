@@ -474,7 +474,7 @@ local function saveAsync(player: Player, profile: Profile, release: boolean): bo
 end
 
 local BOOSTS = { "Speed", "Cash", "Training" }
-local CHARGES = { "Escape", "Insurance", "Reroll" }
+local CHARGES = { "Escape", "Insurance", "Reroll", "DoublePrize" }
 
 -- Mirror the profile onto the player so the HUD and leaderboard can read it (read-only for clients)
 local function publish(player: Player, profile: Profile)
