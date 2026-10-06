@@ -112,7 +112,11 @@ function PhoneHud.Init()
 				grid.FillDirectionMaxCells = 1
 			end
 			nav.AnchorPoint = Vector2.zero
-			nav.Position = UDim2.fromOffset(leftEdge, math.floor(bounds.Y * 0.22))
+			-- a fifth of the way down, but always ending above the thumb controls (on a short screen
+			-- - a Galaxy S22 Ultra's 280 - More ran into the move stick)
+			local navH = shown * (NAV_H + NAV_GAP)
+			local lowest = Ui.Layout.touchBounds().Y - navH - 10
+			nav.Position = UDim2.fromOffset(leftEdge, math.max(34, math.min(math.floor(bounds.Y * 0.22), lowest)))
 			nav.Size = UDim2.fromOffset(NAV_W, shown * (NAV_H + NAV_GAP))
 		end
 		-- Right: a column centred on the right edge (phones: squares, kept above the jump button;
