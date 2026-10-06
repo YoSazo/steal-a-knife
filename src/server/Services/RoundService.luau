@@ -2214,9 +2214,21 @@ local function startRound(participants: { Player })
 	-- GameConfig.BotFill.Size. With two or more real players the Murderer is always one of them;
 	-- alone with bots, a bot gets the knife as often as a fair draw would give it to one.
 	local botCount = if plan then 3 else math.max(0, GameConfig.BotFill.Size - #participants)
+	-- A brand-new player's FIRST round: they're the Murderer (the thumbnail says "BECOME MURDERER";
+	-- on a fair draw a newcomer has the lowest luck meter in the server and rarely got the knife)
+	local firstTimers = {}
+	for _, player in participants do
+		local profile = DataService.Get(player)
+		if profile and profile.RoundsPlayed == 0 and profile.PlayTime < GameConfig.FirstRoundMurdererUnder then
+			table.insert(firstTimers, player)
+		end
+	end
 	local murderer: Player?
 	if plan then
 		murderer = if plan.Role == "Murderer" then plan.Player else nil
+	elseif #firstTimers > 0 then
+		murderer = firstTimers[rng:NextInteger(1, #firstTimers)]
+		Analytics.Track(murderer, "round.first_murderer")
 	elseif #participants == 1 and botCount > 0 then
 		local profile = DataService.Get(participants[1])
 		local weight = (1 + (if profile then profile.Luck else 0))
@@ -2982,6 +2994,9 @@ local function loop()
 				})
 			)
 			Analytics.Milestone(player, "round_played")
+			DataService.Update(player, function(p)
+				p.RoundsPlayed += 1
+			end)
 			local role = roleOf(round, player)
 			if role ~= "innocent" then
 				Analytics.Milestone(player, "first_" .. role)

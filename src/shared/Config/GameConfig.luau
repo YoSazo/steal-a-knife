@@ -515,6 +515,7 @@ local GameConfig = {
 	-- new players landed their first knife ~1 min in and left ~2 min in, before any round - only 37%
 	-- ever saw the murder half.)
 	NewcomerRoundIn = 45,
+	FirstRoundMurdererUnder = 1200, -- a player's first round makes them the Murderer if they've played less than this (s)
 	NewcomerMinBreak = 180,
 	RoundJoinGrace = 90, -- nobody is pulled into a round in their first this many seconds in a server
 	RoundTime = 150,
