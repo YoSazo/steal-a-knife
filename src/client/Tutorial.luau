@@ -278,16 +278,15 @@ local function run(startAt: number, replay: boolean)
 			end,
 		},
 		{
-			Text = "RUN home before Frank catches you! Follow the arrows to the glowing circle.",
+			-- Straight to your free plate (it glows from the start): there used to be a ring outside
+			-- the vault first, an extra stop on the way to the one thing that matters
+			Text = "RUN home before Frank catches you! Follow the arrows to the glowing plate.",
 			Target = function(): Vector3?
-				if not atHome then
-					return homeSpot()
-				end
 				if not plateAt or os.clock() - lastScan > 1 then
 					lastScan = os.clock()
 					plateModel, plateAt = freePlate()
 				end
-				return if plateAt then plateAt + Vector3.new(0, 1, 0) else vaultDoor()
+				return if plateAt then plateAt + Vector3.new(0, 1, 0) else homeSpot()
 			end,
 			Done = function()
 				return banked
@@ -511,7 +510,7 @@ local function run(startAt: number, replay: boolean)
 		skip.Visible = current > 2
 		local compact = {
 			"Go to the glowing circle at Frank's stash.",
-			"Run home to the glowing circle!",
+			"Run home to the glowing plate!",
 			"Walk over the green cash pad.",
 			"Run in your wheel to train Speed.",
 		}
@@ -554,32 +553,28 @@ local function run(startAt: number, replay: boolean)
 			stepLabel.Text = "Caught! Frank took it back. Try again - run straight home!"
 			return
 		end
-		-- The glowing ring: Frank's stash (step 1), then outside your vault (step 2); standing on it
-		-- switches the target to the knife / the free plate, which glows
+		-- The glowing ring in front of Frank's stash (step 1): standing on it switches the target to a
+		-- knife, which glows. Step 2 points straight at your free plate, glowing all the way.
 		local inRound = player:GetAttribute("InRound") == true
 		local onStep1 = current == 1 and not inRound
 		local onStep2 = current == 2 and not inRound
 		local me = root()
-		local ringAt: Vector3? = if onStep1 and not atFrank
-			then frankSpot()
-			elseif onStep2 and not atHome then homeSpot()
-			else nil
+		local ringAt: Vector3? = if onStep1 and not atFrank then frankSpot() else nil
+		-- Close to your glowing plate: say how to place it
+		if onStep2 and not atHome and plateAt and me and (me.Position - plateAt).Magnitude < 14 then
+			atHome = true
+			stepLabel.Text = if Ui.Phone
+				then "2/4  Tap Place Knife on the glowing plate!"
+				else "2/4  Press E on the glowing plate to place your knife!"
+		end
 		if ringAt and me then
 			local flat = Vector3.new(me.Position.X - ringAt.X, 0, me.Position.Z - ringAt.Z)
 			if flat.Magnitude < 6 then
-				if onStep1 then
-					atFrank = true
-					chosenPad = frankKnife()
-					stepLabel.Text = if Ui.Phone
-						then "1/4  Hold Steal on the glowing knife!"
-						else "1/4  Hold E on the glowing knife to steal it!"
-				else
-					atHome = true
-					plateModel, plateAt = freePlate()
-					stepLabel.Text = if Ui.Phone
-						then "2/4  Tap Place Knife on the glowing plate!"
-						else "2/4  Press E on the glowing plate to place your knife!"
-				end
+				atFrank = true
+				chosenPad = frankKnife()
+				stepLabel.Text = if Ui.Phone
+					then "1/4  Hold Steal on the glowing knife!"
+					else "1/4  Hold E on the glowing knife to steal it!"
 				Effects.Sound(Sounds.Coin, nil, 0.5)
 				ringAt = nil
 			end
@@ -608,7 +603,7 @@ local function run(startAt: number, replay: boolean)
 			else
 				glowTarget = knifeGlow.Adornee
 			end
-		elseif onStep2 and atHome then
+		elseif onStep2 then
 			glowTarget = plateModel
 		end
 		knifeGlow.Adornee = glowTarget
