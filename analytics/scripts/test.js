@@ -6,6 +6,7 @@ import { connect, query } from "../src/db.js";
 
 process.env.INGEST_KEY = "test-key";
 process.env.DASH_PASSWORD = "test-pass";
+process.env.FUNNEL_SINCE = "2000-01-01T00:00:00Z"; // (the test data is dated in the past)
 const { createApp } = await import("../src/server.js");
 const { client } = await import("../src/roblox.js");
 const { syncAll } = await import("../src/sync.js");
@@ -20,7 +21,7 @@ const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const pick = (list) => list[Math.floor(rand() * list.length)];
 
 // Simulated players: each first visit walks the funnel and drops out somewhere; some come back
-const FUNNEL = ["joined", "spawned", "tutorial_1", "steal_started", "knife_home", "cash_collected", "tutorial_4", "tutorial_5", "tutorial_6", "tutorial_done", "first_upgrade", "round_played", "round_survived"];
+const FUNNEL = ["joined", "spawned", "tutorial_1", "steal_started", "tutorial_2", "knife_home", "tutorial_3", "cash_collected", "tutorial_4", "wheel_trained", "tutorial_done", "round_played", "second_round"];
 const events = [];
 const DAY = 864e5;
 for (let i = 0; i < 300; i++) {

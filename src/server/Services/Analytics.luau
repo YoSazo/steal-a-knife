@@ -44,6 +44,11 @@ local EXPERIMENTS: { [string]: { string } } = {}
 
 -- The first-session funnel, in order. Each step is a milestone (Analytics.Milestone); the same
 -- steps go to Roblox's onboarding funnel (Creator Dashboard > Analytics > Funnels).
+-- The onboarding funnel (here, Roblox's Creator Dashboard funnel and our dashboard: analytics/src/
+-- queries.js FIRST_SESSION - keep the two lists the same). The order a new player meets them TODAY:
+-- the 4-step guide (Frank, run home, cash pad, wheel), then their first murder round (where they're
+-- the Murderer), staying for a second one, and going deeper. (Rebuilt 2026-10-06: the Upgrades and
+-- equip steps are gone from the guide.)
 local ONBOARDING = {
 	"joined",
 	"spawned",
@@ -54,13 +59,12 @@ local ONBOARDING = {
 	"tutorial_3", -- collect the cash pad
 	"cash_collected",
 	"tutorial_4", -- train speed on the wheel
-	"tutorial_5", -- open Upgrades
-	"tutorial_6", -- equip your best knife
+	"wheel_trained",
 	"tutorial_done",
-	"first_upgrade",
-	"round_played",
-	"round_survived",
+	"round_played", -- the first murder round (a new player is the Murderer)
+	"second_round", -- stayed for another round
 	"second_knife_home",
+	"first_upgrade", -- wheel upgrade, next vault floor...
 	"zone_2",
 	"session_2",
 }

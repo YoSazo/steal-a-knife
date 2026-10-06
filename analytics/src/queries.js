@@ -3,25 +3,30 @@ import { query } from "./db.js";
 
 const SINCE = "now() - ($1::int * interval '1 day')";
 
-// The first-session funnel: milestones (Analytics.Milestone), in the order a new player meets them
+// The first-session funnel: milestones (Analytics.Milestone), in the order a new player meets them.
+// Keep in step with ONBOARDING in src/server/Services/Analytics.luau. Rebuilt 2026-10-06 for the
+// 4-step guide + the first round as the Murderer; FUNNEL_SINCE starts the count over from then
+// (players who joined under the old guide would muddle the new steps).
 export const FIRST_SESSION = [
   ["joined", "Joined"],
   ["spawned", "Spawned (loading done)"],
-  ["tutorial_1", "Tutorial 1: go to Frank"],
+  ["tutorial_1", "Guide 1: go to Frank"],
   ["steal_started", "Grabbed a knife"],
+  ["tutorial_2", "Guide 2: run home"],
   ["knife_home", "Got a knife home"],
+  ["tutorial_3", "Guide 3: cash pad"],
   ["cash_collected", "Collected cash"],
-  ["tutorial_4", "Tutorial 4: the wheel"],
-  ["tutorial_5", "Tutorial 5: Upgrades"],
-  ["tutorial_6", "Tutorial 6: equip"],
-  ["tutorial_done", "Finished the tutorial"],
-  ["first_upgrade", "Bought an upgrade"],
-  ["round_played", "Played a round"],
-  ["round_survived", "Survived a round"],
+  ["tutorial_4", "Guide 4: the wheel"],
+  ["wheel_trained", "Trained on the wheel"],
+  ["tutorial_done", "Finished the guide"],
+  ["round_played", "Played a murder round"],
+  ["second_round", "Stayed for a 2nd round"],
   ["second_knife_home", "Second knife home"],
+  ["first_upgrade", "Bought an upgrade"],
   ["zone_2", "Reached zone 2"],
   ["session_2", "Came back (2nd visit)"],
 ];
+export const FUNNEL_SINCE = process.env.FUNNEL_SINCE || "2026-10-06T23:00:00Z";
 
 export async function overview(days) {
   const [row] = await query(
@@ -60,13 +65,14 @@ export async function overview(days) {
 // New players in the window: how many reached each milestone, and how long it took them (play time)
 export async function firstSession(days) {
   const rows = await query(
-    `with cohort as (select id from players where first_seen >= ${SINCE} and not studio)
+    `with cohort as (select id from players
+       where first_seen >= ${SINCE} and first_seen >= $3::timestamptz and not studio)
      select e.props->>'milestone' as step, count(distinct e.player)::int as players,
        round(percentile_cont(0.5) within group (order by (e.props->>'playtime_s')::float)::numeric) as median_s
      from events e join cohort c on c.id = e.player
      where e.event = 'milestone' and e.props->>'milestone' = any($2::text[])
      group by 1`,
-    [days, FIRST_SESSION.map(([id]) => id)],
+    [days, FIRST_SESSION.map(([id]) => id), FUNNEL_SINCE],
   );
   const byStep = Object.fromEntries(rows.map((r) => [r.step, r]));
   const steps = FIRST_SESSION.map(([id, label], i) => {

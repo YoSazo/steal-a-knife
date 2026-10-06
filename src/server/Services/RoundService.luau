@@ -3003,6 +3003,11 @@ local function loop()
 			DataService.Update(player, function(p)
 				p.RoundsPlayed += 1
 			end)
+			local played = DataService.Get(player)
+			if played and played.RoundsPlayed == 2 then
+				-- stayed through a whole round and into the next one: the round didn't make them leave
+				Analytics.Milestone(player, "second_round")
+			end
 			local role = roleOf(round, player)
 			if role ~= "innocent" then
 				Analytics.Milestone(player, "first_" .. role)
