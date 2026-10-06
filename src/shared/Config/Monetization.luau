@@ -176,7 +176,7 @@ Monetization.Products = {
 	-- cash packs are to income, so they're worth the same to everyone
 	{
 		Key = "SpeedSmall",
-		Id = 0,
+		Id = 3716826960,
 		Price = 29,
 		Name = "Speed Pack",
 		Description = "A quarter more Speed, right now.",
@@ -186,7 +186,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "SpeedMedium",
-		Id = 0,
+		Id = 3716826962,
 		Price = 99,
 		Name = "Big Speed Pack",
 		Description = "Double your Speed, right now.",
@@ -196,7 +196,7 @@ Monetization.Products = {
 	},
 	{
 		Key = "SpeedBig",
-		Id = 0,
+		Id = 3716826967,
 		Price = 299,
 		Name = "Huge Speed Pack",
 		Description = "Five times your Speed, right now.",
@@ -558,7 +558,7 @@ Monetization.Products = {
 	{
 		-- The Robux button on the "Upgrade Wheel" sign (Steal An Egg's treadmill sign: cash or R$)
 		Key = "SpeedUpgrade",
-		Id = 0,
+		Id = 3716826969,
 		Price = 49,
 		Name = "Upgrade Wheel",
 		Description = "Your Haunted Wheel's next speed upgrade, right now: you train Speed faster.",

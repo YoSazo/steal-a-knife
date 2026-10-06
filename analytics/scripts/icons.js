@@ -62,6 +62,10 @@ const ICON = {
   ChestRefill: HUD + "FreeChest.png",
   BloodMoon: CASES + "Mythic.png",
   DoublePrize: ICONS + "Gift.png",
+  SpeedUpgrade: ICONS + "Wheel.png",
+  SpeedSmall: HUD + "Speed.png",
+  SpeedMedium: HUD + "Speed.png",
+  SpeedBig: HUD + "Speed.png",
 };
 
 // (the grey cube has a real asset id too, so "already has an icon" can't be told apart: upload all,
