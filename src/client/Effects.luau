@@ -723,8 +723,8 @@ local handlers: { [string]: (...any) -> () } = {
 		Effects.Sound(Sounds.GateHit, position, 0.4)
 		local _ = color
 	end,
-	-- A boss wakes up (GuardService sendChaser, before the chase): eyes glow red, a big "!!" pops
-	-- over the head, a rising sting, and a roar as they get out of the chair
+	-- A boss wakes up (GuardService sendChaser, before the chase): eyes glow red, a rising sting, and
+	-- a roar once they're on their feet
 	BossWake = function(model: Model, duration: number)
 		local head = model and model:FindFirstChild("Head") :: BasePart?
 		if not head then
@@ -751,34 +751,14 @@ local handlers: { [string]: (...any) -> () } = {
 			}):Play()
 			table.insert(eyes, eye)
 		end
-		local gui = Instance.new("BillboardGui")
-		gui.Name = "WakeMark"
-		gui.Size = UDim2.fromScale(3, 3)
-		gui.StudsOffset = Vector3.new(0, head.Size.Y * 1.6, 0)
-		gui.LightInfluence = 0
-		gui.MaxDistance = 220
-		local mark = Instance.new("TextLabel")
-		mark.Size = UDim2.fromScale(1, 1)
-		mark.BackgroundTransparency = 1
-		mark.Font = Enum.Font.LuckiestGuy
-		mark.TextScaled = true
-		mark.TextColor3 = Color3.fromRGB(255, 50, 50)
-		mark.TextStrokeTransparency = 0
-		mark.Text = "!!"
-		mark.Parent = gui
-		local pop = Instance.new("UIScale")
-		pop.Scale = 0.2
-		pop.Parent = mark
-		gui.Parent = head
-		TweenService:Create(pop, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+		-- (one "!" only: the boss's own Alert mark, GuardService)
 		Effects.Sound(Sounds.BossWake, head.Position, 0.8)
-		task.delay(duration * 0.6, function()
+		task.delay(duration * 0.85, function()
 			if head.Parent then
 				Effects.Sound(Sounds.BossRoar, head.Position, 0.45)
 			end
 		end)
 		task.delay(duration + 1.5, function()
-			gui:Destroy()
 			for _, eye in eyes do
 				eye:Destroy()
 			end

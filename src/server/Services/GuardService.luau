@@ -29,6 +29,7 @@ local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local ToyBlockModel = require(ReplicatedStorage.Shared.ToyBlockModel)
 local BossTitleModel = require(ReplicatedStorage.Shared.BossTitleModel)
 local BossChairs = require(ReplicatedStorage.Shared.Config.BossChairs)
+local BossSleepFaces = require(ReplicatedStorage.Shared.Config.BossSleepFaces)
 local BossChairModel = require(ReplicatedStorage.Shared.Assets.BossChairModel)
 
 -- Retained for side-by-side verification; production lair titles use physical voxel meshes.
@@ -80,6 +81,8 @@ type Boss = {
 	Name: string,
 	Post: CFrame, -- where they stand guard, facing the plaza
 	Folder: Model, -- the lair
+	Stool: Model, -- the footstool in front of the chair (kicked aside when he gets up)
+	StoolHome: CFrame,
 	Slots: { Slot },
 	Guard: Guard, -- the boss in person
 }
@@ -94,7 +97,11 @@ export type Guard = {
 	Target: Player?, -- the thief being chased
 	Returning: boolean, -- walking back to the post (shadows vanish instead)
 	AlertUntil: number,
-	WakeUntil: number, -- still sitting up in the chair (doesn't turn yet)
+	WakeStart: number,
+	WakeUntil: number, -- still getting out of the chair (doesn't turn yet)
+	InChair: boolean, -- this wake-up starts in the chair (slides out of it)
+	ExitAt: Vector3?, -- walk here first (out in front of the chair, clear of the torch post)
+	SitStart: number?, -- back home: backing into the chair
 	Alert: BillboardGui,
 	Dead: boolean, -- (kept for the powers' checks; bosses never die)
 	KnifeName: string,
@@ -364,6 +371,15 @@ end
 local function setAsleep(guard: Guard, asleep: boolean)
 	guard.Model:SetAttribute("Asleep", asleep)
 	local head = guard.Model:FindFirstChild("Head")
+	-- Eyes shut while dozing (Config/BossSleepFaces), their own face back when they wake
+	local face = head and head:FindFirstChild("face") :: Decal?
+	local sleepFace = BossSleepFaces[guard.Boss.Name]
+	if face and sleepFace and sleepFace ~= "" then
+		if face:GetAttribute("AwakeFace") == nil then
+			face:SetAttribute("AwakeFace", face.Texture)
+		end
+		face.Texture = if asleep then sleepFace else face:GetAttribute("AwakeFace") :: string
+	end
 	local zzz = head and head:FindFirstChild("Zzz") :: BillboardGui?
 	if zzz then
 		zzz.Enabled = asleep
@@ -399,7 +415,11 @@ local function newGuard(boss: Boss, shadow: boolean, at: CFrame): Guard
 		Target = nil,
 		Returning = false,
 		AlertUntil = 0,
+		WakeStart = 0,
 		WakeUntil = 0,
+		InChair = false,
+		ExitAt = nil,
+		SitStart = nil,
 		Alert = head:FindFirstChild("Alert") :: BillboardGui,
 		Dead = false,
 		KnifeName = model:GetAttribute("KnifeName") :: string,
@@ -525,6 +545,11 @@ end
 -- up straight away, then the uploaded mesh model replaces it once it has downloaded. Made 1.25x
 -- (seat top 3.25) to fit a BossScale boss: at 1x the boss overhung it on every side.
 local CHAIR_SCALE = 1.25
+-- Getting up: slides this far forward out of the chair while standing (client/Moves), then walks on
+-- out to CHAIR_EXIT in front of it before turning (the torch post stands beside the chair)
+local CHAIR_STEP = 3
+local CHAIR_EXIT = 7
+local SIT_TIME = 1.2 -- back home: turning round and sitting back down
 local function mountChair(zone: number, parent: Instance, frame: CFrame)
 	local spec = BossChairs[zone]
 	if not spec then
@@ -546,6 +571,60 @@ local function mountChair(zone: number, parent: Instance, frame: CFrame)
 			warn(`[GuardService] {spec.Boss}'s chair mesh: {result}`)
 			asset:Destroy()
 		end
+	end)
+end
+
+-- The footstool his feet rest on (a boss's legs are too short for the 1.25x seat): wooden legs and
+-- top, a cushion in the zone's colour. Cosmetic only.
+local function buildFootstool(parent: Instance, chairFrame: CFrame, cushion: Color3): Model
+	local stool = Instance.new("Model")
+	stool.Name = "Footstool"
+	local wood = Color3.fromRGB(110, 70, 40)
+	local function piece(name: string, size: Vector3, offset: Vector3, color: Color3)
+		local part = Instance.new("Part")
+		part.Name = name
+		part.Anchored = true
+		part.CanCollide, part.CanQuery, part.CanTouch = false, false, false
+		part.CastShadow = false
+		part.Size = size
+		part.CFrame = chairFrame * CFrame.new(offset)
+		part.Color = color
+		part.Material = Enum.Material.SmoothPlastic
+		part.TopSurface, part.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+		part.Parent = stool
+		return part
+	end
+	local top = piece("Top", Vector3.new(3.6, 0.3, 1.9), Vector3.new(0, 1.1, -2.65), wood)
+	piece("Cushion", Vector3.new(3.4, 0.5, 1.7), Vector3.new(0, 1.45, -2.65), cushion:Lerp(Color3.new(1, 1, 1), 0.1))
+	for _, x in { -1.5, 1.5 } do
+		for _, z in { -3.4, -1.9 } do
+			piece("Leg", Vector3.new(0.35, 1, 0.35), Vector3.new(x, 0.5, z), wood)
+		end
+	end
+	stool.PrimaryPart = top
+	stool.Parent = parent
+	return stool
+end
+
+-- Kicked aside as he gets up, slid back as he sits down
+local function moveStool(boss: Boss, away: boolean, delay: number)
+	task.delay(delay, function()
+		local stool = boss.Stool
+		if not stool.Parent then
+			return
+		end
+		local goal = if away
+			then boss.StoolHome * CFrame.new(2.8, 0, -0.9) * CFrame.Angles(0, math.rad(28), 0)
+			else boss.StoolHome
+		local from = stool:GetPivot()
+		local start = os.clock()
+		local length = if away then 0.25 else 0.5
+		while os.clock() - start < length do
+			local x = (os.clock() - start) / length
+			stool:PivotTo(from:Lerp(goal, x * x * (3 - 2 * x)))
+			task.wait()
+		end
+		stool:PivotTo(goal)
 	end)
 end
 
@@ -639,9 +718,12 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 	local postPosition = if endA.Z > endB.Z then endA else endB
 	local post = CFrame.lookAt(postPosition, Vector3.new(0, postPosition.Y, postPosition.Z - 30))
 	-- The zone's own chair (Config/BossChairs: floor origin under the seat, front -Z, seat top 2.6).
-	-- Measured on the seated rig: the floor is 4.9 below the post (the boss's root) and the back of
-	-- the body 0.9 behind it, so the chair's backrest (2.1 behind the seat centre, scaled) sits there.
-	mountChair(index, model, post * CFrame.new(0, -4.9, -1.2))
+	-- The floor is 4.9 below the post (the boss's root). The chair is deeper than a boss's thighs
+	-- are long: sat back against the backrest his shins went down through the seat, so he sits
+	-- forward on it, slouched back (client/Moves), knees over the front edge, feet on a footstool.
+	local chairFrame = post * CFrame.new(0, -4.9, 0.9)
+	mountChair(index, model, chairFrame)
+	local stool = buildFootstool(model, chairFrame, config.Color)
 	local boss: Boss = {
 		Index = index,
 		Zone = zone,
@@ -651,6 +733,8 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 		Folder = model,
 		Slots = {},
 		Guard = nil :: any,
+		Stool = stool,
+		StoolHome = stool:GetPivot(),
 	}
 
 	-- The wall slots: pedestals in a line in front of the wall, a glowing plaque behind each
@@ -784,21 +868,35 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 	-- Waking up is its own beat (see GameConfig.BossWake): red eyes, out of the chair, then the chase.
 	-- New players get longer. A chase picked back up after a round only gets the short "!".
 	local wake = GameConfig.GuardAlertTime
+	guard.InChair = false
+	guard.ExitAt = nil
 	if not startAt then
 		local profile = DataService.Get(thief)
 		local knives = if profile then #profile.Knives else 0
 		wake = if knives < GameConfig.BossWake.NewcomerKnives
 			then GameConfig.BossWake.Newcomer
 			else GameConfig.BossWake.Time
-		local serverNow = workspace:GetServerTimeNow()
-		guard.Model:SetAttribute("WakeAt", serverNow)
-		guard.Model:SetAttribute("WakeEnd", serverNow + wake)
+		-- The boss himself gets up out of his chair (client/Moves acts it out), steps out of it and
+		-- walks forward clear of the torch post before turning for you (he walked through it).
+		-- A shadow steps out of the wall: no chair.
+		if not guard.IsShadow and (guard.Position - guard.Boss.Post.Position).Magnitude < 1 then
+			local serverNow = workspace:GetServerTimeNow()
+			guard.Model:SetAttribute("WakeAt", serverNow)
+			guard.Model:SetAttribute("WakeEnd", serverNow + wake)
+			guard.Model:SetAttribute("SitAt", nil)
+			guard.Model:SetAttribute("SitEnd", nil)
+			guard.InChair = true
+			guard.ExitAt = (guard.Boss.Post * CFrame.new(0, 0, -CHAIR_EXIT)).Position
+			moveStool(guard.Boss, true, wake * 0.6)
+		end
 		Net.Remotes.Effect:FireAllClients("BossWake", guard.Model, wake)
 	end
-	guard.WakeUntil = now() + wake * 0.6
+	guard.WakeStart = now()
+	guard.WakeUntil = now() + wake * 0.85
 	setAsleep(guard, false)
 	guard.Target = thief
 	guard.Returning = false
+	guard.SitStart = nil
 	guard.AlertUntil = now() + wake
 	guard.Alert.Enabled = true
 	showTag(guard, true)
@@ -813,7 +911,7 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 	end
 	-- (the "!" stretch once they're on their feet)
 	local model = guard.Model
-	task.delay(if startAt then 0 else wake * 0.6, function()
+	task.delay(if startAt then 0 else wake * 0.85, function()
 		if model.Parent then
 			Net.Animate(model, "Alert")
 		end
@@ -1093,11 +1191,44 @@ local function step(guard: Guard, dt: number)
 
 	-- Walking back to the post after a chase
 	if guard.Returning then
-		if moveTowards(guard, guard.Boss.Post.Position, guard.Config.GuardSpeed * 0.6, dt) then
+		-- Walk back round to the front of the chair, turn round and sit back down into it (client/Moves
+		-- plays getting up backwards while this backs them into the seat)
+		local post = guard.Boss.Post
+		local front = post.Position + post.LookVector * CHAIR_STEP
+		local sitStart = guard.SitStart
+		if not sitStart then
+			local approach = post.Position + post.LookVector * CHAIR_EXIT
+			-- (come in from out front, not through the torch post)
+			local towardsFront = (front - guard.Position) * Vector3.new(1, 0, 1)
+			if towardsFront.Magnitude > CHAIR_EXIT - CHAIR_STEP + 1 then
+				moveTowards(guard, approach, guard.Config.GuardSpeed * 0.6, dt)
+				return
+			end
+			if moveTowards(guard, front, guard.Config.GuardSpeed * 0.6, dt) then
+				guard.SitStart = t
+				guard.Position = front
+				guard.Model:PivotTo(post.Rotation + front)
+				animate(guard, "Idle")
+				local serverNow = workspace:GetServerTimeNow()
+				guard.Model:SetAttribute("WakeAt", nil)
+				guard.Model:SetAttribute("WakeEnd", nil)
+				guard.Model:SetAttribute("SitAt", serverNow)
+				guard.Model:SetAttribute("SitEnd", serverNow + SIT_TIME)
+				moveStool(guard.Boss, false, SIT_TIME * 0.6)
+			end
+			return
+		end
+		local x = math.clamp((t - sitStart) / SIT_TIME, 0, 1)
+		-- (backs in while the knees bend: the last two thirds of sitting down)
+		local u = math.clamp((x - 0.3) / 0.6, 0, 1)
+		local back = u * u * (3 - 2 * u)
+		guard.Position = front:Lerp(post.Position, back)
+		guard.Model:PivotTo(post.Rotation + guard.Position)
+		if x >= 1 then
 			guard.Returning = false
-			guard.Position = guard.Boss.Post.Position
-			guard.Model:PivotTo(guard.Boss.Post)
-			animate(guard, "Idle")
+			guard.SitStart = nil
+			guard.Position = post.Position
+			guard.Model:PivotTo(post)
 			setAsleep(guard, true)
 			local i = table.find(chasers, guard)
 			if i then
@@ -1149,10 +1280,29 @@ local function step(guard: Guard, dt: number)
 	-- The wake-up / "!" beat: a fair head start (still in the chair for the first part of it, so
 	-- they only turn towards you once they're getting up)
 	if t < guard.AlertUntil then
-		if t >= guard.WakeUntil then
+		if guard.InChair then
+			-- Standing up (client/Moves, 0.55-0.85 of the wake): slide forward out of the chair
+			local post = guard.Boss.Post
+			local p = (t - guard.WakeStart) / math.max(guard.AlertUntil - guard.WakeStart, 0.1)
+			local x = math.clamp((p - 0.55) / 0.3, 0, 1)
+			local slide = x * x * (3 - 2 * x)
+			guard.Position = post.Position + post.LookVector * CHAIR_STEP * slide
+			guard.Model:PivotTo(post.Rotation + guard.Position)
+		elseif t >= guard.WakeUntil then
 			face(guard, targetRoot.Position)
 		end
 		animate(guard, "Idle")
+		return
+	end
+	-- Out of the chair: first walk on out in front of it (clear of the torch post beside it), then
+	-- turn for the thief
+	local exitAt = guard.ExitAt
+	if exitAt then
+		guard.Alert.Enabled = false
+		showTag(guard, false)
+		if moveTowards(guard, exitAt, guard.Config.GuardSpeed, dt) then
+			guard.ExitAt = nil
+		end
 		return
 	end
 	guard.Alert.Enabled = false

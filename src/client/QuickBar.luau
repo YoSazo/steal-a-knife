@@ -1,6 +1,6 @@
 --!strict
 -- The right side of the HUD, Steal An Egg style: only the two things you use all the time.
---   Knives: your wall as Tsunami-simple rows (icon, name, $/s, one Equip button), "Equip Best", and
+--   Knives: your wall as Tsunami-simple rows (icon, name, $/s, Sell and Equip), "Equip Best", and
 --           the next floor ("+10 slots") - Steal An Egg's "9/12 Active, +1 EQUIP, Equip Best" panel
 --   Powers: the Power Mystic panel (client/PowersView, registered by Menus as Ui.Panels.Powers)
 -- Everything else moved into the world: Upgrade Wheel sign by your Haunted Wheel, the Lucky Wheel
@@ -25,6 +25,7 @@ local QuickBar = {}
 local GOLD = Color3.fromRGB(255, 190, 40)
 local GREEN = Color3.fromRGB(80, 210, 50)
 local BLUE = Color3.fromRGB(70, 150, 255)
+local ORANGE = Color3.fromRGB(230, 150, 50)
 
 -- The knife you'd fight best with: highest damage, then highest income
 local function bestKnife(owned: { string }): string?
@@ -108,12 +109,17 @@ local function buildKnivesPanel(): (Frame, () -> ())
 			return
 		end
 		-- Best first
-		local sorted = table.clone(owned)
+		-- (each keeps its place in the wall list: the server sells by that index)
+		local sorted: { { Item: string, Index: number } } = {}
+		for index, item in owned do
+			table.insert(sorted, { Item = item, Index = index })
+		end
 		table.sort(sorted, function(a, b)
-			return Items.Income(a) > Items.Income(b)
+			return Items.Income(a.Item) > Items.Income(b.Item)
 		end)
 		local equippedShown = false
-		for order, item in sorted do
+		for order, entry in sorted do
+			local item = entry.Item
 			local parsed = Items.Parse(item)
 			if not parsed then
 				continue
@@ -134,14 +140,14 @@ local function buildKnivesPanel(): (Frame, () -> ())
 			})
 			SimpleUi.text(row, Items.DisplayName(item), {
 				Position = UDim2.fromOffset(98, 8),
-				Size = UDim2.new(1, -310, 0, 40),
+				Size = UDim2.new(1, -460, 0, 40),
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextColor3 = Knives.RarityColors[knife.Rarity],
 				Max = 30,
 			})
 			SimpleUi.text(row, `+${Ui.abbreviate(Items.Income(item))}/s  ·  {knife.Rarity}`, {
 				Position = UDim2.fromOffset(98, 50),
-				Size = UDim2.new(1, -310, 0, 32),
+				Size = UDim2.new(1, -460, 0, 32),
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextColor3 = Color3.fromRGB(120, 255, 140),
 				Max = 24,
@@ -151,13 +157,23 @@ local function buildKnivesPanel(): (Frame, () -> ())
 			SimpleUi.button(row, if isEquipped then "Equipped ✓" else "Equip", if isEquipped then GREEN else BLUE, {
 				AnchorPoint = Vector2.new(1, 0.5),
 				Position = UDim2.new(1, -10, 0.5, 0),
-				Size = UDim2.fromOffset(190, 70),
+				Size = UDim2.fromOffset(180, 70),
 				ZIndex = 7,
 				Max = 30,
 			}, function()
 				if not isEquipped then
 					Remotes.Equip:InvokeServer(item)
 				end
+			end)
+			-- Sell, same as More > Knives
+			SimpleUi.button(row, `Sell ${Ui.abbreviate(Items.Income(item) * GameConfig.SellSeconds)}`, ORANGE, {
+				AnchorPoint = Vector2.new(1, 0.5),
+				Position = UDim2.new(1, -198, 0.5, 0),
+				Size = UDim2.fromOffset(150, 70),
+				ZIndex = 7,
+				Max = 24,
+			}, function()
+				Remotes.Sell:InvokeServer(entry.Index)
 			end)
 		end
 	end

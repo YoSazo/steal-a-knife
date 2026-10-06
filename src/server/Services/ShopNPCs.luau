@@ -84,8 +84,9 @@ local SPECS: { Spec } = {
 		Name = "Silas",
 		Title = "Mystery Merchant",
 		Panel = "Merchant",
-		Position = Vector3.new(20, 0, -36),
-		Facing = 20,
+		-- The far end of the plaza, mirroring Madame Vesper: the four stalls face in like an X
+		Position = Vector3.new(45, 0, -198),
+		Facing = 130,
 		Color = rgb(150, 80, 255),
 		Skin = rgb(220, 170, 130),
 		Coat = rgb(50, 30, 80),
@@ -100,7 +101,8 @@ local SPECS: { Spec } = {
 
 -- The Lucky Wheel: a big wheel standing on the plaza (it was a HUD button). Standing on its ring opens
 -- the spin panel; the badge over it (filled in by client/GambleUi) says how many free spins you have.
-local LUCKY_WHEEL = { Position = Vector3.new(-20, 0, -36), Facing = -20, Color = rgb(255, 90, 190) }
+-- (the far end of the plaza, mirroring Mortimer: with Silas opposite, the four make an X)
+local LUCKY_WHEEL = { Position = Vector3.new(-45, 0, -198), Facing = -130, Color = rgb(255, 90, 190) }
 -- (the same wedge picture as the panel's wheel, client/GambleUi)
 local WEDGE_IMAGE = "rbxassetid://136440766940606"
 
