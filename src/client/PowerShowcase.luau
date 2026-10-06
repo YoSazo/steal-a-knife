@@ -53,13 +53,31 @@ local DEMOS: { [string]: () -> () } = {
 
 local showing = false
 
+-- A round about to start (or on) would cover the card: wait until you're back in the hub with time
+local function roundSoon(): boolean
+	if player:GetAttribute("InRound") then
+		return true
+	end
+	local endsAt = ReplicatedStorage:GetAttribute("PhaseEndsAt")
+	return ReplicatedStorage:GetAttribute("Phase") ~= "Intermission"
+		or (type(endsAt) == "number" and endsAt - workspace:GetServerTimeNow() < 25)
+end
+
 function PowerShowcase.Show()
-	local id = player:GetAttribute("PowerId")
-	local power = type(id) == "string" and KnifePowers.ById[id] or nil
-	if showing or not power then
+	if showing then
 		return
 	end
 	showing = true
+	while roundSoon() do
+		task.wait(1)
+	end
+	task.wait(0.5)
+	local id = player:GetAttribute("PowerId")
+	local power = type(id) == "string" and KnifePowers.ById[id] or nil
+	if not power then
+		showing = false
+		return
+	end
 	local tier = KnifePowers.TierById[power.Tier]
 	local short = KnifePowers.Short[power.Id] or { "", "" }
 	local demo = DEMOS[power.Id]
@@ -139,13 +157,23 @@ function PowerShowcase.Show()
 			card.Visible = false
 			task.delay(3.4, function()
 				if card.Parent then
-					card.Visible = true
+					card.Visible = not player:GetAttribute("InRound")
 					SimpleUi.set(main, "Got it!", GREEN, true)
 				end
 			end)
 			return
 		end
 		close()
+	end)
+
+	-- A round starting while it's open: it steps aside, and is back when you're home again
+	local roundWatch = player:GetAttributeChangedSignal("InRound"):Connect(function()
+		if card.Parent then
+			card.Visible = not player:GetAttribute("InRound")
+		end
+	end)
+	card.Destroying:Connect(function()
+		roundWatch:Disconnect()
 	end)
 
 	Effects.Sound(Sounds.Reveal, nil, 0.6)

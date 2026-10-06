@@ -4,7 +4,8 @@
 -- see-through bar under the timer (never a big box over the game). Learn by doing:
 --   1. steal a knife off Frank's wall    2. run it home and place it (caught? back to 1)
 --   3. collect its cash pad               4. run in your wheel (Speed = deeper biomes)
---   5. open Upgrades (the button pulses)  6. equip your best knife (your Murderer weapon)
+-- then the "Your knife's power" showcase. (Upgrades and Equip steps were cut: only 2 of 11 new
+-- players got through them; Upgrades is found anyway, and your best knife is auto-equipped.)
 -- Progress is saved (player TutorialStep), so leaving midway resumes there. More > How to play
 -- replays it (Ui.ReplayTutorial). The murder rounds and everything later are taught by one-time
 -- tips at the moment they happen (client/Tips). Placement is confirmed by the server, rather
@@ -191,40 +192,7 @@ local function knifeOver(pad: BasePart): Instance?
 	return pad.Parent
 end
 
--- Restrict the equip target to this player's rack. The server records the actual rolled item
--- and its plate, so duplicate knives and refreshed display models still point to the right one.
-local function myEquipKnife(): Model?
-	local map = workspace:FindFirstChild("Map")
-	local rack = map and map:FindFirstChild(`Rack_{player.Name}`)
-	if not rack then
-		return nil
-	end
-	local item = player:GetAttribute("LastPlacedKnife")
-	local slot = player:GetAttribute("LastPlacedKnifePlate")
-	local vault = myVault()
-	local pad = if vault and type(slot) == "number" then vault:FindFirstChild(`Pedestal{slot}`, true) else nil
-	local plateAt = if pad and pad:IsA("BasePart") then pad.Position else nil
-	local best: Model? = nil
-	local bestDistance = math.huge
-	for _, model in rack:GetChildren() do
-		if model:IsA("Model") and model:GetAttribute("Item") then
-			if type(item) == "string" and model:GetAttribute("Item") ~= item then
-				continue
-			end
-			local distance = if plateAt then (model:GetPivot().Position - plateAt).Magnitude else 0
-			-- Rejoining has no session placement metadata: guide an existing owned knife instead.
-			if not item and model:GetAttribute("Item") == player:GetAttribute("Equipped") then
-				return model
-			end
-			if not best or distance < bestDistance then
-				best, bestDistance = model, distance
-			end
-		end
-	end
-	return best
-end
-
--- One arrow design for world targets and the Upgrades button.
+-- One arrow design for the world targets.
 local function guideArrow(parent: Instance): TextLabel
 	local arrow = Ui.label({
 		Name = "GuideArrow",
@@ -272,38 +240,11 @@ local function run(startAt: number, replay: boolean)
 	end
 	confirmPlacement()
 	local collected = false
-	local stepShownAt = os.clock()
-	local equippedChanged = false
-	local equipModel: Model? = nil
-	local lastEquipScan = -math.huge
-	local function equipTarget(): Model?
-		if not equipModel or not equipModel.Parent or os.clock() - lastEquipScan > 1 then
-			lastEquipScan = os.clock()
-			equipModel = myEquipKnife()
-		end
-		return equipModel
-	end
-	local function matchesEquipTarget(item: unknown): boolean
-		local model = equipTarget()
-		return model ~= nil and item == model:GetAttribute("Item")
-	end
-	own(Remotes.Effect.OnClientEvent:Connect(function(kind: string, who: any, item: unknown)
+	own(Remotes.Effect.OnClientEvent:Connect(function(kind: string)
 		if kind == "CashBurst" then
 			collected = true
-		elseif kind == "Equipped" and who == player and matchesEquipTarget(item) then
-			-- (the equip itself, not the Equipped attribute: re-equipping the knife you already had -
-			-- every replay of the guide - doesn't change the attribute, and the step never finished)
-			equippedChanged = true
 		end
 	end))
-	own(player:GetAttributeChangedSignal("Equipped"):Connect(function()
-		if matchesEquipTarget(player:GetAttribute("Equipped")) then
-			equippedChanged = true
-		end
-	end))
-	local function menuOpen(name: string): boolean
-		return Ui.gui:GetAttribute("ActiveMenu") == name
-	end
 	local atFrank = false -- stood on the glowing ring in front of his stash
 	local atHome = false -- stood on the glowing ring outside your vault
 	local plateModel: Instance? = nil
@@ -366,46 +307,7 @@ local function run(startAt: number, replay: boolean)
 				return player:GetAttribute("Training") == true
 			end,
 		},
-		{
-			-- No world target: the Upgrades button pulses instead
-			Text = "Open Upgrades: faster wheels, more floors and more health!",
-			Target = function(): Vector3?
-				return nil
-			end,
-			Done = function()
-				return menuOpen("Upgrades") or os.clock() - stepShownAt > 25
-			end,
-		},
-		{
-			-- The link between the two halves: the knife you equip is the one you fight with as Murderer
-			Text = if Ui.Phone then "Tap Equip on the glowing knife!" else "Press E on the glowing knife to equip it!",
-			Target = function(): Vector3?
-				local model = equipTarget()
-				return if model then model:GetPivot().Position else nil
-			end,
-			Done = function()
-				return equippedChanged
-			end,
-		},
 	}
-
-	-- Step 5: a big yellow arrow beside the Upgrades button, bouncing at it (the button's pulse
-	-- ring alone was easy to miss). Its own ScreenGui with no UIScale, so it can sit at the
-	-- button's on-screen position wherever the layout (or a phone) put it.
-	local pointerGui = new("ScreenGui", {
-		Name = "TutorialArrow",
-		ResetOnSpawn = false,
-		DisplayOrder = 60,
-		IgnoreGuiInset = Ui.gui.IgnoreGuiInset,
-		ScreenInsets = Ui.gui.ScreenInsets,
-		Enabled = false,
-	}, player:WaitForChild("PlayerGui")) :: ScreenGui
-	local pointer = new("Frame", {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Size = UDim2.fromOffset(80, 80),
-		BackgroundTransparency = 1,
-	}, pointerGui)
-	guideArrow(pointer).Rotation = -90 -- the same down arrow, turned toward Upgrades
 
 	-- The instruction: one line in a slim see-through bar under the timer
 	local banner = new("Frame", {
@@ -578,18 +480,12 @@ local function run(startAt: number, replay: boolean)
 			connection:Disconnect()
 		end
 		table.clear(connections)
-		local upgrades = Ui.gui:FindFirstChild("UpgradesButton", true)
-		local pulseRing = upgrades and upgrades:FindFirstChild("TutorialRing")
-		if pulseRing then
-			pulseRing:Destroy()
-		end
 		Ui.gui:SetAttribute("TutorialBar", false)
 		if not replay then
 			Remotes.Tutorial:FireServer(if skipped then "Skip" else "Done")
 		end
 		targetPart:Destroy()
 		trail:Destroy()
-		pointerGui:Destroy()
 		if skipped then
 			banner:Destroy()
 			return
@@ -611,8 +507,6 @@ local function run(startAt: number, replay: boolean)
 	end))
 
 	local function showStep()
-		stepShownAt = os.clock()
-		equippedChanged = false -- (an equip from before this step doesn't count)
 		-- The first steal and placing it can't be skipped: that's the whole game in 60 seconds
 		skip.Visible = current > 2
 		local compact = {
@@ -620,8 +514,6 @@ local function run(startAt: number, replay: boolean)
 			"Run home to the glowing circle!",
 			"Walk over the green cash pad.",
 			"Run in your wheel to train Speed.",
-			"Open Upgrades!",
-			if Ui.Phone then "Tap Equip on the glowing knife!" else "Press E on the glowing knife!",
 		}
 
 		stepLabel.Text =
@@ -662,38 +554,6 @@ local function run(startAt: number, replay: boolean)
 			stepLabel.Text = "Caught! Frank took it back. Try again - run straight home!"
 			return
 		end
-		-- The Upgrades step: a pulsing yellow ring round the Upgrades button
-		local upgrades = Ui.gui:FindFirstChild("UpgradesButton", true) :: GuiObject?
-		if upgrades then
-			local pulseRing = upgrades:FindFirstChild("TutorialRing") :: UIStroke?
-			if current == 5 and not pulseRing then
-				pulseRing = new("UIStroke", {
-					Name = "TutorialRing",
-					Color = Color3.fromRGB(255, 220, 60),
-					Thickness = 4,
-					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-				}, upgrades) :: UIStroke
-			end
-			if pulseRing then
-				if current == 5 then
-					pulseRing.Thickness = 3 + (math.sin(os.clock() * 8) + 1) * 2.5
-				else
-					pulseRing:Destroy()
-				end
-			end
-		end
-		local pointAt = current == 5
-			and upgrades ~= nil
-			and upgrades.Visible
-			and upgrades.AbsoluteSize.X > 0
-			and not Ui.menuOpen()
-			and not player:GetAttribute("InRound")
-		pointerGui.Enabled = pointAt == true
-		if pointAt and upgrades then
-			local bounce = math.abs(math.sin(os.clock() * 5)) * 14
-			local at = upgrades.AbsolutePosition
-			pointer.Position = UDim2.fromOffset(at.X - 8 - bounce, at.Y + upgrades.AbsoluteSize.Y / 2)
-		end
 		-- The glowing ring: Frank's stash (step 1), then outside your vault (step 2); standing on it
 		-- switches the target to the knife / the free plate, which glows
 		local inRound = player:GetAttribute("InRound") == true
@@ -711,14 +571,14 @@ local function run(startAt: number, replay: boolean)
 					atFrank = true
 					chosenPad = frankKnife()
 					stepLabel.Text = if Ui.Phone
-						then "1/6  Hold Steal on the glowing knife!"
-						else "1/6  Hold E on the glowing knife to steal it!"
+						then "1/4  Hold Steal on the glowing knife!"
+						else "1/4  Hold E on the glowing knife to steal it!"
 				else
 					atHome = true
 					plateModel, plateAt = freePlate()
 					stepLabel.Text = if Ui.Phone
-						then "2/6  Tap Place Knife on the glowing plate!"
-						else "2/6  Press E on the glowing plate to place your knife!"
+						then "2/4  Tap Place Knife on the glowing plate!"
+						else "2/4  Press E on the glowing plate to place your knife!"
 				end
 				Effects.Sound(Sounds.Coin, nil, 0.5)
 				ringAt = nil
@@ -750,8 +610,6 @@ local function run(startAt: number, replay: boolean)
 			end
 		elseif onStep2 and atHome then
 			glowTarget = plateModel
-		elseif current == 6 and not inRound then
-			glowTarget = equipTarget()
 		end
 		knifeGlow.Adornee = glowTarget
 		knifeGlow.Enabled = glowTarget ~= nil
@@ -777,8 +635,7 @@ local function run(startAt: number, replay: boolean)
 			targetPart.Position = target
 			drawTrail(here.Position - Vector3.new(0, 2.5, 0), target)
 			-- Keep the equip arrow close to the blade, below its floating name/income labels.
-			arrowGui.StudsOffsetWorldSpace =
-				Vector3.new(0, (if current == 6 then 4 else 7) + math.sin(os.clock() * 5), 0)
+			arrowGui.StudsOffsetWorldSpace = Vector3.new(0, 7 + math.sin(os.clock() * 5), 0)
 		end
 	end))
 end

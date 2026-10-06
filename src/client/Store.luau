@@ -169,12 +169,34 @@ function Store.Init()
 			end)
 		end
 	end
+	-- A big moment is on screen (the power showcase, the round intro) or a round is seconds away:
+	-- an offer now would pile on top of it (seen in testing: showcase + round intro + Starter Pack)
+	local function busy(): boolean
+		local playerGui = player:FindFirstChildOfClass("PlayerGui")
+		local showcase = playerGui and playerGui:FindFirstChild("PowerShowcase", true)
+		if showcase and (showcase :: GuiObject).Visible then
+			return true
+		end
+		local intro = playerGui and playerGui:FindFirstChild("RoundIntro") :: ScreenGui?
+		if intro and intro.Enabled then
+			for _, child in intro:GetChildren() do
+				if child:IsA("GuiObject") and child.Visible then
+					return true
+				end
+			end
+		end
+		local endsAt = ReplicatedStorage:GetAttribute("PhaseEndsAt")
+		return ReplicatedStorage:GetAttribute("Phase") == "Intermission"
+			and type(endsAt) == "number"
+			and endsAt - workspace:GetServerTimeNow() < 20
+	end
 	Remotes:WaitForChild("Offer").OnClientEvent:Connect(function(key: string, reason: string)
 		if
 			Ui.menuOpen()
 			or gui:GetAttribute("KnifeGestureActive") == true
 			or player:GetAttribute("InRound")
 			or owned(key)
+			or busy()
 		then
 			Telemetry.Track("offer.blocked", {
 				key = key,

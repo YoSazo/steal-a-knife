@@ -398,6 +398,11 @@ local function isStudioApiError(err: any): boolean
 end
 
 local function loadAsync(player: Player): Profile?
+	-- Studio: ServerStorage attribute DebugFresh = true plays as a brand-new player on temporary
+	-- data (nothing is saved, your real save is untouched) - for testing the first minutes
+	if RunService:IsStudio() and game:GetService("ServerStorage"):GetAttribute("DebugFresh") then
+		offline = true
+	end
 	if offline then
 		return defaultProfile()
 	end

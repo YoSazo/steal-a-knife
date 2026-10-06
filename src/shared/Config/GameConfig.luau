@@ -481,7 +481,7 @@ local GameConfig = {
 	BossWallSlots = 5, -- knives on each boss's wall
 	-- Lairs stand against the runway's side walls (odd zones left, even zones right) so the run down
 	-- the middle stays clear: centre (fraction into its zone), Width along the wall, Depth out from it
-	BossLair = { At = 0.6, Width = 42, Depth = 14 },
+	BossLair = { At = 0.6, FirstAt = 0.3, Width = 42, Depth = 14 },
 
 	-- Rounds
 	-- (was 180: the first real players reset out of 5 rounds within seconds - every ~3.5 min pulled
@@ -896,7 +896,9 @@ function GameConfig.BossLairCenter(index: number): Vector3
 	return Vector3.new(
 		side * (GameConfig.ArenaWidth / 2 - lair.Depth / 2),
 		0,
-		(index - 1) * GameConfig.ZoneDepth + GameConfig.ZoneDepth * lair.At
+		-- (Frank, the first boss, sits nearer the entrance: new players who quit left at ~45 s, just
+		-- before they'd reached him)
+		(index - 1) * GameConfig.ZoneDepth + GameConfig.ZoneDepth * (if index == 1 then lair.FirstAt else lair.At)
 	)
 end
 

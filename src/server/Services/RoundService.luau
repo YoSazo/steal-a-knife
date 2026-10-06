@@ -278,7 +278,11 @@ local function eligiblePlayers(): { Player }
 	local list = {}
 	for _, player in Players:GetPlayers() do
 		local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-		local fresh = os.clock() - (joinedAt[player] or -math.huge) < GameConfig.RoundJoinGrace
+		local here = os.clock() - (joinedAt[player] or -math.huge)
+		local profile = DataService.Get(player)
+		-- also: no round before your first knife is home (up to 5 min) - the newcomer pull-in
+		-- dragged new players out mid-tutorial
+		local fresh = here < GameConfig.RoundJoinGrace or (profile ~= nil and #profile.Knives == 0 and here < 300)
 		if DataService.Get(player) and humanoid and humanoid.Health > 0 and not fresh then
 			table.insert(list, player)
 		end
@@ -2938,12 +2942,20 @@ function RoundService.DebugBotRound(player: Player, role: string)
 end
 
 function RoundService.Init()
-	-- First visit (no tutorial yet, barely played): flag them for the client's round explainer and
-	-- pull the next round in a little (see newcomerWaiting)
+	-- First visit (no tutorial yet, barely played): flag them for the client's round explainer, and
+	-- once their first knife is home pull the next round in a little (see newcomerWaiting) - not
+	-- on join: they can't be in a round before that knife anyway (eligiblePlayers)
 	DataService.PlayerLoaded:Connect(function(player: Player, profile: DataService.Profile)
 		if not profile.TutorialDone and profile.PlayTime < 120 then
 			player:SetAttribute("FirstVisit", true)
-			newcomerWaiting = true
+			local connection: RBXScriptConnection
+			connection = player:GetAttributeChangedSignal("Knives"):Connect(function()
+				local now = DataService.Get(player)
+				if now and #now.Knives > 0 then
+					connection:Disconnect()
+					newcomerWaiting = true
+				end
+			end)
 		end
 	end)
 	task.spawn(function()
