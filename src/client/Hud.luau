@@ -233,9 +233,15 @@ function Hud.Init()
 				local innocent = RoundPrize.For(kind :: string, "Innocent", jackpot, seed, stats, doubled)
 				local murderer = RoundPrize.For(kind :: string, "Murderer", jackpot, seed, stats, doubled)
 				local star = if jackpot then "⭐ JACKPOT! " else "🎁 "
+				-- (two different knives don't fit on a phone with their $/s: just the names then)
+				local function short(text: string): string
+					return if Ui.Phone then (text:gsub(" that makes .*$", "")) else text
+				end
 				prizeLine.Text = if innocent.Text == murderer.Text
 					then `{star}Winners get: <b>{innocent.Text}</b>`
-					else `{star}<font color="#8CFF96">Innocents: <b>{innocent.Text}</b></font>  <font color="#FF7878">Murderer: <b>{murderer.Text}</b></font>`
+					else `{star}<font color="#8CFF96">Innocents: <b>{short(innocent.Text)}</b></font>  <font color="#FF7878">Murderer: <b>{short(
+						murderer.Text
+					)}</b></font>`
 				-- the pill sits just after the words
 				local words = prizeLine.TextBounds.X / math.max(Ui.Scale.Scale, 0.01) -- (TextBounds is in screen pixels)
 				doubleButton.Position = UDim2.new(0.5, -44 + words / 2 + 8, 0.5, 0)
@@ -1018,11 +1024,21 @@ function Hud.Init()
 			timerLabel.Text = `MURDER ROUND in {clock}`
 			timerFrame.BackgroundColor3 = Ui.PANEL
 			local revengeUntil = player:GetAttribute("RevengeUntil")
+			-- (no "Get ready!" line: the prize line sits there from 60 s out)
 			subLabel.Text = if type(revengeUntil) == "number" and revengeUntil > now
 				then `REVENGE! Their vault is open to you: {Ui.clock(revengeUntil - now)}`
-				elseif (endsAt - now) < 30 then "Get ready! Check your powers"
 				else ""
 		end
+		-- The last 10 s before a round: the timer itself goes red and pulses (that IS the countdown;
+		-- a second big red one on top of it used to cover it on phones)
+		local finalCount = phase == "Intermission"
+			and status == "🔪 MURDER ROUND in"
+			and endsAt - now <= 10
+			and endsAt - now > 0
+			and not inRound
+		timerLabel.TextColor3 = if finalCount then Color3.fromRGB(255, 70, 70) else Color3.new(1, 1, 1)
+		local timerPulse = timerLabel:FindFirstChildOfClass("UIScale") or new("UIScale", {}, timerLabel)
+		timerPulse.Scale = if finalCount then 1.1 + 0.08 * math.abs(math.sin((endsAt - now) * math.pi)) else 1
 		local moon = phase ~= "Round" and type(raidEnds) == "number"
 		moonTitle.Visible = moon
 		timerLabel.Position = UDim2.fromScale(if moon then 0.5 else 0, 0)
@@ -1032,7 +1048,7 @@ function Hud.Init()
 			banner.Text = status
 		end
 		-- (not hidden while the knife is held: they never overlap, and taps made it flicker)
-		stats.Visible = not Ui.menuOpen() and not player:GetAttribute("InRound") -- (speed / cash: hub things)
+		stats.Visible = not Ui.menuOpen() and Ui.inHub() -- (speed / cash: hub things; not while dead in a round)
 		timers.Visible = Ui.inHub()
 
 		-- Event pills

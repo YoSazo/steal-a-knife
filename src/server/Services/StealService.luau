@@ -483,7 +483,7 @@ startCarry = function(
 	if kind == "Case" then
 		Net.Notify(player, `You got a {item} Case! RUN HOME!`, "good")
 	elseif boss then
-		Net.Notify(player, `You got it! RUN HOME!`, "good")
+		-- (no toast: GuardService already says "<BOSS> IS COMING! RUN HOME!" - two said it at once)
 	elseif stolenFrom then
 		Net.Notify(player, `You took a {Items.DisplayName(item)}! RUN HOME!`, "good")
 	else

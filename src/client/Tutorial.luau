@@ -564,7 +564,7 @@ local function run(startAt: number, replay: boolean)
 		confirmPlacement()
 		-- Hide during rounds
 		-- (out of the way while a biome's name pops up in the same spot)
-		banner.Visible = not player:GetAttribute("InRound")
+		banner.Visible = Ui.inHub() -- (not dead and watching a round either)
 			and not Ui.menuOpen()
 			and Ui.gui:GetAttribute("ZoneTitle") ~= true
 		if Ui.gui:GetAttribute("TutorialBar") ~= banner.Visible then

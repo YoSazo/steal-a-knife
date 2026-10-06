@@ -1,18 +1,17 @@
 --!strict
--- The heads-up before your first Murder Mystery round of the session: for the last 10 seconds of
--- the intermission, big red text in the middle counts down (no box, no sting - kept simple).
--- First-time players (attribute FirstVisit, set by RoundService) get one short line under it.
+-- The last 10 seconds before a round. The top timer itself turns red and pulses (client/Hud) - there
+-- used to be a second big red countdown here, and on phones it sat right on top of the timer.
+-- This adds what the timer can't: a tick on 3-2-1, and for first-time players (attribute FirstVisit,
+-- set by RoundService) one small rule line under the prize line.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
 local Sounds = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Sounds"))
 local player = Players.LocalPlayer
-local new = Ui.new
 
 local RoundIntro = {}
 
@@ -20,93 +19,45 @@ local STATUS = "🔪 MURDER ROUND in" -- RoundService.IntermissionStatus
 local WARN_AT = 10 -- seconds before the round
 
 function RoundIntro.Init()
-	local card = new("Frame", {
-		Name = "RoundIntro",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.3),
-		Size = UDim2.fromOffset(760, 190),
-		BackgroundTransparency = 1,
+	local rule = Ui.label({
+		Name = "RoundIntroRule",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Size = UDim2.fromOffset(560, 22),
+		TextScaled = false,
+		TextSize = if Ui.Phone then 15 else 17,
+		TextColor3 = Color3.fromRGB(255, 120, 120),
+		Text = "One player is secretly the Murderer. Everyone else: survive!",
 		Visible = false,
-		ZIndex = 60,
 	}, Ui.gui)
-	local scale = new("UIScale", {}, card)
-	local title = Ui.label({
-		Size = UDim2.new(1, 0, 0, 80),
-		Font = Enum.Font.FredokaOne,
-		TextColor3 = Color3.fromRGB(255, 60, 60),
-		Text = "",
-		ZIndex = 61,
-	}, card)
-	Ui.textStroke(title, 4)
-	local body = Ui.label({
-		Size = UDim2.new(1, 0, 0, 96),
-		Position = UDim2.fromOffset(0, 86),
-		Font = Enum.Font.FredokaOne,
-		RichText = true,
-		Text = "",
-		ZIndex = 61,
-	}, card)
-	Ui.textStroke(body, 3)
-
-	local shownThisSession = false
-	local showing = false
-	local lastSecond = -1
-
-	local function hide()
-		if not showing then
-			return
-		end
-		showing = false
-		TweenService:Create(scale, TweenInfo.new(0.2), { Scale = 0.6 }):Play()
-		task.delay(0.2, function()
-			if not showing then
-				card.Visible = false
-			end
-		end)
+	Ui.textStroke(rule, 2)
+	-- under the prize line (which moves down under the tutorial's top line, client/Hud)
+	local function place()
+		local top = if Ui.gui:GetAttribute("TutorialBar") == true
+			then ((Ui.gui:GetAttribute("TutorialBarHeight") or 36) :: number) + 2
+			else 0
+		rule.Position = UDim2.new(0.5, 0, 0, top + 124)
 	end
+	Ui.gui:GetAttributeChangedSignal("TutorialBar"):Connect(place)
+	Ui.Layout.Changed:Connect(place)
+	place()
 
+	local lastSecond = -1
 	RunService.Heartbeat:Connect(function()
-		local phase = ReplicatedStorage:GetAttribute("Phase")
-		local status = ReplicatedStorage:GetAttribute("Status")
 		local endsAt = ReplicatedStorage:GetAttribute("PhaseEndsAt")
-		if
-			phase ~= "Intermission"
-			or status ~= STATUS
-			or type(endsAt) ~= "number"
-			or player:GetAttribute("InRound")
-		then
-			hide()
+		local left = if type(endsAt) == "number" then endsAt - workspace:GetServerTimeNow() else math.huge
+		local counting = ReplicatedStorage:GetAttribute("Phase") == "Intermission"
+			and ReplicatedStorage:GetAttribute("Status") == STATUS
+			and left <= WARN_AT
+			and left > 0
+			and not player:GetAttribute("InRound")
+		rule.Visible = counting and player:GetAttribute("FirstVisit") == true and not Ui.menuOpen()
+		if not counting then
+			lastSecond = -1
 			return
-		end
-		local left = endsAt - workspace:GetServerTimeNow()
-		if left > WARN_AT or left <= 0 then
-			hide()
-			return
-		end
-		if not showing then
-			if shownThisSession then
-				return
-			end
-			shownThisSession = true
-			showing = true
-			Ui.Menu.Close()
-			card.Visible = true
-			scale.Scale = 0.6
-			-- (smaller on phones: it sat right over your character)
-			TweenService
-				:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = if Ui.Phone then 0.65 else 1 })
-				:Play()
-			-- (the prize is the small line under the timer: not repeated here over your character)
-			local lines = {}
-			if player:GetAttribute("FirstVisit") then
-				table.insert(lines, "One player is secretly the Murderer. Everyone else: survive!")
-			end
-			body.Text = table.concat(lines, "\n")
 		end
 		local second = math.ceil(left)
 		if second ~= lastSecond then
 			lastSecond = second
-			title.Text = `🔪 MURDER ROUND IN {second}`
 			if second <= 3 then
 				Effects.Sound(Sounds.Tick, nil, 0.35)
 			end

@@ -79,7 +79,6 @@ local function show(info: Info)
 	Ui.corner(card, 18)
 	Theme.outline(card, Theme.Black, 4)
 	local scale = new("UIScale", { Scale = 0.6 }, card)
-	TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
 
 	local close: () -> () = function() end
 	local header = Theme.surface(card, { Name = "Header", Size = UDim2.new(1, 0, 0, 64), ZIndex = 52 }, GOLD)
@@ -106,44 +105,21 @@ local function show(info: Info)
 	local y = 78
 	-- First visit: the game in one glance, the same promise as the thumbnail
 	if info.Away <= 0 then
-		local halves = new("Frame", {
-			Size = UDim2.new(1, -40, 0, 64),
-			Position = UDim2.fromOffset(20, y),
-			BackgroundTransparency = 1,
-			ZIndex = 52,
-		}, card)
-		local function half(x: number, text: string, top: Color3, bottom: Color3)
-			local pill = new("Frame", {
-				Position = UDim2.fromScale(x, 0),
-				Size = UDim2.fromScale(0.44, 1),
-				BackgroundColor3 = Color3.new(1, 1, 1),
-				ZIndex = 52,
-			}, halves)
-			Ui.corner(pill, 14)
-			Ui.gradient(pill, top, bottom)
-			new("UIStroke", { Thickness = 3, Color = Color3.fromRGB(20, 16, 28) }, pill)
-			local label = Ui.label({
-				Size = UDim2.new(1, -16, 1, -10),
-				Position = UDim2.fromOffset(8, 5),
-				Text = text,
-				ZIndex = 53,
-			}, pill)
-			Ui.textStroke(label, 3)
-		end
-		half(0, "🔪 STEAL KNIVES", Color3.fromRGB(255, 220, 80), Color3.fromRGB(235, 150, 30))
-		half(0.56, "😈 BECOME THE MURDERER", Color3.fromRGB(255, 80, 80), Color3.fromRGB(180, 20, 30))
-		local arrow = Ui.label({
-			Position = UDim2.fromScale(0.44, 0),
-			Size = UDim2.fromScale(0.12, 1),
-			Text = "➜",
+		-- One line of big coloured words, not two raised pills: those looked like buttons to tap
+		local loop = Ui.label({
+			Size = UDim2.new(1, -40, 0, 56),
+			Position = UDim2.fromOffset(20, y + 4),
+			RichText = true,
+			Text = `<font color="#FFD24A">🔪 STEAL KNIVES</font>  ➜  <font color="#FF5A5A">😈 BECOME THE MURDERER</font>`,
 			ZIndex = 53,
-		}, halves)
-		Ui.textStroke(arrow, 3)
+		}, card)
+		Ui.textStroke(loop, 3)
 		y += 72
 		local how = Ui.label({
 			Size = UDim2.new(1, -40, 0, 46),
 			Position = UDim2.fromOffset(20, y),
-			Text = "Every few minutes the WHOLE SERVER plays Murder Mystery: one Murderer, everyone else survives. "
+			-- (two lines at most: on a phone the third was cut off)
+			Text = "Every few minutes the WHOLE SERVER plays Murder Mystery. "
 				.. "The knives you steal give you Murderer powers!",
 			TextColor3 = Color3.fromRGB(255, 225, 225),
 			TextWrapped = true,
@@ -359,7 +335,21 @@ local function show(info: Info)
 			tile.Size = UDim2.new(1 / 7, -8, 0, tile.Size.Y.Offset)
 		end
 	end
-	Ui.fitMenu(card, Vector2.new(620, y + 76))
+	-- Always tall enough for everything, then the whole card scales to fit the screen (fitMenu
+	-- clamped its height instead: on a phone the day tiles ended up in a scroll area behind the
+	-- Claim button)
+	card.Size = UDim2.fromOffset(620, y + 76)
+	local function fit(): number
+		local _, bounds = Ui.bounds()
+		return math.min(1, (bounds.Y - 16) / (y + 76), (bounds.X - 16) / 620)
+	end
+	TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = fit() }):Play()
+	local relayout = Ui.Layout.Changed:Connect(function()
+		scale.Scale = fit()
+	end)
+	dim.Destroying:Connect(function()
+		relayout:Disconnect()
+	end)
 	Ui.registerMenu(dim)
 	if info.Offline > 0 then
 		Effects.Sound(Sounds.Cash, nil, 0.6)
