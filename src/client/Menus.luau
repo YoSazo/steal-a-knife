@@ -22,6 +22,7 @@ local RebirthView = require(script.Parent.RebirthView)
 local PowersView = require(script.Parent.PowersView)
 local CaseShowcase = require(script.Parent.CaseShowcase)
 local CaseOdds = require(script.Parent.CaseOdds)
+local LuckyBlockView = require(script.Parent.LuckyBlockView)
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("Config"):WaitForChild("GameConfig"))
 local Items = require(Shared:WaitForChild("Items"))
@@ -282,6 +283,29 @@ function Menus.Init()
 			oddsFrame.Visible = true
 		end)
 		row.LayoutOrder = order + 1
+	end
+	-- Cash Lucky Blocks: the same gamble as the Robux ones, for in-game cash (moved here from the
+	-- Robux shop, which is Robux only now)
+	Theme.text(shopList, "CASH LUCKY BLOCKS", {
+		LayoutOrder = 100,
+		Size = UDim2.new(1, -12, 0, 44),
+		MaximumTextSize = 28,
+		TextColor3 = Theme.Gold,
+		ZIndex = 6,
+	})
+	for row, tiers in { { "Rare", "Epic", "Legendary" }, { "Mythic", "Godly", "Cosmic" } } do
+		local cashBlocks = {}
+		for _, tier in tiers do
+			table.insert(cashBlocks, {
+				Block = tier,
+				Price = "$" .. Ui.abbreviate(GameConfig.LuckyBlockCash[tier]),
+				Cash = true,
+				Buy = function()
+					Remotes.Gamble:InvokeServer("LuckyBlock", tier) -- (the server toasts any problem)
+				end,
+			})
+		end
+		LuckyBlockView.Build(shopList, 100 + row, cashBlocks).Name = `CashLucky{row}`
 	end
 
 	-- INDEX: the illustrated collection grid and selected knife inspector.

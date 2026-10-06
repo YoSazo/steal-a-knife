@@ -26,6 +26,7 @@ export type Product = {
 	Icon: string,
 	Color: Color3,
 	Cash: { Min: number, Seconds: number }?, -- seconds of the buyer's income, at least Min
+	Speed: { Share: number, Min: number }?, -- Speed: this share of the buyer's Speed, at least Min
 	Case: string?, -- a sealed case of this rarity
 	LuckyBlock: string?, -- a Lucky Block of this tier (Items.LuckyBlocks)
 	Spins: number?, -- Lucky Wheel spins
@@ -170,6 +171,38 @@ Monetization.Products = {
 		Icon = "🏦",
 		Color = rgb(50, 170, 80),
 		Cash = { Min = 4500000, Seconds = 14400 },
+	},
+	-- Speed packs (Steal An Egg's "+150K Speed" ... "+1B Speed"), scaled to the buyer's Speed like the
+	-- cash packs are to income, so they're worth the same to everyone
+	{
+		Key = "SpeedSmall",
+		Id = 0,
+		Price = 29,
+		Name = "Speed Pack",
+		Description = "A quarter more Speed, right now.",
+		Icon = "👟",
+		Color = rgb(80, 190, 255),
+		Speed = { Share = 0.25, Min = 2000 },
+	},
+	{
+		Key = "SpeedMedium",
+		Id = 0,
+		Price = 99,
+		Name = "Big Speed Pack",
+		Description = "Double your Speed, right now.",
+		Icon = "👟",
+		Color = rgb(60, 160, 255),
+		Speed = { Share = 1, Min = 15000 },
+	},
+	{
+		Key = "SpeedBig",
+		Id = 0,
+		Price = 299,
+		Name = "Huge Speed Pack",
+		Description = "Five times your Speed, right now.",
+		Icon = "👟",
+		Color = rgb(40, 120, 255),
+		Speed = { Share = 4, Min = 120000 },
 	},
 	{
 		Key = "CaseEpic",
@@ -545,6 +578,15 @@ Monetization.Products = {
 
 -- Paid random items (Roblox policy): Robux cases and Lucky Blocks. Hidden and refused for players
 -- where PolicyService says paid random items are restricted (player attribute PaidRandomRestricted).
+-- What a speed pack gives a player with this much Speed (client shows it, server grants it)
+function Monetization.SpeedFor(product: Product, speed: number): number
+	local pack = product.Speed
+	if not pack then
+		return 0
+	end
+	return math.floor(math.max(speed * pack.Share, pack.Min))
+end
+
 function Monetization.IsPaidRandom(product: Product): boolean
 	if product.Gift then
 		local inner = Monetization.ProductByKey[product.Gift]

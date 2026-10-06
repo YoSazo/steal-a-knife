@@ -145,6 +145,14 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 		Net.Remotes.Effect:FireClient(player, "CashBurst", nil, cash)
 		table.insert(got, `{Format.Cash(cash)}`)
 	end
+	if product.Speed then
+		local amount = Monetization.SpeedFor(product, profile.Speed)
+		DataService.Update(player, function(p)
+			p.Speed += amount
+		end)
+		BaseService.RefreshWalkSpeed(player)
+		table.insert(got, `+{Format.Short(amount)} Speed`)
+	end
 	if product.Tickets then
 		local amount = product.Tickets
 		DataService.Update(player, function(p)

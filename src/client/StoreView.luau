@@ -7,10 +7,8 @@ local Theme = require(script.Parent.MenuTheme)
 local CaseShowcase = require(script.Parent.CaseShowcase)
 local LuckyBlockView = require(script.Parent.LuckyBlockView)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
-local Remotes = ReplicatedStorage.Remotes
 local Config = ReplicatedStorage.Shared.Config
 local Monetization = require(Config.Monetization)
-local Knives = require(Config.Knives)
 local player = Players.LocalPlayer
 local View = {}
 
@@ -72,17 +70,19 @@ function View.Build(actions: any): Frame
 			border.Color = if key == name then Color3.new(1, 1, 1) else Theme.Black
 		end
 	end
-	for i, name in { "Cases", "Passes", "Boosts" } do
+	-- Steal An Egg's shop: Featured / Speed / Money (the cash cases and cash Lucky Blocks are
+	-- Mortimer's, on the plaza; consumables that fix one moment are offered at that moment instead)
+	for i, name in { "Featured", "Speed", "Money" } do
 		pages[name] = page(body, { Name = name, Size = UDim2.fromScale(1, 1), Visible = i == 1 })
 		tabButtons[name] = Theme.button(
 			tabs,
 			name,
-			({ Theme.Gold, Theme.Cyan, Theme.Purple })[i],
+			({ Theme.Gold, Theme.Cyan, Theme.Green })[i],
 			{ Name = name, LayoutOrder = i, MaximumTextSize = 25 },
 			function()
 				selectTab(name)
 			end,
-			({ "CaseLegendary", "Index", "Speed" })[i]
+			({ "CaseLegendary", "Speed", "Cash" })[i]
 		)
 	end
 	local refreshers: { () -> () } = {}
@@ -129,139 +129,213 @@ function View.Build(actions: any): Frame
 			}
 		)
 	end
-	local function cashCase(rarity: string)
-		for _, entry in GameConfig.CaseShop do
-			if entry.Rarity == rarity then
-				return entry
-			end
-		end
-		error("Unknown cash case " .. rarity)
+	local symbols: { [string]: string } = {
+		DoubleCash = "Cash",
+		VIP = "VIP",
+		FastWheel = "Speed",
+		PhantomTrail = "VoidEdge",
+		AutoCollect = "Cash",
+		Luck = "CaseLegendary",
+		OfflinePlus = "Rebirth",
+		ExtraFloor = "Upgrades",
+		Spins10 = "Spin",
+		LuckPotion = "CaseLegendary",
+		SpeedPotion = "Speed",
+		SpeedPotionBig = "Speed",
+		CollectSession = "Cash",
+		CashPotion = "Cash",
+		CashPotionBig = "Cash",
+		CashSmall = "Cash",
+		CashMedium = "Cash",
+		CashBig = "Cash",
+		TrainingPotion = "Speed",
+		SpeedUpgrade = "Upgrades",
+		SpeedSmall = "Speed",
+		SpeedMedium = "Speed",
+		SpeedBig = "Speed",
+	}
+	local function title(scroll: ScrollingFrame, text: string, order: number, name: string?): TextLabel
+		return label(scroll, text, {
+			Name = name or "Title",
+			LayoutOrder = order,
+			Size = UDim2.new(1, -8, 0, 44),
+			TextSize = 28,
+			TextColor3 = Theme.Gold,
+		})
 	end
+	-- One wide row (Steal An Egg): the picture, a BIG line of what you get, a short line under it,
+	-- and the Robux button. `big` is recomputed on every refresh (packs scale with you).
+	local function row(scroll: ScrollingFrame, entry: any, order: number, kind: string, big: () -> string)
+		local item = card(scroll, order, entry.Color, 112)
+		Theme.image(
+			item,
+			symbols[entry.Key] or "Cash",
+			{ Position = UDim2.fromOffset(10, 10), Size = UDim2.fromOffset(90, 90), ZIndex = 8 }
+		)
+		local headline = label(item, "", {
+			Position = UDim2.fromOffset(112, 8),
+			Size = UDim2.new(1, -290, 0, 54),
+			TextSize = 34,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 8,
+		})
+		local detail = label(item, entry.Description, {
+			Position = UDim2.fromOffset(112, 62),
+			Size = UDim2.new(1, -290, 0, 42),
+			TextSize = 16,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			TextColor3 = Color3.fromRGB(215, 225, 245),
+			ZIndex = 8,
+		})
+		local purchase = actions.price(item, entry.Price, {
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -12, 0.5, 0),
+			Size = UDim2.fromOffset(150, 64),
+			ZIndex = 9,
+		}, function()
+			if kind ~= "Pass" or not actions.owned(entry.Key) then
+				actions.buy(kind, entry.Key)
+			end
+		end)
+		table.insert(refreshers, function()
+			headline.Text = big()
+			local text = purchase:FindFirstChild("Label") :: TextLabel?
+			if text then
+				text.Text = if kind == "Pass" and actions.owned(entry.Key) then "✓ Owned" else `R$ {entry.Price}`
+			end
+			if entry.Charge then
+				local have = (player:GetAttribute("Charge_" .. entry.Charge.Name) or 0) :: number
+				detail.Text = if have > 0 then `You have {have} · {entry.Description}` else entry.Description
+			end
+		end)
+		return item
+	end
+	local function named(entry: any): () -> string
+		return function()
+			return entry.Name
+		end
+	end
+	local function product(scroll: ScrollingFrame, key: string, order: number, big: (() -> string)?)
+		local entry = Monetization.ProductByKey[key]
+		if entry then
+			row(scroll, entry, order, "Product", big or named(entry))
+		end
+	end
+	local function pass(scroll: ScrollingFrame, key: string, order: number)
+		local entry = Monetization.PassByKey[key]
+		if entry then
+			row(scroll, entry, order, "Pass", named(entry))
+		end
+	end
+
+	-- FEATURED: the Starter Pack (once), one big featured case with its odds, the passes, the other
+	-- Robux cases and the Lucky Blocks, then luck and spins
+	local featured = pages.Featured
 	local hero = Ui.new("Frame", {
 		Name = "FeaturedCase",
 		Size = UDim2.new(1, -8, 0, 328),
-		LayoutOrder = 1,
+		LayoutOrder = 2,
 		BackgroundTransparency = 1,
 		ZIndex = 7,
-	}, pages.Cases)
-	local function feature(rarity: string)
-		for _, child in hero:GetChildren() do
-			child:Destroy()
-		end
-		local entry = cashCase(rarity)
-		local showcase = CaseShowcase.Build(hero, rarity, "$" .. Ui.abbreviate(entry.Cost), function()
-			Remotes.Purchase:InvokeServer("Case:" .. rarity)
+	}, featured)
+	hero:SetAttribute("PaidRandom", true)
+	do
+		local godly = Monetization.ProductByKey.CaseGodly
+		local showcase = CaseShowcase.Build(hero, godly.Case :: string, "R$ " .. godly.Price, function()
+			actions.buy("Product", "CaseGodly")
 		end, function()
-			showOdds(rarity)
+			showOdds(godly.Case :: string)
 		end)
 		showcase.Size = UDim2.fromScale(1, 1)
 	end
-	local secondary = Ui.new("Frame", {
-		Name = "MoreCashCases",
-		LayoutOrder = 2,
-		Size = UDim2.new(1, -8, 0, 78),
-		BackgroundTransparency = 1,
-		ZIndex = 7,
-	}, pages.Cases)
-	for i, rarity in { "Epic", "Godly" } do
-		Theme.button(secondary, rarity:upper() .. "\nCASE", Knives.RarityColors[rarity], {
-			Name = rarity .. "Case",
-			Position = UDim2.fromScale((i - 1) * 0.32, 0),
-			Size = UDim2.new(0.31, 0, 1, -4),
-			MaximumTextSize = 31,
-		}, function()
-			feature(rarity)
-			pages.Cases.CanvasPosition = Vector2.zero
-		end, "Case" .. rarity)
+	title(featured, "PASSES", 3)
+	local passOrder = 4
+	for _, key in { "DoubleCash", "VIP", "Luck", "AutoCollect", "OfflinePlus", "ExtraFloor" } do
+		pass(featured, key, passOrder)
+		passOrder += 1
 	end
-	local otherCash = Ui.new("Frame", {
-		Name = "CashCatalog",
-		LayoutOrder = 3,
-		Size = UDim2.new(1, -8, 0, 78),
-		BackgroundTransparency = 1,
-		ZIndex = 7,
-	}, pages.Cases)
-	Ui.new("UIGridLayout", {
-		CellSize = UDim2.new(1 / 5, -7, 1, 0),
-		CellPadding = UDim2.fromOffset(7, 0),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-	}, otherCash)
-	for i, rarity in { "Common", "Rare", "Mythic", "Celestial", "Cosmic" } do
-		Theme.button(
-			otherCash,
-			rarity .. "\n$" .. Ui.abbreviate(cashCase(rarity).Cost),
-			Knives.RarityColors[rarity],
-			{ LayoutOrder = i, MaximumTextSize = 24 },
-			function()
-				feature(rarity)
-				pages.Cases.CanvasPosition = Vector2.zero
-			end
-		)
-	end
-	feature("Legendary")
-	label(pages.Cases, "ROBUX CASES", {
-		Name = "RobuxCasesTitle",
-		LayoutOrder = 5,
-		Size = UDim2.new(1, -8, 0, 44),
-		TextSize = 28,
-		TextColor3 = Theme.Gold,
-	})
+	title(featured, "ROBUX CASES", 20, "RobuxCasesTitle")
 	local function caseRow(key: string, order: number)
-		local product = Monetization.ProductByKey[key]
-		local rarity = product.Case :: string
-		local row = CaseShowcase.Build(pages.Cases, rarity, "R$ " .. product.Price, function()
+		local entry = Monetization.ProductByKey[key]
+		local rarity = entry.Case :: string
+		local showcase = CaseShowcase.Build(featured, rarity, "R$ " .. entry.Price, function()
 			actions.buy("Product", key)
 		end, function()
 			showOdds(rarity)
 		end)
-		row.LayoutOrder = order
-		row:SetAttribute("PaidRandom", true)
+		showcase.LayoutOrder = order
+		showcase:SetAttribute("PaidRandom", true)
 	end
-	caseRow("CaseLegendary", 6)
-	caseRow("CaseEpic", 7)
-	caseRow("CaseGodly", 8)
-	label(
-		pages.Cases,
-		"LUCKY BLOCKS",
-		{ Name = "LuckyTitle", LayoutOrder = 9, Size = UDim2.new(1, -8, 0, 44), TextSize = 28, TextColor3 = Theme.Gold }
-	)
+	caseRow("CaseLegendary", 21)
+	caseRow("CaseEpic", 22)
+	title(featured, "LUCKY BLOCKS", 23, "LuckyTitle")
 	local blocks = {}
 	for _, key in { "LuckyMythic", "LuckyGodly", "LuckyCosmic" } do
-		local product = Monetization.ProductByKey[key]
+		local entry = Monetization.ProductByKey[key]
 		table.insert(blocks, {
-			Block = product.LuckyBlock :: string,
-			Price = "R$ " .. product.Price,
+			Block = entry.LuckyBlock :: string,
+			Price = "R$ " .. entry.Price,
 			Buy = function()
 				actions.buy("Product", key)
 			end,
 		})
 	end
-	local luckyRow = LuckyBlockView.Build(pages.Cases, 10, blocks)
-	-- Cash Lucky Blocks: the same gamble for in-game cash, at every tier (free to play)
-	label(pages.Cases, "CASH LUCKY BLOCKS", {
-		LayoutOrder = 11,
-		Size = UDim2.new(1, -8, 0, 44),
-		TextSize = 28,
-		TextColor3 = Theme.Gold,
-	})
-	for row, tiers in { { "Rare", "Epic", "Legendary" }, { "Mythic", "Godly", "Cosmic" } } do
-		local cashBlocks = {}
-		for _, tier in tiers do
-			table.insert(cashBlocks, {
-				Block = tier,
-				Price = "$" .. Ui.abbreviate(GameConfig.LuckyBlockCash[tier]),
-				Cash = true,
-				Buy = function()
-					Remotes.Gamble:InvokeServer("LuckyBlock", tier) -- (the server toasts any problem)
-				end,
-			})
-		end
-		LuckyBlockView.Build(pages.Cases, 11 + row, cashBlocks).Name = `CashLucky{row}`
+	local luckyRow = LuckyBlockView.Build(featured, 24, blocks)
+	title(featured, "LUCK", 30)
+	product(featured, "Spins10", 31)
+	product(featured, "LuckPotion", 32)
+
+	-- SPEED: the wheel's next level, Speed packs scaled to you, then the Speed passes and potions
+	local speed = pages.Speed
+	product(speed, "SpeedUpgrade", 1, function()
+		local nextUpgrade = GameConfig.NextSpeedUpgrade(
+			(player:GetAttribute("TreadmillLevel") or 1) :: number,
+			(player:GetAttribute("TrailLevel") or 0) :: number
+		)
+		return if nextUpgrade then `Wheel Level {nextUpgrade.Level} > {nextUpgrade.Level + 1}` else "Wheel maxed"
+	end)
+	for i, key in { "SpeedSmall", "SpeedMedium", "SpeedBig" } do
+		local entry = Monetization.ProductByKey[key]
+		product(speed, key, 1 + i, function()
+			local have = (player:GetAttribute("Speed") or 0) :: number
+			return `+{Ui.abbreviate(Monetization.SpeedFor(entry, have))} Speed`
+		end)
 	end
+	pass(speed, "FastWheel", 10)
+	pass(speed, "PhantomTrail", 11)
+	product(speed, "TrainingPotion", 12)
+	product(speed, "SpeedPotion", 13)
+	product(speed, "SpeedPotionBig", 14)
+
+	-- MONEY: cash packs scaled to your income, then the money passes and potions
+	local money = pages.Money
+	for i, key in { "CashSmall", "CashMedium", "CashBig" } do
+		local entry = Monetization.ProductByKey[key]
+		product(money, key, i, function()
+			return `+${Ui.abbreviate(actions.cash(entry) or 0)}`
+		end)
+	end
+	pass(money, "DoubleCash", 10)
+	pass(money, "AutoCollect", 11)
+	pass(money, "OfflinePlus", 12)
+	product(money, "CashPotion", 13)
+	product(money, "CashPotionBig", 14)
+	local session = Monetization.ProductByKey.CollectSession
+	if session then
+		local item = row(money, session, 15, "Product", named(session))
+		-- "Auto Collect (this visit)" is pointless with the Auto Collect pass: hide it for owners
+		local function hideIfOwned()
+			item.Visible = player:GetAttribute("Pass_AutoCollect") ~= true
+		end
+		player:GetAttributeChangedSignal("Pass_AutoCollect"):Connect(hideIfOwned)
+		hideIfOwned()
+	end
+
 	-- Roblox policy: no paid random items where they're restricted (PolicyService, set by the server)
 	local function applyPolicy()
 		local allowed = Players.LocalPlayer:GetAttribute("PaidRandomRestricted") == false
-		for _, child in pages.Cases:GetChildren() do
+		for _, child in featured:GetChildren() do
 			if child == luckyRow or child.Name == "RobuxCasesTitle" or child.Name == "LuckyTitle" then
 				(child :: GuiObject).Visible = allowed
 			elseif child:IsA("GuiObject") and child:GetAttribute("PaidRandom") then
@@ -272,7 +346,7 @@ function View.Build(actions: any): Frame
 	Players.LocalPlayer:GetAttributeChangedSignal("PaidRandomRestricted"):Connect(applyPolicy)
 	task.defer(applyPolicy)
 	local starter = Monetization.ProductByKey.Starter
-	local starterRow = card(pages.Cases, 4, starter.Color, 112)
+	local starterRow = card(featured, 1, starter.Color, 112)
 	starterRow:SetAttribute("PaidRandom", true) -- contains a case
 	-- Theme.image (not Ui.art) so this picks up Codex's Cases chest, not the old wooden one.
 	Theme.image(
@@ -309,139 +383,6 @@ function View.Build(actions: any): Frame
 		starterRow.Visible = not actions.owned("Starter")
 		contents.Text = `{exactCash(actions.cash(starter) or 0)} + 1 Rare Case`
 	end)
-	local function productGrid(scroll: ScrollingFrame): Frame
-		local grid = Ui.new("Frame", {
-			Size = UDim2.new(1, -8, 0, 0),
-			AutomaticSize = Enum.AutomaticSize.Y,
-			BackgroundTransparency = 1,
-			ZIndex = 5,
-		}, scroll) :: Frame
-		local layout = Ui.new(
-			"UIGridLayout",
-			{ CellPadding = UDim2.fromOffset(12, 12), SortOrder = Enum.SortOrder.LayoutOrder },
-			grid
-		)
-		local function resize()
-			local width = math.max(160, grid.AbsoluteSize.X)
-			local columns = math.max(1, math.floor((width + 12) / 192))
-			layout.CellSize = UDim2.fromOffset((width - (columns - 1) * 12) / columns, 256)
-		end
-		grid:GetPropertyChangedSignal("AbsoluteSize"):Connect(resize)
-		resize()
-		return grid
-	end
-	local passGrid, boostGrid = productGrid(pages.Passes), productGrid(pages.Boosts)
-	local symbols: { [string]: string } = {
-		DoubleCash = "Cash",
-		VIP = "VIP",
-		FastWheel = "Speed",
-		PhantomTrail = "VoidEdge",
-		AutoCollect = "Cash",
-		Luck = "CaseLegendary",
-		OfflinePlus = "Rebirth",
-		ExtraFloor = "Upgrades",
-		Spins3 = "CaseEpic",
-		Spins10 = "CaseGodly",
-		LuckPotion = "CaseLegendary",
-		LuckPotionBig = "CaseLegendary",
-		Titan = "Health",
-		Mount = "Upgrades",
-		ServerLuck = "Rebirth",
-		BloodMoon = "CaseMythic",
-		ChestRefill = "CaseRare",
-		SpeedPotion = "Speed",
-		CollectSession = "Cash",
-		Reroll3 = "Powers",
-		Reroll10 = "Powers",
-		SpeedPotionBig = "Speed",
-		CashPotion = "Cash",
-		CashPotionBig = "Cash",
-		TrainingPotion = "Wheel",
-		Escape3 = "Padlock",
-		Escape10 = "Padlock",
-		Insurance3 = "Shield",
-		Insurance10 = "Shield",
-		HeatRefill = "Heat",
-		BossRestock = "Rebirth",
-	}
-	local function offer(parent: Frame, entry: any, order: number, kind: string)
-		local item = card(parent, order, entry.Color, 256)
-		-- "Auto Collect (this visit)" is pointless with the Auto Collect pass: hide it for owners
-		if entry.Key == "CollectSession" then
-			local function hideIfOwned()
-				item.Visible = player:GetAttribute("Pass_AutoCollect") ~= true
-			end
-			player:GetAttributeChangedSignal("Pass_AutoCollect"):Connect(hideIfOwned)
-			hideIfOwned()
-		end
-		Theme.image(
-			item,
-			symbols[entry.Key] or "Cash",
-			{ Position = UDim2.new(0.5, -32, 0, 4), Size = UDim2.fromOffset(64, 64), ZIndex = 6 }
-		)
-		label(item, entry.Name, { Position = UDim2.fromOffset(8, 72), Size = UDim2.new(1, -16, 0, 40), TextSize = 20 })
-		local description = label(item, entry.Description, {
-			TextSize = 14,
-			Position = UDim2.fromOffset(12, 114),
-			Size = UDim2.new(1, -24, 0, 82),
-			TextYAlignment = Enum.TextYAlignment.Top,
-		})
-		local purchase = actions.price(
-			item,
-			entry.Price,
-			{ Position = UDim2.new(0, 8, 1, -52), Size = UDim2.new(1, -16, 0, 44), ZIndex = 7 },
-			function()
-				if kind ~= "Pass" or not actions.owned(entry.Key) then
-					actions.buy(kind, entry.Key)
-				end
-			end
-		)
-		table.insert(refreshers, function()
-			local text = purchase:FindFirstChild("Label") :: TextLabel
-			text.Text = if kind == "Pass" and actions.owned(entry.Key) then "✓ Owned" else `R$ {entry.Price}`
-			-- Charges: how many you still have
-			if entry.Charge then
-				local have = (player:GetAttribute("Charge_" .. entry.Charge.Name) or 0) :: number
-				description.Text = if have > 0 then `You have {have}\n{entry.Description}` else entry.Description
-			end
-			if entry.Cash then
-				description.Text = `${Ui.abbreviate(actions.cash(entry) or 0)} for you\n{entry.Description}`
-			end
-		end)
-	end
-	for i, pass in Monetization.Passes do
-		offer(passGrid, pass, i, "Pass")
-	end
-	for i, key in
-		{
-			"SpeedPotion",
-			"CashPotion",
-			"CollectSession",
-			"Reroll3",
-			"Reroll10",
-			"Escape3",
-			"Insurance3",
-			"SpeedPotionBig",
-			"CashPotionBig",
-			"Escape10",
-			"Insurance10",
-			"TrainingPotion",
-			"HeatRefill",
-			"BossRestock",
-			"Spins10",
-			"Spins3",
-			"LuckPotion",
-			"LuckPotionBig",
-			"ServerLuck",
-			"CashSmall",
-			"CashMedium",
-			"CashBig",
-			"Mount",
-			"ChestRefill",
-		}
-	do
-		offer(boostGrid, Monetization.ProductByKey[key], i, "Product")
-	end
 	local function refresh()
 		for _, fn in refreshers do
 			fn()
@@ -449,7 +390,7 @@ function View.Build(actions: any): Frame
 	end
 	frame:GetPropertyChangedSignal("Visible"):Connect(function()
 		if frame.Visible then
-			selectTab("Cases")
+			selectTab("Featured")
 			refresh()
 		end
 	end)
@@ -471,7 +412,7 @@ function View.Build(actions: any): Frame
 	end
 	player:GetAttributeChangedSignal("InRound"):Connect(visibility)
 	visibility()
-	selectTab("Cases")
+	selectTab("Featured")
 	return frame
 end
 return View
