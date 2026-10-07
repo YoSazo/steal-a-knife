@@ -395,13 +395,32 @@ local function buildBases()
 	-- Pens (Shared/PenMode): fewer, bigger, flat - 5 down each side, the back of the plaza left open
 	local pens = PenMode.On()
 	local penWidth = GameConfig.Pens.Width
-	local penSpacing = GameConfig.Pens.Spacing
 	-- (a pen's full length, or a vault's depth: everything below is laid out from it)
 	local DEPTH = if pens then GameConfig.Pens.Depth else VAULT_DEPTH
-	-- Pens are bigger than vaults: the hub grows round them (wider sides, a longer plaza)
+	-- Pens sit in a compact block right behind the safe zone (Steal an Egg: home is a few steps
+	-- from the runway): 3 columns each side of the central walkway (monument, map vote, merchant),
+	-- 2 rows deep, gates facing the runway. Numbered nearest-first, so players get the closest pen.
+	local penCentres: { Vector3 } = {}
 	if pens then
-		HUB_HALF = GameConfig.ArenaWidth / 2 + DEPTH + 0.5
-		HUB_BACK = (GameConfig.Pens.Count // 2) * penSpacing + 4
+		local walkway = 24 -- (half-width: the vote boards and monument stand in it)
+		local front = 48 -- (the strip behind the safe zone: shops, chest, the first row's wheels)
+		local aisle = 24 -- (between the rows: the second row's wheels and signs)
+		local cols = math.ceil(GameConfig.Pens.Count / 4)
+		for row = 0, 1 do
+			for col = 0, cols - 1 do
+				for _, side in { -1, 1 } do
+					local x = side * (walkway + 5 + penWidth / 2 + col * (penWidth + 10))
+					local z = -(front + DEPTH / 2 + row * (DEPTH + aisle))
+					table.insert(penCentres, Vector3.new(x, 0, z))
+				end
+			end
+		end
+		table.sort(penCentres, function(a, b)
+			return a.Magnitude < b.Magnitude
+		end)
+		HUB_HALF = walkway + 5 + cols * (penWidth + 10)
+		HUB_BACK = front + 2 * DEPTH + aisle + 70 -- (room behind for the merchant and the map vote)
+		MapService.LobbySpawn = CFrame.new(0, 4, -30)
 	end
 	if pens then
 		MapService.MaxBases = GameConfig.Pens.Count
@@ -411,13 +430,10 @@ local function buildBases()
 		task.wait() -- (one vault a frame: never trips the script timeout)
 		-- 1-6 down the left side, 7-12 down the right, 13-16 across the back of the plaza
 		local center: Vector3, frame: CFrame
-		local sideways = pens or i <= COLUMN * 2
+		local sideways = not pens and i <= COLUMN * 2
 		if pens then
-			local perSide = GameConfig.Pens.Count // 2
-			local side = if i <= perSide then -1 else 1
-			local row = (i - 1) % perSide
-			center = Vector3.new(side * (half + DEPTH / 2), 0, -penSpacing / 2 - row * penSpacing)
-			frame = CFrame.new(center) * CFrame.Angles(0, math.rad(if side < 0 then 90 else -90), 0)
+			center = penCentres[i]
+			frame = CFrame.new(center) -- (local +Z, the gate side, faces the runway)
 		elseif sideways then
 			local side = if i <= COLUMN then -1 else 1
 			local row = (i - 1) % COLUMN
@@ -785,7 +801,7 @@ local function buildBases()
 			Frame = frame,
 			-- Rotated 90 degrees, so the world footprint swaps width and depth
 			Bounds = if pens
-				then bounds(center, DEPTH, penWidth)
+				then bounds(center, penWidth, DEPTH)
 				elseif sideways then bounds(center, DEPTH, VAULT_WIDTH)
 				else bounds(center, VAULT_WIDTH, DEPTH),
 			Spawn = CFrame.lookAt(spawnPos, spawnPos + frame:VectorToWorldSpace(Vector3.zAxis)),
@@ -1123,6 +1139,10 @@ function MapService.Init()
 	-- Nothing from the plaza decor in the way of the wheels outside the vault gates
 	for _, base in MapService.Bases do
 		ManorDecor.ClearArea((base.Wheel.PrimaryPart :: BasePart).Position, 9, 9)
+		if PenMode.On() then
+			-- (and nothing of the old plaza's lamps and props inside a pen)
+			ManorDecor.ClearArea(base.Center, GameConfig.Pens.Width / 2 + 2, GameConfig.Pens.Depth / 2 + 2)
+		end
 		MapService.SetFloors(base, 1)
 	end
 	task.wait()

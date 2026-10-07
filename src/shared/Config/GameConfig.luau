@@ -54,7 +54,7 @@ local GameConfig = {
 		Enabled = "Split" :: boolean | string, -- false / true / "Split" (half the servers: the A/B launch)
 		Count = 10,
 		Width = 64,
-		Spacing = 74, -- (10 studs of grass between neighbouring pens: each one its own plot)
+		-- (10 studs of grass between neighbouring pens: each one its own plot - MapService)
 		Depth = 60, -- an upgraded pen's length (the gate stays put, the back fence moves out)
 		StartDepth = 42, -- a new pen's length
 		MaxSlots = 20,
