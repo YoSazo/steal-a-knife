@@ -49,9 +49,7 @@ white, and lids sized to cover the whole eye when lowered.
 ### What they DO in the pen (design for it)
 - **Hop on their handle** around the pen (pogo-hop): the pommel is the foot, keep it flat and
   sturdy-looking; a Common hops clumsily, a Cosmic stomps.
-- **Chop for money**: each knife chops at a little target in the pen (log / pumpkin / training
-  dummy) and every chop pops "+$X". Please make 3 chop targets: `ChopLog`, `ChopPumpkin`,
-  `ChopDummy` (toy style, ~2 studs, origin at the bottom).
+- That's all they do (Steal an Egg's creatures just move around): no chopping or work targets.
 
 ## 2. Coffins (the "egg")
 One per rarity: `Config/ToyGeometry/Coffin_<Rarity>.luau`. You steal it from the boss; it sits in
