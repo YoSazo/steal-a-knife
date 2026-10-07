@@ -834,10 +834,9 @@ function BaseService.RefreshRack(player: Player)
 				Knives.RarityColors[parsed.Knife.Rarity],
 				`{Format.Cash(math.floor(perSecond * 10 + 0.5) / 10)}/s`,
 				if perk then `🔪 {perk.DisplayName}` else nil,
-				220
+				40 -- (only up close: from afar a pen is just its knives and their money pops, Steal an Egg)
 			)
-			-- Steal an Egg's labels: the same small size on screen however far away (readable from
-			-- across the plaza, never a giant banner up close)
+			-- Steal an Egg's labels: the same small size on screen, shown only when you're close
 			tag.Size = UDim2.fromOffset(130, if perk then 62 else 52)
 			if item ~= BaseService.ProtectedItem(player) then
 				-- (on the knife's own feet, so the prompt hops with it; RaidService checks the thief
