@@ -7,12 +7,13 @@
 -- Positions are studs from the map centre. Furniture is built in a local frame and rotated as a
 -- whole; its FRONT is local -Z. Rotation for something standing against a wall, facing the room:
 --   north wall (+Z) 0, south wall (-Z) 180, west wall (-X) -90, east wall (+X) 90.
--- Small details don't collide (nobody should snag on a keyboard) and big pieces do.
+-- Visible props are solid; only rugs and ceiling-grid lines are non-solid.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 
 local Props = require(ReplicatedStorage.Shared.Props)
+local RoundArt = require(ReplicatedStorage.Shared.Assets.RoundMapArt)
 local Textures = require(ReplicatedStorage.Shared.Config.Textures)
 
 local Kit = {}
@@ -35,6 +36,10 @@ function Kit.Begin(into: Folder, center: Vector3)
 	folder = into
 	origin = center
 	groundOrigin = center
+end
+
+function Kit.PreloadArtwork()
+	RoundArt.Preload()
 end
 
 -- Build on storey `n` (0 = ground, 1 = upstairs): everything after this call sits n storeys up,
@@ -134,24 +139,23 @@ local function ball(p: Part): Part
 	return p
 end
 
-local function light(parent: Instance, color: Color3, range: number, brightness: number): PointLight
-	local l = Instance.new("PointLight")
-	l.Color = color
-	l.Range = range
-	l.Brightness = brightness
-	l.Shadows = false
-	l.Parent = parent
-	return l
+local function light(_parent: Instance, _color: Color3, _range: number, _brightness: number)
+	-- One even game light. Visible lamp geometry is Neon; no per-prop Light instances.
+end
+
+function Kit.hero(name: string, x: number, z: number, rotation: number?, y: number?): Model
+	return RoundArt.Build(name, folder, frame(x, z, rotation, y))
 end
 
 -- Text on the front (-Z) face of a part
 local function label(p: BasePart, text: string, color: Color3, _font: Enum.Font?, face: Enum.NormalId?, glow: boolean?)
 	WorldSignModel.Letters(p, text, color, face)
-	if glow then
-		local letters = p:FindFirstChild("VoxelLetters")
-		if letters then
-			for _, glyph in letters:GetChildren() do
-				if glyph:IsA("BasePart") then
+	local letters = p:FindFirstChild("VoxelLetters")
+	if letters then
+		for _, glyph in letters:GetChildren() do
+			if glyph:IsA("BasePart") then
+				glyph.CanCollide = true
+				if glow then
 					glyph.Material = Enum.Material.Neon
 				end
 			end
@@ -439,29 +443,41 @@ end
 -- across. Visible steps are solid blocks; an invisible ramp over their noses is what feet (and
 -- the bots' pathfinding) walk on. Returns the hole the floor above needs, as a Rect.
 Kit.STAIR_RUN = 28
-function Kit.stairs(x: number, z: number, rotation: number, width: number, color: Color3, rail: Color3?): Rect
+function Kit.stairs(
+	x: number,
+	z: number,
+	rotation: number,
+	width: number,
+	color: Color3,
+	rail: Color3?,
+	artwork: string?
+): Rect
 	local b = frame(x, z, rotation)
 	local L, H, n = Kit.STAIR_RUN, Kit.STOREY, 20
 	local rise, run = H / n, L / n
-	for i = 0, n - 1 do
-		local top = (i + 1) * rise
-		local step = piece(
-			b,
-			"Step",
-			Vector3.new(width, top, run),
-			Vector3.new(0, top / 2, L / 2 - (i + 0.5) * run),
-			color,
-			Enum.Material.Wood
-		)
-		step.CanQuery = false
-		bit(
-			b,
-			"StepNose",
-			Vector3.new(width + 0.1, 0.18, 0.3),
-			Vector3.new(0, top - 0.09, L / 2 - i * run - 0.15),
-			darker(color, 0.25),
-			Enum.Material.Wood
-		)
+	if artwork then
+		RoundArt.Build(artwork, folder, b)
+	else
+		for i = 0, n - 1 do
+			local top = (i + 1) * rise
+			local step = piece(
+				b,
+				"Step",
+				Vector3.new(width, top, run),
+				Vector3.new(0, top / 2, L / 2 - (i + 0.5) * run),
+				color,
+				Enum.Material.Wood
+			)
+			step.CanQuery = false
+			bit(
+				b,
+				"StepNose",
+				Vector3.new(width + 0.1, 0.18, 0.3),
+				Vector3.new(0, top - 0.09, L / 2 - i * run - 0.15),
+				darker(color, 0.25),
+				Enum.Material.Wood
+			)
+		end
 	end
 	-- the walking surface: through every step's front-top corner, starting on the floor one
 	-- step-length in front of the first step (a lip at step height can't be walked onto)
@@ -479,24 +495,26 @@ function Kit.stairs(x: number, z: number, rotation: number, width: number, color
 	ramp.CanQuery = false
 	ramp.Parent = folder
 	-- handrails on both sides: posts every few steps and a sloped rail
-	local railColor = rail or darker(color, 0.35)
-	for _, side in { -1, 1 } do
-		local sx = side * (width / 2 - 0.2)
-		for i = 0, n - 1, 4 do
-			local top = (i + 1) * rise
-			bit(
-				b,
-				"RailPost",
-				Vector3.new(0.3, 3.2, 0.3),
-				Vector3.new(sx, top + 1.6, L / 2 - (i + 0.5) * run),
-				railColor,
-				Enum.Material.Wood
-			)
+	if not artwork then
+		local railColor = rail or darker(color, 0.35)
+		for _, side in { -1, 1 } do
+			local sx = side * (width / 2 - 0.2)
+			for i = 0, n - 1, 4 do
+				local top = (i + 1) * rise
+				bit(
+					b,
+					"RailPost",
+					Vector3.new(0.3, 3.2, 0.3),
+					Vector3.new(sx, top + 1.6, L / 2 - (i + 0.5) * run),
+					railColor,
+					Enum.Material.Wood
+				)
+			end
+			local rp = bit(b, "Handrail", Vector3.new(0.35, 0.3, length), Vector3.zero, railColor, Enum.Material.Wood)
+			rp.CFrame = b
+				* CFrame.new(sx, (y0 + y1) / 2 + 3.1, (z0 + z1) / 2)
+				* CFrame.Angles(math.atan2(y1 - y0, z0 - z1), 0, 0)
 		end
-		local rp = bit(b, "Handrail", Vector3.new(0.35, 0.3, length), Vector3.zero, railColor, Enum.Material.Wood)
-		rp.CFrame = b
-			* CFrame.new(sx, (y0 + y1) / 2 + 3.1, (z0 + z1) / 2)
-			* CFrame.Angles(math.atan2(y1 - y0, z0 - z1), 0, 0)
 	end
 	-- the hole above, in map coordinates (rotation 0/180 keep it along Z, 90/-90 along X)
 	-- (2 studs wider than the flight each side: bot pathfinding works on a coarse grid and read a
@@ -506,7 +524,7 @@ function Kit.stairs(x: number, z: number, rotation: number, width: number, color
 end
 
 -- A waist-high railing (collides) along a straight line on the current storey - round a stairwell
-function Kit.railing(x1: number, z1: number, x2: number, z2: number, color: Color3)
+function Kit.railing(x1: number, z1: number, x2: number, z2: number, color: Color3, artwork: string?)
 	local mid = Vector3.new((x1 + x2) / 2, 0, (z1 + z2) / 2)
 	local len = math.sqrt((x2 - x1) ^ 2 + (z2 - z1) ^ 2)
 	local alongX = math.abs(x2 - x1) > math.abs(z2 - z1)
@@ -518,6 +536,20 @@ function Kit.railing(x1: number, z1: number, x2: number, z2: number, color: Colo
 		Enum.Material.Wood
 	)
 	guard.Transparency = 1 -- invisible stop; the rail and balusters below are what you see
+	if artwork then
+		local model = RoundArt.Build(artwork)
+		for _, p in model:GetDescendants() do
+			if p:IsA("BasePart") and p.Name ~= "Origin" then
+				local isCylinder = p:IsA("Part") and p.Shape == Enum.PartType.Cylinder
+				local scale = if isCylinder then Vector3.new(1, len / 8, 1) else Vector3.new(len / 8, 1, 1)
+				p.Size *= scale
+				p.CFrame = CFrame.new(p.Position.X * len / 8, p.Position.Y, p.Position.Z) * p.CFrame.Rotation
+			end
+		end
+		model:PivotTo(at(mid.X, 0, mid.Z) * CFrame.Angles(0, if alongX then 0 else math.pi / 2, 0))
+		model.Parent = folder
+		return
+	end
 	deco(
 		"Handrail",
 		if alongX then Vector3.new(len, 0.35, 0.45) else Vector3.new(0.45, 0.35, len),
@@ -601,9 +633,19 @@ function Kit.downlight(x: number, z: number, color: Color3?, flicker: number?)
 	maybeFlicker(lens, flicker)
 end
 
--- The Blender chandelier hanging from the ceiling, with one warm light for all its candles
+local function solidProp(name: string): Model
+	local model = Props.Build(name, true)
+	for _, p in model:GetDescendants() do
+		if p:IsA("BasePart") and p.Transparency < 1 then
+			p.CanCollide = true
+		end
+	end
+	return model
+end
+
+-- The Blender chandelier hanging from the ceiling; neon candles use the game's even lighting.
 function Kit.chandelier(x: number, z: number)
-	local model = Props.Build("Chandelier", true)
+	local model = solidProp("Chandelier")
 	model:PivotTo(at(x, WALL_HEIGHT, z))
 	model.Parent = folder
 	local glow = deco("Lamp", Vector3.one * 0.3, at(x, WALL_HEIGHT - 3, z), rgb(255, 190, 110))
@@ -615,7 +657,7 @@ end
 -- The Blender wall sconce (a candle on an iron arm). `outward` points away from the wall.
 function Kit.sconce(x: number, y: number, z: number, outward: Vector3)
 	local pos = origin + Vector3.new(x, y, z)
-	local model = Props.Build("Sconce", true)
+	local model = solidProp("Sconce")
 	model:PivotTo(CFrame.lookAt(pos, pos + outward))
 	model.Parent = folder
 	local glow =
@@ -645,26 +687,37 @@ function Kit.window(x: number, z: number, rotation: number, options: WindowOptio
 	local b = frame(x, z, rotation, sill + h / 2)
 	local sky = bit(b, "Window", Vector3.new(w, h, 0.1), Vector3.new(0, 0, -0.05), rgb(28, 42, 82), Enum.Material.Neon)
 	sky:AddTag("Window")
-	local moon = Instance.new("SpotLight")
-	moon.Color = rgb(150, 175, 255)
-	moon.Brightness = 1.4
-	moon.Range = 20
-	moon.Angle = 70
-	moon.Shadows = false
-	moon.Face = Enum.NormalId.Front
-	moon.Parent = sky
+	-- A shallow night scene behind the glazing, separated by real depth to avoid flicker.
+	for i = 1, 3 do
+		local height = h * (0.24 + i * 0.09)
+		bit(
+			b,
+			"OutsideBuilding",
+			Vector3.new(w * 0.27, height, 0.10),
+			Vector3.new((i - 2) * w * 0.29, -h / 2 + height / 2, -0.26),
+			rgb(15, 24, 45)
+		)
+	end
+	bit(
+		b,
+		"OutsideMoon",
+		Vector3.new(0.55, 0.55, 0.08),
+		Vector3.new(w * 0.25, h * 0.27, -0.42),
+		rgb(223, 234, 255),
+		Enum.Material.Neon
+	)
 	local glass =
-		bit(b, "Glass", Vector3.new(w, h, 0.05), Vector3.new(0, 0, -0.18), rgb(190, 215, 240), Enum.Material.Glass)
+		bit(b, "Glass", Vector3.new(w, h, 0.06), Vector3.new(0, 0, -0.60), rgb(190, 215, 240), Enum.Material.Glass)
 	glass.Transparency = 0.75
 	glass.Reflectance = 0.2
 	-- frame and mullions
-	bit(b, "WindowFrame", Vector3.new(w + 0.8, 0.4, 0.45), Vector3.new(0, h / 2 + 0.2, -0.22), frameColor)
-	bit(b, "WindowFrame", Vector3.new(w + 0.8, 0.4, 0.45), Vector3.new(0, -h / 2 - 0.2, -0.22), frameColor)
+	bit(b, "WindowFrame", Vector3.new(w + 0.8, 0.4, 0.45), Vector3.new(0, h / 2 + 0.2, -0.65), frameColor)
+	bit(b, "WindowFrame", Vector3.new(w + 0.8, 0.4, 0.45), Vector3.new(0, -h / 2 - 0.2, -0.65), frameColor)
 	for _, sx in { -1, 1 } do
-		bit(b, "WindowFrame", Vector3.new(0.4, h, 0.45), Vector3.new(sx * (w / 2 + 0.2), 0, -0.22), frameColor)
+		bit(b, "WindowFrame", Vector3.new(0.4, h, 0.45), Vector3.new(sx * (w / 2 + 0.2), 0, -0.65), frameColor)
 	end
-	bit(b, "Mullion", Vector3.new(0.22, h, 0.3), Vector3.new(0, 0, -0.18), frameColor)
-	bit(b, "Mullion", Vector3.new(w, 0.22, 0.3), Vector3.new(0, h * 0.12, -0.18), frameColor)
+	bit(b, "Mullion", Vector3.new(0.22, h, 0.18), Vector3.new(0, 0, -0.78), frameColor)
+	bit(b, "Mullion", Vector3.new(w, 0.22, 0.18), Vector3.new(0, h * 0.12, -0.78), frameColor)
 	bit(b, "Sill", Vector3.new(w + 1.4, 0.3, 0.9), Vector3.new(0, -h / 2 - 0.45, -0.45), frameColor)
 	if o.Curtains then
 		local c = o.Curtains
@@ -1534,7 +1587,12 @@ function Kit.projectorScreen(x: number, y: number, z: number, rotation: number)
 	local b = frame(x, z, rotation, y)
 	bit(b, "ScreenCase", Vector3.new(11, 0.5, 0.5), Vector3.new(0, 3.3, -0.3), rgb(40, 40, 45))
 	local screen = bit(b, "ProjectorScreen", Vector3.new(10, 6, 0.05), Vector3.new(0, 0, -0.3), rgb(250, 250, 248))
-	WorldSignModel.Attach("ProjectorScreen", screen, Enum.NormalId.Front)
+	local art = WorldSignModel.Attach("ProjectorScreen", screen, Enum.NormalId.Front)
+	for _, p in art:GetDescendants() do
+		if p:IsA("BasePart") and p.Transparency < 1 then
+			p.CanCollide = true
+		end
+	end
 end
 
 -- Furniture: homes ---------------------------------------------------------------------------
@@ -2527,7 +2585,7 @@ function Kit.fireplace(x: number, z: number, rotation: number)
 	-- mantel clutter
 	candelabra(b * CFrame.new(-4.8, 0, -0.6), 8.4)
 	candelabra(b * CFrame.new(4.8, 0, -0.6), 8.4)
-	local skull = Props.Build("Skull", true)
+	local skull = solidProp("Skull")
 	skull:PivotTo(b * CFrame.new(-2.2, 9.05, -0.8) * CFrame.Angles(0, math.rad(20), 0))
 	skull:ScaleTo(0.6)
 	skull.Parent = folder

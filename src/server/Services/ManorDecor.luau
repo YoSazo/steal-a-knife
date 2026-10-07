@@ -1120,22 +1120,27 @@ function ManorDecor.Build(root: Instance, arena: Bounds, _hideaways: { Bounds })
 	folder.Name = "Decor"
 	folder.Parent = root
 	local width = arena.MaxX - arena.MinX
-	local depth = GameConfig.ZoneDepth
 	local half = width / 2
 
 	-- Every zone (its name pops up on screen as you walk in: client/Transitions): sconces down both walls, its own biome inside
 	for i, zone in GameConfig.Zones do
 		task.wait() -- (one biome a frame)
-		local z0 = (i - 1) * depth
+		local z0, depth = GameConfig.ZoneStart(i), GameConfig.ZoneDepthFor(i)
 		local color: Color3 = zone.Color
 		-- Fireflies in the zone's colour, and mist creeping along the ground
-		fireflies(
-			Vector3.new(0, 5, z0 + depth / 2),
-			Vector3.new(width - 6, 8, depth - 10),
-			color:Lerp(Color3.fromRGB(230, 255, 150), 0.5),
-			6
-		)
-		mist(Vector3.new(0, 1.5, z0 + depth / 2), Vector3.new(width - 4, 1, depth - 6), Color3.fromRGB(150, 140, 190))
+		if i >= 3 then
+			fireflies(
+				Vector3.new(0, 5, z0 + depth / 2),
+				Vector3.new(width - 6, 8, depth - 10),
+				color:Lerp(Color3.fromRGB(230, 255, 150), 0.5),
+				6
+			)
+			mist(
+				Vector3.new(0, 1.5, z0 + depth / 2),
+				Vector3.new(width - 4, 1, depth - 6),
+				Color3.fromRGB(150, 140, 190)
+			)
+		end
 		-- A Codex shell dresses this biome (MapService.BuildBiomeShells): none of the random props
 		if ManorDecor.ShellZones[i] then
 			continue

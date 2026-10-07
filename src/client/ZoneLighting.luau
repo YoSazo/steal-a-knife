@@ -281,14 +281,13 @@ local function moodHere(): (Mood, number)
 	if math.abs(pos.X) > GameConfig.ArenaWidth / 2 + 4 or pos.Z < 0 then
 		return BASE, 0
 	end
-	local depth = GameConfig.ZoneDepth
 	local zones = #GameConfig.Zones
-	local zone = math.clamp(math.floor(pos.Z / depth) + 1, 1, zones)
+	local zone = GameConfig.ZoneAtZ(pos.Z) or zones -- preserve the last biome's mood at the Manor
 	local here = ZoneLighting.MoodFor(zone)
 	if zone >= zones then
 		return here, zone
 	end
-	local intoNext = (pos.Z - (zone * depth - BLEND)) / BLEND
+	local intoNext = (pos.Z - (GameConfig.ZoneEnd(zone) - BLEND)) / BLEND
 	-- smoothstep: eases in and out of the band
 	local t = math.clamp(intoNext, 0, 1)
 	t = t * t * (3 - 2 * t)

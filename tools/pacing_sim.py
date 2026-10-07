@@ -34,7 +34,9 @@ FLOOR_REBIRTHS = [0, 1, 3]  # rebirths needed for the 2nd, 3rd, 4th floor
 REBIRTH_BASE, REBIRTH_GROWTH = 2e9, 6
 REBIRTH_INCOME, REBIRTH_SPEED = 0.5, 0.3
 REBIRTH_NEEDS = ["Legendary", "Mythic", "Godly", "Godly", "Celestial", "Celestial", "Cosmic"]  # then Cosmic
-INTERMISSION, ROUND = 180, 150
+INTERMISSION, ROUND = 360, 150
+ZONE_DEPTHS = [90, 130, 170, 210, 250, 290, 330, 370]
+FIRST_BOSS_Z = 50
 EXTRA_INCOME = 1.4  # Heat, survivor 2x boosts, mutations / sizes, friends, wheel cash: on average
 CATCH_CHANCE = 0.25  # a run where the boss gets you (the knife goes back)
 
@@ -45,7 +47,10 @@ def speed_needed(zone):
 
 
 def run_time(zone):
-    return 45 + 12 * zone  # walk out, steal, run the knife home
+    # Route estimate (not telemetry): cumulative distance, lateral lair approach and plaza walk.
+    boss_z = FIRST_BOSS_Z if zone == 0 else sum(ZONE_DEPTHS[:zone]) + .6 * ZONE_DEPTHS[zone]
+    walk = max(BASE_WALK, GUARD_SPEED[zone] / CARRY + .5)
+    return 8 + 2 * (boss_z + 110 + 60) / walk
 
 
 def simulate(hours):

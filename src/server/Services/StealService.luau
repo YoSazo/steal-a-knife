@@ -67,12 +67,7 @@ local function rootPart(player: Player): BasePart?
 end
 
 local function zoneIndexAt(position: Vector3): number?
-	for _, zone in MapService.Zones do
-		if MapService.InBounds(zone.Bounds, position) then
-			return zone.Index
-		end
-	end
-	return nil
+	return MapService.ZoneAt(position)
 end
 
 -- The floating tag over a drop: a few lines of coloured text

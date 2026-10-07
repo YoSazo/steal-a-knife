@@ -3,19 +3,9 @@
 local CollectionService = game:GetService("CollectionService")
 local Textures = require(script.Parent.Parent.Config.Textures)
 local Art = require(script.Parent.Parent.Config.CatacombsArt)
-local Geometry = require(script.Parent.Parent.Config.ToyGeometry.CatacombsShellData)
+local Geometry = require(script.Parent.Parent.Config.ToyGeometry.ProgressiveBiomes.CatacombsShellData)
 
-type Block = {
-	Name: string,
-	Size: { number },
-	Offset: { number },
-	Color: { number },
-	Detail: boolean?,
-	WaterFace: string?,
-	Ambient: boolean?,
-	Hidden: boolean?,
-	Stud: boolean?,
-}
+type Block = Geometry.Block
 export type Options = { Detail: boolean?, WaterTexture: string?, Ambient: boolean? }
 local CatacombsShell = {}
 
@@ -34,7 +24,7 @@ local function pivot(name: string, frame: CFrame, parent: Model): Part
 end
 
 function CatacombsShell.Build(parent: Instance?, origin: CFrame?, options: Options?): Model
-	local frame = origin or CFrame.new(0, 0, 660)
+	local frame = origin or CFrame.new(Geometry.Origin[1], Geometry.Origin[2], Geometry.Origin[3])
 	local settings: Options = options or {}
 	local waterImage = settings.WaterTexture or Art.WaterFoam.Image
 	local assembly = Instance.new("Model")
@@ -46,7 +36,7 @@ function CatacombsShell.Build(parent: Instance?, origin: CFrame?, options: Optio
 	assembly:SetAttribute("BossTitle", "The Collector")
 	assembly:SetAttribute("FrontAxis", "-Z; +Z goes deeper")
 	assembly:SetAttribute("GroundWidth", 160)
-	assembly:SetAttribute("GroundDepth", 220)
+	assembly:SetAttribute("GroundDepth", Geometry.Depth)
 	CollectionService:AddTag(assembly, "BiomeShell")
 	local parts = 1
 	local geometryGroups = Geometry.Groups :: { [string]: { Block } }

@@ -3,12 +3,13 @@
 -- buildings with rooms that each look like a place - an open-plan office with cubicles and a
 -- storage room where the bulbs won't stop flickering, a mansion with a fireplace, a four-poster
 -- bed and a dining table set for twelve. Built from RoundMapKit (walls with trim, windows,
--- lights, furniture). One map is picked at random each round (no voting), like the original.
+-- lights, furniture). The round vote chooses a building each round.
 --
 -- Layouts keep the same rooms, doors and spawns the chases were tuned on: every room has two
 -- ways out so there's always somewhere to run.
 
 local Kit = require(script.Parent.RoundMapKit)
+local Dressing = require(script.Parent.RoundMapDressing)
 
 local RoundMaps = {}
 
@@ -215,7 +216,7 @@ local function buildOffice(): Built
 	Kit.crates(-66, -46)
 	Kit.crates(-48, -20)
 	Kit.shelfUnit(-73.5, -18, -90)
-	Kit.shelfUnit(-73.5, -32, -90)
+	Kit.shelfUnit(-73.5, -42, -90) -- keep four studs clear around the side door at z=-31
 	Kit.shelfUnit(-58, -53.5, 180)
 	Kit.mopBucket(-42, -12)
 	Kit.sign(-38, 6, -46, 90, "STAFF ONLY", Vector2.new(3, 1), rgb(200, 30, 30), rgb(255, 255, 255))
@@ -278,9 +279,7 @@ local function buildOffice(): Built
 	Kit.roomFloor(-93.75, 31, 37.5, 48, rgb(70, 74, 82), carpet)
 	Kit.fluorescent(-102.75, 31, 0)
 	Kit.fluorescent(-84.75, 31, 0)
-	for _, z in { 18, 30, 42 } do
-		Kit.shelfUnit(-104, z, 90)
-	end
+	-- Server racks are supplied by the art pass at these same wall-side positions.
 	Kit.desk(-86, 46, 0)
 	Kit.desk(-86, 34, 0)
 	Kit.printer(-78.5, 14, 90)
@@ -291,7 +290,7 @@ local function buildOffice(): Built
 
 	-- New south-west: the stair hall - the way up
 	Kit.roomFloor(-93.75, -31, 37.5, 48, rgb(205, 200, 190), Enum.Material.Marble)
-	local stairHole = Kit.stairs(-106, -34, 180, 8, rgb(150, 110, 75))
+	local stairHole = Kit.stairs(-106, -34, 180, 8, rgb(150, 110, 75), nil, "OfficeStairs")
 	Kit.sign(-93.75, 10.9, -6.5, 180, "STAIRS", Vector2.new(4, 0.8), rgb(40, 40, 46), rgb(235, 235, 235))
 	Kit.fluorescent(-88, -31, 0)
 	Kit.plant(-80, -52, "Tall")
@@ -376,8 +375,8 @@ local function buildOffice(): Built
 	end
 
 	-- Landing: a railing round the stairwell
-	Kit.railing(-112, -48, -100, -48, rgb(120, 80, 48))
-	Kit.railing(-100, -48, -100, -20, rgb(120, 80, 48))
+	Kit.railing(-112, -48, -100, -48, rgb(120, 80, 48), "OfficeBalustrade")
+	Kit.railing(-100, -48, -100, -20, rgb(120, 80, 48), "OfficeBalustrade")
 	Kit.fluorescent(-90, -31, 0)
 	Kit.plant(-80, -50, "Tall")
 	Kit.window(-90, -54.5, 180)
@@ -574,8 +573,7 @@ local function buildMansion(): Built
 	Kit.checker(0, -45, 50, 20, 5, rgb(235, 230, 218), rgb(40, 38, 40))
 	Kit.rug(0, 6, 12, 74, rgb(140, 22, 32), rgb(212, 175, 80))
 	for z = -30, 50, 10 do
-		Kit.part("Beam", Vector3.new(50, 0.8, 1), at(0, Kit.WALL_HEIGHT - 0.4, z), Kit.DARK_WOOD, Enum.Material.Wood).CanCollide =
-			false
+		Kit.part("Beam", Vector3.new(50, 0.8, 1), at(0, Kit.WALL_HEIGHT - 0.4, z), Kit.DARK_WOOD, Enum.Material.Wood)
 	end
 	Kit.chandelier(0, -30)
 	Kit.chandelier(0, 0)
@@ -674,9 +672,7 @@ local function buildMansion(): Built
 
 	-- Wine cellar: brick, barrels (crates), racks
 	Kit.roomFloor(-95, 27.5, 40, 55, rgb(110, 100, 92), Enum.Material.Slate)
-	Kit.shelfUnit(-113.5, 14, -90)
-	Kit.shelfUnit(-113.5, 28, -90)
-	Kit.shelfUnit(-113.5, 42, -90)
+	-- Bottle-filled wine racks replace the generic storage shelves here.
 	Kit.crates(-92, 48)
 	Kit.crates(-84, 20)
 	Kit.crates(-100, 34)
@@ -685,7 +681,7 @@ local function buildMansion(): Built
 
 	-- Grand stair hall: the staircase up, a clock, armour, portraits
 	Kit.checker(-95, -27.5, 40, 55, 5, rgb(235, 230, 218), rgb(40, 38, 40))
-	local stairHole = Kit.stairs(-105, -28, 180, 8, rgb(78, 48, 30), trim)
+	local stairHole = Kit.stairs(-105, -28, 180, 8, rgb(78, 48, 30), trim, "MansionStairs")
 	Kit.rug(-90, -48, 12, 8, rgb(140, 22, 32), rgb(212, 175, 80))
 	Kit.grandfatherClock(-80, -53.5, 180)
 	Kit.armor(-84, -4, 0)
@@ -716,7 +712,7 @@ local function buildMansion(): Built
 	Kit.picture(114.5, 7.2, -36, 90, "Landscape", rgb(212, 175, 80))
 	Kit.picture(95, 7.4, -54.5, 180, "Portrait", rgb(212, 175, 80), 1.2)
 	Kit.sideTable(84, -6, true)
-	Kit.chandelier(95, -27.5)
+	-- An antler chandelier replaces the generic fixture in the trophy room.
 
 	-- UPSTAIRS ------------------------------------------------------------------------------
 	Kit.Level(1)
@@ -774,19 +770,18 @@ local function buildMansion(): Built
 	Kit.picture(-60, 7.2, 6.5, 0, "Landscape", rgb(212, 175, 80))
 
 	-- Landing: a balustrade round the stairwell
-	Kit.railing(-111, -42, -99, -42, trim)
-	Kit.railing(-99, -42, -99, -14, trim)
-	Kit.railing(-111, -42, -111, -14, trim)
+	Kit.railing(-111, -42, -99, -42, trim, "MansionBalustrade")
+	Kit.railing(-99, -42, -99, -14, trim, "MansionBalustrade")
+	Kit.railing(-111, -42, -111, -14, trim, "MansionBalustrade")
 	Kit.chandelier(-90, -30)
 	Kit.plant(-80, -50, "Tall")
 	Kit.armor(-80, -12, 0)
 
 	-- Nursery: a small bed, toys (crates), a wardrobe
 	Kit.roomFloor(-95, 31, 40, 48, rgb(220, 200, 210), Enum.Material.Carpet)
-	Kit.bed(-104, 44, 0, rgb(120, 170, 220))
+	-- The nursery has a crib, rocking horse and toy blocks instead of generic crates.
 	Kit.nightstand(-96, 51.5, 0)
 	Kit.wardrobe(-113.3, 24, -90)
-	Kit.crates(-84, 20)
 	Kit.rug(-92, 28, 12, 10, rgb(250, 220, 120), rgb(240, 150, 150))
 	Kit.window(-95, 54.5, 0, curtains)
 	Kit.window(-114.5, 36, -90, curtains)
@@ -872,6 +867,8 @@ RoundMaps.Names = { "Office", "Mansion" }
 
 -- Tears down the previous round map and builds `name` (or a random one) around `center`
 function RoundMaps.Build(parent: Instance, center: Vector3, name: string?): Built
+	-- Finish the one-time mesh load before assigning the kit's shared build frame.
+	Kit.PreloadArtwork()
 	local old = parent:FindFirstChild("RoundMap")
 	if old then
 		old:Destroy()
@@ -881,6 +878,7 @@ function RoundMaps.Build(parent: Instance, center: Vector3, name: string?): Buil
 	Kit.Begin(folder, center)
 	local chosen = name or RoundMaps.Names[math.random(1, #RoundMaps.Names)]
 	local built = RoundMaps.Builders[chosen]()
+	Dressing.Build(chosen)
 	-- Everyone spawns facing the middle of the building
 	for i, spawn in built.Spawns do
 		built.Spawns[i] = CFrame.lookAt(spawn.Position, Vector3.new(center.X, spawn.Position.Y, center.Z))

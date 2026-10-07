@@ -3,19 +3,9 @@
 local CollectionService = game:GetService("CollectionService")
 local Textures = require(script.Parent.Parent.Config.Textures)
 local Art = require(script.Parent.Parent.Config.InfernoArt)
-local Geometry = require(script.Parent.Parent.Config.ToyGeometry.InfernoShellData)
+local Geometry = require(script.Parent.Parent.Config.ToyGeometry.ProgressiveBiomes.InfernoShellData)
 
-type Block = {
-	Name: string,
-	Size: { number },
-	Offset: { number },
-	Color: { number },
-	Detail: boolean?,
-	WaterFace: string?,
-	Ambient: boolean?,
-	Hidden: boolean?,
-	Stud: boolean?,
-}
+type Block = Geometry.Block
 export type Options = { Detail: boolean?, WaterTexture: string?, Ambient: boolean? }
 local InfernoShell = {}
 
@@ -34,7 +24,7 @@ local function pivot(name: string, frame: CFrame, parent: Model): Part
 end
 
 function InfernoShell.Build(parent: Instance?, origin: CFrame?, options: Options?): Model
-	local frame = origin or CFrame.new(0, 0, 880)
+	local frame = origin or CFrame.new(Geometry.Origin[1], Geometry.Origin[2], Geometry.Origin[3])
 	local settings: Options = options or {}
 	local waterImage = settings.WaterTexture or Art.WaterFoam.Image
 	local assembly = Instance.new("Model")
@@ -46,7 +36,7 @@ function InfernoShell.Build(parent: Instance?, origin: CFrame?, options: Options
 	assembly:SetAttribute("BossTitle", "The Firestarter")
 	assembly:SetAttribute("FrontAxis", "-Z; +Z goes deeper")
 	assembly:SetAttribute("GroundWidth", 160)
-	assembly:SetAttribute("GroundDepth", 220)
+	assembly:SetAttribute("GroundDepth", Geometry.Depth)
 	CollectionService:AddTag(assembly, "BiomeShell")
 	local parts = 1
 	local geometryGroups = Geometry.Groups :: { [string]: { Block } }

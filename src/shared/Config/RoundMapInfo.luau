@@ -10,14 +10,14 @@ local List: { Info } = {
 		Emoji = "🏢",
 		Color = Color3.fromRGB(70, 130, 210),
 		Blurb = "2 floors · 17 rooms",
-		Image = "rbxassetid://118986350300575",
+		Image = "rbxassetid://123212136782613",
 	},
 	{
 		Name = "Mansion",
 		Emoji = "🏰",
 		Color = Color3.fromRGB(190, 50, 60),
 		Blurb = "2 floors · 14 rooms",
-		Image = "rbxassetid://94619359745443",
+		Image = "rbxassetid://73665715137680",
 	},
 }
 

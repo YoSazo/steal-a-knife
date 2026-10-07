@@ -368,7 +368,7 @@ local GameConfig = {
 	-- The hub is one long straight runway (like the big steal games): the vaults open onto a plaza
 	-- at the start, and the zones run one after another down the runway, each rarer and nastier,
 	-- all the way to the Manor. Each guard holds a knife from its zone's pool; kill it for the knife.
-	ZoneDepth = 220,
+	ZoneDepth = 220, -- authored depth/fallback; live ranges use ZoneStart/ZoneEnd/ZoneDepthFor
 	ArenaWidth = 160,
 	CatchRadius = 5.5, -- (bosses are BossScale big: longer arms)
 	BossScale = 1.6, -- bosses tower over players so they're easy to spot, phones included
@@ -382,6 +382,8 @@ local GameConfig = {
 		{
 			Rarity = "Common",
 			Boss = "Frank", -- a round character (Disguises) guarding this biome's knife wall
+			Depth = 90,
+			BossAt = 50 / 90,
 			BossTitle = "The Groundskeeper",
 			BossWear = {}, -- Blender pieces worn on top of their usual outfit
 			Restock = 30, -- seconds before a stolen slot on the wall refills
@@ -395,6 +397,8 @@ local GameConfig = {
 		{
 			Rarity = "Rare",
 			Boss = "Ivy", -- a round character (Disguises) guarding this biome's knife wall
+			Depth = 130,
+			BossAt = 0.6,
 			BossTitle = "The Gardener",
 			BossWear = { "FlowerCrown" }, -- Blender pieces worn on top of their usual outfit
 			Restock = 45, -- seconds before a stolen slot on the wall refills
@@ -408,6 +412,8 @@ local GameConfig = {
 		{
 			Rarity = "Epic",
 			Boss = "Sam", -- a round character (Disguises) guarding this biome's knife wall
+			Depth = 170,
+			BossAt = 0.6,
 			BossTitle = "The Gravedigger",
 			BossWear = {}, -- Blender pieces worn on top of their usual outfit
 			Restock = 60, -- seconds before a stolen slot on the wall refills
@@ -422,6 +428,8 @@ local GameConfig = {
 		{
 			Rarity = "Legendary",
 			Boss = "Leo", -- a round character (Disguises) guarding this biome's knife wall
+			Depth = 210,
+			BossAt = 0.6,
 			BossTitle = "The Collector",
 			BossWear = { "Monocle" }, -- Blender pieces worn on top of their usual outfit
 			Restock = 90, -- seconds before a stolen slot on the wall refills
@@ -436,6 +444,8 @@ local GameConfig = {
 		{
 			Rarity = "Mythic",
 			Boss = "Ruby", -- a round character (Disguises) guarding this biome's knife wall
+			Depth = 250,
+			BossAt = 0.6,
 			BossTitle = "The Firestarter",
 			BossWear = { "DevilHorns" }, -- Blender pieces worn on top of their usual outfit
 			Restock = 120, -- seconds before a stolen slot on the wall refills
@@ -450,6 +460,8 @@ local GameConfig = {
 		{
 			Rarity = "Godly",
 			Boss = "Kate", -- a round character (Disguises) guarding this biome's knife wall
+			Depth = 290,
+			BossAt = 0.6,
 			BossTitle = "The Queen",
 			BossWear = { "Crown" }, -- Blender pieces worn on top of their usual outfit
 			Restock = 180, -- seconds before a stolen slot on the wall refills
@@ -464,6 +476,8 @@ local GameConfig = {
 		{
 			Rarity = "Celestial",
 			Boss = "Zoe", -- a round character (Disguises) guarding this biome's knife wall
+			Depth = 330,
+			BossAt = 0.6,
 			BossTitle = "The Angel",
 			BossWear = { "Halo", "AngelWings" }, -- Blender pieces worn on top of their usual outfit
 			Restock = 240, -- seconds before a stolen slot on the wall refills
@@ -478,6 +492,8 @@ local GameConfig = {
 		{
 			Rarity = "Cosmic",
 			Boss = "Nick", -- a round character (Disguises) guarding this biome's knife wall
+			Depth = 370,
+			BossAt = 0.6,
 			BossTitle = "The Void Walker",
 			BossWear = { "SpaceHelmet" }, -- Blender pieces worn on top of their usual outfit
 			Restock = 300, -- seconds before a stolen slot on the wall refills
@@ -932,6 +948,46 @@ function GameConfig.RebirthTitle(rebirths: number): string?
 	return titles[math.min(rebirths, #titles)]
 end
 
+-- Shared cumulative layout. Interior ranges are [start, end); the final edge stays in the last zone.
+function GameConfig.ZoneDepthFor(index: number): number
+	local zone = GameConfig.Zones[index]
+	assert(zone, `Invalid biome index {index}`)
+	local depth = zone.Depth or GameConfig.ZoneDepth
+	assert(depth > 0 and depth < math.huge, "Biome depth must be positive and finite")
+	return depth
+end
+
+function GameConfig.ZoneStart(index: number): number
+	assert(GameConfig.Zones[index], `Invalid biome index {index}`)
+	local start = 0
+	for i = 1, index - 1 do
+		start += GameConfig.ZoneDepthFor(i)
+	end
+	return start
+end
+
+function GameConfig.ZoneEnd(index: number): number
+	return GameConfig.ZoneStart(index) + GameConfig.ZoneDepthFor(index)
+end
+
+function GameConfig.TotalZoneDepth(): number
+	return GameConfig.ZoneEnd(#GameConfig.Zones)
+end
+
+function GameConfig.ZoneAtZ(z: number): number?
+	if z ~= z or z < 0 or z > GameConfig.TotalZoneDepth() then
+		return nil
+	end
+	local finish = 0
+	for i = 1, #GameConfig.Zones do
+		finish += GameConfig.ZoneDepthFor(i)
+		if z < finish or i == #GameConfig.Zones then
+			return i
+		end
+	end
+	return nil
+end
+
 -- Where zone `index`'s boss lair stands (on the floor, against its side wall)
 function GameConfig.BossLairCenter(index: number): Vector3
 	local lair = GameConfig.BossLair
@@ -939,9 +995,7 @@ function GameConfig.BossLairCenter(index: number): Vector3
 	return Vector3.new(
 		side * (GameConfig.ArenaWidth / 2 - lair.Depth / 2),
 		0,
-		-- (Frank, the first boss, sits nearer the entrance: new players who quit left at ~45 s, just
-		-- before they'd reached him)
-		(index - 1) * GameConfig.ZoneDepth + GameConfig.ZoneDepth * (if index == 1 then lair.FirstAt else lair.At)
+		GameConfig.ZoneStart(index) + GameConfig.ZoneDepthFor(index) * GameConfig.Zones[index].BossAt
 	)
 end
 

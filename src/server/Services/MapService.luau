@@ -4,15 +4,15 @@
 -- zones one after another down it, the vaults at the start. (Decoration lives in ManorDecor.)
 -- Layout (top-down, +Z is "deeper"):
 --
---   z = 1760+          the Manor
---   z = 1540..1760 ║ Cosmic     ║    Outer Space
---   z = 1320..1540 ║ Celestial  ║    The Heavens
---   z = 1100..1320 ║ Godly      ║    Mount Olympus
---   z = 880..1100  ║ Mythic     ║    The Inferno
---   z = 660..880   ║ Legendary  ║    runway: ArenaWidth (160) wide, ZoneDepth per zone, guards inside;
---   z = 440..660   ║ Epic       ║    they chase you all the way back to the plaza
---   z = 220..440   ║ Rare       ║
---   z = 0..220     ║ Common     ║
+--   z = 1840+          the Manor
+--   z = 1470..1840 ║ Cosmic     ║    Outer Space
+--   z = 1140..1470 ║ Celestial  ║    The Heavens
+--   z = 850..1140  ║ Godly      ║    Mount Olympus
+--   z = 600..850   ║ Mythic     ║    The Inferno
+--   z = 390..600   ║ Legendary  ║    runway: ArenaWidth (160) wide, cumulative depths;
+--   z = 220..390   ║ Epic       ║    bosses chase all the way back to the plaza
+--   z = 90..220    ║ Rare       ║
+--   z = 0..90      ║ Common     ║
 --   z = -170..0  [B1]  plaza  [B5]   four vaults on each side, opening onto the plaza
 --                [B2]         [B6]
 --                [B3]         [B7]
@@ -115,6 +115,13 @@ end
 function MapService.InBounds(b: Bounds, pos: Vector3, margin: number?): boolean
 	local m = margin or 0
 	return pos.X >= b.MinX - m and pos.X <= b.MaxX + m and pos.Z >= b.MinZ - m and pos.Z <= b.MaxZ + m
+end
+
+function MapService.ZoneAt(position: Vector3): number?
+	if math.abs(position.X) > GameConfig.ArenaWidth / 2 then
+		return nil
+	end
+	return GameConfig.ZoneAtZ(position.Z)
 end
 
 -- Safe in one of the nooks cut into the runway walls
@@ -236,15 +243,15 @@ local HUB_BRICK = Color3.fromRGB(232, 112, 62)
 
 -- Runway walls take on a hint of the colour of the zone they're in
 local function zoneTint(z: number): Color3
-	local index = math.clamp(math.floor(z / GameConfig.ZoneDepth) + 1, 1, #GameConfig.Zones)
+	local index = GameConfig.ZoneAtZ(z) or #GameConfig.Zones
 	local floor = ZONE_FLOORS[GameConfig.Zones[index].Rarity] or STONE
 	return floor:Lerp(Color3.new(0, 0, 0), 0.32)
 end
 
 -- The runway: zone floors one after another, tall walls with hideaway nooks cut into them
 local function buildArena()
-	local width, depth = GameConfig.ArenaWidth, GameConfig.ZoneDepth
-	local totalDepth = depth * #GameConfig.Zones
+	local width = GameConfig.ArenaWidth
+	local totalDepth = GameConfig.TotalZoneDepth()
 	MapService.Arena = { MinX = -width / 2, MaxX = width / 2, MinZ = 0, MaxZ = totalDepth }
 
 	local arena = Instance.new("Folder")
@@ -252,7 +259,7 @@ local function buildArena()
 	arena.Parent = root
 
 	for i, zone in GameConfig.Zones do
-		local z0 = (i - 1) * depth
+		local z0, depth = GameConfig.ZoneStart(i), GameConfig.ZoneDepthFor(i)
 		local center = Vector3.new(0, 0, z0 + depth / 2)
 		local floor = block(
 			`Zone{i}Floor`,
@@ -274,7 +281,7 @@ local function buildArena()
 	for _, side in { -1, 1 } do
 		local x = side * (width / 2 + WALL_THICK / 2)
 		for i = 1, #GameConfig.Zones do
-			local z0 = (i - 1) * depth
+			local z0, depth = GameConfig.ZoneStart(i), GameConfig.ZoneDepthFor(i)
 			local wall = block(
 				"RunwayWall",
 				Vector3.new(WALL_THICK, WALL_HEIGHT, depth),
@@ -284,8 +291,8 @@ local function buildArena()
 			)
 			local cap = Toy.DirtWall(wall, ZONE_WALLS[GameConfig.Zones[i].Rarity])
 			-- Biomes with a Codex shell (MapService.BuildBiomeShells) wear it instead: the wall stays
-			-- (same size, place and collision), only its looks go
-			if BIOME_SHELLS[i] then
+			-- (same size, place and collision), only its looks go. Early lawns keep plain visible walls.
+			if BIOME_SHELLS[i] and i >= 3 then
 				for _, part in { wall, cap } do
 					part.Transparency = 1
 					for _, d in part:GetDescendants() do
@@ -811,7 +818,7 @@ local function buildIsland()
 	end
 
 	local half = GameConfig.ArenaWidth / 2
-	local runwayEnd = GameConfig.ZoneDepth * #GameConfig.Zones
+	local runwayEnd = GameConfig.TotalZoneDepth()
 	local footprints = {
 		{ -half - WALL_THICK, half + WALL_THICK, 0, runwayEnd + WALL_THICK }, -- the runway
 		{ -HUB_HALF - WALL_THICK, HUB_HALF + WALL_THICK, -HUB_BACK - WALL_THICK, WALL_THICK }, -- plaza + vaults
@@ -1051,10 +1058,7 @@ function MapService.BuildBiomeShells()
 		local module = ReplicatedStorage.Shared.Assets:FindFirstChild(name)
 		if module and module:IsA("ModuleScript") then
 			local ok, err = pcall(function()
-				local shell = (require(module) :: any).Build(
-					folder,
-					CFrame.new(0, 0, (index - 1) * GameConfig.ZoneDepth)
-				)
+				local shell = (require(module) :: any).Build(folder, CFrame.new(0, 0, GameConfig.ZoneStart(index)))
 				shell:SetAttribute("Zone", index)
 			end)
 			if not ok then
