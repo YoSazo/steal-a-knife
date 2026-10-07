@@ -300,7 +300,9 @@ function Hud.Init()
 			return {
 				Text = `{star}{if player:GetAttribute("PrizePickOn") then "Your prize if you win" else "Win the round"}: <font color="#8CFF96"><b>{prize.Text}</b></font>{outrun}{done}`,
 				Short = `{clock} · Win <font color="#8CFF96"><b>{prize.Text}</b></font>{done}`,
-				Pill = not doubled,
+				-- (not before your first round: 12 of 48 "x2 R$25" prompts came mid-tutorial, closed in ~1.6 s -
+				-- taps meant for the timer line, a Robux popup in the first minutes)
+				Pill = not doubled and ((player:GetAttribute("RoundsPlayed") or 0) :: number) > 0,
 				Icon = if prize.Kind == "Cash" then CartoonArt.Cash else CartoonArt.Speed, -- (as your readout)
 			}
 		end
