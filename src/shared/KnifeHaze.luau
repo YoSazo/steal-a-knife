@@ -139,9 +139,9 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 			ColorSequenceKeypoint.new(0.66, Color3.fromRGB(110, 230, 255)),
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 120, 255)),
 		})
-		local twinkle = height * (0.16 + tier * 0.02)
+		local twinkle = math.min(height * (0.16 + tier * 0.02), 8)
 		emitter(core, "Twinkles", {
-			Texture = Textures.Glow.Flare,
+			Texture = Textures.AuraSprites.Star.Id,
 			Color = if tier >= 8 then rainbow else ColorSequence.new(Color3.new(1, 1, 1), tint),
 			Rate = 1 + tier * 0.6,
 			Lifetime = NumberRange.new(0.6, 1.1),
@@ -156,7 +156,9 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 	-- 3. Rising embers (Legendary+): soft sparks drifting up out of it
 	if tier >= 4 then
 		emitter(core, "Embers", {
-			Texture = Textures.Glow.Soft,
+			Texture = Textures.AuraSprites.Ember.Id,
+			FlipbookLayout = Enum.ParticleFlipbookLayout.Grid2x2,
+			FlipbookMode = Enum.ParticleFlipbookMode.Loop,
 			Color = glowColor,
 			Rate = 4 + tier,
 			Lifetime = NumberRange.new(1.2, 2),
@@ -164,7 +166,7 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 			SpreadAngle = Vector2.new(25, 25),
 			EmissionDirection = Enum.NormalId.Top,
 			Acceleration = Vector3.new(0, height * 0.1, 0),
-			Size = seq({ { 0, height * 0.08 }, { 1, 0 } }),
+			Size = seq({ { 0, math.min(height * 0.18, 4) }, { 1, 0 } }),
 			Transparency = seq({ { 0, 0.15 }, { 1, 1 } }),
 			Brightness = 2.5 + tier * 0.3,
 			Shape = Enum.ParticleEmitterShape.Box,
@@ -176,6 +178,156 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 		local wide = height * (1.25 + (tier - 5) * 0.08)
 		sun(core, "Halo", wide, tint, 0.84, 1 + tier * 0.25, size.Z * 1.5)
 	end
+	-- 5. Personality (Steal an Egg's monstrosity look): sprites with shapes of their own, stacked by rarity
+	local big = math.min(height, 14) -- (x1.4 for the biggest layers stays under PARTICLE_MAX)
+	local function flipbook(layout: Enum.ParticleFlipbookLayout, mode: Enum.ParticleFlipbookMode): { [string]: any }
+		return { FlipbookLayout = layout, FlipbookMode = mode, FlipbookFramerate = NumberRange.new(8, 8) }
+	end
+	-- Epic+: goo dripping off it
+	if tier >= 3 then
+		local props = flipbook(Enum.ParticleFlipbookLayout.Grid4x4, Enum.ParticleFlipbookMode.Loop)
+		props.Texture = Textures.AuraSprites.SlimeDrip.Id
+		props.Color = ColorSequence.new(tint:Lerp(Color3.new(1, 1, 1), 0.2), tint)
+		props.Rate = 2 + tier * 0.8
+		props.Lifetime = NumberRange.new(1.6, 2.4)
+		props.Size = seq({ { 0, big * 0.22 }, { 1, big * 0.3 } })
+		props.Transparency = seq({ { 0, 1 }, { 0.15, 0.1 }, { 0.8, 0.2 }, { 1, 1 } })
+		props.Acceleration = Vector3.new(0, -big * 0.5, 0)
+		props.Rotation = NumberRange.new(0, 0)
+		props.LightEmission = 0.5
+		props.Brightness = 1.5
+		props.Shape = Enum.ParticleEmitterShape.Box
+		props.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+		emitter(core, "Drips", props)
+	end
+	-- Legendary+: bold swirls turning in the air around it
+	if tier >= 4 then
+		emitter(core, "Spirals", {
+			Texture = Textures.AuraSprites.Spiral.Id,
+			Color = ColorSequence.new(tint:Lerp(Color3.new(1, 1, 1), 0.25), tint),
+			Rate = 3 + tier * 0.7,
+			Lifetime = NumberRange.new(2.2, 3.2),
+			Size = seq({ { 0, big * 0.2 }, { 0.5, big * 0.5 }, { 1, big * 0.35 } }),
+			Transparency = seq({ { 0, 1 }, { 0.25, 0.3 }, { 0.75, 0.4 }, { 1, 1 } }),
+			RotSpeed = NumberRange.new(70, 140),
+			Brightness = 1.6,
+			Shape = Enum.ParticleEmitterShape.Box,
+			ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume,
+		})
+	end
+	-- Mythic+: crystal shards bursting out, dark smoke curling round it
+	if tier >= 5 then
+		emitter(core, "Shards", {
+			Texture = Textures.AuraSprites.LightningShard.Id,
+			Color = ColorSequence.new(Color3.new(1, 1, 1), tint),
+			Rate = 3 + tier * 0.8,
+			Lifetime = NumberRange.new(0.7, 1.2),
+			Speed = NumberRange.new(big * 0.6, big * 1.1),
+			SpreadAngle = Vector2.new(180, 180),
+			Size = seq({ { 0, big * 0.22 }, { 1, 0 } }),
+			Transparency = seq({ { 0, 0 }, { 1, 0.8 } }),
+			Brightness = 3,
+			Shape = Enum.ParticleEmitterShape.Box,
+			ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume,
+			LockedToPart = false,
+		})
+		local smoke = flipbook(Enum.ParticleFlipbookLayout.Grid4x4, Enum.ParticleFlipbookMode.Loop)
+		smoke.Texture = Textures.AuraSprites.SmokeWisp.Id
+		smoke.Color = ColorSequence.new(tint:Lerp(Color3.new(0, 0, 0), 0.65))
+		smoke.Rate = 2.5 + tier * 0.5
+		smoke.Lifetime = NumberRange.new(2.4, 3.4)
+		smoke.Speed = NumberRange.new(big * 0.08, big * 0.18)
+		smoke.SpreadAngle = Vector2.new(40, 40)
+		smoke.EmissionDirection = Enum.NormalId.Top
+		smoke.Size = seq({ { 0, big * 0.3 }, { 1, big * 0.7 } })
+		smoke.Transparency = seq({ { 0, 1 }, { 0.2, 0.35 }, { 0.8, 0.55 }, { 1, 1 } })
+		smoke.LightEmission = 0
+		smoke.Brightness = 1
+		smoke.ZOffset = -1
+		smoke.Shape = Enum.ParticleEmitterShape.Box
+		smoke.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+		emitter(core, "Smoke", smoke)
+	end
+	-- Godly+: slow god-rays turning behind it
+	if tier >= 6 then
+		emitter(core, "Rays", {
+			Texture = Textures.AuraSprites.LightRays.Id,
+			Color = ColorSequence.new(tint:Lerp(Color3.new(1, 1, 1), 0.4), tint),
+			Rate = 0.9,
+			Lifetime = NumberRange.new(5, 6),
+			Size = seq({ { 0, big * 1.1 }, { 1, big * 1.4 } }),
+			Transparency = seq({ { 0, 1 }, { 0.25, 0.55 }, { 0.75, 0.6 }, { 1, 1 } }),
+			RotSpeed = NumberRange.new(12, 18),
+			Brightness = 2.2,
+			ZOffset = -3,
+		})
+	end
+	-- Celestial+: lightning cracking round the top tiers
+	if tier >= 7 then
+		local bolt = flipbook(Enum.ParticleFlipbookLayout.Grid4x4, Enum.ParticleFlipbookMode.OneShot)
+		bolt.Texture = Textures.AuraSprites.LightningBolt.Id
+		bolt.Color = ColorSequence.new(Color3.new(1, 1, 1), tint)
+		bolt.Rate = 1 + (tier - 7) * 0.6
+		bolt.Lifetime = NumberRange.new(1.6, 1.6)
+		bolt.Size = seq({ { 0, big * 0.9 }, { 1, big * 0.9 } })
+		bolt.Transparency = seq({ { 0, 0 }, { 1, 0 } })
+		bolt.Brightness = 4
+		bolt.Shape = Enum.ParticleEmitterShape.Box
+		bolt.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+		emitter(core, "Bolts", bolt)
+	end
+	-- Cosmic: a rainbow band arching over it
+	if tier >= 8 then
+		emitter(core, "Rainbow", {
+			Texture = Textures.AuraSprites.RainbowArc.Id,
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 90, 110)),
+				ColorSequenceKeypoint.new(0.35, Color3.fromRGB(255, 235, 110)),
+				ColorSequenceKeypoint.new(0.7, Color3.fromRGB(110, 230, 255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(215, 120, 255)),
+			}),
+			Rate = 0.9,
+			Lifetime = NumberRange.new(3, 3.6),
+			Size = seq({ { 0, big * 1.1 }, { 1, big * 1.3 } }),
+			Transparency = seq({ { 0, 1 }, { 0.3, 0.35 }, { 0.7, 0.45 }, { 1, 1 } }),
+			Rotation = NumberRange.new(0, 0),
+			Brightness = 2,
+			Shape = Enum.ParticleEmitterShape.Box,
+			ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume,
+		})
+	end
+end
+
+-- The ground shockwave when a big knife lands from a hop: a flat ring that spreads and fades
+function KnifeHaze.Shock(at: Vector3, radius: number, color: Color3)
+	local ring = Instance.new("Part")
+	ring.Name = "ShockRing"
+	ring.Size = Vector3.new(radius * 0.4, 0.1, radius * 0.4)
+	ring.Anchored = true
+	ring.CanCollide, ring.CanQuery, ring.CanTouch = false, false, false
+	ring.Transparency = 1
+	ring.CFrame = CFrame.new(at + Vector3.new(0, 0.2, 0))
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Top
+	gui.LightInfluence = 0
+	gui.Brightness = 2
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 40
+	local image = Instance.new("ImageLabel")
+	image.Size = UDim2.fromScale(1, 1)
+	image.BackgroundTransparency = 1
+	image.Image = Textures.AuraSprites.ShockRing.Id
+	image.ImageColor3 = color
+	image.Parent = gui
+	gui.Parent = ring
+	ring.Parent = workspace
+	local info = TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local tweens = game:GetService("TweenService")
+	tweens:Create(ring, info, { Size = Vector3.new(radius * 2, 0.1, radius * 2) }):Play()
+	tweens:Create(image, info, { ImageTransparency = 1 }):Play()
+	task.delay(0.8, function()
+		ring:Destroy()
+	end)
 end
 
 return KnifeHaze

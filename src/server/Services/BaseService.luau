@@ -93,6 +93,7 @@ local function penKnife(
 	)
 	built:SetAttribute("HopSeed", base.Index * 1000 + slot * 37)
 	built:SetAttribute("HopScale", scale)
+	built:SetAttribute("Rarity", parsed.Knife.Rarity)
 	KnifeHaze.Add(built, parsed.Knife.Rarity)
 	built:AddTag("PenKnife")
 	built:AddTag("KnifeFace") -- (client/KnifeBlink)

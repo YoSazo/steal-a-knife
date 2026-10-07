@@ -12,12 +12,15 @@ local PenHop = require(ReplicatedStorage.Shared.PenHop)
 local Lod = require(script.Parent.Lod)
 local Effects = require(script.Parent.Effects)
 local Format = require(ReplicatedStorage.Shared.Format)
+local Knives = require(ReplicatedStorage.Shared.Config.Knives)
+local KnifeHaze = require(ReplicatedStorage.Shared.KnifeHaze)
 
 local POP_EVERY = 4 -- seconds between a knife's money pops
 
 local PenKnives = {}
 
 function PenKnives.Init()
+	local wasAir: { [Model]: boolean } = {}
 	local coffinHome: { [Model]: CFrame } = {}
 	-- Money popping off each knife ("+$13K", Steal an Egg): what it earned since the last pop, over
 	-- its head, staggered so they don't all pop together
@@ -62,6 +65,16 @@ function PenKnives.Init()
 			-- lean forward on the way up, back on the way down; a squat-bounce right after landing
 			local lean = if air < 1 then math.sin(air * math.pi * 2) * 0.22 else 0
 			model:PivotTo(CFrame.lookAt(at, at + facing) * CFrame.Angles(-lean, 0, 0))
+			-- a big knife landing shakes the ground: a shockwave ring (Mythic and up)
+			local flying = air < 1
+			if wasAir[model] and not flying and Lod.Near(at, 120) then
+				local rarity = model:GetAttribute("Rarity")
+				local tier = if type(rarity) == "string" then table.find(Knives.Rarities, rarity) or 1 else 1
+				if tier >= 5 then
+					KnifeHaze.Shock(at, 5 + tier * 1.2 + hopper.Scale * 2, Knives.RarityColors[rarity :: string])
+				end
+			end
+			wasAir[model] = flying
 		end
 		-- coffins in pens: a shake every couple of seconds (something wants out)
 		local clock = os.clock()
