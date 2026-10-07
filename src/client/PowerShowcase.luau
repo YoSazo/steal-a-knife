@@ -184,10 +184,17 @@ function PowerShowcase.Show()
 		close()
 	end)
 
-	-- A round starting while it's open: it steps aside, and is back when you're home again
+	-- A round starting while it's open closes it for good (it used to come back the moment you
+	-- died - on top of the round's results card), and nobody tapping it for 15 s closes it too:
+	-- it must never sit there hiding the guide's DO line (the round teaches the power anyway)
 	local roundWatch = player:GetAttributeChangedSignal("InRound"):Connect(function()
-		if card.Parent then
-			card.Visible = not player:GetAttribute("InRound")
+		if player:GetAttribute("InRound") then
+			close()
+		end
+	end)
+	task.delay(15, function()
+		if not demoed then
+			close()
 		end
 	end)
 	card.Destroying:Connect(function()

@@ -222,7 +222,16 @@ function Transitions.Init()
 	card.Name = "RoundResults"
 	Ui.TrackPresentation(card)
 	card.Parent = Ui.root
-	Ui.fitMenu(card, Vector2.new(560, 290))
+	-- Shrink the WHOLE card to fit small screens (its panels are laid out in fixed sizes: resizing
+	-- only the card left them hanging out of the bottom on a phone)
+	local cardScale = Instance.new("UIScale")
+	cardScale.Parent = card
+	local function fitCard()
+		local menu = Ui.Layout.get().Menu
+		cardScale.Scale = math.min(1, menu.X / 560, menu.Y / 290)
+	end
+	Ui.Layout.Changed:Connect(fitCard)
+	fitCard()
 	Ui.registerMenu(card)
 	Ui.button(
 		{ Name = "Close", Text = "X", Position = UDim2.new(1, -52, 0, 6), Size = UDim2.fromOffset(44, 44), ZIndex = 33 },
