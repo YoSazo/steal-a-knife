@@ -34,9 +34,24 @@ same toy style (bright flat colours, chunky blocks). Each one gets a face on the
 | `Mouth_Sad` | crying mouth | shown when the boss takes it back |
 | `Mouth_Smug` | grin | shown when pulled out as the Murderer |
 | `Tear` (optional) | tear drops | shown with Mouth_Sad |
+| `Brow` | each eyebrow (2 parts), above the lids | tilted for angry / worried, raised for surprise |
+| `Mouth_Open` | an open mouth (same spot as Mouth_Happy) | flips with Mouth_Happy while it talks |
 
 Only one `Mouth_*` is visible at a time (the game toggles Transparency), so they can overlap.
 Keep the existing roles (`Grip`, `Guard`, `Blade`...) on the rest - auras and trails use them.
+
+**How they're animated (so you know what to build for):** procedurally in-game (client/KnifeFace),
+not Blender animations - the game moves these blocks directly. Lids scale down to blink, pupils
+slide to look around, brows tilt, mouths swap or open/close to talk. So: make each face piece its
+own block (or few blocks with the same Role), keep pupils small enough to slide inside their
+white, and lids sized to cover the whole eye when lowered.
+
+### What they DO in the pen (design for it)
+- **Hop on their handle** around the pen (pogo-hop): the pommel is the foot, keep it flat and
+  sturdy-looking; a Common hops clumsily, a Cosmic stomps.
+- **Chop for money**: each knife chops at a little target in the pen (log / pumpkin / training
+  dummy) and every chop pops "+$X". Please make 3 chop targets: `ChopLog`, `ChopPumpkin`,
+  `ChopDummy` (toy style, ~2 studs, origin at the bottom).
 
 ## 2. Coffins (the "egg")
 One per rarity: `Config/ToyGeometry/Coffin_<Rarity>.luau`. You steal it from the boss; it sits in
@@ -50,7 +65,8 @@ your pen with a timer; the knife character climbs out when it opens.
   grows), `Crack` (where eyes peek out while it rattles; the game puts two glowing eyes there).
 
 ## 3. Pen props
-- A low fence segment (`PenFence`, ~2 studs tall, tileable 8-stud lengths) and corner post.
+- A low fence segment (`PenFence`, ~2 studs tall, tileable 8-stud lengths) and corner post -
+  Steal an Egg's look: orange-brown studded rails in an X between dark studded posts.
 - An entrance arch/gate post pair (`PenGate`) - the owner's face billboard goes on it.
 - Ground: flat, the game uses the existing toy grass; optional pen floor tile `PenFloor`.
 
