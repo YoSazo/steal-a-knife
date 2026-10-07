@@ -209,7 +209,8 @@ function BaseService.BestKnife(player: Player): string?
 		return nil
 	end
 	local pick: string?
-	if profile.Equipped ~= "" and table.find(profile.Knives, profile.Equipped) then
+	local equippedAt = if profile.Equipped ~= "" then table.find(profile.Knives, profile.Equipped) else nil
+	if equippedAt and not DataService.IsSealedIndex(profile, equippedAt) then
 		pick = profile.Equipped
 	else
 		local bestScore, bestDamage = -1, -1
@@ -896,6 +897,14 @@ function BaseService.RefreshRack(player: Player)
 		end
 	end
 	player:SetAttribute("CoffinList", table.concat(coffins, ";"))
+	-- (the Knives menu hides these: a coffin's knife stays a secret until it opens)
+	local sealedKnives = {}
+	for i in profile.Knives do
+		if DataService.IsSealedIndex(profile, i) then
+			table.insert(sealedKnives, i)
+		end
+	end
+	player:SetAttribute("SealedKnives", table.concat(sealedKnives, ","))
 	MapService.SetWheelTier(base, profile.TreadmillLevel)
 end
 

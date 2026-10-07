@@ -104,10 +104,18 @@ function CoffinService.Reveal(player: Player, plate: number, how: string)
 	end
 	local roundsLeft = entry.Rounds
 	local item = profile.Knives[index]
+	local parsed = Items.Parse(item)
+	-- (it joins your Index now, not when the coffin landed: what's inside was a secret till now)
+	local isNew = parsed ~= nil and not table.find(profile.Discovered, parsed.Name)
 	DataService.Update(player, function(p)
 		DataService.Unseal(p, plate)
+		if isNew and parsed then
+			table.insert(p.Discovered, parsed.Name)
+		end
 	end)
-	local parsed = Items.Parse(item)
+	if isNew and parsed then
+		Analytics.Milestone(player, "discovered_" .. parsed.Knife.Rarity)
+	end
 	local rarity = if parsed then parsed.Knife.Rarity else "Common"
 	BaseService.RefreshRack(player)
 	local base = BaseService.GetBase(player)
@@ -124,7 +132,9 @@ function CoffinService.Reveal(player: Player, plate: number, how: string)
 	end
 	Net.Notify(
 		player,
-		`🎉 Your coffin opened: {Items.DisplayName(item)}! +{Format.Cash(Items.Income(item))}/s`,
+		`🎉 Your coffin opened: {if isNew then "NEW! " else ""}{Items.DisplayName(item)}! +{Format.Cash(
+			Items.Income(item)
+		)}/s`,
 		"good"
 	)
 	-- the big ones are a server moment

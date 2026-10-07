@@ -723,7 +723,7 @@ local function deposit(player: Player)
 		if not p.TutorialDone then
 			p.TutorialStep = math.max(p.TutorialStep, 3)
 		end
-		if isNew then
+		if isNew and not sealed then -- (a coffin's knife joins your Index when it opens)
 			table.insert(p.Discovered, parsed.Name)
 		end
 		if carry.StolenFrom then
@@ -755,7 +755,7 @@ local function deposit(player: Player)
 	if #profile.Knives >= 2 then
 		Analytics.Milestone(player, "second_knife_home")
 	end
-	if isNew then
+	if isNew and not sealed then
 		Analytics.Milestone(player, "discovered_" .. parsed.Knife.Rarity)
 	end
 	endCarry(player, true)
@@ -838,7 +838,18 @@ function StealService.Place(player: Player, slot: number)
 		Net.Animate(player.Character, "Pickup")
 	end
 	carry.Plate = slot
-	Net.Remotes.Effect:FireAllClients("PlaceKnife", from, base.SlotCFrames[slot].Position, carry.Item)
+	-- (a boss's knife / a stolen coffin lands as a coffin: the flying thing must not reveal the knife)
+	local asCoffin = (carry.Boss ~= nil or carry.Source == "coffin")
+		and CoffinService.On(player)
+		and #profile.Knives < profile.Slots
+	local parsed = Items.Parse(carry.Item)
+	Net.Remotes.Effect:FireAllClients(
+		"PlaceKnife",
+		from,
+		base.SlotCFrames[slot].Position,
+		carry.Item,
+		if asCoffin and parsed then parsed.Knife.Rarity else nil
+	)
 	task.delay(0.45, function()
 		if carriers[player] == carry then
 			deposit(player)

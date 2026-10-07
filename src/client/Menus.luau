@@ -339,7 +339,11 @@ function Menus.Init()
 		clearGrid(rackGrid)
 		local owned = Ui.list(player:GetAttribute("Knives"))
 		local equipped = player:GetAttribute("Equipped") or ""
-		if #owned == 0 then
+		local sealed: { [number]: boolean } = {}
+		for _, i in Ui.list(player:GetAttribute("SealedKnives")) do
+			sealed[tonumber(i) or 0] = true
+		end
+		if #owned == 0 or #owned == #Ui.list(player:GetAttribute("SealedKnives")) then
 			local empty = card(rackGrid, 1)
 			cardText(empty, 20, 120, "Steal knives off the bosses' walls on the runway and carry them home!")
 			return
@@ -347,7 +351,7 @@ function Menus.Init()
 		local equippedShown = false -- two copies of the same knife: only one says "Equipped"
 		for index, item in owned do
 			local parsed = Items.Parse(item)
-			if not parsed then
+			if not parsed or sealed[index] then
 				continue
 			end
 			local knife = parsed.Knife
@@ -429,6 +433,7 @@ function Menus.Init()
 	for attribute, refresh in
 		{
 			Knives = refreshRack,
+			SealedKnives = refreshRack,
 			Equipped = refreshRack,
 			Discovered = refreshIndex,
 			IndexClaimed = refreshIndex,

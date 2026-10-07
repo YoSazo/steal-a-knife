@@ -18,6 +18,7 @@ local Props = require(ReplicatedStorage.Shared:WaitForChild("Props"))
 local Format = require(ReplicatedStorage.Shared:WaitForChild("Format"))
 local Items = require(ReplicatedStorage.Shared:WaitForChild("Items"))
 local KnifeModel = require(ReplicatedStorage.Shared:WaitForChild("KnifeModel"))
+local CoffinModel = require(ReplicatedStorage.Shared:WaitForChild("CoffinModel"))
 local Lod = require(script.Parent.Lod)
 local Ui = require(script.Parent.Ui)
 local KnifePowers = require(ReplicatedStorage.Shared.Config.KnifePowers)
@@ -351,9 +352,21 @@ local function buildFlying(item: string, character: boolean?): Model
 	return KnifeModel.Build(item, true)
 end
 
-local function flyKnife(item: string, from: Vector3, to: Vector3, duration: number, length: number, character: boolean?)
-	local model = buildFlying(item, character)
-	KnifeModel.FitLength(model, length)
+local function flyKnife(
+	item: string,
+	from: Vector3,
+	to: Vector3,
+	duration: number,
+	length: number,
+	character: boolean?,
+	coffin: string? -- a rarity: fly its coffin instead (the knife inside stays a secret)
+)
+	local model = if coffin then CoffinModel.Build(coffin, CFrame.identity) else buildFlying(item, character)
+	if coffin then
+		CoffinModel.Weld(model)
+	else
+		KnifeModel.FitLength(model, length)
+	end
 	for _, d in model:GetDescendants() do
 		if d:IsA("BasePart") then
 			d.Anchored = true
@@ -499,11 +512,11 @@ local handlers: { [string]: (...any) -> () } = {
 		end)
 	end,
 	-- Putting a stolen knife on your plate: it flies from your hands and lands with a burst
-	PlaceKnife = function(from: Vector3, to: Vector3, item: string)
+	PlaceKnife = function(from: Vector3, to: Vector3, item: string, coffin: string?)
 		if not Lod.Near(to) then
 			return
 		end
-		flyKnife(item, from, to, 0.45, 4)
+		flyKnife(item, from, to, 0.45, 4, nil, coffin)
 		task.delay(0.45, function()
 			Effects.Burst(to, Items.Color(item), 30, 14, 0.7)
 			Effects.Burst(to, Color3.fromRGB(110, 255, 110), 16, 10, 0.5)
