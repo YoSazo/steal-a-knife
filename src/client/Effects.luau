@@ -598,7 +598,7 @@ local handlers: { [string]: (...any) -> () } = {
 		Effects.Shake(1.2, 0.12)
 	end,
 	Swing = function(position: Vector3)
-		Effects.Sound(Sounds.Slash, position, 0.8)
+		Effects.Sound(Sounds.Throw, position, 0.9) -- (the throw's swish: one knife sound for both)
 	end,
 	Hit = function(position: Vector3)
 		-- Cartoon impact sparks (no blood: keeps the game rated for younger players)

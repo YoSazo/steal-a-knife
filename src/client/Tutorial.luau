@@ -23,7 +23,6 @@ local FADE = 60
 local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
 local PowerShowcase = require(script.Parent.PowerShowcase)
-local Telemetry = require(script.Parent.Telemetry)
 local Places = require(script.Parent.Places)
 local Arrows = require(script.Parent.Arrows)
 local Sounds = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Sounds"))
@@ -53,34 +52,6 @@ end
 -- A knife on Frank's wall near his ring, never the one in the middle Frank stands in front of
 local function frankKnife(): BasePart?
 	return Places.LairKnife(1, true)
-end
-
--- Roblox's own "Favorite this experience?" prompt, once ever (saved like a tip: TipsSeen "Favorite")
-local function askFavorite()
-	if table.find(Ui.list(player:GetAttribute("TipsSeen")), "Favorite") then
-		return
-	end
-	Remotes.Tutorial:FireServer("Tip", "Favorite")
-	task.delay(1.5, function()
-		local AvatarEditorService = game:GetService("AvatarEditorService")
-		local done: RBXScriptConnection? = nil
-		done = AvatarEditorService.PromptSetFavoriteCompleted:Connect(function(result)
-			Telemetry.Track("favorite.prompt", { result = result.Name })
-			if done then
-				done:Disconnect()
-			end
-		end)
-		local ok = pcall(
-			AvatarEditorService.PromptSetFavorite,
-			AvatarEditorService,
-			game.PlaceId,
-			Enum.AvatarItemType.Asset,
-			true
-		)
-		if not ok and done then
-			done:Disconnect()
-		end
-	end)
 end
 
 local function run(startAt: number, replay: boolean)
@@ -388,11 +359,6 @@ local function run(startAt: number, replay: boolean)
 		local step = steps[current]
 		if step.Done() then
 			Effects.Sound(Sounds.Coin, nil, 0.6)
-			-- Your first knife just landed on your wall (the high point of the first minute): ask for a
-			-- favourite, once ever. Favourites are how players find the game again (D1 was ~0%).
-			if current == 2 and not replay then
-				askFavorite()
-			end
 			current += 1
 			if current > #steps then
 				finish(false)

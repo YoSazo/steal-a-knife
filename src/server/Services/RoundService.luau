@@ -108,6 +108,7 @@ type Round = {
 	Connections: { RBXScriptConnection },
 	GunnerBot: Bot?, -- a bot Sheriff
 	ShotByBot: boolean, -- a bot shot the (player) Murderer: loot goes home like a hero's shot
+	Newcomer: boolean, -- a brand-new player's first round as the Murderer: the bots let them win
 	HeroBot: Bot?, -- that bot (its face goes on the VS card)
 	AtRisk: { [Player]: string }, -- the knife each innocent loses if the Murderer gets them (shown at the start)
 	Classic: boolean, -- no powers, no perks, extra pay
@@ -1925,8 +1926,10 @@ local function botShoot(round: Round, bot: Bot, target: BasePart)
 	end
 	local from = bot.Root.Position + Vector3.new(0, 1.5, 0)
 	local dist = (target.Position - from).Magnitude
-	-- Nervous shots: decent point-blank, mostly misses from across a room
-	local hits = rng:NextNumber() < math.clamp(0.55 - dist / 80, 0.12, 0.55)
+	-- Nervous shots: decent point-blank, mostly misses from across a room. In a newcomer's first
+	-- Murderer round every shot misses (the bang still makes it tense): 62% of first-visit Murderers
+	-- used to lose, and winning that round is one of the best predictors of coming back.
+	local hits = not round.Newcomer and rng:NextNumber() < math.clamp(0.55 - dist / 80, 0.12, 0.55)
 	local aimAt = if hits
 		then target.Position
 		else target.Position + Vector3.new(rng:NextNumber(-4, 4), rng:NextNumber(0, 3), rng:NextNumber(-4, 4))
@@ -2020,8 +2023,9 @@ local function innocentBrain(round: Round, bot: Bot, now: number)
 		wander(bot, now)
 		return
 	end
-	-- Run! Head for a spot far from the Murderer that isn't back past it
-	bot.Humanoid.WalkSpeed = GameConfig.RoundWalkSpeed - 1
+	-- Run! Head for a spot far from the Murderer that isn't back past it (slower in a newcomer's
+	-- first Murderer round, so the timer doesn't run out on them with one bot left)
+	bot.Humanoid.WalkSpeed = GameConfig.RoundWalkSpeed - (if round.Newcomer then 4 else 1)
 	if bot.Goal and not RoundBots.Reached(bot, 4) and now < bot.NextThink then
 		return
 	end
@@ -2167,8 +2171,8 @@ local function giveWeapon(round: Round)
 	tool:SetAttribute("MurderKnife", true)
 	local slash = Instance.new("Sound")
 	slash.Name = "Slash"
-	slash.SoundId = Sounds.Slash
-	slash.Volume = 0.8
+	slash.SoundId = Sounds.Throw -- (the same swish as a thrown knife)
+	slash.Volume = 0.9
 	slash.Parent = tool:FindFirstChild("Handle")
 	tool.Parent = backpack
 	round.Weapon = tool
@@ -2263,10 +2267,12 @@ local function startRound(participants: { Player })
 		end
 	end
 	local murderer: Player?
+	local newcomer = false
 	if plan then
 		murderer = if plan.Role == "Murderer" then plan.Player else nil
 	elseif #firstTimers > 0 then
 		murderer = firstTimers[rng:NextInteger(1, #firstTimers)]
+		newcomer = true
 		Analytics.Track(murderer, "round.first_murderer")
 	elseif #participants == 1 and botCount > 0 then
 		local profile = DataService.Get(participants[1])
@@ -2339,6 +2345,7 @@ local function startRound(participants: { Player })
 		ShotKillers = {},
 		GunnerBot = nil,
 		ShotByBot = false,
+		Newcomer = newcomer,
 		HeroBot = nil,
 		-- (never for a Studio bot round: those are for testing perks and powers)
 		Classic = plan == nil and rng:NextNumber() < GameConfig.ClassicChance,
@@ -2555,6 +2562,26 @@ local function startRound(participants: { Player })
 	end
 	if #sheriffs > 0 then
 		local chosen = sheriffs[rng:NextInteger(1, #sheriffs)]
+		-- A newcomer's 2nd and 3rd rounds: they're the Sheriff (after being the Murderer in their 1st).
+		-- Players whose first visit had a hero moment came back 2-3x as often (Sheriff: 33% vs 11%).
+		local heroes = {}
+		for _, candidate in sheriffs do
+			if typeof(candidate) == "Instance" then
+				local profile = DataService.Get(candidate :: Player)
+				if
+					profile
+					and profile.RoundsPlayed >= 1
+					and profile.RoundsPlayed <= GameConfig.NewcomerSheriffRounds
+					and profile.PlayTime < GameConfig.FirstRoundMurdererUnder * 2
+				then
+					table.insert(heroes, candidate)
+				end
+			end
+		end
+		if #heroes > 0 then
+			chosen = heroes[rng:NextInteger(1, #heroes)]
+			Analytics.Track(chosen :: Player, "round.first_sheriff")
+		end
 		if typeof(chosen) == "Instance" then
 			giveRevolver(round, chosen :: Player)
 		else
@@ -2775,6 +2802,7 @@ local function endRound(round: Round)
 		Fuel.GivePowerXP(player, GameConfig.PowerXP.Survive)
 		DataService.Update(player, function(p)
 			p.RoundsWon += 1
+			player:SetAttribute("Wins", p.RoundsWon)
 		end)
 		Net.Notify(player, `You survived! +{Format.Cash(reward)}`, "good")
 		if player.Character then
@@ -2794,6 +2822,7 @@ local function endRound(round: Round)
 			end
 			DataService.Update(murderer, function(p)
 				p.RoundsWon += 1
+				murderer:SetAttribute("Wins", p.RoundsWon)
 			end)
 			Net.Notify(murderer, `You got everyone! +{Format.Cash(bonus)}`, "good")
 			if round.HumanKills > 0 then

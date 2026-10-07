@@ -523,6 +523,7 @@ local GameConfig = {
 	NewcomerRoundIn = 45,
 	MapVoteWindow = 150, -- the vote card and the "vote for the map" line show this many seconds before a round
 	FirstRoundMurdererUnder = 1200, -- a player's first round makes them the Murderer if they've played less than this (s)
+	NewcomerSheriffRounds = 2, -- then their next rounds (2nd..this+1th) make them the Sheriff
 	NewcomerMinBreak = 180,
 	RoundJoinGrace = 90, -- nobody is pulled into a round in their first this many seconds in a server
 	RoundTime = 150,

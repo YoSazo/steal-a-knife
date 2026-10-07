@@ -19,7 +19,7 @@ local GameConfig = require(script.Parent.Config.GameConfig)
 
 local RoundPrize = {}
 
-export type Stats = { Income: number, Speed: number, BestRank: number }
+export type Stats = { Income: number, Speed: number, BestRank: number, Wins: number? }
 export type Prize = {
 	Kind: string,
 	Amount: number,
@@ -50,6 +50,7 @@ function RoundPrize.Stats(player: Player): Stats
 		Income = math.max(1, (player:GetAttribute("Income") or 0) :: number),
 		Speed = math.max(0, (player:GetAttribute("Speed") or 0) :: number),
 		BestRank = best, -- (client/Hud's next goal reads this)
+		Wins = (player:GetAttribute("Wins") or 0) :: number,
 	}
 end
 
@@ -80,6 +81,11 @@ function RoundPrize.For(
 	local need, boss, zone, previous = nextBoss(stats.Speed)
 	local base = if need then (need - previous) * CONFIG.StepShare else stats.Speed * CONFIG.PastLastShare
 	local amount = math.floor(math.max(base, CONFIG.MinSpeed) * x)
+	-- Your FIRST win ever takes you all the way to the Rare boss: a Rare knife inside the first
+	-- visit is one of the best predictors of coming back (23% vs 11%), and it took a median 7 min.
+	if need and zone == 2 and (stats.Wins or 0) == 0 then
+		amount = math.max(amount, math.ceil(need - stats.Speed))
+	end
 	local left = if need then math.max(0, need - (stats.Speed + amount)) else 0
 	return {
 		Kind = "Speed",
