@@ -76,6 +76,7 @@ local GameConfig = {
 		Enabled = "WithPens" :: boolean | string, -- false / true / "WithPens" (on wherever pens are)
 		Rounds = { Common = 0, Rare = 1, Epic = 1, Legendary = 2, Mythic = 2, Godly = 3, Celestial = 4, Cosmic = 5 },
 		CommonSeconds = 20,
+		TutorialSeconds = 6, -- a new player's first coffins: a short countdown, then it opens
 		WinRounds = 2,
 		OfflineSecondsPerRound = 900,
 		AnnounceFrom = "Mythic", -- coffins of this rarity and up are announced to the server

@@ -42,10 +42,18 @@ end
 
 -- Seals the knife on `plate` (just deposited). Returns when it opens, for the toast ("in 20s",
 -- "after 2 murder rounds").
-function CoffinService.Seal(player: Player, plate: number, item: string): string
+-- `seconds`: a plain short timer instead (the tutorial's coffin: you see it land and count down)
+function CoffinService.Seal(player: Player, plate: number, item: string, seconds: number?): string
 	local parsed = Items.Parse(item)
 	local rarity = if parsed then parsed.Knife.Rarity else "Common"
-	local rounds = CONFIG.Rounds[rarity] or 1
+	local rounds = if seconds then 0 else CONFIG.Rounds[rarity] or 1
+	if seconds then
+		DataService.Update(player, function(p)
+			DataService.Seal(p, plate, os.time() + seconds, nil)
+		end)
+		Analytics.Track(player, "coffin.sealed", { rarity = rarity, rounds = 0, tutorial = true })
+		return `in {Format.Duration(seconds)}`
+	end
 	DataService.Update(player, function(p)
 		if rounds <= 0 then
 			DataService.Seal(p, plate, os.time() + CONFIG.CommonSeconds, nil)

@@ -33,9 +33,9 @@ function Coffins.Init()
 		local rarity = tostring(model:GetAttribute("Rarity") or "")
 		local gui = Instance.new("BillboardGui")
 		gui.Name = "CoffinTimer"
-		gui.Size = UDim2.fromScale(6, 2) -- (studs: shrinks with distance)
+		gui.Size = UDim2.fromOffset(120, 44) -- (a fixed small size on screen, like Steal an Egg's "Egg 35s")
 		gui.StudsOffsetWorldSpace = Vector3.new(0, body.Size.Y * 2.2 + 1.5, 0)
-		gui.MaxDistance = 90
+		gui.MaxDistance = 220
 		gui.LightInfluence = 0
 		gui.Adornee = body
 		local title = Instance.new("TextLabel")

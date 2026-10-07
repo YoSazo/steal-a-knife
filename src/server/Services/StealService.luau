@@ -689,7 +689,9 @@ local function deposit(player: Player)
 	local parsed = Items.Parse(item) :: Items.Item
 	local isNew = not table.find(profile.Discovered, parsed.Name)
 	-- A boss's knife comes home in a COFFIN that opens later (CoffinService) - never in the tutorial
-	local sealed = carry.Boss ~= nil and not starter and profile.TutorialDone and CoffinService.On(player)
+	local sealed = carry.Boss ~= nil and CoffinService.On(player)
+	-- (the tutorial's coffin: it lands and counts down a few seconds - Steal an Egg's egg - then opens)
+	local quick = sealed and (starter or not profile.TutorialDone)
 	if carry.Boss then
 		Fuel.AddHeat(player, 1, "Stole from a boss!")
 		Fuel.AddMeter(player, 1)
@@ -726,15 +728,9 @@ local function deposit(player: Player)
 	-- Only this successful carried-knife deposit confirms placement. Unboxes use the cosmetic
 	-- Deposit effect too, so the tutorial must not infer success from that effect or inventory size.
 	-- Publish the exact mounted item/plate before confirmation, so the guide can point at it.
-	local opensIn = if sealed and placedPlate then CoffinService.Seal(player, placedPlate, item) else nil
-	-- (the tutorial's coffin opens the moment it lands: a new player never waits for their first knife)
-	if not opensIn and carry.Boss and PenMode.Coffins() and placedPlate then
-		local home = BaseService.GetBase(player)
-		local at = home and home.SlotCFrames[placedPlate]
-		if at then
-			Net.Remotes.Effect:FireAllClients("CoffinOpen", at.Position, Knives.RarityColors[parsed.Knife.Rarity])
-		end
-	end
+	local opensIn = if sealed and placedPlate
+		then CoffinService.Seal(player, placedPlate, item, if quick then GameConfig.Coffins.TutorialSeconds else nil)
+		else nil
 	player:SetAttribute("LastPlacedKnife", item)
 	player:SetAttribute("LastPlacedKnifePlate", placedPlate)
 	local placementSerial = (player:GetAttribute("KnifePlacementSerial") or 0) :: number

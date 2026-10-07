@@ -720,7 +720,7 @@ function BaseService.RefreshRack(player: Player)
 			local perSecond = Items.Income(item) * multiplier
 			penModel:SetAttribute("Income", perSecond)
 			local perk = parsed.Perk and GameConfig.Perks[parsed.Perk]
-			SignTheme.knifeLabel(
+			local tag = SignTheme.knifeLabel(
 				folder,
 				labelAnchor,
 				Items.DisplayName(item),
@@ -728,8 +728,11 @@ function BaseService.RefreshRack(player: Player)
 				Knives.RarityColors[parsed.Knife.Rarity],
 				`{Format.Cash(math.floor(perSecond * 10 + 0.5) / 10)}/s`,
 				if perk then `🔪 {perk.DisplayName}` else nil,
-				22
+				220
 			)
+			-- Steal an Egg's labels: the same small size on screen however far away (readable from
+			-- across the plaza, never a giant banner up close)
+			tag.Size = UDim2.fromOffset(130, if perk then 62 else 52)
 			if item ~= BaseService.ProtectedItem(player) then
 				-- (on the knife's own feet, so the prompt hops with it; RaidService checks the thief
 				-- is really in this pen)

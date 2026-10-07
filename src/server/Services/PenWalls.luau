@@ -14,7 +14,6 @@ local PenWalls = {}
 local RAIL = Color3.fromRGB(196, 96, 42)
 local POST = Color3.fromRGB(62, 55, 70)
 local FENCE_H = 3.4
-local WALL_H = 44 -- (invisible: you see in, you can't jump in)
 local GATE_HALF = 8
 local GATE_H = 11
 local SECTION = 8
@@ -102,18 +101,7 @@ function PenWalls.Build(folder: Folder, frame: CFrame, _color: Color3, tierIndex
 			block(folder, "GatePost", Vector3.new(1.4, FENCE_H + 1.6, 1.4), at(x, (FENCE_H + 1.6) / 2, hz), POST)
 		Toy.Dress(post, nil, 1)
 	end
-	-- invisible walls over the fence (back, sides, and the front either side of the gate)
-	local function invisible(size: Vector3, cf: CFrame)
-		local p = block(folder, "PenWall", size, cf, Color3.new())
-		p.Transparency = 1
-		p.CanTouch = false
-	end
-	invisible(Vector3.new(hx * 2, WALL_H, 1), at(0, WALL_H / 2, -hz))
-	for _, s in { -1, 1 } do
-		invisible(Vector3.new(1, WALL_H, hz * 2), at(s * hx, WALL_H / 2, 0))
-		local front = hx - GATE_HALF
-		invisible(Vector3.new(front, WALL_H, 1), at(s * (GATE_HALF + front / 2), WALL_H / 2, hz))
-	end
+	-- (no invisible walls: hop the fence from any side, like Steal an Egg's pens)
 	-- the gate: the raid target, solid on clients for everyone but the owner
 	local gate = Instance.new("Model")
 	gate.Name = "Gate"
