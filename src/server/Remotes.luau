@@ -44,6 +44,7 @@ local Remotes = {
 	ClaimDaily = func("ClaimDaily"), -- client -> server: () -> (ok, message) today's login-streak reward
 	ClaimFreeChest = func("ClaimFreeChest"), -- client -> server: () -> ok; same as walking up and pressing E
 	Offer = event("Offer"), -- server -> client: (storeKey, reason) a contextual store offer
+	OfferShown = event("OfferShown"), -- client -> server: (key, token) acknowledge a pending offer
 	TeamUp = event("TeamUp"), -- client -> server: ("Invite" | "Accept" | "Decline", userId) / ("Leave")
 	Trade = func("Trade"), -- client -> server: (action, ...) -> ok, see TradeService
 	SellSign = event("SellSign"), -- client -> server: (sign: BasePart) tapped a Sell sign with a tool in hand

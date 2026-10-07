@@ -79,7 +79,7 @@ local DESKTOP = {
 
 function View.Build(): (Frame, () -> ())
 	local S = if Ui.Phone then PHONE else DESKTOP
-	local frame, body = SimpleUi.window("Innocent Powers", "Powers", VoxelUi.Hud.Powers, PURPLE, S.Window)
+	local frame, body = SimpleUi.window("Knife Powers", "Knife Powers", VoxelUi.Hud.Powers, PURPLE, S.Window)
 	local textW = -(S.TextX + S.Button.X + 28) -- the room left for the words beside the icon and button
 	local list: ScrollingFrame = Ui.new("ScrollingFrame", {
 		Size = UDim2.new(1, 0, 1, -(S.Bar + 16)),
@@ -238,10 +238,10 @@ function View.Build(): (Frame, () -> ())
 				.. (if lv then `  <font color="#FFD746">Lv {lv}</font>` else "")
 			row.Icon.ImageColor3 = if lv or best[pid] then Color3.new(1, 1, 1) else Color3.fromRGB(70, 75, 95)
 			if isMine then
-				SimpleUi.set(row.Main, "Equipped", GREEN, true) -- (green, and tapping does nothing)
+				SimpleUi.set(row.Main, "On", GREEN, true) -- (green, and tapping does nothing)
 			elseif best[pid] then
 				equipItem[pid] = best[pid]
-				SimpleUi.set(row.Main, "Equip", BLUE, true)
+				SimpleUi.set(row.Main, "Use this one", BLUE, true)
 			else
 				SimpleUi.set(row.Main, "🔒 Locked", GREY, false) -- (powers are random rolls on knives you bring home)
 			end

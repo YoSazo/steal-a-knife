@@ -35,54 +35,220 @@ return function(t)
 		return a and a.Id
 	end
 	t.test("in a round: no hub action", function()
-		t.expect.equal(id(function(s) s.InRound = true end), nil)
+		t.expect.equal(
+			id(function(s)
+				s.InRound = true
+			end),
+			nil
+		)
 	end)
 	t.test("carrying outside: run home", function()
-		t.expect.equal(id(function(s) s.Carrying = "Katana" end), "carry_home")
+		t.expect.equal(
+			id(function(s)
+				s.Carrying = "Katana"
+			end),
+			"carry_home"
+		)
 	end)
 	t.test("carrying inside with a free plate: place it", function()
-		t.expect.equal(id(function(s) s.Carrying = "Katana"; s.InVault = true; s.FreePlate = true end), "carry_place")
+		t.expect.equal(
+			id(function(s)
+				s.Carrying = "Katana"
+				s.InVault = true
+				s.FreePlate = true
+			end),
+			"carry_place"
+		)
 	end)
 	t.test("carrying a case", function()
-		t.expect.equal(id(function(s) s.Carrying = "Case:Rare" end), "carry_case")
+		t.expect.equal(
+			id(function(s)
+				s.Carrying = "Case:Rare"
+			end),
+			"carry_case"
+		)
 	end)
 	t.test("carrying, vault full, floor affordable", function()
-		t.expect.equal(id(function(s) s.Carrying = "Katana"; s.KnifeCount = 10; s.Cash = 2e6 end), "carry_bigger")
+		t.expect.equal(
+			id(function(s)
+				s.Carrying = "Katana"
+				s.KnifeCount = 10
+				s.Cash = 2e6
+			end),
+			"carry_bigger"
+		)
 	end)
 	t.test("carrying, vault full, can't afford", function()
-		t.expect.equal(id(function(s) s.Carrying = "Katana"; s.KnifeCount = 10 end), "carry_full")
+		t.expect.equal(
+			id(function(s)
+				s.Carrying = "Katana"
+				s.KnifeCount = 10
+			end),
+			"carry_full"
+		)
 	end)
 	t.test("gift waiting", function()
-		t.expect.equal(id(function(s) s.Gift = true end), "gift")
+		t.expect.equal(
+			id(function(s)
+				s.Gift = true
+				s.InVault = true
+			end),
+			"gift"
+		)
+	end)
+	t.test("a gift does not turn an active Rare run around", function()
+		t.expect.equal(
+			id(function(s)
+				s.Gift, s.Committed, s.Speed, s.NewTier = true, true, 8500, 2
+			end),
+			"new_tier"
+		)
+	end)
+	t.test("a distant gift never replaces stealing with a trip home", function()
+		t.expect.equal(
+			id(function(s)
+				s.Gift = true
+			end),
+			"steal"
+		)
 	end)
 	t.test("fast enough for Rare: new tier", function()
-		t.expect.equal(id(function(s) s.Speed = 6000 end), "new_tier")
+		t.expect.equal(
+			id(function(s)
+				s.Speed = 6000
+			end),
+			"new_tier"
+		)
 	end)
 	t.test("new tier but that wall is empty: steal the best you can", function()
-		t.expect.equal(id(function(s) s.Speed = 6000; s.Stocked[2] = 0 end), "steal")
+		t.expect.equal(
+			id(function(s)
+				s.Speed = 6000
+				s.Stocked[2] = 0
+			end),
+			"steal"
+		)
 	end)
 	t.test("index reward", function()
-		t.expect.equal(id(function(s) s.IndexClaimable = 2 end), "index")
+		t.expect.equal(
+			id(function(s)
+				s.IndexClaimable = 2
+			end),
+			"index"
+		)
 	end)
 	t.test("vault full, can't afford: sell", function()
-		t.expect.equal(id(function(s) s.KnifeCount = 10 end), "vault_full")
+		t.expect.equal(
+			id(function(s)
+				s.KnifeCount = 10
+			end),
+			"vault_full"
+		)
 	end)
 	t.test("wheel upgrade affordable", function()
-		t.expect.equal(id(function(s) s.Cash = 20000 end), "wheel_upgrade")
+		t.expect.equal(
+			id(function(s)
+				s.Cash = 20000
+			end),
+			"wheel_upgrade"
+		)
 	end)
 	t.test("in the wheel: keep training", function()
-		t.expect.equal(id(function(s) s.Training = true end), "train")
+		t.expect.equal(
+			id(function(s)
+				s.Training = true
+			end),
+			"train"
+		)
 	end)
 	t.test("money worth collecting", function()
-		t.expect.equal(id(function(s) s.PendingCash = 5000 end), "collect")
+		t.expect.equal(
+			id(function(s)
+				s.Cash = 10000
+				s.PendingCash = 5000
+			end),
+			"collect"
+		)
 	end)
 	t.test("auto collect: never walk to pads", function()
-		t.expect.equal(id(function(s) s.PendingCash = 5000; s.AutoCollect = true end), "steal")
+		t.expect.equal(
+			id(function(s)
+				s.PendingCash = 5000
+				s.AutoCollect = true
+			end),
+			"steal"
+		)
 	end)
 	t.test("default: steal another knife", function()
 		t.expect.equal(id(function() end), "steal")
 	end)
 	t.test("every wall empty: train", function()
-		t.expect.equal(id(function(s) s.Stocked = { 0, 0, 0, 0, 0, 0, 0, 0 } end), "train")
+		t.expect.equal(
+			id(function(s)
+				s.Stocked = { 0, 0, 0, 0, 0, 0, 0, 0 }
+			end),
+			"train"
+		)
+	end)
+	t.test("cash that does not enable an upgrade never interrupts a run", function()
+		t.expect.equal(
+			id(function(s)
+				s.PendingCash = 5000
+			end),
+			"steal"
+		)
+	end)
+	t.test("a gifted advanced knife does not suppress a newly unlocked boss", function()
+		t.expect.equal(
+			id(function(s)
+				s.Speed = 6000
+				s.BestOwnedRank = 8
+				s.NewTier = 2
+			end),
+			"new_tier"
+		)
+	end)
+	t.test("full vault without a better replacement: upgrade then train", function()
+		t.expect.equal(
+			id(function(s)
+				s.KnifeCount = 10
+				s.BetterReplacement = false
+				s.Cash = 20000
+			end),
+			"wheel_upgrade"
+		)
+		t.expect.equal(
+			id(function(s)
+				s.KnifeCount = 10
+				s.BetterReplacement = false
+			end),
+			"train"
+		)
+	end)
+	t.test("rebirth-gated floor never becomes an expansion instruction", function()
+		t.expect.equal(
+			id(function(s)
+				s.KnifeCount = 20
+				s.Slots = 20
+				s.Cash = 1e12
+				s.BetterReplacement = false
+			end),
+			"wheel_upgrade"
+		)
+	end)
+	t.test("restored carrying overrides gifts and rewards", function()
+		t.expect.equal(
+			id(function(s)
+				s.Carrying = "Katana"
+				s.Gift = true
+				s.IndexClaimable = 2
+			end),
+			"carry_home"
+		)
+	end)
+	t.test("no spare sale control: open explicit knife management", function()
+		local s = base()
+		s.KnifeCount, s.Spare = 10, false
+		t.expect.equal(NextAction.Pick(s).Ui, "Knives")
 	end)
 end

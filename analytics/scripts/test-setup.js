@@ -2,7 +2,7 @@
 // two game files it edits: everything gets created, ids land in the Luau, the secret decrypts, and a
 // second run changes nothing.
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,6 +14,11 @@ const temp = mkdtempSync(join(tmpdir(), "sak-setup-"));
 for (const file of ["src/shared/Config/Monetization.luau", "src/server/Services/Analytics.luau"]) {
   mkdirSync(join(temp, file, ".."), { recursive: true });
   copyFileSync(join(repo, file), join(temp, file));
+  if (file.endsWith("Monetization.luau")) {
+    // Exercise creation/matching even after the real game's catalogue has been wired.
+    const fixture = readFileSync(join(temp, file), "utf8").replace(/(\bId\s*=\s*)\d+(,)/g, "$10$2");
+    writeFileSync(join(temp, file), fixture);
+  }
 }
 const keys = sodium.crypto_box_keypair();
 const log = join(temp, "requests.log");

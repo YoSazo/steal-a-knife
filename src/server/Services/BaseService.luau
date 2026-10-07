@@ -117,14 +117,17 @@ local function powerScore(profile: any, item: string): number
 end
 function BaseService.BestKnife(player: Player): string?
 	local profile = DataService.Get(player)
-	if not profile or #profile.Knives == 0 then
+	if not profile then
 		return nil
 	end
 	if player:GetAttribute("InRound") then
 		local kept = roundPick[player]
-		if kept and table.find(profile.Knives, kept) then
+		if kept then
 			return kept
 		end
+	end
+	if #profile.Knives == 0 then
+		return nil
 	end
 	local pick: string?
 	if profile.Equipped ~= "" and table.find(profile.Knives, profile.Equipped) then
@@ -521,6 +524,8 @@ local function sellSign(
 	click.MaxActivationDistance = 28
 	click.Parent = board
 	board:SetAttribute("SellOwner", owner.UserId)
+	board:SetAttribute("KnifeItem", item)
+	board:SetAttribute("Plate", plate)
 	local armedUntil = 0
 	local function pressed(who: Player)
 		if who ~= owner or owner:GetAttribute("InRound") then
@@ -957,6 +962,7 @@ function BaseService.Init()
 				local pendingTotal = 0
 				for slot, label in base.CashLabels do
 					local waiting = profile.Pending[slot] or 0
+					base.CashPads[slot]:SetAttribute("Waiting", if slot <= profile.Slots then waiting else 0)
 					label.Text = if waiting > 0 and slot <= profile.Slots then Format.Cash(waiting) else ""
 					if slot <= profile.Slots then
 						pendingTotal += waiting
@@ -1001,6 +1007,7 @@ function BaseService.Init()
 						DataService.Update(player, function(p)
 							p.Pending[slot] = 0
 						end)
+						pad:SetAttribute("Waiting", 0)
 						DataService.AddCash(player, waiting, "income")
 						Analytics.Milestone(player, "cash_collected")
 						Analytics.Count(player, if auto then "pad_auto" else "pad_walks")

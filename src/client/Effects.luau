@@ -20,6 +20,7 @@ local Items = require(ReplicatedStorage.Shared:WaitForChild("Items"))
 local KnifeModel = require(ReplicatedStorage.Shared:WaitForChild("KnifeModel"))
 local Lod = require(script.Parent.Lod)
 local Ui = require(script.Parent.Ui)
+local KnifePowers = require(ReplicatedStorage.Shared.Config.KnifePowers)
 local TopLine = require(script.Parent.TopLine)
 local WorldSignInput = require(script.Parent.WorldSignInput)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -420,6 +421,7 @@ local handlers: { [string]: (...any) -> () } = {
 		gui.ResetOnSpawn = false
 		gui.DisplayOrder = 45
 		gui.Parent = player:WaitForChild("PlayerGui")
+		Ui.TrackPresentation(gui)
 		local rare = oneIn >= 300
 		local color = if oneIn >= 1000
 			then Color3.fromRGB(255, 80, 200)
@@ -443,14 +445,26 @@ local handlers: { [string]: (...any) -> () } = {
 			stroke.Parent = label
 			return label
 		end
-		local fadeCard = bannerCard(gui, 0.2, if perk then 0.465 else 0.415, 820, color)
+		local fadeCard = bannerCard(gui, 0.2, if perk then 0.51 else 0.415, 820, color)
 		local labels = {
-			line("✨ MURDERER POWER! ✨", 0.24, 36, Color3.new(1, 1, 1)),
+			line("✨ KNIFE POWER! ✨", 0.24, 36, Color3.new(1, 1, 1)),
 			line(if perk then perk.DisplayName else power, 0.31, 70, color),
 			line(`on your {Items.DisplayName(item)} · 1 in {oneIn}`, 0.38, 28, Color3.fromRGB(230, 230, 240)),
 		}
 		if perk then
-			table.insert(labels, line(perk.Description, 0.43, 24, Color3.fromRGB(255, 200, 210)))
+			local short = KnifePowers.Short[power]
+			table.insert(
+				labels,
+				line(
+					`Murderer: {if short then short[1] else perk.Description}`,
+					0.43,
+					24,
+					Color3.fromRGB(255, 200, 210)
+				)
+			)
+			if short then
+				table.insert(labels, line(`Innocent: {short[2]}`, 0.475, 24, Color3.fromRGB(180, 230, 255)))
+			end
 		end
 		for _, label in labels do
 			local scale = Instance.new("UIScale")

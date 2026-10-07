@@ -27,7 +27,7 @@ export const FIRST_SESSION = [
   ["cash_collected", "Collected cash"],
   ["tutorial_4", "Guide 4: the wheel"],
   ["wheel_trained", "Trained on the wheel"],
-  ["tutorial_done", "Finished the guide"],
+  ["tutorial_done", "Guide exited (completed or skipped)"],
   ["round_played", "Played a murder round"],
   ["second_round", "Stayed for a 2nd round"],
   ["second_knife_home", "Second knife home"],
@@ -36,6 +36,41 @@ export const FIRST_SESSION = [
   ["session_2", "Came back (2nd visit)"],
 ];
 
+
+export async function guidance(days) {
+  const actions = await query(
+    `select props->>'id' as action,
+       count(*) filter (where event = 'guide.shown')::int as shown,
+       count(*) filter (where event = 'guide.done')::int as completed,
+       count(distinct player) filter (where event = 'guide.stuck')::int as stalled,
+       round((percentile_cont(0.5) within group (order by (props->>'seconds')::float)
+         filter (where event = 'guide.done'))::numeric) as median_s
+     from events where ts >= ${SINCE} and not studio and event in ('guide.shown', 'guide.done', 'guide.stuck')
+     group by 1 order by stalled desc, shown desc`, [days]);
+  const powers = await query(
+    `select props->>'id' as power, count(*)::int as uses, count(distinct player)::int as players
+     from events where ts >= ${SINCE} and not studio and event = 'power.used'
+     group by 1 order by players desc`, [days]);
+  const definitions = [
+    ["Guide exit → another knife", "e.event = 'milestone' and e.props->>'milestone' in ('tutorial_done', 'tutorial_skipped')", "n.event = 'knife.mounted'"],
+    ["Round return → next action", "e.event = 'round.end'", "n.event = 'knife.mounted' or (n.event in ('upgrade', 'action.ClaimIndex') and n.props->>'ok' = 'true') or n.event = 'guide.done'"],
+    ["Power ready → successful use", "e.event = 'guide.shown' and e.props->>'id' = 'power_ready'", "n.event = 'power.used'"],
+    ["Speed prize → next-tier knife home", "e.event = 'round.prize' and e.props->>'kind' = 'Speed'", "n.event = 'prize.followup' and n.props->>'stage' = 'home'"],
+  ];
+  const transitions = [];
+  for (const [label, start, finish] of definitions) {
+    const [row] = await query(
+      `select count(*)::int as started, count(next.ts)::int as followed,
+         round((percentile_cont(0.5) within group (order by extract(epoch from next.ts - e.ts)))::numeric) as median_s
+       from events e left join lateral (
+         select n.ts from events n where n.player = e.player and n.session = e.session and not n.studio
+           and n.ts > e.ts and n.ts <= e.ts + interval '10 minutes' and (${finish}) order by n.ts limit 1
+       ) next on true
+       where e.ts >= ${SINCE} and not e.studio and (${start})`, [days]);
+    transitions.push({ label, ...row });
+  }
+  return { actions, powers, transitions };
+}
 
 export async function overview(days) {
   const [row] = await query(
@@ -77,12 +112,12 @@ export async function firstSession(days) {
   const rows = await query(
     `with cohort as (select id from players
        where first_seen >= ${SINCE} and not studio)
-     select e.props->>'milestone' as step, count(distinct e.player)::int as players,
+     select case when e.props->>'milestone' = 'tutorial_skipped' then 'tutorial_done' else e.props->>'milestone' end as step, count(distinct e.player)::int as players,
        round(percentile_cont(0.5) within group (order by (e.props->>'playtime_s')::float)::numeric) as median_s
      from events e join cohort c on c.id = e.player
      where e.event = 'milestone' and e.props->>'milestone' = any($2::text[])
      group by 1`,
-    [days, FIRST_SESSION.map(([id]) => id)],
+    [days, [...FIRST_SESSION.map(([id]) => id), "tutorial_skipped"]],
   );
   const byStep = Object.fromEntries(rows.map((r) => [r.step, r]));
   const steps = FIRST_SESSION.map(([id, label], i) => {
@@ -112,10 +147,11 @@ export async function stalledAt(days, stepId) {
     with cohort as (select id from players where first_seen >= ${SINCE} and not studio),
     missed as (
       select c.id from cohort c
-      where exists (select 1 from events e where e.player = c.id and e.event = 'milestone' and e.props->>'milestone' = $2)
-        and not exists (select 1 from events e where e.player = c.id and e.event = 'milestone' and e.props->>'milestone' = $3)
+       where exists (select 1 from events e where e.player = c.id and e.event = 'milestone' and e.props->>'milestone' = any($2::text[]))
+         and not exists (select 1 from events e where e.player = c.id and e.event = 'milestone' and e.props->>'milestone' = any($3::text[]))
     )`;
-  const params = [days, prevId, stepId];
+  const aliases = (id) => id === "tutorial_done" ? ["tutorial_done", "tutorial_skipped"] : [id];
+  const params = [days, aliases(prevId), aliases(stepId)];
   const [count] = await query(`${missed} select count(*)::int as n from missed`, params);
   const lastThing = await query(
     `${missed}

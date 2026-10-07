@@ -150,13 +150,14 @@ async function stallPage(days, step) {
 }
 
 async function loopsPage(days) {
-  const [steals, snatches, holds, rounds, store, economy] = await Promise.all([
+  const [steals, snatches, holds, rounds, store, economy, guidance] = await Promise.all([
     Q.steals(days),
     Q.snatches(days),
     Q.holds(days),
     Q.rounds(days),
     Q.store(days),
     Q.economy(days),
+    Q.guidance(days),
   ]);
   // Steal loop: one row per zone
   const zones = new Map();
@@ -199,10 +200,18 @@ async function loopsPage(days) {
     return table(["Reason", "Amount", "Share"], rows.map((r) => [esc(r.key.slice(r.key.indexOf("_") + 1)), `$${n(r.total)}`, `${pct(r.total, total)} ${bar(total ? r.total / total : 0)}`]));
   };
   return `<h1>Game loops</h1>
+  ${card("Next-action guide", table(["Action", "Shown", "Completed", "Players stalled", "Median completion"],
+    guidance.actions.map((r) => [esc(r.action), n(r.shown), n(r.completed), n(r.stalled), secs(r.median_s)])),
+    "Completed means confirmed gameplay success. Stalled means no observed progress; it is a signal to investigate, not proof of confusion.")}
+  ${card("Guidance handoffs", table(["Transition", "Opportunities", "Followed through", "Rate", "Median time"],
+    guidance.transitions.map((r) => [esc(r.label), n(r.started), n(r.followed), pct(r.followed, r.started), secs(r.median_s)])),
+    "Each transition is measured independently within the same visit and the following 10 minutes.")}
+  ${card("Successful Innocent powers", table(["Power", "Successful uses", "Players"],
+    guidance.powers.map((r) => [esc(r.power), n(r.uses), n(r.players)])), "Server-approved uses; rejected button presses are excluded.")}
   ${card("Steal loop (boss knives)", stealTable, "Every boss steal and how it ended, by zone. “Caught while too slow” = their Speed was below the zone's SpeedNeeded.")}
   <div class="grid2">
   ${card("Murder rounds", `${roundTable}<p class="muted">${n(rounds.started)} round starts · ${n(rounds.quits?.quit_mid_round)} visits ended mid-round (${pct(rounds.quits?.quit_mid_round, rounds.quits?.sessions)} of visits)</p>`)}
-  ${card("Store & offers", storeTable, "Offered = the server showed an offer; Not shown = the client held it back (menu open, in a round, owned).")}
+  ${card("Store & offers", storeTable, "Offered = the client acknowledged displaying the offer. Not shown = it was held back. Blocked offers do not start a cooldown.")}
   ${card("Cash in", flowTable(flows))}
   ${card("Cash out", flowTable(sinks))}
   </div>`;

@@ -201,7 +201,6 @@ local function handlePower(player: Player, action: unknown, id: unknown): boolea
 	if true then
 		local _ = action
 		local _ = id
-		Net.Notify(player, "Powers live on your knives now: equip a knife to use its power!", "info")
 		return false
 	end
 	local now = os.clock()
@@ -981,6 +980,17 @@ end
 local function publishRound(player: Player)
 	player:SetAttribute("Energy", energy[player])
 	player:SetAttribute("MaxEnergy", if energy[player] then GameConfig.MaxEnergy else nil)
+	local id = player:GetAttribute("RoundPower")
+	local power = type(id) == "string" and byId[id] or nil
+	local uses = roundUses[player]
+	player:SetAttribute(
+		"PowerUsesLeft",
+		if not energy[player] or not power
+			then nil
+			else if power.RoundUses
+				then math.max(0, power.RoundUses - (if uses then uses[power.Id] or 0 else 0))
+				else -1
+	)
 end
 
 -- Coins in rounds charge your powers
@@ -1129,6 +1139,7 @@ local function usePower(player: Player, id: unknown, aim: unknown)
 	end
 	player:SetAttribute("LastPower", id)
 	player:SetAttribute("LastPowerAt", workspace:GetServerTimeNow())
+	Analytics.Track(player, "power.used", { id = id, energy_left = energy[player], role = player:GetAttribute("Role") })
 	local root = rootOf(player)
 	if root then
 		Net.Remotes.Effect:FireClient(player, "PowerUsed", id, root.Position)
@@ -1139,9 +1150,14 @@ end
 local function onRoundChanged(player: Player)
 	roundUses[player] = nil
 	if player:GetAttribute("InRound") then
+		player:SetAttribute("SecondLifeUsed", false)
 		energy[player] = if player:GetAttribute("Role") ~= "Murderer" then GameConfig.StartEnergy else nil
 	else
 		energy[player] = nil
+		player:SetAttribute("SecondLifeUsed", nil)
+		if PowerService.PublishKnifePower then
+			PowerService.PublishKnifePower(player)
+		end
 		Stealth.Reveal(player)
 		if player.Character then
 			player.Character:SetAttribute("ShieldUntil", nil)

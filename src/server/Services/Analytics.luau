@@ -449,7 +449,7 @@ local CLIENT_EVENTS: { [string]: { string } } = {
 	["goal.shown"] = { "kind", "zone" }, -- the "Next:" line once the tutorial is done
 	-- The guide's DO line (client/Guide): what it asked, how long until it changed, and where players
 	-- sat on one instruction for a minute without moving (confusion)
-	["guide.shown"] = { "id", "zone" },
+	["guide.shown"] = { "id", "zone", "source" },
 	["guide.done"] = { "id", "seconds" },
 	["guide.stuck"] = { "id" },
 }
@@ -507,12 +507,7 @@ local function zoneOf(player: Player): number
 	if not root then
 		return 0
 	end
-	for _, zone in MapService.Zones do
-		if MapService.InBounds(zone.Bounds, root.Position) then
-			return zone.Index
-		end
-	end
-	return 0
+	return MapService.ZoneAt(root.Position) or 0
 end
 
 local function stepZones()

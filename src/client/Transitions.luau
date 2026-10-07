@@ -89,7 +89,7 @@ function Transitions.Init()
 			if root and not player:GetAttribute("InRound") then
 				local pos = root.Position
 				if math.abs(pos.X) <= GameConfig.ArenaWidth / 2 and pos.Z >= 0 then
-					zone = math.clamp(math.floor(pos.Z / GameConfig.ZoneDepth) + 1, 1, #GameConfig.Zones)
+					zone = GameConfig.ZoneAtZ(pos.Z) or #GameConfig.Zones
 				end
 			end
 			if zone ~= lastZone and zone > 0 then
@@ -220,6 +220,7 @@ function Transitions.Init()
 	card.Visible = false
 	card.ZIndex = 30
 	card.Name = "RoundResults"
+	Ui.TrackPresentation(card)
 	card.Parent = Ui.root
 	Ui.fitMenu(card, Vector2.new(560, 290))
 	Ui.registerMenu(card)
@@ -435,6 +436,7 @@ function Transitions.Init()
 	-- moment (right after dying in a round)
 	local kill = Instance.new("Frame")
 	kill.Name = "KillCard"
+	Ui.TrackPresentation(kill)
 	kill.AnchorPoint = Vector2.new(0.5, 0.5)
 	kill.Position = UDim2.fromScale(0.5, 0.45)
 	kill.Size = UDim2.fromOffset(480, 260)
@@ -576,6 +578,7 @@ function Transitions.Init()
 	local function showPrize(text: string, kind: unknown, knife: unknown, jackpot: boolean)
 		local prizeCard = Instance.new("Frame")
 		prizeCard.Name = "PrizeWon"
+		Ui.TrackPresentation(prizeCard)
 		prizeCard.AnchorPoint = Vector2.new(0.5, 0.5)
 		prizeCard.Position = UDim2.fromScale(0.5, 0.4)
 		prizeCard.Size = UDim2.fromOffset(440, if type(knife) == "string" then 260 else 150)
@@ -652,6 +655,7 @@ function Transitions.Init()
 		local width = math.max(360, shown * 140 + 40)
 		local haul = Instance.new("Frame")
 		haul.Name = "LootHaul"
+		Ui.TrackPresentation(haul)
 		haul.AnchorPoint = Vector2.new(0.5, 0.5)
 		haul.Position = UDim2.fromScale(0.5, 0.42)
 		haul.Size = UDim2.fromOffset(width, if #items > shown then 300 else 270)

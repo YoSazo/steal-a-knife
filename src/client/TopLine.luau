@@ -19,7 +19,7 @@ local Ui = require(script.Parent.Ui)
 local TopLine = {}
 
 -- Icon: an image drawn right after the words (the prize line's Speed shoe)
-export type Rest = { Text: string, Pill: boolean?, Pulse: boolean?, Icon: string? }
+export type Rest = { Text: string, Short: string?, Pill: boolean?, Pulse: boolean?, Icon: string? }
 -- Set by client/Hud: what the line says when no notice is up (nil = hidden)
 TopLine.Resting = nil :: (() -> Rest?)?
 
@@ -31,6 +31,7 @@ local token = 0
 local band: Frame? = nil
 local label: TextLabel? = nil
 local pill: GuiObject? = nil
+local pillHeight = 22
 local pulse: UIScale? = nil
 local shownText = ""
 local shownPill = false
@@ -90,10 +91,12 @@ local function fit(text: string, withPill: boolean)
 	end
 	local _, bounds = Ui.bounds()
 	words.TextSize = if Ui.Phone then 18 else 20
-	local iconSize = baseHeight() - 2
+	local compactStrip = Ui.topStrip("Status")
+	local iconSize = if compactStrip then math.min(baseHeight() - 2, compactStrip.H - 2) else baseHeight() - 2
 	local iconWidth = if shownIcon then iconSize + 4 else 0
-	local pillWidth = (if withPill and pill then pill.AbsoluteSize.X / math.max(Ui.Scale.Scale, 0.01) + 8 else 0)
-		+ iconWidth
+	local pillWidth = (
+		if withPill and pill and not compactStrip then pill.AbsoluteSize.X / math.max(Ui.Scale.Scale, 0.01) + 8 else 0
+	) + iconWidth
 	-- (phones: keep the words between the left and right button columns)
 	local maxLane = math.max(160, math.min(860, bounds.X - (if Ui.Phone then 2 * 175 else 2 * FADE + 24)) - pillWidth)
 	local plain = text:gsub("<[^>]->", "") -- (RichText tags take no space)
@@ -104,16 +107,21 @@ local function fit(text: string, withPill: boolean)
 	-- (the guide's DO line comes first: the status line goes under it - client/Guide)
 	local doLine = Ui.gui:GetAttribute("DoLine") == true
 	local doInStrip = doLine and Ui.gui:GetAttribute("DoLineInStrip") == true
-	local strip = if tutorialInStrip or doInStrip then nil else Ui.topStrip()
+	local strip = compactStrip or (if tutorialInStrip or doInStrip then nil else Ui.topStrip())
 	local fade = FADE
 	if strip then
 		local stripLane = strip.W - 2 * 16 - pillWidth
 		local smallest = TextService:GetTextSize(plain, 14, words.Font, Vector2.new(4000, 1000)).X
-		if smallest <= stripLane then
+		if smallest <= stripLane or compactStrip then
 			maxLane, fade = stripLane, 16
 		else
 			strip = nil
 		end
+	end
+	words.TextWrapped = compactStrip == nil
+	words.TextTruncate = if compactStrip then Enum.TextTruncate.AtEnd else Enum.TextTruncate.None
+	if compactStrip then
+		words.TextSize = 14
 	end
 	words.Position = UDim2.fromOffset(fade, 0)
 	-- A bit too long for one line: smaller words first (down to 14), wrapping only after that
@@ -125,7 +133,7 @@ local function fit(text: string, withPill: boolean)
 	local lane = math.min(maxLane, size.X + 6)
 	local tall = math.max(baseHeight(), size.Y + 8)
 	if strip then
-		tall = math.min(tall, strip.H - 8)
+		tall = math.min(tall, strip.H)
 	end
 	frame.Size = UDim2.fromOffset(math.min(bounds.X, lane + pillWidth + 2 * fade), tall)
 	words.Size = UDim2.fromOffset(lane, tall)
@@ -137,6 +145,8 @@ local function fit(text: string, withPill: boolean)
 	end
 	if pill then
 		pill.Visible = withPill
+		pill.Size =
+			UDim2.new(pill.Size.X.Scale, pill.Size.X.Offset, 0, if compactStrip then compactStrip.H else pillHeight)
 		pill.AnchorPoint = Vector2.new(0, 0.5)
 		pill.Position = UDim2.new(0, fade + lane + iconWidth + 8, 0.5, 0)
 	end
@@ -219,6 +229,7 @@ function TopLine.SetPill(button: GuiObject)
 		build()
 	end
 	pill = button
+	pillHeight = button.Size.Y.Offset
 	button.Parent = band
 	button.Visible = false
 	button.ZIndex = 42
@@ -256,10 +267,11 @@ function TopLine.Init()
 		local scale = pulse :: UIScale
 		scale.Scale = if rest.Pulse then 1.06 + 0.06 * math.abs(math.sin(os.clock() * math.pi)) else 1
 		local wantsPill = rest.Pill == true and pill ~= nil
-		if rest.Text ~= shownText or wantsPill ~= shownPill or rest.Icon ~= shownIcon then
-			shownText, shownPill, shownIcon = rest.Text, wantsPill, rest.Icon
-			text.Text = rest.Text
-			fit(rest.Text, wantsPill)
+		local restText = if Ui.topStrip("Status") and rest.Short then rest.Short else rest.Text
+		if restText ~= shownText or wantsPill ~= shownPill or rest.Icon ~= shownIcon then
+			shownText, shownPill, shownIcon = restText, wantsPill, rest.Icon
+			text.Text = restText
+			fit(restText, wantsPill)
 		end
 	end)
 	local function refit()

@@ -85,6 +85,7 @@ function Spectate.Init()
 
 	-- The eye: left side, a little under the middle (the hub buttons hide while a round is on)
 	local eye = roundButton(gui, "👁", if Ui.Phone then 52 else 60)
+	Ui.GuideTargets.SpectateExit = eye
 	eye.Name = "SpectateButton"
 	eye.AnchorPoint = Vector2.new(0, 0.5)
 	eye.Position = UDim2.new(0, 14, 0.5, 0)

@@ -17,11 +17,12 @@ optional override). The tutorial's Skip button is removed.
 
 ## 1. Architecture
 
-- `client/Arrows.luau` (new): the tutorial's target ⬇, ring, glow and chevron trail lifted out of
-  `Tutorial.run()` (Tutorial.luau:418-528). Routes via waypoints: plaza/runway entrance and lair
-  approach points for bosses; the vault ladder for upper-floor plates/pads. Never through walls.
-- `client/NextAction.luau` (new, pure): `Pick(state) -> Action { Id, Text, Short, Icon?, Target?,
-  Waypoints?, UiTarget? }`. Unit-tested.
+- `client/Arrows.luau`: the tutorial's target ⬇, ring, glow and chevron trail shared with the guide.
+  Routes straight to a stocked side knife; vault gates and upper-floor ladders are the remaining
+  waypoints. A lair approach is a fallback while its knives stream in. Yellow arrows appear only
+  within 18 studs, when the actual interaction object is visible, and point above that object.
+- `shared/NextAction.luau` (pure): `Pick(state) -> Action { Id, Text, Short?, Target?, Zone?, Ui? }`.
+  `shared/RoundGuidance.luau` resolves round actions. Both are unit-tested.
 - `client/Guide.luau` (new): builds the state (attributes + tag/instance indexes, no full workspace
   scans), evaluates on relevant changes + 4 Hz fallback, keeps the current action until done /
   invalid / outranked (no jumping), owns Arrows + the DO line. Tutorial owns them while it runs and
@@ -48,7 +49,7 @@ optional override). The tutorial's Skip button is removed.
 | 4 | vault full, next floor affordable | "Make your vault bigger!" | Bigger Vault sign |
 | 5 | vault full, better knife reachable | "Make room for a better knife!" | lowest-income unprotected spare's SELL |
 | 6 | out of a round early (Phase Round) | status: "Steal while they play!" + the normal ladder below | — |
-| 7 | gift at your vault | "🎁 A present at your vault!" | gift |
+| 7 | gift nearby, current task finished | "Open your gift!" | gift |
 | 8 | newly fast enough for a tier | "Fast enough! Steal a RARE knife!" | a stocked pedestal in that lair |
 | 9 | Index reward unclaimed | "Claim your knife reward!" | Index → Claim (UI highlight) |
 | 10 | useful upgrade affordable | "Upgrade your wheel!" (matches the sign) | that sign |
@@ -111,8 +112,8 @@ Revolver ready. Cleared on round exit, reset at round start.
 ## 7. Interruptions
 
 - No offers while carrying, in combat, ≤ 20 s to a round, in menus or presentations.
-- Starter Pack: queued after the first round; shown only after ≥ 15 s continuous wheel training or
-  right after a successful action (placement / collect / claim / upgrade). Remove the fixed timers.
+- Starter Pack: queued after the first round; shown after ≥ 15 s continuous wheel training,
+  with client presentation/menu checks and retries if blocked. Remove the fixed timers.
 - Server offer cooldowns only start when the client actually showed it.
 - First-visit welcome: the game's purpose + Continue; streak/shield details later.
 - Tutorial: Skip removed; step 4 completes after 3 s in the wheel with a "+Speed!" float.

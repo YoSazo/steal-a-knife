@@ -53,13 +53,14 @@ function PowerBar.Init()
 
 	local function use(index: number)
 		local id = loadout[index]
-		if id and bar.Visible and not Ui.menuOpen() then
+		if id and bar.Visible and not Ui.menuOpen() and player:GetAttribute("PowerUsesLeft") ~= 0 then
 			Remotes.UsePower:FireServer(id, aimDirection())
 		end
 	end
 
 	for i = 1, GameConfig.MaxPowerSlots do
 		local button: TextButton = new("TextButton", {
+			Name = `Power{i}`,
 			LayoutOrder = i,
 			Size = UDim2.fromOffset(68, 52),
 			AutoButtonColor = true,
@@ -67,6 +68,7 @@ function PowerBar.Init()
 			BackgroundColor3 = Ui.PANEL,
 			Visible = false,
 		}, bar)
+		Ui.GuideTargets[`Power{i}`] = button
 		Ui.corner(button, 14)
 		new("UIStroke", { Thickness = 2, Color = Color3.new(1, 1, 1) }, button)
 		-- The power's name across the middle, its key in a little badge on the corner (they used to
@@ -206,8 +208,11 @@ function PowerBar.Init()
 				local power = byId[id]
 				local level = GameConfig.RoundPowerLevel -- the same for everyone in rounds
 				local cost = power.Energy[math.clamp(level, 1, #power.Energy)]
-				slot.Shade.Size = UDim2.fromScale(1, if energy >= cost then 0 else 1 - energy / cost)
-				slot.Count.Text = if energy >= cost then "" else tostring(cost)
+				local exhausted = player:GetAttribute("PowerUsesLeft") == 0
+				slot.Button.Active = not exhausted
+				slot.Shade.Size =
+					UDim2.fromScale(1, if exhausted then 1 else if energy >= cost then 0 else 1 - energy / cost)
+				slot.Count.Text = if exhausted then "USED" else if energy >= cost then "" else tostring(cost)
 			else
 				-- In the arena: cooldown, the shade drains as it recharges
 				local readyAt = player:GetAttribute(`PowerReady_{id}`)

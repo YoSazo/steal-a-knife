@@ -3,6 +3,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local Layout = {}
 Layout.KnifeSize = require(script.Parent.KnifeAim).ButtonSize
 local changed = Instance.new("BindableEvent")
@@ -37,7 +38,9 @@ end
 -- (Use with DebugPhone = true for the touch layout.)
 function Layout.debugSafe(): Vector2?
 	local sim = ReplicatedStorage:GetAttribute("DebugSafe")
-	return if RunService:IsStudio() and typeof(sim) == "Vector2" then sim else nil
+	-- Native touch emulation already supplies its viewport and safe insets. Never stack a desktop
+	-- preview on it: a 300px override on a 242px safe area pushes the bottom controls off-screen.
+	return if RunService:IsStudio() and not UserInputService.TouchEnabled and typeof(sim) == "Vector2" then sim else nil
 end
 function Layout.viewport(): Vector2
 	local sim = Layout.debugSafe()

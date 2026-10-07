@@ -172,6 +172,20 @@ function Store.Init()
 	-- A big moment is on screen (the power showcase, the round intro) or a round is seconds away:
 	-- an offer now would pile on top of it (seen in testing: showcase + round intro + Starter Pack)
 	local function busy(): boolean
+		if
+			gui:GetAttribute("Presenting") == true
+			or gui:GetAttribute("TutorialRunning") == true
+			or gui:GetAttribute("FadeCover") == true
+			or player:GetAttribute("Carrying")
+			or player:GetAttribute("Tumbling")
+			or player:GetAttribute("BossCarry")
+		then
+			return true
+		end
+		local actionAt = gui:GetAttribute("GuideActionAt")
+		if type(actionAt) == "number" and workspace:GetServerTimeNow() - actionAt < 3 then
+			return true
+		end
 		local playerGui = player:FindFirstChildOfClass("PlayerGui")
 		local showcase = playerGui and playerGui:FindFirstChild("PowerShowcase", true)
 		if showcase and (showcase :: GuiObject).Visible then
@@ -186,7 +200,7 @@ function Store.Init()
 			and type(endsAt) == "number"
 			and endsAt - workspace:GetServerTimeNow() < 20
 	end
-	Remotes:WaitForChild("Offer").OnClientEvent:Connect(function(key: string, reason: string)
+	Remotes:WaitForChild("Offer").OnClientEvent:Connect(function(key: string, reason: string, token: number?)
 		if
 			Ui.menuOpen()
 			or gui:GetAttribute("KnifeGestureActive") == true
@@ -225,6 +239,9 @@ function Store.Init()
 			ZIndex = 20,
 		}, Ui.feedback) -- (above menus: an offer often follows a "not enough cash" inside one)
 		offerCard = card
+		if token then
+			Remotes.OfferShown:FireServer(key, token)
+		end
 		Ui.corner(card, 14)
 		Ui.gradient(card, entry.Color:Lerp(DARK, 0.25), entry.Color:Lerp(DARK, 0.75))
 		new("UIStroke", { Thickness = 3.5, Color = Color3.fromRGB(16, 12, 22) }, card)

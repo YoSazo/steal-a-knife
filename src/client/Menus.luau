@@ -459,6 +459,7 @@ function Menus.Init()
 	end
 	Ui.Navigation = column
 	local indexButton = menuButton(2, "Index", Theme.Cyan, "Index", indexFrame, refreshIndex)
+	Ui.GuideTargets.Index = indexButton
 	indexBadge = Theme.badge(indexButton)
 	-- Big tiles two to a row: easy to read, easy to tap (no scrolling)
 	local moreFrame, moreBody = Theme.shell("More", "More", Theme.Cyan, "More", 640, 640)
@@ -487,7 +488,7 @@ function Menus.Init()
 		local tile = Theme.button(if wide then moreBody else moreList, name, moreColors[name], {
 			AnchorPoint = if wide then Vector2.new(0, 1) else nil,
 			Position = if wide then UDim2.fromScale(0, 1) else nil,
-			Size = if wide then UDim2.new(0.64, -8, 0.24, 0) else nil,
+			Size = if wide then UDim2.new(0.32, -8, 0.24, 0) else nil,
 			Name = name,
 			LayoutOrder = moreOrder[name],
 			ZIndex = 8,
@@ -497,6 +498,7 @@ function Menus.Init()
 			toggle(frame)
 		end, icon)
 		-- icon big on the left half, the word big on the right
+		Ui.GuideTargets[name] = tile
 		for _, child in tile:GetChildren() do
 			if child:IsA("ImageLabel") and child.Name ~= "Studs" then
 				child.Position = UDim2.fromScale(if wide then 0.3 else 0.04, 0.1)
@@ -865,6 +867,22 @@ function Menus.Init()
 		)
 	end
 	moreButton("Stats", "Trophy", statsFrame, refreshDetails)
+	local arrowsButton: TextButton
+	arrowsButton = Theme.button(moreBody, "Arrows ON", Theme.Cyan, {
+		Name = "GuideArrows",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0.32, 1),
+		Size = UDim2.new(0.32, -8, 0.24, 0),
+		ZIndex = 8,
+		MaximumTextSize = 28,
+	}, function()
+		local enabled = Ui.gui:GetAttribute("GuideArrows") == false
+		Ui.gui:SetAttribute("GuideArrows", enabled)
+		local label = arrowsButton:FindFirstChild("Label") :: TextLabel?
+		if label then
+			label.Text = if enabled then "Arrows ON" else "Arrows OFF"
+		end
+	end)
 	-- How to play: the first-minutes guide again (client/Tutorial)
 	Theme.button(moreBody, "How to play", Theme.Cyan, {
 		Name = "HowToPlay",
@@ -889,7 +907,7 @@ function Menus.Init()
 			refreshDetails()
 		end
 	end)
-	menuButton(3, "More", Theme.Cyan, "More", moreFrame, function() end)
+	Ui.GuideTargets.More = menuButton(3, "More", Theme.Cyan, "More", moreFrame, function() end)
 	player:GetAttributeChangedSignal("Partner"):Connect(function()
 		if playersFrame.Visible then
 			refreshPlayers()

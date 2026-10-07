@@ -410,6 +410,9 @@ local function leaveRound(player: Player)
 	player:SetAttribute("PerkSpeed", nil)
 	player:SetAttribute("Dread", nil)
 	player:SetAttribute("KnifeOut", nil)
+	for _, attribute in { "WeaponAt", "PerkPassive", "PerkUsesLeft", "PerkReadyAt", "RevolverReadyAt" } do
+		player:SetAttribute(attribute, nil)
+	end
 	BaseService.RefreshWalkSpeed(player)
 end
 
@@ -732,6 +735,7 @@ local function strike(round: Round, victim: Player)
 		round.SecondLifeUsed = used
 		if not used[victim] then
 			used[victim] = true
+			victim:SetAttribute("SecondLifeUsed", true)
 			local root = rootOf(victim)
 			if root then
 				Ragdoll.Tumble(victim, -root.CFrame.LookVector * 30 + Vector3.new(0, 35, 0), 1)
@@ -1289,6 +1293,8 @@ local function usePerk(round: Round, direction: Vector3)
 		round.PerkUses += 1
 	end
 	round.PerkReadyAt = now + perk.Cooldown
+	murderer:SetAttribute("PerkUsesLeft", if perk.Uses then math.max(0, perk.Uses - round.PerkUses) else -1)
+	murderer:SetAttribute("PerkReadyAt", workspace:GetServerTimeNow() + perk.Cooldown)
 	Net.Remotes.AbilityState:FireClient(murderer, perk.DisplayName, workspace:GetServerTimeNow() + perk.Cooldown)
 	round.LatestAim = direction
 	Analytics.Track(
@@ -1623,6 +1629,7 @@ giveRevolver = function(round: Round, player: Player)
 	round.GunTool = tool
 	round.Gunner = player
 	round.Sheriff = round.Sheriff or player
+	player:SetAttribute("RevolverReadyAt", 0)
 	ReplicatedStorage:SetAttribute("Revolver", "Taken")
 	-- The role card said Innocent a moment ago: show the real role now
 	Net.Remotes.Role:FireClient(player, "Sheriff", round.Names[player])
@@ -1649,6 +1656,7 @@ spawnRevolver = function(round: Round, position: Vector3?)
 		return
 	end
 	local pickup = Revolver.BuildPickup(point + Vector3.new(0, if position then 0 else 2.5, 0))
+	pickup:AddTag("RoundGunPickup")
 	pickup.Parent = round.Coins
 	round.Revolver = pickup
 	ReplicatedStorage:SetAttribute("Revolver", "Dropped")
@@ -1669,6 +1677,7 @@ spawnRevolver = function(round: Round, position: Vector3?)
 		tool.Parent = backpack
 		round.GunTool = tool
 		round.Gunner = player
+		player:SetAttribute("RevolverReadyAt", 0)
 		ReplicatedStorage:SetAttribute("Revolver", "Taken")
 		Analytics.Track(player, "round.revolver_pickup", roundProps(round, player))
 		Net.Notify(player, "You got the gun! Shoot the Murderer!", "good")
@@ -1755,6 +1764,11 @@ local function onShoot(player: Player, aim: unknown)
 		return
 	end
 	round.LastShot = now
+	for _, holder in { round.Gunner, round.Gunner2 } do
+		if holder then
+			holder:SetAttribute("RevolverReadyAt", workspace:GetServerTimeNow() + GameConfig.RevolverCooldown)
+		end
+	end
 
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
@@ -2189,6 +2203,9 @@ local function giveWeapon(round: Round)
 	)
 	local perkId, perk = perkOf(round)
 	-- Spam Knife: click = throw for the whole round (the same mode Hellfire's Q turns on briefly)
+	murderer:SetAttribute("PerkPassive", if perk then perk.Passive == true else nil)
+	murderer:SetAttribute("PerkUsesLeft", if perk then (perk.Uses or -1) else nil)
+	murderer:SetAttribute("PerkReadyAt", 0)
 	local spam = perkId == "SpamKnife" and perk ~= nil and perk.Passive == true
 	if spam then
 		murderer:SetAttribute("SpamUntil", workspace:GetServerTimeNow() + GameConfig.RoundTime + 60)
@@ -2512,6 +2529,9 @@ local function startRound(participants: { Player })
 				round.Names[pair[2]] or pair[2].DisplayName
 			)
 		end
+	end
+	for killer in round.Killers do
+		killer:SetAttribute("WeaponAt", workspace:GetServerTimeNow() + GameConfig.MurdererGrace)
 	end
 	task.delay(GameConfig.MurdererGrace, function()
 		if current == round then

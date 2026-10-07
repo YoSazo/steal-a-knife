@@ -27,19 +27,6 @@ local GREEN = Color3.fromRGB(80, 210, 50)
 local BLUE = Color3.fromRGB(70, 150, 255)
 local ORANGE = Color3.fromRGB(230, 150, 50)
 
--- The knife you'd fight best with: highest damage, then highest income
-local function bestKnife(owned: { string }): string?
-	local best: string? = nil
-	local bestDamage, bestIncome = -1, -1
-	for _, item in owned do
-		local damage, income = Items.Damage(item), Items.Income(item)
-		if damage > bestDamage or (damage == bestDamage and income > bestIncome) then
-			best, bestDamage, bestIncome = item, damage, income
-		end
-	end
-	return best
-end
-
 -- Sizes: phones get their own smaller design, so the window shrinks far less to fit and the words
 -- stay readable (the desktop design was scaled to 0.4 on a 640 x 300 screen)
 local PHONE = { Window = Vector2.new(560, 420), Top = 54, RowH = 70, Art = 58, Equip = 120, Sell = 108, ButtonH = 54 }
@@ -54,16 +41,11 @@ local function buildKnivesPanel(): (Frame, () -> ())
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Max = 34,
 	})
-	local equipBest = SimpleUi.button(body, "Equip Best", BLUE, {
+	local selectionMode = SimpleUi.text(body, "Best power: auto", {
 		Position = UDim2.fromScale(0.35, 0),
 		Size = UDim2.new(0.3, -8, 0, S.Top),
-		Max = 30,
-	}, function()
-		local best = bestKnife(Ui.list(player:GetAttribute("Knives")))
-		if best and best ~= player:GetAttribute("Equipped") then
-			Remotes.Equip:InvokeServer(best)
-		end
-	end)
+		Max = 20,
+	})
 	local floorButton = SimpleUi.button(body, "", GREEN, {
 		Position = UDim2.fromScale(0.65, 0),
 		Size = UDim2.new(0.35, 0, 0, S.Top),
@@ -92,10 +74,9 @@ local function buildKnivesPanel(): (Frame, () -> ())
 		local owned = Ui.list(player:GetAttribute("Knives"))
 		local slots = (player:GetAttribute("Slots") or GameConfig.StartingSlots) :: number
 		local cash = (player:GetAttribute("Cash") or 0) :: number
-		local equipped = player:GetAttribute("Equipped") or ""
+		local equipped = player:GetAttribute("FightingKnife") or ""
+		selectionMode.Text = if player:GetAttribute("Equipped") ~= "" then "Your pick: ON" else "Best power: auto"
 		count.Text = `{#owned}/{slots} in your vault`
-		local best = bestKnife(owned)
-		SimpleUi.set(equipBest, if best and best == equipped then "Best ✓" else "Equip Best", BLUE, best ~= equipped)
 		-- The next floor: +10 plates (later floors wait for a rebirth)
 		local floorRebirths = GameConfig.FloorRebirthsFor(slots)
 		if slots >= GameConfig.MaxSlots then
@@ -230,12 +211,12 @@ function QuickBar.Init()
 			Ui.Menu.Toggle(powers)
 		end
 	end)
+	Ui.GuideTargets.Knives = knivesButton
+	Ui.GuideTargets.Powers = powersButton
 	-- A "!" on Knives when you're not holding your best knife (Steal An Egg's "+1 EQUIP")
 	local badge = Theme.badge(knivesButton)
 	local function refreshBadge()
-		local best = bestKnife(Ui.list(player:GetAttribute("Knives")))
-		badge.Visible = best ~= nil and best ~= player:GetAttribute("Equipped")
-		badge.Text = "!"
+		badge.Visible = false
 	end
 	player:GetAttributeChangedSignal("Knives"):Connect(refreshBadge)
 	player:GetAttributeChangedSignal("Equipped"):Connect(refreshBadge)

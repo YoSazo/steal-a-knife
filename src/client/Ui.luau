@@ -24,7 +24,41 @@ local Ui = {
 	OpenGift = nil :: ((target: Player) -> ())?, -- set by GambleUi
 	ReplayTutorial = nil :: (() -> ())?, -- set by Tutorial (More > How to play)
 	Toast = nil :: ((text: string, kind: string) -> ())?, -- set by Hud: a message on the Feedback layer
+	GuideTargets = {} :: { [string]: GuiObject },
 }
+
+local presentations: { [Instance]: boolean } = {}
+local function refreshPresentations()
+	local active = false
+	for object in presentations do
+		if object.Parent then
+			if (object:IsA("GuiObject") and object.Visible) or (object:IsA("ScreenGui") and object.Enabled) then
+				active = true
+				break
+			end
+		end
+	end
+	if Ui.gui then
+		Ui.gui:SetAttribute("Presenting", active)
+	end
+end
+
+-- Shared ownership: overlapping cards cannot clear each other's busy state.
+function Ui.TrackPresentation(object: Instance)
+	if presentations[object] then
+		return
+	end
+	presentations[object] = true
+	object
+		:GetPropertyChangedSignal(if object:IsA("ScreenGui") then "Enabled" else "Visible")
+		:Connect(refreshPresentations)
+	object.AncestryChanged:Connect(refreshPresentations)
+	object.Destroying:Connect(function()
+		presentations[object] = nil
+		refreshPresentations()
+	end)
+	refreshPresentations()
+end
 
 -- Phones (and tablets): touch with no keyboard. They get a compact layout that keeps clear of the
 -- thumbstick (bottom left) and jump button (bottom right). In Studio, ReplicatedStorage attribute
@@ -59,6 +93,14 @@ function Ui.new(className: string, props: { [string]: any }, parent: Instance?):
 		(instance :: any)[key] = value
 	end
 	instance.Parent = if parent == Ui.gui and Ui.root then Ui.root else parent
+	if
+		props.Name == "Welcome"
+		or props.Name == "Unbox"
+		or props.Name == "PowerShowcase"
+		or props.Name == "RoleReveal"
+	then
+		Ui.TrackPresentation(instance)
+	end
 	return instance
 end
 
@@ -393,9 +435,9 @@ player:WaitForChild("PlayerGui").ScreenOrientation = Enum.ScreenOrientation.Land
 -- Phones: the free strip of Roblox's top bar, between its buttons on the left and our shift-lock
 -- button on the right (Steal An Egg / Tsunami put their top text there). In Ui.gui coordinates:
 -- centre X, top Y (negative: above the HUD's safe area), width, height. Centred on the screen when
--- there's room either side, else on the free span. nil off phones or when it's too narrow.
+-- there's room either side. nil off phones or when the centred span is too narrow.
 export type Strip = { X: number, Y: number, W: number, H: number }
-function Ui.topStrip(): Strip?
+function Ui.topStrip(row: string?): Strip?
 	if not Ui.Phone or Layout.debugSafe() then
 		return nil
 	end
@@ -410,17 +452,27 @@ function Ui.topStrip(): Strip?
 	local mid = workspace.CurrentCamera.ViewportSize.X / 2
 	local half = math.min(mid - left, right - mid)
 	local cx, width = mid, half * 2
-	if width < 300 then
-		cx, width = (left + right) / 2, right - left
-	end
 	if width < 200 then
+		return nil
+	end
+	local y, height = inset.Min.Y - guiInset.Y, inset.Height
+	if inset.Height >= 54 then
+		-- Three short rows share the unused top bar, rather than stacking below its safe inset.
+		if row == "Status" then
+			y, height = y + 25, 16
+		elseif row == "Chance" then
+			y, height = y + 42, inset.Height - 42
+		else
+			height = 24
+		end
+	elseif row == "Status" or row == "Chance" then
 		return nil
 	end
 	return {
 		X = (cx - guiInset.X) / scale,
-		Y = (inset.Min.Y - guiInset.Y) / scale,
+		Y = y / scale,
 		W = width / scale,
-		H = inset.Height / scale,
+		H = height / scale,
 	}
 end
 GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(function()

@@ -180,7 +180,7 @@ local function drop(player: Player)
 	model.Parent = folder
 	gifts[player] = model
 	Net.Remotes.Effect:FireClient(player, "GiftDrop", body.Position)
-	Net.Notify(player, "🎁 A gift landed at your vault!", "good")
+	Net.Notify(player, "🎁 Gift waiting at your vault.", "good")
 	Analytics.Track(player, "gift.drop")
 	prompt.Triggered:Connect(function(who)
 		if who ~= player or gifts[player] ~= model then

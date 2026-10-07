@@ -28,14 +28,22 @@ export type State = {
 	BestOwnedRank: number, -- highest knife rarity you own (1 = Common)
 	Stocked: { [number]: number? }, -- knives on each boss's wall (nil = not loaded yet)
 	Gift: boolean, -- a present waiting at your vault
+	GiftNearby: boolean?,
+	Committed: boolean?, -- finish the current short task before choosing a gift
 	IndexClaimable: number, -- Index rewards ready
 	WheelCost: number?, -- next Faster Wheel price (nil = maxed)
 	TutorialDone: boolean,
+	NewTier: number?,
+	Spare: boolean?,
+	BetterReplacement: boolean?,
+	CanRebirth: boolean?,
+	WheelName: string?,
 }
 
 export type Action = {
 	Id: string,
 	Text: string, -- RichText
+	Short: string?,
 	Target: string?, -- "Plate" | "Home" | "Vault" | "Lair" | "Wheel" | "VaultSign" | "WheelSign" | "Pad" | "Gift"
 	Zone: number?, -- for "Lair"
 	Ui: string?, -- a button to point at instead ("Index")
@@ -64,7 +72,7 @@ local function floorAffordable(s: State): boolean
 		and s.Cash >= GameConfig.SlotCost(s.Slots)
 end
 
--- Is the money on your pads worth the walk? (enough for the next upgrade, or 30 s of income)
+-- Is the money on your pads worth the walk? It enables an upgrade, or you're already home.
 local function worthCollecting(s: State): boolean
 	if s.AutoCollect or s.PendingCash <= 0 then
 		return false
@@ -73,7 +81,7 @@ local function worthCollecting(s: State): boolean
 	if wheel and s.Cash < wheel and s.Cash + s.PendingCash >= wheel then
 		return true
 	end
-	return s.PendingCash >= math.max(1, s.Income) * 30
+	return s.InVault
 end
 
 function NextAction.Pick(s: State): Action?
@@ -85,9 +93,6 @@ function NextAction.Pick(s: State): Action?
 	-- 1. Carrying something: get it home
 	local carrying = s.Carrying
 	if carrying and carrying ~= "" then
-		if carrying:match("^Case:") then
-			return { Id = "carry_case", Text = "Bring your case home!", Target = "Home" }
-		end
 		if full then
 			if floorAffordable(s) then
 				return { Id = "carry_bigger", Text = "Your vault is full! Make it <b>bigger</b>!", Target = "VaultSign" }
@@ -95,18 +100,27 @@ function NextAction.Pick(s: State): Action?
 			return {
 				Id = "carry_full",
 				Text = "Your vault is full! <b>Sell</b> a knife to make room!",
-				Target = "Vault",
+				Target = if s.Spare ~= false then "Sell" else nil,
+				Ui = if s.Spare == false then "Knives" else nil,
 			}
+		end
+		if carrying:match("^Case:") then
+			return { Id = "carry_case", Text = "Bring your case home!", Target = "Home" }
 		end
 		if s.InVault and s.FreePlate then
 			return { Id = "carry_place", Text = "Put your knife on the <b>glowing plate</b>!", Target = "Plate" }
 		end
-		return { Id = "carry_home", Text = "<b>RUN HOME</b> with your knife!", Target = "Plate" }
+		return {
+			Id = "carry_home",
+			Text = "<b>RUN HOME</b> with your knife!",
+			Short = "RUN HOME with your knife!",
+			Target = "Home",
+		}
 	end
 
 	-- 2. Something waiting for you
-	if s.Gift then
-		return { Id = "gift", Text = "🎁 A <b>present</b> at your vault!", Target = "Gift" }
+	if s.Gift and (s.InVault or s.GiftNearby) and not s.Committed and not s.Training then
+		return { Id = "gift", Text = "Open your <b>gift</b>!", Target = "Gift" }
 	end
 
 	local reach = NextAction.Reachable(s.Speed)
@@ -116,12 +130,14 @@ function NextAction.Pick(s: State): Action?
 	end
 
 	-- 3. Fast enough for a new boss: the big moment
-	if reach > s.BestOwnedRank and stockedAt(reach) then
+	local freshTier = s.NewTier or (if reach > s.BestOwnedRank then reach else nil)
+	if not full and freshTier and freshTier <= reach and stockedAt(freshTier) then
 		return {
 			Id = "new_tier",
-			Text = `Fast enough! Steal a {rarity(reach)} knife!`,
+			Text = `Fast enough! Steal a {rarity(freshTier)} knife!`,
+			Short = `Steal a {rarity(freshTier)} knife!`,
 			Target = "Lair",
-			Zone = reach,
+			Zone = freshTier,
 		}
 	end
 
@@ -133,10 +149,32 @@ function NextAction.Pick(s: State): Action?
 		if floorAffordable(s) then
 			return { Id = "vault_bigger", Text = "Your vault is full! Make it <b>bigger</b>!", Target = "VaultSign" }
 		end
-		return { Id = "vault_full", Text = "Your vault is full! <b>Sell</b> your worst knife!", Target = "Vault" }
+		if s.CanRebirth then
+			return {
+				Id = "rebirth",
+				Text = "More → Rebirth: see what starting over gives you",
+				Short = "More → Rebirth: your rewards",
+				Ui = "Rebirth",
+			}
+		end
+		if s.BetterReplacement ~= false then
+			return {
+				Id = "vault_full",
+				Text = "Make room for a better knife - <b>sell a spare</b>!",
+				Short = "Sell a spare for a better knife!",
+				Target = if s.Spare ~= false then "Sell" else nil,
+				Ui = if s.Spare == false then "Knives" else nil,
+			}
+		end
 	end
 	if s.WheelCost and s.Cash >= s.WheelCost then
-		return { Id = "wheel_upgrade", Text = "Get a <b>faster wheel</b>!", Target = "WheelSign" }
+		return {
+			Id = "wheel_upgrade",
+			Text = if s.WheelName and s.WheelName:find("Trail")
+				then "Upgrade your <b>Speed trail</b>!"
+				else "Get a <b>faster wheel</b>!",
+			Target = "WheelSign",
+		}
 	end
 	if s.KnifeCount >= s.Slots * 0.8 and floorAffordable(s) then
 		return { Id = "vault_bigger", Text = "Make your vault <b>bigger</b>!", Target = "VaultSign" }
@@ -159,7 +197,7 @@ function NextAction.Pick(s: State): Action?
 	end
 
 	-- 7. Steal another knife: the deepest boss you can outrun that has knives on the wall
-	for zone = reach, 1, -1 do
+	for zone = if full then 0 else reach, 1, -1 do
 		if stockedAt(zone) then
 			return {
 				Id = "steal",
@@ -174,7 +212,15 @@ function NextAction.Pick(s: State): Action?
 	if nextZone then
 		return { Id = "train", Text = `Run in your <b>wheel</b> to get faster!`, Target = "Wheel" }
 	end
-	return { Id = "collect_all", Text = "Grab your <b>money</b>!", Target = "Pad" }
+	if s.PendingCash > 0 and not s.AutoCollect then
+		return { Id = "collect_all", Text = "Grab your <b>money</b>!", Target = "Pad" }
+	end
+	return {
+		Id = "powers",
+		Text = "Choose a knife power for your next round!",
+		Short = "Choose your next round power!",
+		Ui = "Powers",
+	}
 end
 
 return NextAction

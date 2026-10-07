@@ -165,6 +165,7 @@ end
 function Abilities.Init()
 	local gui = Ui.gui
 	local button = Ui.button({
+		Name = "PerkButton",
 		-- Bottom right, above where the touch jump button sits and clear of the tool hotbar
 		AnchorPoint = Vector2.new(1, 1),
 		-- (phones: just left of the jump button, under the right thumb)
@@ -177,6 +178,7 @@ function Abilities.Init()
 
 	-- The Murderer's perk: its Blender badge on the ability button, and a card above it that
 	-- explains the perk (passive perks get the card only)
+	Ui.GuideTargets.Perk = button
 	local buttonIcon = Instance.new("ImageLabel")
 	buttonIcon.Name = "PerkIcon"
 	buttonIcon.AnchorPoint = Vector2.new(0, 0.5)
@@ -292,7 +294,9 @@ function Abilities.Init()
 	end
 
 	local function ready(): boolean
-		return abilityName ~= nil and workspace:GetServerTimeNow() >= readyAt
+		return abilityName ~= nil
+			and workspace:GetServerTimeNow() >= readyAt
+			and (not player:GetAttribute("InRound") or player:GetAttribute("PerkUsesLeft") ~= 0)
 	end
 
 	local function zoom(fov: number)
@@ -493,6 +497,7 @@ function Abilities.Init()
 	knifeCorner.CornerRadius = UDim.new(1, 0)
 	local knifeBorder = knifeButton:FindFirstChildOfClass("UIStroke") :: UIStroke
 	knifeBorder.Color, knifeBorder.Transparency = Color3.fromRGB(240, 250, 255), 0.2
+	Ui.GuideTargets.KnifeDraw = knifeButton
 	local knifeIcon = Ui.new("ImageLabel", {
 		Name = "KnifeIcon",
 		BackgroundTransparency = 1,
@@ -941,6 +946,9 @@ function Abilities.Init()
 			if chargingSince then
 				button.Text = "Release to throw!"
 				button.BackgroundTransparency = 0
+			elseif player:GetAttribute("InRound") and player:GetAttribute("PerkUsesLeft") == 0 then
+				button.Text = `{abilityName} USED`
+				button.BackgroundTransparency = 0.5
 			elseif left > 0 then
 				button.Text = `{abilityName}  {math.ceil(left)}s`
 				button.BackgroundTransparency = 0.4
@@ -997,6 +1005,7 @@ function Abilities.Init()
 		ZIndex = 4,
 	}, gui)
 	local throwCorner = throwButton:FindFirstChildOfClass("UICorner")
+	Ui.GuideTargets.KnifeThrow = throwButton
 	if throwCorner then
 		throwCorner.CornerRadius = UDim.new(1, 0)
 	end

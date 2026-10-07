@@ -105,6 +105,32 @@ for (let i = 0; i < events.length; i += 250) {
 }
 const [{ count }] = await query("select count(*)::int as count from events");
 check(count === events.length, `stored ${count} of ${events.length}`);
+
+// Real query regression: skipped guides count as exits, successes differ from button attempts,
+// and each handoff is independent of the order of the onboarding funnel.
+const Q = await import("../src/queries.js");
+const beforeGuide = (await Q.firstSession(7)).steps.find((s) => s.id === "tutorial_done").players;
+const guideEvents = [
+  ["session.start", { new_user: true, session_n: 1 }],
+  ["milestone", { milestone: "tutorial_skipped", playtime_s: 60 }],
+  ["guide.shown", { id: "index", source: "hub" }],
+  ["guide.done", { id: "index", seconds: 3 }],
+  ["round.end", { role: "innocent", won: true }],
+  ["guide.shown", { id: "power_ready", source: "round" }],
+  ["power.use", { id: "Vanish" }],
+  ["power.used", { id: "Vanish" }],
+  ["round.prize", { kind: "Speed" }],
+  ["prize.followup", { stage: "home" }],
+  ["knife.mounted", { knife: "HunterBlade" }],
+].map(([event, props], i) => ({ event, props, player: "guide-fixture", session: "guide-fixture-1", server: "test",
+  ts: new Date(Date.now() - 60000 + i * 1000).toISOString() }));
+check((await post({ batch: guideEvents })).status === 200, "guide fixture ingest failed");
+check((await Q.firstSession(7)).steps.find((s) => s.id === "tutorial_done").players === beforeGuide + 1,
+  "tutorial_skipped was excluded from guide exits");
+const guidance = await Q.guidance(7);
+check(guidance.actions.find((r) => r.action === "index")?.completed === 1, "guide completion query failed");
+check(guidance.powers.find((r) => r.power === "Vanish")?.uses === 1, "power attempts counted as successes");
+check(guidance.transitions.every((r) => r.followed >= 1), "an independent guidance handoff failed");
 await fetch(`${base}/spend`, {
   method: "POST",
   headers: { Authorization: `Basic ${Buffer.from("x:test-pass").toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },

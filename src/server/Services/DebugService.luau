@@ -121,6 +121,22 @@ local commands: { [string]: (Player, ...any) -> any } = {
 		PowerService.AddEnergy(player, amount or 20)
 		return true
 	end,
+	-- Offer tests reach the real pending-token/cooldown state, rather than a command-bar module copy.
+	Offer = function(player: Player, key: string)
+		require(script.Parent.Offers).Show(player, key, "Studio offer check", true)
+		return true
+	end,
+	Heat = function(player: Player, amount: number)
+		DataService.Update(player, function(p)
+			p.Heat = math.clamp(amount, 0, GameConfig.Fuel.MaxHeat)
+		end)
+		return true
+	end,
+	Home = function(player: Player)
+		BaseService.SetReturnSpot(player, nil)
+		BaseService.TeleportHome(player)
+		return true
+	end,
 	-- Steal from a boss's wall for real (the boss chases you): tests guard hits and thrown knives
 	BossSteal = function(player: Player, zone: number?)
 		return GuardService.DebugSteal(player, zone or 1)

@@ -11,6 +11,8 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TextService = game:GetService("TextService")
 local TweenService = game:GetService("TweenService")
 
 local Ui = require(script.Parent.Ui)
@@ -119,7 +121,12 @@ end
 
 function Hud.Init()
 	local gui = Ui.gui
-	if Ui.Phone and RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugPhone") then
+	if
+		Ui.Phone
+		and RunService:IsStudio()
+		and ReplicatedStorage:GetAttribute("DebugPhone")
+		and not UserInputService.TouchEnabled
+	then
 		touchGhosts()
 	end
 
@@ -206,10 +213,13 @@ function Hud.Init()
 					RoundPrize.Stats(player),
 					((player:GetAttribute("Charge_DoublePrize") or 0) :: number) > 0
 				)
-				local goal = if player:GetAttribute("Role") == "Murderer" then "GET EVERYONE" else "SURVIVE"
+				local goal = if player:GetAttribute("Role") == "Murderer"
+					then "GET EVERYONE"
+					else if Ui.gui:GetAttribute("GuideRole") == "Sheriff" then "STOP THE MURDERER" else "SURVIVE"
 				return {
-					Text = `🔪 {clock}  ·  <b>{goal}</b> = <font color="#8CFF96">{prize.Text}</font>`,
-					Icon = CartoonArt.Speed,
+					Text = if Ui.Phone
+						then `{clock} · <b>{goal}</b>`
+						else `🔪 {clock} · <b>{goal}</b> = <font color="#8CFF96">{prize.Text}</font>`,
 				}
 			end
 			return {
@@ -270,6 +280,7 @@ function Hud.Init()
 			local outrun = if knives and prize.Reaches then ` = {knives}!` elseif knives then ` for {knives}` else ""
 			return {
 				Text = `{star}Win the round: <font color="#8CFF96"><b>{prize.Text}</b></font>{outrun}{done}`,
+				Short = `{clock} · Win <font color="#8CFF96"><b>{prize.Text}</b></font>{done}`,
 				Pill = not doubled,
 				Icon = CartoonArt.Speed, -- (the same shoe as your Speed readout)
 			}
@@ -456,14 +467,59 @@ function Hud.Init()
 		TextColor3 = Color3.fromRGB(255, 110, 120),
 	}, gui)
 	Ui.textStroke(chanceLabel, 1.5)
+	local roundPrizeIcon = Ui.art(chanceLabel, "RoundPrizeSpeed", {
+		Image = CartoonArt.Speed,
+		Size = UDim2.fromOffset(14, 14),
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.fromScale(1, 0.5),
+		Visible = false,
+	})
 	-- (plain text, centred: no icon beside it)
 	local function refreshChance()
 		local chance = player:GetAttribute("MurdererChance")
+		local inRound = player:GetAttribute("InRound") == true
+		roundPrizeIcon.Visible = inRound and Ui.Phone
+		if inRound and Ui.Phone then
+			local prize = RoundPrize.For(
+				"Speed",
+				"",
+				ReplicatedStorage:GetAttribute("PrizeJackpot") == true,
+				1,
+				RoundPrize.Stats(player),
+				((player:GetAttribute("Charge_DoublePrize") or 0) :: number) > 0
+			)
+			chanceLabel.Text = `Win {prize.Text}`
+			chanceLabel.TextColor3 = Color3.fromRGB(140, 255, 150)
+			chanceLabel.TextXAlignment = Enum.TextXAlignment.Left
+			chanceLabel.Visible = not Ui.menuOpen()
+			local strip = Ui.topStrip("Chance")
+			local width = TextService:GetTextSize(
+				chanceLabel.Text,
+				chanceLabel.TextSize,
+				chanceLabel.Font,
+				Vector2.new(1000, 100)
+			).X + 20
+			chanceLabel.Size = UDim2.fromOffset(width, if strip then strip.H else 20)
+			if strip then
+				chanceLabel.Position = UDim2.fromOffset(strip.X, strip.Y)
+			end
+			return
+		end
+		chanceLabel.TextColor3 = Color3.fromRGB(255, 110, 120)
+		chanceLabel.TextXAlignment = Enum.TextXAlignment.Center
+		local chanceStrip = Ui.topStrip("Chance")
+		if chanceStrip then
+			chanceLabel.Position = UDim2.fromOffset(chanceStrip.X, chanceStrip.Y)
+			chanceLabel.Size = UDim2.fromOffset(chanceStrip.W, chanceStrip.H)
+		else
+			local _, bounds = Ui.bounds()
+			chanceLabel.Size = UDim2.fromOffset(math.min(420, bounds.X - 24), 20)
+		end
 		-- (the map vote row takes this line's place while it's up - client/MapVoteCard)
 		-- (only after your first round: before that it's a number about something you haven't seen)
 		chanceLabel.Visible = type(chance) == "number"
 			and Ui.inHub()
-			and gui:GetAttribute("VoteRow") ~= true
+			and (gui:GetAttribute("VoteRow") ~= true or Ui.topStrip("Chance") ~= nil)
 			and ((player:GetAttribute("RoundsPlayed") or 0) :: number) > 0
 		chanceLabel.Text = `🔪 Murderer chance: {chance or 0}%`
 	end
@@ -471,6 +527,14 @@ function Hud.Init()
 	player:GetAttributeChangedSignal("MurdererChance"):Connect(refreshChance)
 	gui:GetAttributeChangedSignal("VoteRow"):Connect(refreshChance)
 	player:GetAttributeChangedSignal("InRound"):Connect(refreshChance)
+	Ui.Layout.Changed:Connect(refreshChance)
+	local chanceChecked = 0
+	RunService.Heartbeat:Connect(function()
+		if os.clock() - chanceChecked >= 0.25 then
+			chanceChecked = os.clock()
+			refreshChance() -- returning home changes position after InRound clears
+		end
+	end)
 	refreshChance()
 	Ui.textStroke(subLabel, 2)
 
@@ -931,7 +995,12 @@ function Hud.Init()
 			return
 		end
 		local upper = string.upper(name :: string)
-		if energy >= cost then
+		if player:GetAttribute("PowerUsesLeft") == 0 then
+			coin.Visible = false
+			countLabel.Text = ""
+			powerGoal.Text = `{upper} USED`
+			powerGoal.TextColor3 = Color3.fromRGB(160, 160, 175)
+		elseif energy >= cost then
 			coin.Visible = false
 			countLabel.Text = ""
 			powerGoal.Text = `{upper} READY!`
@@ -951,6 +1020,7 @@ function Hud.Init()
 	end
 	player:GetAttributeChangedSignal("RoundPower"):Connect(refreshEnergy)
 	player:GetAttributeChangedSignal("Energy"):Connect(refreshEnergy)
+	player:GetAttributeChangedSignal("PowerUsesLeft"):Connect(refreshEnergy)
 	player:GetAttributeChangedSignal("Role"):Connect(refreshEnergy)
 	ReplicatedStorage:GetAttributeChangedSignal("Classic"):Connect(refreshEnergy)
 	refreshEnergy()
@@ -1189,6 +1259,7 @@ function Hud.Init()
 
 	-- Classic full-screen role reveal ----------------------------------------------------------
 	local reveal = new("Frame", {
+		Name = "RoleReveal",
 		-- Oversized so it also covers the top-bar inset
 		Size = UDim2.new(1, 0, 1, 120),
 		Position = UDim2.fromOffset(0, -60),
@@ -1283,7 +1354,7 @@ function Hud.Init()
 		end
 		if final == "Murderer" then
 			-- Make the link obvious: this is the knife from YOUR vault, with its power
-			local equipped = player:GetAttribute("Equipped")
+			local equipped = player:GetAttribute("FightingKnife")
 			local parsed = if type(equipped) == "string" and equipped ~= "" then Items.Parse(equipped) else nil
 			-- One job and what it wins (a 5-year-old reads one line): the knife picture says which knife
 			hint = `GET EVERYONE! Win {winText()}`
@@ -1510,6 +1581,13 @@ function Hud.Init()
 			top = ((Ui.gui:GetAttribute("DoLineHeight") or 38) :: number) + 2
 		end
 		chanceLabel.Position, chanceLabel.Size = UDim2.fromOffset(center, top), UDim2.fromOffset(width, 20)
+		local chanceStrip = Ui.topStrip("Chance")
+		if chanceStrip then
+			chanceLabel.Position = UDim2.fromOffset(chanceStrip.X, chanceStrip.Y)
+			chanceLabel.Size = UDim2.fromOffset(chanceStrip.W, chanceStrip.H)
+			chanceLabel.TextSize = 14
+		end
+		refreshChance()
 		timerFrame.Position, timerFrame.Size = UDim2.fromOffset(center, top + 18), UDim2.fromOffset(width, 40)
 		subLabel.Position, subLabel.Size = UDim2.fromOffset(center, top + 22), UDim2.fromOffset(width, 20)
 		subLabel.TextWrapped = false

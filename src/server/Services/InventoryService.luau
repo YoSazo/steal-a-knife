@@ -60,9 +60,6 @@ local function equip(player: Player, name: unknown): boolean
 	end
 	-- (a picked knife gets the big "EQUIPPED" banner with its name and Murderer power from the
 	-- Equipped effect above; toasts on top of it were the same words twice more)
-	if name == "" then
-		Net.Notify(player, "Auto-equip: your best knife", "good")
-	end
 	return true
 end
 

@@ -469,6 +469,9 @@ end
 local function setSlot(boss: Boss, slot: Slot, item: string)
 	clearDisplay(slot)
 	slot.Item = item
+	slot.Pad:SetAttribute("KnifeItem", item)
+	slot.Pad:SetAttribute("Zone", boss.Index)
+	slot.Pad:SetAttribute("Slot", slot.Index)
 	slot.Out = false
 	slot.RestockAt = nil
 	local parsed = Items.Parse(item)

@@ -7,14 +7,19 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local Items = require(ReplicatedStorage.Shared.Items)
 
 local player = Players.LocalPlayer
 local Places = {}
 
 local stealPrompts: { [ProximityPrompt]: boolean } = {} -- boss wall slots (attribute BossSteal)
 local placePrompts: { [ProximityPrompt]: boolean } = {} -- "Place Knife" on vault plates (attribute Place)
+local ladders: { [BasePart]: boolean } = {}
 
 local function index(d: Instance)
+	if d:IsA("TrussPart") and d.Name == "Ladder" then
+		ladders[d] = true
+	end
 	if d:IsA("ProximityPrompt") then
 		if d:GetAttribute("BossSteal") then
 			stealPrompts[d] = true
@@ -24,6 +29,9 @@ local function index(d: Instance)
 	end
 end
 local function unindex(d: Instance)
+	if d:IsA("BasePart") then
+		ladders[d] = nil
+	end
 	if d:IsA("ProximityPrompt") then
 		stealPrompts[d] = nil
 		placePrompts[d] = nil
@@ -85,14 +93,18 @@ function Places.CashPad(): Vector3?
 	if not vault then
 		return nil
 	end
+	local best: BasePart? = nil
+	local amount = 0
 	for _, d in vault:GetDescendants() do
-		if d:IsA("BasePart") and d.Name:match("^CashPadArt%d+$") then
-			for _, label in d:GetDescendants() do
-				if label:IsA("TextLabel") and label.Text ~= "" and label.Text:find("%$") then
-					return d.Position
-				end
+		if d:IsA("BasePart") and d.Name:match("^CashPad%d+$") then
+			local waiting = (d:GetAttribute("Waiting") or 0) :: number
+			if waiting > amount then
+				best, amount = d, waiting
 			end
 		end
+	end
+	if best then
+		return best.Position
 	end
 	return Places.VaultDoor()
 end
@@ -101,6 +113,53 @@ function Places.Wheel(): Vector3?
 	local vault = Places.Vault()
 	local plate = vault and vault:FindFirstChild("WheelFloor") :: BasePart?
 	return plate and plate.Position
+end
+
+function Places.SpareSale(): (BasePart?, string?)
+	local vault = Places.Vault()
+	if not vault then
+		return nil, nil
+	end
+	local best: BasePart? = nil
+	local item: string? = nil
+	local lowest = math.huge
+	for _, sign in vault:GetDescendants() do
+		if sign:IsA("BasePart") and sign.Name == "SellSign" and sign:GetAttribute("SellOwner") == player.UserId then
+			local knife = sign:GetAttribute("KnifeItem")
+			if type(knife) == "string" and knife ~= player:GetAttribute("FightingKnife") then
+				local income = Items.Income(knife)
+				local plate = (sign:GetAttribute("Plate") or 0) :: number
+				local bestPlate = if best then (best:GetAttribute("Plate") or 0) :: number else math.huge
+				if income < lowest or (income == lowest and plate < bestPlate) then
+					best, item, lowest = sign, knife, income
+				end
+			end
+		end
+	end
+	return best, item
+end
+
+function Places.BetterReplacement(reach: number, spare: string?): boolean
+	if not spare then
+		return false
+	end
+	local known = {}
+	for _, name in string.split((player:GetAttribute("Discovered") or "") :: string, ",") do
+		known[name] = true
+	end
+	for prompt in stealPrompts do
+		local pad = prompt.Parent
+		if prompt.Enabled and pad then
+			local zone, knife = pad:GetAttribute("Zone"), pad:GetAttribute("KnifeItem")
+			if type(zone) == "number" and zone <= reach and type(knife) == "string" then
+				local parsed = Items.Parse(knife)
+				if parsed and (Items.Income(knife) > Items.Income(spare) or not known[parsed.Name]) then
+					return true
+				end
+			end
+		end
+	end
+	return false
 end
 
 -- Your Bigger Vault ("UpgradeSign") or Faster Wheel ("WheelUpgradeSign") sign
@@ -174,7 +233,12 @@ function Places.LairKnife(zone: number, notMiddle: boolean?): BasePart?
 	for prompt in stealPrompts do
 		if prompt.Parent and prompt.Enabled then
 			local pad = prompt.Parent
-			if pad and pad:IsA("BasePart") and (not notMiddle or math.abs(pad.Position.Z - lair.Z) > 6) then
+			if
+				pad
+				and pad:IsA("BasePart")
+				and pad:GetAttribute("Zone") == zone
+				and (not notMiddle or math.abs(pad.Position.Z - lair.Z) > 6)
+			then
 				local distance = (pad.Position - spot).Magnitude
 				if distance < bestDistance then
 					best, bestDistance = pad, distance
@@ -225,10 +289,33 @@ end
 -- Where to aim the arrows on the way to `target`: into your vault through its gate (the outside
 -- spot first), otherwise straight there
 function Places.Aim(from: Vector3, target: Vector3): Vector3
+	if Places.InVault(from) and not Places.InVault(target) then
+		local home = Places.HomeSpot()
+		if home and (Vector3.new(from.X, 0, from.Z) - Vector3.new(home.X, 0, home.Z)).Magnitude > 6 then
+			return home -- leave through your vault's actual gate, then straight to the knife
+		end
+	end
 	if Places.InVault(target) and not Places.InVault(from) then
 		local home = Places.HomeSpot()
 		if home and (Vector3.new(from.X, 0, from.Z) - Vector3.new(home.X, 0, home.Z)).Magnitude > 6 then
 			return home
+		end
+	end
+	if Places.InVault(target) and Places.InVault(from) and target.Y > from.Y + 8 then
+		local vault = Places.Vault()
+		local best: BasePart? = nil
+		for ladder in ladders do
+			if
+				vault
+				and ladder:IsDescendantOf(vault)
+				and ladder.Position.Y + ladder.Size.Y / 2 > from.Y + 3
+				and (not best or ladder.Position.Y < best.Position.Y)
+			then
+				best = ladder
+			end
+		end
+		if best then
+			return Vector3.new(best.Position.X, from.Y, best.Position.Z)
 		end
 	end
 	return target

@@ -18,6 +18,7 @@ export type Spec = {
 	Aim: Vector3?, -- where the chevrons point (a waypoint on the way); default Target
 	Ring: Vector3?, -- a glowing ring on the ground here
 	Glow: Instance?, -- this lights up (Highlight)
+	Object: Instance?, -- actual interaction object; waypoints never get a yellow down-arrow
 }
 
 local claimedBy: string? = nil -- "Tutorial" while it runs: nobody else draws
@@ -107,8 +108,8 @@ local function build()
 		chevrons[i] = pair
 	end
 	arrowGui = new("BillboardGui", {
-		Size = UDim2.fromOffset(80, 80),
-		StudsOffsetWorldSpace = Vector3.new(0, 7, 0),
+		Size = UDim2.fromScale(3, 3),
+		StudsOffsetWorldSpace = Vector3.new(0, 2, 0),
 		AlwaysOnTop = true,
 		Adornee = targetPart,
 		Enabled = false,
@@ -120,6 +121,10 @@ local function build()
 		TextColor3 = Color3.fromRGB(255, 220, 80),
 	}, arrowGui)
 	Ui.textStroke(arrow, 4)
+	local limit = arrow:FindFirstChildOfClass("UITextSizeConstraint")
+	if limit then
+		limit:Destroy()
+	end
 end
 
 local function hideTrail()
@@ -170,9 +175,31 @@ function Arrows.Draw(owner: string, spec: Spec)
 		Arrows.Hide()
 		return
 	end
-	targetPart.Position = spec.Target
-	arrowGui.Enabled = true
-	arrowGui.StudsOffsetWorldSpace = Vector3.new(0, 7 + math.sin(os.clock() * 5), 0)
+	local object = spec.Object or spec.Glow
+	if object and not object:IsDescendantOf(workspace) then
+		object = nil
+	end
+	local marker = spec.Target
+	if object and object:IsA("Model") then
+		local cf, size = object:GetBoundingBox()
+		marker = cf.Position + Vector3.new(0, size.Y / 2, 0)
+	elseif object and object:IsA("BasePart") then
+		marker = object.Position + Vector3.new(0, object.Size.Y / 2, 0)
+	end
+	targetPart.Position = marker
+	local near = object ~= nil and object:IsDescendantOf(workspace) and (root.Position - marker).Magnitude <= 18
+	local _, onScreen = workspace.CurrentCamera:WorldToViewportPoint(marker)
+	local visible = false
+	if near and onScreen and object then
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = { trail, character :: Model }
+		local from = workspace.CurrentCamera.CFrame.Position
+		local hit = workspace:Raycast(from, marker - from, params)
+		visible = hit == nil or hit.Instance == object or hit.Instance:IsDescendantOf(object)
+	end
+	arrowGui.Enabled = near and onScreen and visible
+	arrowGui.StudsOffsetWorldSpace = Vector3.new(0, 2 + math.sin(os.clock() * 5) * 0.2, 0)
 	drawTrail(root.Position - Vector3.new(0, 2.5, 0), spec.Aim or spec.Target)
 	local ringAt = spec.Ring
 	if ringAt then
