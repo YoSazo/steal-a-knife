@@ -25,6 +25,8 @@ local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
 local PowerShowcase = require(script.Parent.PowerShowcase)
 local Telemetry = require(script.Parent.Telemetry)
+local Places = require(script.Parent.Places)
+local Arrows = require(script.Parent.Arrows)
 local Sounds = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Sounds"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
@@ -58,154 +60,20 @@ local function nearestGuard(): Vector3?
 	return best
 end
 
-local function myVault(): Model?
-	local index = player:GetAttribute("VaultIndex")
-	local map = workspace:FindFirstChild("Map")
-	local bases = map and map:FindFirstChild("Bases")
-	return bases and bases:FindFirstChild(`Base{index}`) :: Model?
-end
-
-local function vaultDoor(): Vector3?
-	local vault = myVault()
-	local floor = vault and vault:FindFirstChild("Floor") :: BasePart?
-	return floor and floor.Position
-end
-
--- The cash pad that has money waiting on it (its pill shows a number)
-local function cashPad(): Vector3?
-	local vault = myVault()
-	if not vault then
-		return nil
-	end
-	for _, d in vault:GetDescendants() do
-		if d:IsA("BasePart") and d.Name:match("^CashPadArt%d+$") then
-			for _, label in d:GetDescendants() do
-				if label:IsA("TextLabel") and label.Text ~= "" and label.Text:find("%$") then
-					return d.Position
-				end
-			end
-		end
-	end
-	return vaultDoor()
-end
-
-local function wheel(): Vector3?
-	local vault = myVault()
-	local plate = vault and vault:FindFirstChild("WheelFloor") :: BasePart?
-	return plate and plate.Position
-end
-
 local running = false
+
+-- (where things are: client/Places, shared with the guide)
+local cashPad, wheel, homeSpot = Places.CashPad, Places.Wheel, Places.HomeSpot
+local freePlate, knifeOver = Places.FreePlate, Places.KnifeOver
 
 -- Step 1 is split in two so there's nothing to guess: first a glowing ring on the ground in front of
 -- Frank's stash, then (once you're on it) the arrow jumps onto one knife on his wall, which glows.
-local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local function frankSpot(): Vector3
-	local lair = GameConfig.BossLairCenter(1)
-	local inward = if lair.X < 0 then 1 else -1 -- toward the middle of the runway
-	return lair + Vector3.new(inward * (GameConfig.BossLair.Depth / 2 + 7), 0, 0)
+	return Places.LairSpot(1)
 end
-
--- A knife on Frank's wall near his ring (a stocked slot: its Steal prompt is on), never the one
--- in the middle that Frank himself stands in front of
+-- A knife on Frank's wall near his ring, never the one in the middle Frank stands in front of
 local function frankKnife(): BasePart?
-	local spot = frankSpot()
-	local lair = GameConfig.BossLairCenter(1)
-	local best, bestDistance = nil, 60
-	for _, prompt in workspace:GetDescendants() do
-		if prompt:IsA("ProximityPrompt") and prompt:GetAttribute("BossSteal") and prompt.Enabled then
-			local pad = prompt.Parent
-			if pad and pad:IsA("BasePart") and math.abs(pad.Position.Z - lair.Z) > 6 then
-				local distance = (pad.Position - spot).Magnitude
-				if distance < bestDistance then
-					best, bestDistance = pad, distance
-				end
-			end
-		end
-	end
-	return best
-end
-
--- Just outside your own vault: your vault's spawn spot (BaseService's VaultSpawn<n>)
-local function homeSpot(): Vector3?
-	local index = player:GetAttribute("VaultIndex")
-	local map = workspace:FindFirstChild("Map")
-	local spawnPad = map and type(index) == "number" and map:FindFirstChild(`VaultSpawn{index}`) :: BasePart?
-	return if spawnPad then spawnPad.Position + Vector3.new(0, 3, 0) else vaultDoor()
-end
-
--- Your first free plate: its "Place Knife" prompt is on while you carry a knife. Returns the
--- plate's glowing model (to light up) and where to point.
-local function freePlate(): (Instance?, Vector3?)
-	local vault = myVault()
-	if not vault then
-		return nil, nil
-	end
-	local best: BasePart? = nil
-	local home = homeSpot()
-	for _, prompt in workspace:GetDescendants() do
-		if
-			prompt:IsA("ProximityPrompt")
-			and prompt:GetAttribute("Place")
-			and prompt:GetAttribute("Owner") == player.UserId
-			and prompt.Enabled
-		then
-			local pad = prompt.Parent
-			if pad and pad:IsA("BasePart") then
-				-- the ground floor's nearest to the door
-				if
-					not best
-					or pad.Position.Y < best.Position.Y - 2
-					or (
-						math.abs(pad.Position.Y - best.Position.Y) <= 2
-						and home
-						and (pad.Position - home).Magnitude < (best.Position - home).Magnitude
-					)
-				then
-					best = pad
-				end
-			end
-		end
-	end
-	if not best then
-		return nil, nil
-	end
-	local plate: Instance? = nil
-	local closest = 6
-	for _, model in vault:GetDescendants() do
-		if model:IsA("Model") and model.Name:match("^PlateDetails%d+$") then
-			local distance = (model:GetPivot().Position - best.Position).Magnitude
-			if distance < closest then
-				plate, closest = model, distance
-			end
-		end
-	end
-	return plate or best, best.Position
-end
-
--- The floating knife over a wall slot (the server's display model, tagged Spin)
-local function knifeOver(pad: BasePart): Instance?
-	for _, model in CollectionService:GetTagged("Spin") do
-		if model:IsA("Model") then
-			local at = model:GetPivot().Position
-			if math.abs(at.X - pad.Position.X) < 3 and math.abs(at.Z - pad.Position.Z) < 3 then
-				return model
-			end
-		end
-	end
-	return pad.Parent
-end
-
--- One arrow design for the world targets.
-local function guideArrow(parent: Instance): TextLabel
-	local arrow = Ui.label({
-		Name = "GuideArrow",
-		Size = UDim2.fromScale(1, 1),
-		Text = "⬇",
-		TextColor3 = Color3.fromRGB(255, 220, 80),
-	}, parent)
-	Ui.textStroke(arrow, 4)
-	return arrow
+	return Places.LairKnife(1, true)
 end
 
 -- Roblox's own "Favorite this experience?" prompt, once ever (saved like a tip: TipsSeen "Favorite")
@@ -241,6 +109,8 @@ local function run(startAt: number, replay: boolean)
 		return
 	end
 	running = true
+	Places.Init()
+	Arrows.Claim("Tutorial") -- (the guide waits until we're done)
 	local connections: { RBXScriptConnection } = {}
 	local function own(connection: RBXScriptConnection)
 		table.insert(connections, connection)
@@ -415,118 +285,6 @@ local function run(startAt: number, replay: boolean)
 	own(skip:GetPropertyChangedSignal("Visible"):Connect(layout))
 	layout()
 
-	-- The trail: red chevrons lying on the ground from you towards the target, sliding forwards
-	local targetPart = new("Part", {
-		Name = "TutorialTarget",
-		Anchored = true,
-		CanCollide = false,
-		CanQuery = false,
-		CanTouch = false,
-		Transparency = 1,
-		Size = Vector3.one * 0.2,
-	}, workspace)
-	local trail = new("Folder", { Name = "TutorialTrail" }, workspace)
-	-- The ring in front of Frank's stash: a glowing plate like the vault's knife plates
-	local ring = new("Part", {
-		Name = "FrankRing",
-		Shape = Enum.PartType.Cylinder,
-		Anchored = true,
-		CanCollide = false,
-		CanQuery = false,
-		CanTouch = false,
-		CastShadow = false,
-		Material = Enum.Material.Neon,
-		Color = Color3.fromRGB(70, 230, 255),
-		Size = Vector3.new(0.25, 9, 9),
-		Transparency = 1,
-	}, trail)
-	local ringCore = new("Part", {
-		Name = "FrankRingCore",
-		Shape = Enum.PartType.Cylinder,
-		Anchored = true,
-		CanCollide = false,
-		CanQuery = false,
-		CanTouch = false,
-		CastShadow = false,
-		Material = Enum.Material.Neon,
-		Color = Color3.fromRGB(255, 255, 255),
-		Size = Vector3.new(0.3, 6.5, 6.5),
-		Transparency = 1,
-	}, trail)
-	local knifeGlow = new("Highlight", {
-		Name = "TutorialKnifeGlow",
-		FillColor = Color3.fromRGB(255, 230, 80),
-		FillTransparency = 0.15,
-		OutlineColor = Color3.fromRGB(255, 255, 255),
-		OutlineTransparency = 0,
-		DepthMode = Enum.HighlightDepthMode.AlwaysOnTop, -- seen through Frank too
-		Enabled = false,
-	}, trail) :: Highlight
-	local SPACING, COUNT = 4.5, 22
-	local chevrons: { { Part } } = {}
-	for i = 1, COUNT do
-		local pair = {}
-		for side = 1, 2 do
-			pair[side] = new("Part", {
-				Name = "Chevron",
-				Anchored = true,
-				CanCollide = false,
-				CanQuery = false,
-				CanTouch = false,
-				CastShadow = false,
-				Material = Enum.Material.Neon,
-				Color = Color3.fromRGB(255, 60, 60),
-				Size = Vector3.new(0.85, 0.08, 2.6),
-				Transparency = 1,
-			}, trail)
-		end
-		chevrons[i] = pair
-	end
-	local groundParams = RaycastParams.new()
-	groundParams.FilterType = Enum.RaycastFilterType.Exclude
-	local function hideTrail()
-		for _, pair in chevrons do
-			pair[1].Transparency, pair[2].Transparency = 1, 1
-		end
-	end
-	local function drawTrail(from: Vector3, to: Vector3)
-		local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
-		local length = flat.Magnitude
-		if length < 4 then
-			hideTrail()
-			return
-		end
-		local direction = flat.Unit
-		local character = player.Character
-		groundParams.FilterDescendantsInstances = { trail, character :: Instance }
-		local slide = (os.clock() * 5) % SPACING
-		for i, pair in chevrons do
-			local along = 2.5 + (i - 1) * SPACING + slide
-			if along > length - 2 then
-				pair[1].Transparency, pair[2].Transparency = 1, 1
-				continue
-			end
-			local point = from + direction * along
-			local hit = workspace:Raycast(point + Vector3.new(0, 6, 0), Vector3.new(0, -20, 0), groundParams)
-			local ground = if hit then hit.Position.Y + 0.08 else from.Y
-			local base =
-				CFrame.lookAt(Vector3.new(point.X, ground, point.Z), Vector3.new(point.X, ground, point.Z) + direction)
-			-- a ">" pointing the way: two bars meeting at the tip
-			pair[1].CFrame = base * CFrame.Angles(0, math.rad(40), 0) * CFrame.new(0, 0, 1.05)
-			pair[2].CFrame = base * CFrame.Angles(0, math.rad(-40), 0) * CFrame.new(0, 0, 1.05)
-			-- fade in near you and out near the end
-			local fade = math.clamp(math.min(along - 2.5, length - 2 - along) / 4, 0, 1)
-			pair[1].Transparency, pair[2].Transparency = 1 - fade * 0.9, 1 - fade * 0.9
-		end
-	end
-	local arrowGui = new("BillboardGui", {
-		Size = UDim2.fromOffset(80, 80),
-		StudsOffsetWorldSpace = Vector3.new(0, 7, 0),
-		AlwaysOnTop = true,
-		Adornee = targetPart,
-	}, targetPart)
-	guideArrow(arrowGui)
-
 	local savedStep = if replay
 		then startAt
 		else math.max(startAt, (player:GetAttribute("TutorialStep") or 1) :: number)
@@ -536,6 +294,8 @@ local function run(startAt: number, replay: boolean)
 		current = 1
 	end
 	local finished = false
+	local glowFor: BasePart? = nil
+	local glowModel: Instance? = nil
 	local function finish(skipped: boolean)
 		if finished then
 			return
@@ -551,8 +311,7 @@ local function run(startAt: number, replay: boolean)
 		if not replay then
 			Remotes.Tutorial:FireServer(if skipped then "Skip" else "Done")
 		end
-		targetPart:Destroy()
-		trail:Destroy()
+		Arrows.Release("Tutorial") -- (the guide takes over the arrows this frame)
 		if skipped then
 			banner:Destroy()
 			return
@@ -648,35 +407,17 @@ local function run(startAt: number, replay: boolean)
 				ringAt = nil
 			end
 		end
-		if ringAt then
-			local pulse = (math.sin(os.clock() * 4) + 1) / 2
-			local ringParams = RaycastParams.new()
-			ringParams.FilterType = Enum.RaycastFilterType.Exclude
-			ringParams.FilterDescendantsInstances = { trail, player.Character :: Instance }
-			local hit = workspace:Raycast(ringAt + Vector3.new(0, 20, 0), Vector3.new(0, -40, 0), ringParams)
-			local y = if hit then hit.Position.Y else ringAt.Y
-			local flat = CFrame.new(ringAt.X, y + 0.1, ringAt.Z) * CFrame.Angles(0, 0, math.rad(90))
-			ring.CFrame, ringCore.CFrame = flat, flat * CFrame.new(0.03, 0, 0)
-			ring.Transparency = 0.15 + pulse * 0.25
-			ringCore.Transparency = 0.55 + pulse * 0.3
-		else
-			ring.Transparency, ringCore.Transparency = 1, 1
-		end
 		-- What glows: Frank's knife (step 1, on his ring) or your free plate (step 2, home)
 		local glowTarget: Instance? = nil
 		if onStep1 and atFrank and chosenPad then
-			if knifeGlow:GetAttribute("For") ~= chosenPad:GetFullName() or not knifeGlow.Adornee then
-				knifeGlow:SetAttribute("For", chosenPad:GetFullName())
-				knifeGlow:SetAttribute("Target", nil)
-				glowTarget = knifeOver(chosenPad)
-			else
-				glowTarget = knifeGlow.Adornee
+			if glowFor ~= chosenPad or not glowModel or not glowModel.Parent then
+				glowFor = chosenPad
+				glowModel = knifeOver(chosenPad)
 			end
+			glowTarget = glowModel
 		elseif onStep2 then
 			glowTarget = plateModel
 		end
-		knifeGlow.Adornee = glowTarget
-		knifeGlow.Enabled = glowTarget ~= nil
 		local step = steps[current]
 		if step.Done() then
 			Effects.Sound(Sounds.Coin, nil, 0.6)
@@ -695,16 +436,15 @@ local function run(startAt: number, replay: boolean)
 		end
 		local here = root()
 		local target = step.Target()
-		local show = here ~= nil and target ~= nil and not player:GetAttribute("InRound")
-		arrowGui.Enabled = show
-		if not show then
-			hideTrail()
-		end
-		if show and here and target then
-			targetPart.Position = target
-			drawTrail(here.Position - Vector3.new(0, 2.5, 0), target)
-			-- Keep the equip arrow close to the blade, below its floating name/income labels.
-			arrowGui.StudsOffsetWorldSpace = Vector3.new(0, 7 + math.sin(os.clock() * 5), 0)
+		if here and target and not player:GetAttribute("InRound") then
+			Arrows.Draw("Tutorial", {
+				Target = target,
+				Aim = Places.Aim(here.Position, target),
+				Ring = ringAt,
+				Glow = glowTarget,
+			})
+		else
+			Arrows.Hide("Tutorial")
 		end
 	end))
 end
