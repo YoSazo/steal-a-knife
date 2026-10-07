@@ -1,7 +1,7 @@
 # Plan (merged Claude + Codex): "Always something to do"
 
-**North star:** a new player (think 5-year-old) ALWAYS has one obvious, truthful, achievable next
-action, and confusion is never felt. Keep the economy, prizes, rates, energy costs and combat rules;
+**North star:** a new player (think 5-year-old) has one obvious, truthful, achievable next
+action when help is needed, then room to play independently as they learn. Keep the economy, prizes, rates, energy costs and combat rules;
 change guidance, and fix the inconsistencies that make instructions wrong.
 
 **Decided (owner):** your best power is used automatically (no equip step; Equip stays as an
@@ -33,7 +33,11 @@ optional override). The tutorial's Skip button is removed.
   One published top-content height for HudTop consumers.
 - **Presentation ownership:** shared client state (welcome, role reel, power reveal/showcase,
   unbox, results, haul/prize cards, fades). While one is up the guide waits and resumes after.
-- **Arrows: On/Off** under More (session); tutorial arrows and UI highlights always stay.
+- **Guidance: Auto / On / Off** under More, saved across visits. Auto retires routine stealing
+  after three deliveries, and each control or upgrade lesson after demonstrated use. Between those
+  stages, text and arrows fade once the player follows the route. New tiers get a brief unlock
+  announcement. A long idle can restore help; movement dismisses it. How to play replays the tutorial.
+- The floating yellow UI rectangle is removed. The actual target button pulses briefly.
 - When a guided action opens a menu, highlight the real next button/row.
 - Completion = server-confirmed state (placement serial, purchase, claim, power use). A green ✓ flash
   + Juice pop on completion.
@@ -51,7 +55,7 @@ optional override). The tutorial's Skip button is removed.
 | 6 | out of a round early (Phase Round) | status: "Steal while they play!" + the normal ladder below | — |
 | 7 | gift nearby, current task finished | "Open your gift!" | gift |
 | 8 | newly fast enough for a tier | "Fast enough! Steal a RARE knife!" | a stocked pedestal in that lair |
-| 9 | Index reward unclaimed | "Claim your knife reward!" | Index → Claim (UI highlight) |
+| 9 | first Index reward unclaimed | "Index → free cash + Speed!" | Index → prominent CLAIM ALL |
 | 10 | useful upgrade affordable | "Upgrade your wheel!" (matches the sign) | that sign |
 | 11 | collecting makes it affordable | "Grab your money!" | biggest owned pad (skip with Auto Collect) |
 | 12 | stocked reachable boss | **"Steal another COMMON knife!"** | highest reachable stocked lair (fallback: lower lairs) |
@@ -115,6 +119,9 @@ Revolver ready. Cleared on round exit, reset at round start.
 - Starter Pack: queued after the first round; shown after ≥ 15 s continuous wheel training,
   with client presentation/menu checks and retries if blocked. Remove the fixed timers.
 - Server offer cooldowns only start when the client actually showed it.
+- Power reveals use spaced rows and wait for other presentations. Level-up notifications queue
+  behind those reveals. Successful Index claims clear the prompt and badge immediately; later
+  rewards stay on the badge without repeating the lesson.
 - First-visit welcome: the game's purpose + Continue; streak/shield details later.
 - Tutorial: Skip removed; step 4 completes after 3 s in the wheel with a "+Speed!" float.
 

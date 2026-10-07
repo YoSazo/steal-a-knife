@@ -1,7 +1,7 @@
 --!strict
--- The guide: after the tutorial, ALWAYS one thing to do, shown two ways - the DO line at the very top
--- (one short instruction that never takes turns with anything) and the tutorial's arrows on the
--- ground to where it is (client/Arrows). What to do comes from shared/NextAction (pure, tested);
+-- The guide: one next action while learning, with coaching retired after demonstrated use.
+-- Its text and ground arrows step aside as the player follows the route. NextAction resolves
+-- available actions; GuidePolicy chooses how much help to show. What to do comes from shared/NextAction;
 -- where it is from client/Places. The status line under it (client/TopLine) keeps the timer, the
 -- prize and notices - information, never instructions.
 --
@@ -20,6 +20,8 @@ local Places = require(script.Parent.Places)
 local Arrows = require(script.Parent.Arrows)
 local Telemetry = require(script.Parent.Telemetry)
 local NextAction = require(ReplicatedStorage.Shared.NextAction)
+local GuidePolicy = require(ReplicatedStorage.Shared.GuidePolicy)
+local IndexRewards = require(ReplicatedStorage.Shared.IndexRewards)
 local RoundGuidance = require(ReplicatedStorage.Shared.RoundGuidance)
 local RoundPrize = require(ReplicatedStorage.Shared.RoundPrize)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
@@ -47,17 +49,11 @@ local unlockedTier: number? = nil
 local committed = false
 
 local function indexClaimable(): number
-	local claimed = {}
-	for _, name in Ui.list(player:GetAttribute("IndexClaimed")) do
-		claimed[name] = true
-	end
-	local count = 0
-	for _, name in Ui.list(player:GetAttribute("Discovered")) do
-		if not claimed[name] and Knives.ByName[name] then
-			count += 1
-		end
-	end
-	return count
+	return #IndexRewards.Pending(
+		(player:GetAttribute("Discovered") or "") :: string,
+		(player:GetAttribute("IndexClaimed") or "") :: string,
+		Ui.gui:GetAttribute("IndexAcknowledged") :: string?
+	)
 end
 
 local function state(): NextAction.State
@@ -266,6 +262,26 @@ end
 
 function Guide.Init()
 	Places.Init()
+	local learned = GuidePolicy.Parse((player:GetAttribute("GuidanceLearned") or "") :: string)
+	local reported: { [string]: boolean } = {}
+	local function learn(skill: string)
+		local limit = GuidePolicy.Limit(skill)
+		if limit and (learned[skill] or 0) < limit and not reported[skill] then
+			reported[skill] = true
+			learned[skill] = limit
+			ReplicatedStorage.Remotes.Tutorial:FireServer("GuideLearn", skill)
+		end
+	end
+	Ui.LearnGuidance = learn
+	player:GetAttributeChangedSignal("GuidanceLearned"):Connect(function()
+		for skill, count in GuidePolicy.Parse((player:GetAttribute("GuidanceLearned") or "") :: string) do
+			learned[skill] = math.max(learned[skill] or 0, count)
+		end
+	end)
+	Ui.gui:SetAttribute("GuidanceMode", player:GetAttribute("GuidanceMode") or "Auto")
+	player:GetAttributeChangedSignal("GuidanceMode"):Connect(function()
+		Ui.gui:SetAttribute("GuidanceMode", player:GetAttribute("GuidanceMode") or "Auto")
+	end)
 	observedReach = NextAction.Reachable((player:GetAttribute("Speed") or 0) :: number)
 	player:GetAttributeChangedSignal("Speed"):Connect(function()
 		local reach = NextAction.Reachable((player:GetAttribute("Speed") or 0) :: number)
@@ -277,15 +293,16 @@ function Guide.Init()
 	Ui.gui:SetAttribute("GuideArrows", true)
 
 	-- The DO line: like the status line, a thin dark band that fades out at both ends
-	local band = Ui.new("Frame", {
+	local band = Ui.new("CanvasGroup", {
 		Name = "DoLine",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.fromScale(0.5, 0),
 		BackgroundColor3 = Color3.fromRGB(8, 10, 22),
 		BorderSizePixel = 0,
 		Visible = false,
+		GroupTransparency = 1,
 		ZIndex = 41,
-	}, Ui.gui) :: Frame
+	}, Ui.gui) :: CanvasGroup
 	Ui.new("UIGradient", {
 		Transparency = NumberSequence.new({
 			NumberSequenceKeypoint.new(0, 1),
@@ -344,6 +361,7 @@ function Guide.Init()
 
 	local current: NextAction.Action? = nil
 	local completedCurrent = false
+	local shownLogged = false
 	local menuAction: NextAction.Action? = nil
 	local since = os.clock() -- when the current action started
 	local candidate: string? = nil
@@ -351,20 +369,25 @@ function Guide.Init()
 	local stuckLogged = false
 	local lastPos: Vector3? = nil
 	local lastMoveAt = os.clock()
+	local started = false
+	local initialDistance: number? = nil
+	local pathTarget: Vector3? = nil
+	local indexEntered: number? = nil
+	local trainingSince: number? = nil
+	local idleHelp = false
+	local helpMovement: Vector3? = nil
 
 	local function show(action: NextAction.Action?)
 		current = action
 		committed = action ~= nil and not player:GetAttribute("InRound") and action.Id ~= "gift"
 		completedCurrent = false
+		shownLogged = false
 		displayAction = action
 		since = os.clock()
 		stuckLogged = false
+		started, initialDistance, pathTarget = false, nil, nil
+		idleHelp, helpMovement = false, nil
 		if action then
-			Telemetry.Track("guide.shown", {
-				id = action.Id,
-				zone = action.Zone,
-				source = if player:GetAttribute("InRound") then "round" else "hub",
-			})
 			Ui.gui:SetAttribute("GuideAction", action.Id)
 			Ui.gui:SetAttribute("GuideActionAt", workspace:GetServerTimeNow())
 			shownText = action.Text
@@ -379,7 +402,9 @@ function Guide.Init()
 		if current and not completedCurrent then
 			completedCurrent = true
 			committed = false
-			Telemetry.Track("guide.done", { id = current.Id, seconds = math.floor(os.clock() - since) })
+			if shownLogged then
+				Telemetry.Track("guide.done", { id = current.Id, seconds = math.floor(os.clock() - since) })
+			end
 			label.TextColor3 = Color3.fromRGB(120, 255, 140)
 			TweenService:Create(label, TweenInfo.new(0.6), { TextColor3 = Color3.fromRGB(255, 235, 120) }):Play()
 		end
@@ -396,7 +421,14 @@ function Guide.Init()
 			completed()
 		end
 	end)
-	ReplicatedStorage.Remotes.Effect.OnClientEvent:Connect(function(kind: string)
+	ReplicatedStorage.Remotes.Effect.OnClientEvent:Connect(function(kind: string, id: unknown)
+		if kind == "CashBurst" then
+			learn("collect")
+		elseif kind == "IndexClaim" then
+			learn("index")
+		elseif kind == "PowerUsed" and type(id) == "string" then
+			learn(`power:{id}`)
+		end
 		if
 			current
 			and (
@@ -409,7 +441,13 @@ function Guide.Init()
 		end
 	end)
 	for _, name in { "TreadmillLevel", "TrailLevel", "Slots" } do
+		local previous = player:GetAttribute(name)
 		player:GetAttributeChangedSignal(name):Connect(function()
+			local value = player:GetAttribute(name)
+			if type(previous) == "number" and type(value) == "number" and value > previous then
+				learn(if name == "Slots" then "vault" else "wheel")
+			end
+			previous = value
 			if
 				current
 				and (current.Id == "wheel_upgrade" or current.Id == "vault_bigger" or current.Id == "carry_bigger")
@@ -418,25 +456,74 @@ function Guide.Init()
 			end
 		end)
 	end
-	local cue = Ui.new(
-		"Frame",
-		{ Name = "GuideUiCue", BackgroundTransparency = 1, Visible = false, ZIndex = 80 },
-		Ui.gui
-	) :: Frame
-	Ui.new("UIStroke", { Color = Color3.fromRGB(255, 225, 80), Thickness = 3 }, cue)
+	local lastEnergy = player:GetAttribute("Energy")
+	player:GetAttributeChangedSignal("Energy"):Connect(function()
+		local energy = player:GetAttribute("Energy")
+		if
+			player:GetAttribute("InRound")
+			and type(lastEnergy) == "number"
+			and type(energy) == "number"
+			and energy > lastEnergy
+		then
+			learn("coins")
+			started = true
+		end
+		lastEnergy = energy
+	end)
+	for _, name in { "RevolverReadyAt", "PerkReadyAt" } do
+		player:GetAttributeChangedSignal(name):Connect(function()
+			local ready = player:GetAttribute(name)
+			if player:GetAttribute("InRound") and type(ready) == "number" and ready > workspace:GetServerTimeNow() then
+				if name == "RevolverReadyAt" then
+					learn("gun_shoot")
+				else
+					local perk = player:GetAttribute("PowerId")
+					if type(perk) == "string" then
+						learn(`perk:{perk}`)
+					end
+				end
+			end
+		end)
+	end
 	local function uiTarget(action: NextAction.Action?): GuiObject?
 		if not action or not action.Ui then
 			return nil
 		end
 		local target: GuiObject? = Ui.GuideTargets[action.Ui]
 		if action.Ui == "Index" then
-			target = if Ui.menuOpen()
-				then Ui.gui:FindFirstChild("ClaimAll", true) :: GuiObject?
-				else Ui.GuideTargets.Index
+			target = if Ui.Panels.Index and Ui.Panels.Index.Visible
+				then Ui.GuideTargets.IndexClaim
+				else if Ui.menuOpen() then nil else Ui.GuideTargets.Index
 		elseif action.Ui == "Rebirth" and not Ui.menuOpen() then
 			target = Ui.GuideTargets.More
 		end
 		return target
+	end
+	local pulsed: { [GuiObject]: boolean } = {}
+	local function pulseButton(button: GuiObject)
+		if pulsed[button] then
+			return
+		end
+		pulsed[button] = true
+		local flash = Ui.new("Frame", {
+			Name = "GuideButtonPulse",
+			Size = UDim2.fromScale(1, 1),
+			BackgroundColor3 = Color3.new(1, 1, 1),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = button.ZIndex,
+			Active = false,
+		}, button) :: Frame
+		Ui.corner(flash, 9)
+		local tween = TweenService:Create(
+			flash,
+			TweenInfo.new(0.35, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 2, true),
+			{ BackgroundTransparency = 0.65 }
+		)
+		tween.Completed:Connect(function()
+			flash:Destroy()
+		end)
+		tween:Play()
 	end
 	local function rendered(target: GuiObject): boolean
 		local ancestor: Instance? = target
@@ -453,7 +540,14 @@ function Guide.Init()
 	end
 
 	local lastEval = 0
-	RunService.Heartbeat:Connect(function()
+	local function hubAction(): NextAction.Action?
+		local snapshot = state()
+		if Ui.gui:GetAttribute("GuidanceMode") == "Auto" and (learned.index or 0) >= 1 then
+			snapshot.IndexClaimable = 0 -- routine rewards remain on the badge, without blocking another lesson
+		end
+		return NextAction.Pick(snapshot)
+	end
+	RunService.Heartbeat:Connect(function(dt)
 		local inRound = player:GetAttribute("InRound") == true
 		if Ui.menuOpen() then
 			if current and current.Ui then
@@ -465,24 +559,63 @@ function Guide.Init()
 		local tutorial = (Ui.gui:GetAttribute("TutorialRunning") == true or Arrows.Owner() == "Tutorial")
 			and not inRound
 		local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		local indexPanel: GuiObject? = Ui.Panels.Index
+		local indexOpen = indexPanel ~= nil
+			and indexPanel.Visible
+			and current ~= nil
+			and current.Id == "index"
+			and indexClaimable() > 0
+		if indexOpen then
+			indexEntered = indexEntered or os.clock()
+		else
+			indexEntered = nil
+		end
 		local blocked = tutorial
-			or Ui.menuOpen()
+			or (Ui.menuOpen() and not indexOpen)
 			or Ui.gui:GetAttribute("FadeCover") == true
 			or Ui.gui:GetAttribute("Presenting") == true
 			or not humanoid
 			or humanoid.Health <= 0
 			or (not inRound and not Ui.inHub())
 			or player:GetAttribute("DataLoaded") ~= true
+		if blocked then
+			since += dt
+		end
+		if inRound then
+			if toolWith("MurderKnife", true) then
+				learn("knife_draw")
+			end
+			if toolWith("Revolver", true) then
+				learn("gun_draw")
+			end
+		end
+		if player:GetAttribute("Training") and not inRound then
+			trainingSince = trainingSince or os.clock()
+			if os.clock() - (trainingSince :: number) >= 3 then
+				learn("train")
+			end
+		else
+			trainingSince = nil
+		end
 		-- Evaluate 4 times a second (and the arrows every frame)
 		if os.clock() - lastEval >= 0.25 then
 			lastEval = os.clock()
-			local picked = if blocked
+			if current and current.Id == "index" and indexClaimable() == 0 then
+				completed()
+				show(nil)
+				menuAction = nil
+			end
+			local picked: NextAction.Action? = if blocked or indexOpen
 				then current
 				else if player:GetAttribute("Spectating")
-					then { Id = "spectating", Text = "Back to stealing - tap the eye!", Ui = "SpectateExit" }
-					else if inRound then roundAction() else NextAction.Pick(state())
+					then {
+						Id = "spectating",
+						Text = "Back to stealing - tap the eye!",
+						Ui = "SpectateExit",
+					} :: NextAction.Action
+					else if inRound then roundAction() else hubAction()
 			local pickedId = picked and picked.Id
-			if picked and current and pickedId == current.Id then
+			if picked and current and pickedId == current.Id and picked.Zone == current.Zone then
 				-- same action: keep it, but its words can change (Speed left)
 				if picked.Text ~= shownText then
 					shownText = picked.Text
@@ -518,6 +651,7 @@ function Guide.Init()
 			end
 			if
 				current
+				and shownLogged
 				and not blocked
 				and not stuckLogged
 				and os.clock() - since > STUCK
@@ -527,21 +661,91 @@ function Guide.Init()
 				Telemetry.Track("guide.stuck", { id = current.Id })
 			end
 		end
-		local visible = current ~= nil and not blocked
-		local targetButton = uiTarget(current or menuAction)
-		cue.Visible = targetButton ~= nil and rendered(targetButton) and not tutorial
-		if cue.Visible and targetButton then
-			local origin = Ui.root.AbsolutePosition
-			local scale = math.max(Ui.Scale.Scale, 0.01)
-			cue.Position = UDim2.fromOffset(
-				(targetButton.AbsolutePosition.X - origin.X) / scale,
-				(targetButton.AbsolutePosition.Y - origin.Y) / scale
-			)
-			cue.Size = UDim2.fromOffset(targetButton.AbsoluteSize.X / scale, targetButton.AbsoluteSize.Y / scale)
+		local mode = (Ui.gui:GetAttribute("GuidanceMode") or "Auto") :: string
+		local target: Vector3? = nil
+		local ring: Vector3? = nil
+		local glow: Instance? = nil
+		if current then
+			target, ring, glow = place(current)
 		end
-		band.Visible = visible
-		if Ui.gui:GetAttribute("DoLine") ~= visible then
-			Ui.gui:SetAttribute("DoLine", visible)
+		local root = Places.Root()
+		if target and root then
+			if not pathTarget or (target - pathTarget).Magnitude > 6 then
+				pathTarget, initialDistance = target, (root.Position - target).Magnitude
+			end
+			if initialDistance and initialDistance - (root.Position - target).Magnitude >= 6 then
+				started = true
+			end
+		end
+		if current and current.Id == "train" and player:GetAttribute("Training") then
+			started = true
+		end
+		-- Offer familiar help again only after a long idle; moving resumes independent play.
+		if
+			mode == "Auto"
+			and not blocked
+			and not inRound
+			and not player:GetAttribute("Training")
+			and os.clock() - lastMoveAt > 60
+		then
+			if not idleHelp then
+				idleHelp, helpMovement = true, root and root.Position
+			end
+		elseif idleHelp and root and helpMovement and (root.Position - helpMovement).Magnitude > 6 then
+			idleHelp = false
+		end
+		local skill = current
+			and GuidePolicy.Skill(
+				current.Id,
+				player:GetAttribute("RoundPower") :: string?,
+				player:GetAttribute("PowerId") :: string?
+			)
+		local visible = current ~= nil
+			and not blocked
+			and GuidePolicy.Visible({
+				Mode = mode,
+				Id = if current then current.Id else "",
+				Skill = skill,
+				Learned = learned,
+				Age = os.clock() - (indexEntered or since),
+				Started = started,
+				Help = idleHelp,
+			})
+		if visible and current then
+			if not shownLogged then
+				shownLogged = true
+				since = os.clock()
+				Telemetry.Track(
+					"guide.shown",
+					{ id = current.Id, zone = current.Zone, source = if inRound then "round" else "hub" }
+				)
+			end
+			local words = if indexOpen
+				then "Tap CLAIM ALL!"
+				else if mode == "Auto"
+						and current.Id == "new_tier"
+						and current.Zone
+					then `{string.upper(GameConfig.Zones[current.Zone].Rarity)} knives unlocked!`
+					else current.Text
+			if words ~= shownText then
+				shownText, label.Text = words, words
+				local decorated = table.clone(current)
+				if indexOpen or (mode == "Auto" and current.Id == "new_tier") then
+					decorated.Short = words
+				end
+				displayAction = decorated
+				fit()
+			end
+		end
+		local targetButton = uiTarget(current or menuAction)
+		if visible and targetButton and rendered(targetButton) and not tutorial then
+			pulseButton(targetButton)
+		end
+		local alpha = if visible then 0 else 1
+		band.GroupTransparency += math.clamp(alpha - band.GroupTransparency, -dt / 0.25, dt / 0.25)
+		band.Visible = not blocked and band.GroupTransparency < 1
+		if Ui.gui:GetAttribute("DoLine") ~= band.Visible then
+			Ui.gui:SetAttribute("DoLine", band.Visible)
 		end
 		-- the arrows
 		if tutorial then
@@ -552,8 +756,6 @@ function Guide.Init()
 			Arrows.Hide("Guide")
 			return
 		end
-		local target, ring, glow = place(action)
-		local root = Places.Root()
 		if target and root then
 			Arrows.Draw("Guide", {
 				Target = target,

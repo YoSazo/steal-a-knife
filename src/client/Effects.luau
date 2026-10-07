@@ -217,34 +217,6 @@ end
 
 -- Short camera shake (hits you land and hits you take)
 local shakeUntil, shakeStrength = 0, 0
--- A dark rounded card behind a big banner's lines, so they read over a menu or a bright sky
--- (bare text on top of a menu was unreadable). Spans screen heights fromY..toY; returns a fade.
-local function bannerCard(gui: ScreenGui, fromY: number, toY: number, width: number, edge: Color3): () -> ()
-	local card = Instance.new("Frame")
-	card.Name = "Card"
-	card.AnchorPoint = Vector2.new(0.5, 0)
-	card.Position = UDim2.fromScale(0.5, fromY)
-	card.Size = UDim2.new(0, width, toY - fromY, 0)
-	card.BackgroundColor3 = Color3.fromRGB(22, 18, 34)
-	card.BackgroundTransparency = 0.12
-	card.ZIndex = 0
-	card.Parent = gui
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 18)
-	corner.Parent = card
-	local stroke = Instance.new("UIStroke")
-	stroke.Thickness = 3
-	stroke.Color = edge
-	stroke.Parent = card
-	local scale = Instance.new("UIScale")
-	scale.Scale = 0.4
-	scale.Parent = card
-	TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-	return function()
-		TweenService:Create(card, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
-		TweenService:Create(stroke, TweenInfo.new(0.5), { Transparency = 1 }):Play()
-	end
-end
 
 function Effects.Shake(strength: number, duration: number)
 	shakeUntil = math.max(shakeUntil, os.clock() + duration)
@@ -416,73 +388,89 @@ local handlers: { [string]: (...any) -> () } = {
 	PowerRoll = function(item: string, power: string, oneIn: number)
 		local perk = GameConfig.Perks[power]
 		local gui = Instance.new("ScreenGui")
-		gui.Name = "PowerRoll"
-		Ui.fitPhone(gui)
-		gui.ResetOnSpawn = false
-		gui.DisplayOrder = 45
+		gui.Name, gui.ResetOnSpawn, gui.DisplayOrder = "PowerRoll", false, 45
 		gui.Parent = player:WaitForChild("PlayerGui")
 		Ui.TrackPresentation(gui)
 		local rare = oneIn >= 300
 		local color = if oneIn >= 1000
 			then Color3.fromRGB(255, 80, 200)
-			elseif rare then Color3.fromRGB(255, 120, 60)
-			else Color3.fromRGB(255, 220, 90)
-		local function line(text: string, y: number, height: number, c: Color3): TextLabel
-			local label = Instance.new("TextLabel")
-			label.AnchorPoint = Vector2.new(0.5, 0.5)
-			label.Position = UDim2.fromScale(0.5, y)
-			label.Size = UDim2.fromOffset(760, height)
-			label.BackgroundTransparency = 1
-			label.Font = Enum.Font.FredokaOne
-			label.TextScaled = true
-			label.TextColor3 = c
-			label.Text = text
-			label.ZIndex = 2
-			label.Parent = gui
-			local stroke = Instance.new("UIStroke")
-			stroke.Thickness = 3
-			stroke.Color = Color3.fromRGB(20, 16, 26)
-			stroke.Parent = label
-			return label
-		end
-		local fadeCard = bannerCard(gui, 0.2, if perk then 0.51 else 0.415, 820, color)
-		local labels = {
-			line("✨ KNIFE POWER! ✨", 0.24, 36, Color3.new(1, 1, 1)),
-			line(if perk then perk.DisplayName else power, 0.31, 70, color),
-			line(`on your {Items.DisplayName(item)} · 1 in {oneIn}`, 0.38, 28, Color3.fromRGB(230, 230, 240)),
+			else if rare then Color3.fromRGB(255, 120, 60) else Color3.fromRGB(255, 220, 90)
+		local card = Ui.new("Frame", {
+			Name = "Card",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.44),
+			BackgroundColor3 = Color3.fromRGB(22, 18, 34),
+			BackgroundTransparency = 0.12,
+		}, gui) :: Frame
+		Ui.corner(card, 14)
+		local stroke = Ui.new("UIStroke", { Thickness = 2, Color = color }, card)
+		local labels: { TextLabel } = {}
+		local short = KnifePowers.Short[power]
+		local words = {
+			"✨ KNIFE POWER! ✨",
+			if perk then perk.DisplayName else power,
+			`on your {Items.DisplayName(item)} · 1 in {oneIn}`,
 		}
 		if perk then
-			local short = KnifePowers.Short[power]
-			table.insert(
-				labels,
-				line(
-					`Murderer: {if short then short[1] else perk.Description}`,
-					0.43,
-					24,
-					Color3.fromRGB(255, 200, 210)
-				)
-			)
-			if short then
-				table.insert(labels, line(`Innocent: {short[2]}`, 0.475, 24, Color3.fromRGB(180, 230, 255)))
+			table.insert(words, `Murderer: {if short then short[1] else perk.Description}`)
+		end
+		if short then
+			table.insert(words, `Innocent: {short[2]}`)
+		end
+		for i, text in words do
+			local label = Ui.label({
+				Name = `Line{i}`,
+				Text = text,
+				TextScaled = false,
+				TextWrapped = false,
+				TextColor3 = if i == 2
+					then color
+					else if i == 4
+						then Color3.fromRGB(255, 200, 210)
+						else if i == 5 then Color3.fromRGB(180, 230, 255) else Color3.new(1, 1, 1),
+				ZIndex = 2,
+			}, card)
+			Ui.textStroke(label, 1.5)
+			table.insert(labels, label)
+		end
+		local function layout()
+			local _, bounds = Ui.bounds()
+			local phone = Ui.Phone
+			local width = math.min(if phone then 420 else 760, bounds.X - (if phone then 200 else 40))
+			local y, gap = if phone then 8 else 12, if phone then 4 else 6
+			for i, label in labels do
+				local height = if i == 1
+					then (if phone then 18 else 28)
+					else if i == 2 then (if phone then 28 else 48) else (if phone then 16 else 24)
+				label.Position, label.Size = UDim2.fromOffset(12, y), UDim2.new(1, -24, 0, height)
+				label.TextSize = height - 2
+				local limit = label:FindFirstChildOfClass("UITextSizeConstraint")
+				if limit then
+					limit.MinTextSize, limit.MaxTextSize = if phone then 12 else 14, height
+				end
+				y += height + gap
 			end
+			card.Size = UDim2.fromOffset(width, y + (if phone then 4 else 8))
 		end
-		for _, label in labels do
-			local scale = Instance.new("UIScale")
-			scale.Scale = 0.3
-			scale.Parent = label
-			TweenService:Create(scale, TweenInfo.new(0.45, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-		end
+		local watch = Ui.Layout.Changed:Connect(layout)
+		gui.Destroying:Connect(function()
+			watch:Disconnect()
+		end)
+		layout()
+		local scale = Ui.new("UIScale", { Scale = 0.9 }, card)
+		TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
 		Effects.Sound(Sounds.Reveal, nil, 1)
-		if rare then
-			Effects.Sound(Sounds.Reveal, nil, 0.6)
-		end
 		task.delay(if rare then 4 else 2.6, function()
-			fadeCard()
+			if not gui.Parent then
+				return
+			end
+			TweenService:Create(card, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
+			TweenService:Create(stroke, TweenInfo.new(0.5), { Transparency = 1 }):Play()
 			for _, label in labels do
 				TweenService:Create(label, TweenInfo.new(0.5), { TextTransparency = 1 }):Play()
-				local stroke = label:FindFirstChildOfClass("UIStroke")
-				if stroke then
-					TweenService:Create(stroke, TweenInfo.new(0.5), { Transparency = 1 }):Play()
+				local border = label:FindFirstChildOfClass("UIStroke")
+				if border then
+					TweenService:Create(border, TweenInfo.new(0.5), { Transparency = 1 }):Play()
 				end
 			end
 			task.wait(0.55)
@@ -884,8 +872,33 @@ end
 
 function Effects.Init()
 	trackTeammate()
+	local pendingRolls: { { any } } = {}
+	local rollWorker = false
 	Remotes:WaitForChild("Effect").OnClientEvent:Connect(function(kind: string, ...)
 		local handler = handlers[kind]
+		if kind == "PowerRoll" then
+			table.insert(pendingRolls, { ... })
+			Ui.gui:SetAttribute("PendingPowerRolls", #pendingRolls)
+			if not rollWorker then
+				rollWorker = true
+				task.spawn(function()
+					while #pendingRolls > 0 do
+						while
+							Ui.gui:GetAttribute("Presenting") == true
+							or Ui.gui:GetAttribute("FadeCover") == true
+							or player:GetAttribute("InRound")
+						do
+							task.wait(0.1)
+						end
+						local args = table.remove(pendingRolls, 1) :: { any }
+						handlers.PowerRoll(table.unpack(args))
+						Ui.gui:SetAttribute("PendingPowerRolls", #pendingRolls)
+					end
+					rollWorker = false
+				end)
+			end
+			return
+		end
 		if handler then
 			handler(...)
 		end

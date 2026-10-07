@@ -143,7 +143,12 @@ function NextAction.Pick(s: State): Action?
 
 	-- 4. Rewards and upgrades you can take right now
 	if s.TutorialDone and s.IndexClaimable > 0 then
-		return { Id = "index", Text = "Claim your <b>knife reward</b>!", Ui = "Index" }
+		return {
+			Id = "index",
+			Text = "Open <b>Index</b> for free cash + Speed!",
+			Short = "Index → free cash + Speed!",
+			Ui = "Index",
+		}
 	end
 	if full then
 		if floorAffordable(s) then

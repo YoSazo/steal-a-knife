@@ -16,6 +16,7 @@ local TextService = game:GetService("TextService")
 local TweenService = game:GetService("TweenService")
 
 local Ui = require(script.Parent.Ui)
+local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 local Theme = require(script.Parent.MenuTheme)
 local CartoonArt = require(ReplicatedStorage.Shared.Config.CartoonArt)
 local VoxelUi = require(ReplicatedStorage.Shared.Config.VoxelUi)
@@ -343,7 +344,7 @@ function Hud.Init()
 								elseif d:IsA("SurfaceGui") or d:IsA("BillboardGui") or d:IsA("ProximityPrompt") then
 									(d :: any).Enabled = mine
 								elseif d:IsA("ClickDetector") then
-									d.MaxActivationDistance = if mine then 28 else 0
+									d.MaxActivationDistance = if mine then WorldSignModel.UpgradeRange else 0
 								end
 							end
 						end
@@ -1185,6 +1186,7 @@ function Hud.Init()
 	-- Notifications: small outlined words at the top under the timer, no box (big solid bars across
 	-- the middle of the screen hid what you were doing) --------------------------------------------
 	local toasts = new("Frame", {
+		Name = "Toasts",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, if Ui.Phone then 176 else 196), -- under the timer and status
 		Size = UDim2.fromOffset(if Ui.Phone then 520 else 600, 70),
@@ -1201,7 +1203,7 @@ function Hud.Init()
 	}, toasts)
 	local toastOrder = 0
 
-	local function toast(text: string, kind: string)
+	local function showToast(text: string, kind: string): TextLabel?
 		for _, child in toasts:GetChildren() do
 			if child:IsA("TextLabel") and child.Text == text then
 				return -- already on screen
@@ -1225,6 +1227,9 @@ function Hud.Init()
 		local scale = new("UIScale", { Scale = 0.6 }, bubble)
 		TweenService:Create(scale, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Scale = 1 }):Play()
 		task.delay(if Ui.Phone then 2.5 else 3.5, function()
+			if not bubble.Parent then
+				return
+			end
 			local fade = TweenService:Create(
 				bubble,
 				TweenInfo.new(0.4),
@@ -1247,7 +1252,53 @@ function Hud.Init()
 			local oldest = table.remove(labels, 1) :: TextLabel
 			oldest:Destroy()
 		end
+		return bubble
 	end
+	local toastQueue: { { Text: string, Kind: string } } = {}
+	local toastWorker = false
+	local function busy(): boolean
+		return Ui.gui:GetAttribute("Presenting") == true
+			or Ui.gui:GetAttribute("FadeCover") == true
+			or ((Ui.gui:GetAttribute("PendingPowerRolls") or 0) :: number) > 0
+	end
+	local function toast(text: string, kind: string)
+		for _, entry in toastQueue do
+			if entry.Text == text then
+				return
+			end
+		end
+		table.insert(toastQueue, { Text = text, Kind = kind })
+		while #toastQueue > 4 do
+			table.remove(toastQueue, 1)
+		end
+		if toastWorker then
+			return
+		end
+		toastWorker = true
+		task.spawn(function()
+			while #toastQueue > 0 do
+				-- Related Notify/Effect events can arrive in either order. Let the reveal register first.
+				task.wait(0.15)
+				while busy() or player:GetAttribute("InRound") do
+					task.wait(0.1)
+				end
+				local entry = table.remove(toastQueue, 1) :: { Text: string, Kind: string }
+				local bubble = showToast(entry.Text, entry.Kind)
+				while bubble and bubble.Parent do
+					if busy() or player:GetAttribute("InRound") then
+						bubble:Destroy()
+						table.insert(toastQueue, 1, entry)
+						break
+					end
+					task.wait(0.05)
+				end
+			end
+			toastWorker = false
+		end)
+	end
+	Ui.gui:GetAttributeChangedSignal("Presenting"):Connect(function()
+		toasts.Visible = not busy()
+	end)
 	-- In a round nothing pops up at all: the game speaks for itself (a vanished Murderer, a body)
 	Remotes.Notify.OnClientEvent:Connect(function(text: string, kind: string)
 		if not player:GetAttribute("InRound") then

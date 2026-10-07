@@ -197,7 +197,7 @@ function BaseService.RefreshWalls(base: MapService.BaseSite)
 		if owner then
 			local click = Instance.new("ClickDetector")
 			click.Name = clickName
-			click.MaxActivationDistance = 28
+			click.MaxActivationDistance = WorldSignModel.UpgradeRange
 			click:SetAttribute("Owner", owner.UserId)
 			click.MouseClick:Connect(function(player)
 				if player == owner and not player:GetAttribute("InRound") and onClick then

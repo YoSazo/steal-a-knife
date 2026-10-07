@@ -5,32 +5,16 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local Ui = require(script.Parent.Ui)
+local WorldSignTarget = require(ReplicatedStorage.Shared.WorldSignTarget)
 local player = Players.LocalPlayer
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
-export type Target = { Part: BasePart, Action: string }
+export type Target = WorldSignTarget.Target
 local WorldSignInput = {}
-local ACTIONS = { UpgradeBase = "Slot", UpgradeWheel = "Speed", BuyWheel = "RobuxWheel" }
 local initialized = false
 local lastTap = -math.huge
 
-function WorldSignInput.Resolve(part: Instance?, rootPosition: Vector3, userId: number): Target?
-	if not part or not part:IsA("BasePart") then
-		return nil
-	end
-	local click = part:FindFirstChildWhichIsA("ClickDetector")
-	if not click or (part.Position - rootPosition).Magnitude > click.MaxActivationDistance then
-		return nil
-	end
-	if part:GetAttribute("SellOwner") == userId then
-		return { Part = part, Action = "Sell" }
-	end
-	local action = ACTIONS[click.Name]
-	if action and click:GetAttribute("Owner") == userId then
-		return { Part = part, Action = action }
-	end
-	return nil
-end
+WorldSignInput.Resolve = WorldSignTarget.Resolve
 
 -- InputObject.Position and GetMouseLocation are raw viewport pixels, including the top inset.
 -- Use one coordinate space for mouse and touch, so a tap hits the visible sign instead of below it.

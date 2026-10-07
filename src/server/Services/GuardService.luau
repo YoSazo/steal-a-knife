@@ -30,6 +30,7 @@ local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local ToyBlockModel = require(ReplicatedStorage.Shared.ToyBlockModel)
 local BossTitleModel = require(ReplicatedStorage.Shared.BossTitleModel)
 local BossChairs = require(ReplicatedStorage.Shared.Config.BossChairs)
+local BossChairMotion = require(ReplicatedStorage.Shared.BossChairMotion)
 local BossSleepFaces = require(ReplicatedStorage.Shared.Config.BossSleepFaces)
 local BossChairModel = require(ReplicatedStorage.Shared.Assets.BossChairModel)
 
@@ -146,7 +147,6 @@ local projectiles: { Projectile } = {}
 local folder: Folder
 local projectileFolder: Folder
 local rng = Random.new()
-local idleHitNotice: { [Player]: number } = {}
 
 local function now(): number
 	return os.clock()
@@ -547,16 +547,11 @@ end
 -- up straight away, then the uploaded mesh model replaces it once it has downloaded. Made 1.25x
 -- (seat top 3.25) to fit a BossScale boss: at 1x the boss overhung it on every side.
 local CHAIR_SCALE = 1.25
--- Getting up: hops out forward over the footstool (GameConfig.BossHop, client/Moves poses it), then
+-- Getting up: stand and step forward (client/Moves poses it), then
 -- walks on out to CHAIR_EXIT in front of the chair before turning (the torch post stands beside it)
 local CHAIR_EXIT = 7
 
--- Where the hop has got to at share p of the wake (in the air from TakeOff to Land)
-local function hopPosition(post: CFrame, p: number): Vector3
-	local hop = GameConfig.BossHop
-	local x = math.clamp((p - hop.TakeOff) / (hop.Land - hop.TakeOff), 0, 1)
-	return post.Position + post.LookVector * hop.Distance * x + Vector3.yAxis * (4 * hop.Height * x * (1 - x))
-end
+local chairPosition = BossChairMotion.Position
 local function mountChair(zone: number, parent: Instance, frame: CFrame)
 	local spec = BossChairs[zone]
 	if not spec then
@@ -919,7 +914,7 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 		if not guard.IsShadow and (guard.Position - guard.Boss.Post.Position).Magnitude < 1 then
 			local serverNow = workspace:GetServerTimeNow()
 			guard.Model:SetAttribute("WakeAt", serverNow)
-			guard.Model:SetAttribute("WakeEnd", serverNow + wake)
+			guard.Model:SetAttribute("WakeEnd", serverNow + BossChairMotion.WakeDuration(wake))
 			guard.Model:SetAttribute("SitAt", nil)
 			guard.Model:SetAttribute("SitEnd", nil)
 			guard.InChair = true
@@ -928,7 +923,7 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 		Net.Remotes.Effect:FireAllClients("BossWake", guard.Model, wake)
 	end
 	guard.WakeStart = now()
-	guard.WakeUntil = now() + wake * GameConfig.BossHop.Done
+	guard.WakeUntil = now() + BossChairMotion.WakeDuration(wake) * GameConfig.BossHop.Done
 	setAsleep(guard, false)
 	guard.Target = thief
 	guard.Returning = false
@@ -947,7 +942,7 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 	end
 	-- (the "!" stretch once they're on their feet)
 	local model = guard.Model
-	task.delay(if startAt then 0 else wake * GameConfig.BossHop.Done, function()
+	task.delay(if startAt then 0 else BossChairMotion.WakeDuration(wake) * GameConfig.BossHop.Done, function()
 		if model.Parent then
 			Net.Animate(model, "Alert")
 		end
@@ -1227,11 +1222,10 @@ local function step(guard: Guard, dt: number)
 
 	-- Walking back to the post after a chase
 	if guard.Returning then
-		-- Walk back round to the front of the chair, turn round and hop backwards into it over the
-		-- footstool (client/Moves plays the hop out backwards)
+		-- Walk back round to the front, turn around and settle into the chair without jumping.
 		local hop = GameConfig.BossHop
 		local post = guard.Boss.Post
-		local front = hopPosition(post, 1)
+		local front = chairPosition(post, 1)
 		local sitStart = guard.SitStart
 		if not sitStart then
 			local approach = post.Position + post.LookVector * CHAIR_EXIT
@@ -1250,12 +1244,12 @@ local function step(guard: Guard, dt: number)
 				guard.Model:SetAttribute("WakeAt", nil)
 				guard.Model:SetAttribute("WakeEnd", nil)
 				guard.Model:SetAttribute("SitAt", serverNow)
-				guard.Model:SetAttribute("SitEnd", serverNow + hop.SitTime)
+				guard.Model:SetAttribute("SitEnd", serverNow + BossChairMotion.SitDuration())
 			end
 			return
 		end
-		local x = math.clamp((t - sitStart) / hop.SitTime, 0, 1)
-		guard.Position = hopPosition(post, hop.Done - x * (hop.Done - hop.Crouch))
+		local x = math.clamp((t - sitStart) / BossChairMotion.SitDuration(), 0, 1)
+		guard.Position = chairPosition(post, hop.Done - x * (hop.Done - hop.Crouch))
 		guard.Model:PivotTo(post.Rotation + guard.Position)
 		if x >= 1 then
 			guard.Returning = false
@@ -1314,10 +1308,11 @@ local function step(guard: Guard, dt: number)
 	-- they only turn towards you once they're getting up)
 	if t < guard.AlertUntil then
 		if guard.InChair then
-			-- Hopping out of the chair over the footstool (client/Moves poses it)
+			-- Stand and step forward at 1.5x speed; the original alert/head-start time stays intact.
 			local post = guard.Boss.Post
-			local p = (t - guard.WakeStart) / math.max(guard.AlertUntil - guard.WakeStart, 0.1)
-			guard.Position = hopPosition(post, p)
+			local p = (t - guard.WakeStart)
+				/ math.max(BossChairMotion.WakeDuration(guard.AlertUntil - guard.WakeStart), 0.1)
+			guard.Position = chairPosition(post, p)
 			guard.Model:PivotTo(post.Rotation + guard.Position)
 		elseif t >= guard.WakeUntil then
 			face(guard, targetRoot.Position)
@@ -1551,10 +1546,6 @@ function GuardService.Damage(guard: Guard, amount: number, attacker: Player?)
 	end
 	if not guard.Target then
 		quip(guard, attacker, "Idle")
-		if attacker and now() - (idleHitNotice[attacker] or 0) > 20 then
-			idleHitNotice[attacker] = now()
-			Net.Notify(attacker, "Hitting the boss does nothing. Grab a knife from the wall!", "info")
-		end
 		return
 	end
 	local t = now()
@@ -1780,10 +1771,6 @@ function GuardService.Init()
 				end
 			end
 		end
-	end)
-
-	Players.PlayerRemoving:Connect(function(player)
-		idleHitNotice[player] = nil
 	end)
 
 	-- Only chasers think; a boss at their post just stands there (the client fidgets them)

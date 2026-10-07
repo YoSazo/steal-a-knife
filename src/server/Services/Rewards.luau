@@ -9,6 +9,7 @@
 -- The Case Shop goes through UpgradeService's Purchase remote ("Case:<Rarity>").
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
 local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 
 local Format = require(ReplicatedStorage.Shared.Format)
@@ -305,7 +306,7 @@ end
 
 -- Index rewards -------------------------------------------------------------------------------
 
-local function claimIndex(player: Player, which: unknown): boolean
+local function claimIndex(player: Player, which: unknown): (boolean, { string }?)
 	local profile = DataService.Get(player)
 	if not profile or type(which) ~= "string" then
 		return false
@@ -339,10 +340,20 @@ local function claimIndex(player: Player, which: unknown): boolean
 	end)
 	Net.Notify(player, `Index reward: +{Format.Cash(cash)} and +{Format.Short(speed)} Speed!`, "good")
 	Net.Remotes.Effect:FireClient(player, "IndexClaim", cash, speed)
-	return true
+	DataService.LearnGuidance(player, "index")
+	return true, table.clone(profile.IndexClaimed)
 end
 
 function Rewards.Init()
+	local function watchDeliveries(player: Player)
+		player:GetAttributeChangedSignal("KnifePlacementSerial"):Connect(function()
+			DataService.LearnGuidance(player, "delivery")
+		end)
+	end
+	Players.PlayerAdded:Connect(watchDeliveries)
+	for _, player in Players:GetPlayers() do
+		watchDeliveries(player)
+	end
 	local folder = Instance.new("Folder")
 	folder.Name = "PlazaRewards"
 	folder.Parent = workspace:FindFirstChild("Map")
@@ -363,7 +374,14 @@ function Rewards.Init()
 	end)
 	Net.Remotes.Tutorial.OnServerEvent:Connect(function(player: Player, step: unknown, at: unknown)
 		local profile = DataService.Get(player)
-		if step == "Done" and profile and not profile.TutorialDone then
+		if step == "GuideMode" and profile and (at == "Auto" or at == "On" or at == "Off") then
+			DataService.Update(player, function(p)
+				p.GuidanceMode = at :: string
+			end)
+		elseif step == "GuideLearn" and type(at) == "string" and at ~= "delivery" then
+			-- These only retire help on this player's screen; no rewards or gameplay advantages.
+			DataService.LearnGuidance(player, at)
+		elseif step == "Done" and profile and not profile.TutorialDone then
 			DataService.Update(player, function(p)
 				p.TutorialDone = true
 				p.Cash += GameConfig.TutorialReward

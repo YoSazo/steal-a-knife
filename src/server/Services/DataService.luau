@@ -11,6 +11,7 @@ local RunService = game:GetService("RunService")
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
+local GuidePolicy = require(ReplicatedStorage.Shared.GuidePolicy)
 local Net = require(script.Parent.Parent.Remotes)
 
 export type Profile = {
@@ -60,6 +61,8 @@ export type Profile = {
 	LostStreak: number, -- the daily streak day a missed day broke (Save My Streak restores it)
 	TutorialStep: number, -- how far the first-minutes guide got (resumes there)
 	Tips: { string }, -- one-time tips already shown (client/Tips)
+	GuidanceMode: string, -- Auto / On / Off
+	GuidanceLearned: { [string]: number }, -- demonstrated controls and deliveries; survives rejoining
 	PowerXP: { [string]: number }, -- knife power id -> XP (its level: GameConfig.PowerLevelFor)
 	-- Analytics (docs/ANALYTICS.md)
 	FirstSeen: number, -- os.time() of their first ever join
@@ -141,6 +144,8 @@ local function defaultProfile(): Profile
 		LostStreak = 0,
 		TutorialStep = 1,
 		Tips = {},
+		GuidanceMode = "Auto",
+		GuidanceLearned = {},
 		PowerXP = {},
 		FirstSeen = 0,
 		Sessions = 0,
@@ -214,6 +219,32 @@ local function reconcile(data: any): Profile
 		end
 	end
 	profile.Firsts = firsts
+	if profile.GuidanceMode ~= "On" and profile.GuidanceMode ~= "Off" then
+		profile.GuidanceMode = "Auto"
+	end
+	local learned: { [string]: number } = {}
+	for skill, count in profile.GuidanceLearned do
+		local limit = if type(skill) == "string" then GuidePolicy.Limit(skill) else nil
+		if limit and type(count) == "number" and count == count then
+			learned[skill] = math.clamp(math.floor(count), 0, limit)
+		end
+	end
+	-- Existing saves already prove these actions; adding coaching must not restart their learning.
+	learned.delivery =
+		math.max(learned.delivery or 0, if firsts.second_knife_home then 2 elseif firsts.knife_home then 1 else 0)
+	if firsts.cash_collected then
+		learned.collect = 1
+	end
+	if firsts.wheel_trained then
+		learned.train = 1
+	end
+	if profile.TreadmillLevel > 1 or profile.TrailLevel > 0 then
+		learned.wheel = 1
+	end
+	if #profile.IndexClaimed > 0 then
+		learned.index = 1
+	end
+	profile.GuidanceLearned = learned
 	profile.Source = profile.Source:sub(1, 300)
 	profile.Heat = math.clamp(math.floor(profile.Heat), 0, GameConfig.Fuel.MaxHeat)
 	profile.PowerPity = math.max(0, math.floor(profile.PowerPity))
@@ -540,6 +571,13 @@ local function publish(player: Player, profile: Profile)
 	player:SetAttribute("LostStreak", profile.LostStreak)
 	player:SetAttribute("TutorialStep", profile.TutorialStep)
 	player:SetAttribute("TipsSeen", table.concat(profile.Tips, ","))
+	player:SetAttribute("GuidanceMode", profile.GuidanceMode)
+	local learned = {}
+	for skill, count in profile.GuidanceLearned do
+		table.insert(learned, `{skill}={count}`)
+	end
+	table.sort(learned)
+	player:SetAttribute("GuidanceLearned", table.concat(learned, ","))
 	local shielded = DataService.IsNewPlayer(player, profile)
 	player:SetAttribute("Shielded", shielded or nil)
 	player:SetAttribute("ShieldLeft", if shielded then GameConfig.NewPlayerShield - profile.PlayTime else nil)
@@ -606,6 +644,23 @@ function DataService.Update(player: Player, fn: (Profile) -> ())
 	end
 	fn(profile)
 	publish(player, profile)
+end
+
+-- Preferences only: record demonstrated lessons without changing rewards or game progression.
+function DataService.LearnGuidance(player: Player, skill: string)
+	local profile = profiles[player]
+	local limit = GuidePolicy.Limit(skill)
+	local entries = 0
+	if profile and profile.GuidanceLearned[skill] == nil then
+		for _ in profile.GuidanceLearned do
+			entries += 1
+		end
+	end
+	if profile and limit and #skill <= 40 and entries < 64 and (profile.GuidanceLearned[skill] or 0) < limit then
+		DataService.Update(player, function(p)
+			p.GuidanceLearned[skill] = math.min(limit, (p.GuidanceLearned[skill] or 0) + 1)
+		end)
+	end
 end
 
 -- Write this player's save right now (after a Robux purchase); true if it stuck

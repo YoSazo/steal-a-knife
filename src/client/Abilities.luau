@@ -331,6 +331,9 @@ function Abilities.Init()
 			Moves.Play(character, "Throw")
 		end
 		Remotes.Ability:FireServer(aimDirection(at, touch), "Spam")
+		if Ui.LearnGuidance then
+			Ui.LearnGuidance("knife_fight")
+		end
 	end
 
 	local function beginCharge(kind: string?)
@@ -1261,6 +1264,9 @@ function Abilities.Init()
 			Moves.Play(character, COMBO[comboIndex])
 			if tool:GetAttribute("MurderKnife") then
 				Remotes.Stab:FireServer(stabTarget(character))
+				if Ui.LearnGuidance then
+					Ui.LearnGuidance("knife_fight")
+				end
 			end
 		end)
 	end

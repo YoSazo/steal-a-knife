@@ -417,6 +417,7 @@ function Menus.Init()
 	end
 	-- The right side's Powers button (client/QuickBar) opens the same Power Mystic panel
 	Ui.Panels.Powers = powersFrame
+	Ui.Panels.Index = indexFrame
 	powersFrame:GetPropertyChangedSignal("Visible"):Connect(function()
 		if powersFrame.Visible then
 			refreshPowers()
@@ -439,6 +440,7 @@ function Menus.Init()
 	do
 		player:GetAttributeChangedSignal(attribute):Connect(refresh)
 	end
+	Ui.gui:GetAttributeChangedSignal("IndexAcknowledged"):Connect(refreshIndex)
 	player:GetAttributeChangedSignal("Cash"):Connect(function()
 		if rebirthFrame.Visible then
 			refreshRebirth()
@@ -867,22 +869,30 @@ function Menus.Init()
 		)
 	end
 	moreButton("Stats", "Trophy", statsFrame, refreshDetails)
-	local arrowsButton: TextButton
-	arrowsButton = Theme.button(moreBody, "Arrows ON", Theme.Cyan, {
-		Name = "GuideArrows",
+	local guidanceButton: TextButton
+	guidanceButton = Theme.button(moreBody, "Guidance: AUTO", Theme.Cyan, {
+		Name = "GuidanceMode",
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.fromScale(0.32, 1),
 		Size = UDim2.new(0.32, -8, 0.24, 0),
 		ZIndex = 8,
 		MaximumTextSize = 28,
 	}, function()
-		local enabled = Ui.gui:GetAttribute("GuideArrows") == false
-		Ui.gui:SetAttribute("GuideArrows", enabled)
-		local label = arrowsButton:FindFirstChild("Label") :: TextLabel?
-		if label then
-			label.Text = if enabled then "Arrows ON" else "Arrows OFF"
-		end
+		local current = Ui.gui:GetAttribute("GuidanceMode") or player:GetAttribute("GuidanceMode") or "Auto"
+		local mode = if current == "Auto" then "On" else if current == "On" then "Off" else "Auto"
+		Ui.gui:SetAttribute("GuidanceMode", mode)
+		Remotes.Tutorial:FireServer("GuideMode", mode)
 	end)
+	local function refreshGuidance()
+		local label = guidanceButton:FindFirstChild("Label") :: TextLabel?
+		if label then
+			label.Text = `Guidance: {string.upper(
+				(Ui.gui:GetAttribute("GuidanceMode") or player:GetAttribute("GuidanceMode") or "Auto") :: string
+			)}`
+		end
+	end
+	Ui.gui:GetAttributeChangedSignal("GuidanceMode"):Connect(refreshGuidance)
+	refreshGuidance()
 	-- How to play: the first-minutes guide again (client/Tutorial)
 	Theme.button(moreBody, "How to play", Theme.Cyan, {
 		Name = "HowToPlay",

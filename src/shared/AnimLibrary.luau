@@ -479,36 +479,32 @@ local Clips: { [string]: Clip } = {
 		},
 	},
 
-	-- Spotting someone: startled hop, lantern raised
+	-- Spotting someone: feet planted, lantern raised (50% faster).
 	Alert = {
-		Length = 0.7,
+		Length = 0.7 / 1.5,
 		Keys = {
 			{ T = 0, Pose = {} },
 			{
-				T = 0.12,
+				T = 0.12 / 1.5,
 				Ease = BACK,
 				Dir = OUT,
 				Pose = {
-					RootMove = T(0, 1.1, 0),
 					LeftShoulder = R(150, 0, -20),
 					LeftElbow = R(30, 0, 0),
 					RightShoulder = R(40, 0, 25),
 					Neck = R(-18, 0, 0),
-					RightHip = R(30, 0, 0),
-					RightKnee = R(-40, 0, 0),
 				},
 			},
 			{
-				T = 0.35,
+				T = 0.35 / 1.5,
 				Ease = QUAD,
 				Dir = IN,
 				Pose = {
-					RootMove = T(0, -0.3, 0),
 					LeftShoulder = R(135, 0, -20),
 					Neck = R(-8, 0, 0),
 				},
 			},
-			{ T = 0.7, Ease = QUAD, Dir = OUT, Pose = {} },
+			{ T = 0.7 / 1.5, Ease = QUAD, Dir = OUT, Pose = {} },
 		},
 	},
 

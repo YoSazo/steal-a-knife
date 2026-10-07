@@ -1,0 +1,30 @@
+local Motion = require(game.ReplicatedStorage.Shared.BossChairMotion)
+local Anim = require(game.ReplicatedStorage.Shared.AnimLibrary)
+local Config = require(game.ReplicatedStorage.Shared.Config.GameConfig)
+return function(t)
+	t.test("chair exit and return never lift the root", function()
+		local post = CFrame.new(10, 20, 30) * CFrame.Angles(0, 0.7, 0)
+		for i = 0, 100 do
+			t.expect.equal(Motion.Position(post, i / 100).Y, post.Position.Y)
+		end
+	end)
+	t.test("both chair transitions play at 1.5x", function()
+		t.expect.equal(Motion.Speed, 1.5)
+		t.expect.equal(Motion.WakeDuration(2.2), 2.2 / 1.5)
+		t.expect.equal(Motion.SitDuration(), Config.BossHop.SitTime / 1.5)
+	end)
+	t.test("chair pose blends from seated to upright", function()
+		local seated = Motion.Pose(0)
+		local standing, lean = Motion.Pose(1)
+		t.expect.equal(seated, 1)
+		t.expect.equal(standing, 0)
+		t.expect.truthy(math.abs(lean) < 1e-10)
+	end)
+	t.test("alert gesture has planted feet and no vertical jump", function()
+		for _, key in Anim.Clips.Alert.Keys do
+			t.expect.equal(key.Pose.RootMove, nil)
+			t.expect.equal(key.Pose.RightHip, nil)
+		end
+		t.expect.equal(Anim.Clips.Alert.Length, 0.7 / 1.5)
+	end)
+end

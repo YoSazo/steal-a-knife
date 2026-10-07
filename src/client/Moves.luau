@@ -17,6 +17,7 @@ local RunService = game:GetService("RunService")
 
 local AnimLibrary = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("AnimLibrary"))
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local BossChairMotion = require(ReplicatedStorage.Shared.BossChairMotion)
 local Lod = require(script.Parent.Lod)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local localPlayer = Players.LocalPlayer
@@ -276,24 +277,16 @@ local function step(dt: number)
 				Waist = Vector3.new(6 + math.sin(now * 1.4 + s) * 3, math.sin(now * 0.6 + s) * 10, 0),
 			}, 1)
 		end
-		-- Bosses doze in their chair (GuardService setAsleep), and getting up / sitting down are acted
-		-- out (Steal An Egg's chicken wakes before it moves). WakeAt..WakeEnd, as a share p of it
-		-- (GameConfig.BossHop has the beats; the server flies the body along the same hop):
-		--   0-0.15     the head snaps up, eyes open
-		--   0.15-Crouch hands grip the armrests, looking around
-		--   Crouch-TakeOff  crouch forward, arms swing back
-		--   TakeOff-Land    hop out over the footstool, knees tucked, arms up
-		--   Land-Done       land in a crouch and straighten up
-		-- SitAt..SitEnd (back home) is the same hop backwards into the seat.
+		-- The server and client share one grounded chair transition: wake, lean forward, stand.
+		-- Returning reverses it into a seated pose. No jump, tucked knees or landing pose.
 		local hop = GameConfig.BossHop
-		local sit, crouch, air, land, dozing = 0, 0, 0, 0, 0
+		local sit, crouch, dozing = 0, 0, 0
 		if CollectionService:HasTag(model, "Guard") then
 			local sitAt, sitEnd = model:GetAttribute("SitAt"), model:GetAttribute("SitEnd")
 			if model:GetAttribute("Asleep") then
 				sit, dozing = 1, 1
-				-- (nodding off just after landing back in the seat)
-				if type(sitEnd) == "number" and serverNow - sitEnd < 1 then
-					local x = math.clamp(serverNow - sitEnd, 0, 1)
+				if type(sitEnd) == "number" and serverNow - sitEnd < 1 / BossChairMotion.Speed then
+					local x = math.clamp((serverNow - sitEnd) * BossChairMotion.Speed, 0, 1)
 					dozing = x * x * (3 - 2 * x)
 				end
 			else
@@ -307,37 +300,11 @@ local function step(dt: number)
 					p = hop.Done - q * (hop.Done - hop.Crouch)
 				end
 				if p then
-					-- Keyframes: blend between neighbouring poses
-					local keys: { { At: number, Pose: string } } = {
-						{ At = hop.Crouch, Pose = "sit" },
-						{ At = hop.TakeOff, Pose = "crouch" },
-						{ At = hop.TakeOff + 0.06, Pose = "air" },
-						{ At = hop.Land - 0.06, Pose = "air" },
-						{ At = hop.Land, Pose = "land" },
-						{ At = hop.Done, Pose = "none" },
-					}
-					local weights: { [string]: number } = { sit = 0, crouch = 0, air = 0, land = 0, none = 0 }
-					if p <= keys[1].At then
-						weights.sit = 1
-					elseif p >= keys[#keys].At then
-						weights.none = 1
-					else
-						for i = 1, #keys - 1 do
-							local a, b = keys[i], keys[i + 1]
-							if p >= a.At and p <= b.At then
-								local x = math.clamp((p - a.At) / math.max(b.At - a.At, 0.001), 0, 1)
-								x = x * x * (3 - 2 * x)
-								weights[a.Pose] += 1 - x
-								weights[b.Pose] += x
-								break
-							end
-						end
-					end
-					sit, crouch, air, land = weights.sit, weights.crouch, weights.air, weights.land
+					sit, crouch = BossChairMotion.Pose(p)
 				end
 			end
 		end
-		if (sit > 0 or crouch > 0 or air > 0 or land > 0) and not chargeStart then
+		if (sit > 0 or crouch > 0) and not chargeStart then
 			local breath = math.sin(now * 1.6 + rig.Seed) * dozing
 			local awake = 1 - dozing
 			-- Startled once awake: glancing left and right while gripping the armrests
@@ -358,44 +325,19 @@ local function step(dt: number)
 				LeftElbow = Vector3.new(70 * dozing + 50 * awake, 0, 0),
 				RightElbow = Vector3.new(70 * dozing + 50 * awake, 0, 0),
 			}, sit)
-			-- Crouched on the seat's edge to spring: leaning well forward, arms swung back
+			-- A small forward lean while pushing off the armrests, rather than a springing crouch.
 			addPose(total, {
-				RootMove = Vector3.new(0, 0.1, 0),
-				LeftHip = Vector3.new(80, 0, 0),
-				RightHip = Vector3.new(80, 0, 0),
-				LeftKnee = Vector3.new(-80, 0, 0),
-				RightKnee = Vector3.new(-80, 0, 0),
-				Waist = Vector3.new(-30, 0, 0),
-				Neck = Vector3.new(22, 0, 0),
-				LeftShoulder = Vector3.new(-45, 0, -10),
-				RightShoulder = Vector3.new(-45, 0, 10),
-				LeftElbow = Vector3.new(15, 0, 0),
-				RightElbow = Vector3.new(15, 0, 0),
+				LeftHip = Vector3.new(30, 0, 0),
+				RightHip = Vector3.new(30, 0, 0),
+				LeftKnee = Vector3.new(-35, 0, 0),
+				RightKnee = Vector3.new(-35, 0, 0),
+				Waist = Vector3.new(-14, 0, 0),
+				Neck = Vector3.new(12, 0, 0),
+				LeftShoulder = Vector3.new(30, 0, -10),
+				RightShoulder = Vector3.new(30, 0, 10),
+				LeftElbow = Vector3.new(55, 0, 0),
+				RightElbow = Vector3.new(55, 0, 0),
 			}, crouch)
-			-- In the air: knees tucked up, arms thrown up
-			addPose(total, {
-				LeftHip = Vector3.new(65, 0, -6),
-				RightHip = Vector3.new(65, 0, 6),
-				LeftKnee = Vector3.new(-95, 0, 0),
-				RightKnee = Vector3.new(-95, 0, 0),
-				Waist = Vector3.new(-8, 0, 0),
-				Neck = Vector3.new(10, 0, 0),
-				LeftShoulder = Vector3.new(150, 0, -20),
-				RightShoulder = Vector3.new(150, 0, 20),
-				LeftElbow = Vector3.new(20, 0, 0),
-				RightElbow = Vector3.new(20, 0, 0),
-			}, air)
-			-- Landing: a little squat, arms out for balance
-			addPose(total, {
-				RootMove = Vector3.new(0, -0.9, 0),
-				LeftHip = Vector3.new(45, 0, 0),
-				RightHip = Vector3.new(45, 0, 0),
-				LeftKnee = Vector3.new(-70, 0, 0),
-				RightKnee = Vector3.new(-70, 0, 0),
-				Waist = Vector3.new(-15, 0, 0),
-				LeftShoulder = Vector3.new(40, 0, -45),
-				RightShoulder = Vector3.new(40, 0, 45),
-			}, land)
 		elseif CollectionService:HasTag(model, "Guard") and not busy and not chargeStart then
 			local s = rig.Seed
 			addPose(total, {

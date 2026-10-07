@@ -25,6 +25,7 @@ local Ui = {
 	ReplayTutorial = nil :: (() -> ())?, -- set by Tutorial (More > How to play)
 	Toast = nil :: ((text: string, kind: string) -> ())?, -- set by Hud: a message on the Feedback layer
 	GuideTargets = {} :: { [string]: GuiObject },
+	LearnGuidance = nil :: ((skill: string) -> ())?,
 }
 
 local presentations: { [Instance]: boolean } = {}

@@ -6,6 +6,7 @@ local Theme = require(script.Parent.MenuTheme)
 local Config = ReplicatedStorage.Shared.Config
 local Knives = require(Config.Knives)
 local GameConfig = require(Config.GameConfig)
+local IndexRewards = require(ReplicatedStorage.Shared.IndexRewards)
 local player = Players.LocalPlayer
 local Remotes = ReplicatedStorage.Remotes
 local View = {}
@@ -16,9 +17,36 @@ function View.Build(): (Frame, () -> number)
 	local selected = Knives.List[1]
 	local found: { [string]: boolean } = {}
 	local claimed: { [string]: boolean } = {}
+	local rowHeight = if Ui.Phone then 110 else 60
+	local contentTop = rowHeight + 10
+	local refresh: () -> number
+	local function collect(which: string)
+		local pending = IndexRewards.Pending(
+			(player:GetAttribute("Discovered") or "") :: string,
+			(player:GetAttribute("IndexClaimed") or "") :: string,
+			Ui.gui:GetAttribute("IndexAcknowledged") :: string?
+		)
+		if #pending == 0 or (which ~= "All" and not table.find(pending, which)) then
+			return
+		end
+		local ok, acknowledged = Remotes.ClaimIndex:InvokeServer(which)
+		if ok and type(acknowledged) == "table" then
+			Ui.gui:SetAttribute("IndexAcknowledged", table.concat(acknowledged, ","))
+		end
+		refresh()
+	end
+	local all = Theme.button(body, "CLAIM ALL", Theme.Green, {
+		Name = "ClaimAll",
+		Size = UDim2.new(1, 0, 0, rowHeight),
+		MaximumTextSize = 32,
+	}, function()
+		collect("All")
+	end)
+	Ui.GuideTargets.IndexClaim = all
 	local filters = Ui.new("ScrollingFrame", {
 		Name = "RarityFilters",
-		Size = UDim2.new(0, 128, 1, -52),
+		Position = UDim2.fromOffset(0, contentTop),
+		Size = UDim2.new(0, 128, 1, -contentTop - 52),
 		BackgroundTransparency = 1,
 		CanvasSize = UDim2.new(),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
@@ -29,8 +57,8 @@ function View.Build(): (Frame, () -> number)
 	Ui.padding(filters, 3, 3)
 	local grid = Ui.new("ScrollingFrame", {
 		Name = "Collection",
-		Position = UDim2.fromOffset(142, 0),
-		Size = UDim2.new(1, -380, 1, -52),
+		Position = UDim2.fromOffset(142, contentTop),
+		Size = UDim2.new(1, -380, 1, -contentTop - 52),
 		BackgroundTransparency = 1,
 		CanvasSize = UDim2.new(),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
@@ -47,8 +75,8 @@ function View.Build(): (Frame, () -> number)
 	-- See-through dark, like the rest of the window - not a solid (near-black) panel.
 	local inspector = Theme.surface(body, {
 		Name = "Inspector",
-		Position = UDim2.new(1, -226, 0, 0),
-		Size = UDim2.new(0, 226, 1, 0),
+		Position = UDim2.new(1, -226, 0, contentTop),
+		Size = UDim2.new(0, 226, 1, -contentTop),
 		BackgroundTransparency = 0.25,
 		ZIndex = 7,
 	}, Theme.Navy, Color3.fromRGB(70, 119, 179))
@@ -74,21 +102,21 @@ function View.Build(): (Frame, () -> number)
 	end
 	local display = Theme.surface(
 		inspector,
-		{ Position = UDim2.fromOffset(4, 64), Size = UDim2.new(1, -8, 0, 190), ZIndex = 7 },
+		{ Position = UDim2.fromOffset(4, 64), Size = UDim2.new(1, -8, 0, 128), ZIndex = 7 },
 		Knives.RarityColors[selected.Rarity]
 	)
 	local art = Theme.image(display, selected.Name)
 	Theme.text(
 		inspector,
 		"Rewards",
-		{ Position = UDim2.fromOffset(4, 250), Size = UDim2.new(1, -8, 0, 26), MaximumTextSize = 24 }
+		{ Position = UDim2.fromOffset(4, 190), Size = UDim2.new(1, -8, 0, 26), MaximumTextSize = 24 }
 	)
 	local rewards = {}
 	local rewardTiles: { Frame } = {}
 	for i, symbol in { "Cash", "Speed" } do
 		local tile = Theme.surface(
 			inspector,
-			{ Position = UDim2.new((i - 1) * 0.5, 8, 0, 278), Size = UDim2.new(0.5, -16, 0, 74), ZIndex = 7 },
+			{ Position = UDim2.new((i - 1) * 0.5, 8, 0, 222), Size = UDim2.new(0.5, -16, 0, 60), ZIndex = 7 },
 			Knives.RarityColors[selected.Rarity]
 		)
 		rewardTiles[i] = tile
@@ -99,7 +127,7 @@ function View.Build(): (Frame, () -> number)
 		})
 		rewards[i] = Theme.text(tile, "", {
 			Name = symbol .. "Reward",
-			Position = UDim2.fromOffset(2, 42),
+			Position = UDim2.fromOffset(2, 31),
 			Size = UDim2.new(1, -4, 0, 28),
 			MaximumTextSize = 22,
 		})
@@ -110,7 +138,7 @@ function View.Build(): (Frame, () -> number)
 		Theme.Green,
 		{ Name = "Claim", Position = UDim2.new(0, 6, 1, -60), Size = UDim2.new(1, -12, 0, 54), MaximumTextSize = 40 },
 		function()
-			Remotes.ClaimIndex:InvokeServer(selected.Name)
+			collect(selected.Name)
 		end
 	)
 	local footer = Theme.surface(
@@ -119,6 +147,7 @@ function View.Build(): (Frame, () -> number)
 		Theme.Navy,
 		Color3.fromRGB(47, 103, 155)
 	)
+	claim.Visible = not Ui.Phone -- the large Claim All button is the single phone claim action
 	local fill = Theme.surface(
 		footer,
 		{ Position = UDim2.fromOffset(5, 5), Size = UDim2.new(0, 0, 1, -10), ZIndex = 7, Visible = false },
@@ -127,17 +156,9 @@ function View.Build(): (Frame, () -> number)
 	local progress = Theme.text(footer, "", {
 		Name = "ProgressText",
 		Position = UDim2.fromOffset(8, 2),
-		Size = UDim2.new(1, -150, 1, -4),
+		Size = UDim2.new(1, -16, 1, -4),
 		MaximumTextSize = 25,
 	})
-	local all = Theme.button(footer, "Claim all", Theme.Cyan, {
-		Name = "ClaimAll",
-		Position = UDim2.new(1, -138, 0, 3),
-		Size = UDim2.fromOffset(132, 36),
-		MaximumTextSize = 21,
-	}, function()
-		Remotes.ClaimIndex:InvokeServer("All")
-	end)
 	local tiles: { [string]: any } = {}
 	local filterButtons: { [string]: TextButton } = {}
 	local function inspect()
@@ -227,7 +248,7 @@ function View.Build(): (Frame, () -> number)
 		)
 		tiles[knife.Name] = { Button = button, Name = name, Art = image, Border = border }
 	end
-	local function refresh(): number
+	refresh = function(): number
 		found, claimed = {}, {}
 		for _, name in Ui.list(player:GetAttribute("Discovered")) do
 			found[name] = true
@@ -235,11 +256,20 @@ function View.Build(): (Frame, () -> number)
 		for _, name in Ui.list(player:GetAttribute("IndexClaimed")) do
 			claimed[name] = true
 		end
+		for _, name in Ui.list(Ui.gui:GetAttribute("IndexAcknowledged")) do
+			claimed[name] = true
+		end
+		local cash, speed = 0, 0
 		local count, claimable = 0, 0
 		for _, knife in Knives.List do
 			local known = found[knife.Name] == true
 			count += if known then 1 else 0
 			claimable += if known and not claimed[knife.Name] then 1 else 0
+			if known and not claimed[knife.Name] then
+				local reward = GameConfig.IndexRewards[knife.Rarity]
+				cash += reward.Cash
+				speed += reward.Speed
+			end
 			local tile = tiles[knife.Name]
 			tile.Name.Text = if known then knife.DisplayName else "???"
 			tile.Art.ImageColor3 = if known then Color3.new(1, 1, 1) else Color3.new(0, 0, 0)
@@ -247,13 +277,28 @@ function View.Build(): (Frame, () -> number)
 		fill.Size = UDim2.new(count / #Knives.List, -10 * count / #Knives.List, 1, -10)
 		fill.Visible = count > 0
 		progress.Text = `Found: {count} / {#Knives.List}`
-		Theme.enabled(all, claimable > 0, `Claim all ({claimable})`)
+		Theme.enabled(
+			all,
+			claimable > 0,
+			if claimable > 0
+				then `CLAIM ALL: +${Ui.abbreviate(cash)} +{Ui.abbreviate(speed)} SPEED`
+				else "ALL REWARDS CLAIMED ✓"
+		)
 		inspect()
 		return claimable
 	end
 	frame:GetPropertyChangedSignal("Visible"):Connect(function()
 		if frame.Visible then
 			refresh()
+			-- Open on an available reward, rather than an unrelated undiscovered knife.
+			for _, knife in Knives.List do
+				if found[knife.Name] and not claimed[knife.Name] then
+					selected, filter = knife, "All"
+					inspect()
+					applyFilter()
+					break
+				end
+			end
 		end
 	end)
 	refresh()

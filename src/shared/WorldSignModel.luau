@@ -2,6 +2,7 @@
 -- Shared physical cuboids, block letters and plain live text faces.
 local Geometry = require(script.Parent.Config.WorldSignGeometry)
 local WorldSignModel = {}
+WorldSignModel.UpgradeRange = 64 -- owned wheel and Bigger Vault boards; sale signs keep their own range
 local function vec(a: { number }): Vector3
 	return Vector3.new(a[1], a[2], a[3])
 end
