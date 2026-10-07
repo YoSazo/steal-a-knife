@@ -17,6 +17,9 @@ character rebuild ships. One experiment at a time; each gets its own A/B test.
 ## Robux ideas around coffins / pens (not built)
 - **Open now** is built (R$19, product CoffinOpen, Id 0 - create with analytics `npm run setup`).
   Later: price by rounds left (1 round cheap, 5 rounds more), like Steal an Egg's Skip Growth.
+- **Skip a round** (small fee, e.g. R$9): one round off one coffin (3 rounds -> 2). The low-price
+  step under "Open now" - easier to say yes to, can be bought again, each skip a little win
+  ("only 1 round left!"). Shown on the coffin next to "Open now".
 - **Open ALL my coffins now** - one bigger button when several are waiting.
 - **Coffin Luck** (timed boost): better size / mutation rolls when your coffins open this hour.
 - **Extra coffin slot** in the pen (if we cap how many coffins can wait at once).
