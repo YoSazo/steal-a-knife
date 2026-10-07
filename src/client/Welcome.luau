@@ -5,6 +5,7 @@
 --   * the new-player shield, for people who just started
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PenMode = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PenMode"))
 local TweenService = game:GetService("TweenService")
 
 local Ui = require(script.Parent.Ui)
@@ -147,7 +148,9 @@ local function show(info: Info)
 		local earned = Ui.label({
 			Size = UDim2.new(1, -40, 0, 34),
 			Position = UDim2.fromOffset(20, y),
-			Text = `💰 Your vault earned ${Ui.abbreviate(info.Offline)} while you were away ({awayText(info.Away)})`,
+			Text = PenMode.Words(
+				`💰 Your vault earned ${Ui.abbreviate(info.Offline)} while you were away ({awayText(info.Away)})`
+			),
 			TextColor3 = Color3.fromRGB(140, 240, 150),
 			ZIndex = 52,
 		}, card)

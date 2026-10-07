@@ -32,6 +32,19 @@ function PenMode.Depth(slots: number): number
 	return config.StartDepth + (config.Depth - config.StartDepth) * t
 end
 
+-- Messages and labels say "pen" instead of "vault" with pens on ("Your vault is full!" ->
+-- "Your pen is full!"); Remotes.Notify / Announce run every message through this
+function PenMode.Words(text: string): string
+	if not PenMode.On() then
+		return text
+	end
+	return (
+		text:gsub("[Vv]ault", function(word: string): string
+			return if word:sub(1, 1) == "V" then "Pen" else "pen"
+		end)
+	)
+end
+
 -- How big a knife character is drawn in its pen (x its 2.4-stud base): value you see from afar
 function PenMode.Scale(rarity: string): number
 	return GameConfig.Pens.Scale[rarity] or 2

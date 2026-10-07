@@ -10,6 +10,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PenMode = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PenMode"))
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -385,7 +386,7 @@ function Hud.Init()
 			if labels then
 				local slots = (player:GetAttribute("Slots") or GameConfig.StartingSlots) :: number
 				local knives = (player:GetAttribute("KnifeCount") or 0) :: number
-				labels.Title.Text = "Bigger Vault"
+				labels.Title.Text = PenMode.Words("Bigger Vault")
 				labels.Count.Text = `{knives}/{slots}`
 				if slots >= GameConfig.MaxSlots then
 					labels.Price.Text = "MAX"

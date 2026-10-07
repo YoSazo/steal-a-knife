@@ -731,7 +731,9 @@ function BaseService.RefreshRack(player: Player)
 				22
 			)
 			if item ~= BaseService.ProtectedItem(player) then
-				local steal = makePrompt(pad, {
+				-- (on the knife's own feet, so the prompt hops with it; RaidService checks the thief
+				-- is really in this pen)
+				local steal = makePrompt(penModel.PrimaryPart or pad, {
 					ActionText = "Steal",
 					ObjectText = Items.DisplayName(item),
 					HoldDuration = GameConfig.Raid.StealTime,

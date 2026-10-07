@@ -7,6 +7,7 @@
 -- and the Mystery Merchant on the plaza, the free chest on the plaza.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PenMode = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PenMode"))
 local RunService = game:GetService("RunService")
 
 local Ui = require(script.Parent.Ui)
@@ -76,7 +77,7 @@ local function buildKnivesPanel(): (Frame, () -> ())
 		local cash = (player:GetAttribute("Cash") or 0) :: number
 		local equipped = player:GetAttribute("FightingKnife") or ""
 		selectionMode.Text = if player:GetAttribute("Equipped") ~= "" then "Your pick: ON" else "Best power: auto"
-		count.Text = `{#owned}/{slots} in your vault`
+		count.Text = PenMode.Words(`{#owned}/{slots} in your vault`)
 		-- The next floor: +10 plates (later floors wait for a rebirth)
 		local floorRebirths = GameConfig.FloorRebirthsFor(slots)
 		if slots >= GameConfig.MaxSlots then

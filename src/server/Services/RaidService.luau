@@ -17,6 +17,7 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
+local MapService = require(script.Parent.MapService)
 local DataService = require(script.Parent.DataService)
 local PowerService = require(script.Parent.PowerService)
 local StealService = require(script.Parent.StealService)
@@ -122,7 +123,13 @@ local function steal(thief: Player, owner: Player, item: string)
 		return
 	end
 	local index = table.find(profile.Knives, item)
-	if not index or item == BaseService.ProtectedItem(owner) or not rootOf(thief) then
+	local thiefRoot = rootOf(thief)
+	if not index or item == BaseService.ProtectedItem(owner) or not thiefRoot then
+		return
+	end
+	-- (the prompts ride on hopping knives, posed by clients: the thief must really be in the base)
+	local base = BaseService.GetBase(owner)
+	if not base or not MapService.InBounds(base.Bounds, thiefRoot.Position, 4) then
 		return
 	end
 	stolenFrom[owner] = (stolenFrom[owner] or 0) + 1

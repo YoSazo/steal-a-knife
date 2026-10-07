@@ -7,6 +7,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PenMode = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PenMode"))
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
@@ -709,7 +710,7 @@ function Transitions.Init()
 			label(haul, {
 				Position = UDim2.new(0, 16, 1, -44),
 				Size = UDim2.new(1, -32, 0, 30),
-				Text = `+{#items - shown} more in your vault`,
+				Text = PenMode.Words(`+{#items - shown} more in your vault`),
 				ZIndex = 46,
 			})
 		end

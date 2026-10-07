@@ -61,11 +61,21 @@ local Remotes = {
 
 -- Analytics listens to every message (the "bad" ones are where players get stuck)
 local notifyHook: ((Player, string, string) -> ())? = nil
+-- ("vault" -> "pen" in every message when pens are on: Shared/PenMode)
+local function words(text: string): string
+	local shared = ReplicatedStorage:FindFirstChild("Shared")
+	local module = shared and shared:FindFirstChild("PenMode")
+	if not module then
+		return text
+	end
+	return (require :: any)(module).Words(text)
+end
 
 return {
 	Remotes = Remotes,
 	-- kind: "info" | "good" | "bad"
 	Notify = function(player: Player, text: string, kind: string?)
+		text = words(text)
 		Remotes.Notify:FireClient(player, text, kind or "info")
 		if notifyHook then
 			task.spawn(notifyHook, player, text, kind or "info")
@@ -76,7 +86,7 @@ return {
 	end,
 	-- A big banner across everyone's screen (rare unboxes, raids, thefts). hype 1..4 = how loud.
 	Announce = function(text: string, color: Color3, hype: number?)
-		Remotes.Effect:FireAllClients("Announce", text, color, hype or 1)
+		Remotes.Effect:FireAllClients("Announce", words(text), color, hype or 1)
 	end,
 	-- Plays an AnimLibrary clip on a character/guard for everyone. `except` is the player who
 	-- already started it locally (their own swing), so they don't see it twice.
