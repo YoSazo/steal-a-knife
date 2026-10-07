@@ -81,12 +81,30 @@ local function grantPass(player: Player, key: string, announce: boolean)
 	end
 end
 
+-- Each pass is counted as a purchase once (profile.Bought "Pass:<Key>"): bought in game it's
+-- counted when the prompt finishes; bought on the game's Roblox page (its Store tab) we only find
+-- out here, on the next join - those were invisible to analytics before
+local function countPass(player: Player, pass: Monetization.Pass, source: string)
+	local profile = DataService.Get(player)
+	local mark = "Pass:" .. pass.Key
+	if not profile or table.find(profile.Bought, mark) then
+		return
+	end
+	DataService.Update(player, function(p)
+		table.insert(p.Bought, mark)
+	end)
+	Analytics.Robux(player, pass.Price)
+	Analytics.Track(player, "purchase.pass", { key = pass.Key, robux = pass.Price, source = source })
+	Analytics.Milestone(player, "first_purchase", { key = pass.Key, robux = pass.Price })
+end
+
 local function checkPasses(player: Player)
 	for _, pass in Monetization.Passes do
 		if pass.Id > 0 then
 			local ok, owns = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, pass.Id)
 			if ok and owns and player.Parent then
 				grantPass(player, pass.Key, false)
+				countPass(player, pass, "outside")
 			end
 		end
 	end
@@ -382,9 +400,7 @@ function MonetizationService.Init()
 			local pass = passById[passId]
 			if purchased and pass then
 				grantPass(player, pass.Key, true)
-				Analytics.Robux(player, pass.Price)
-				Analytics.Track(player, "purchase.pass", { key = pass.Key, robux = pass.Price })
-				Analytics.Milestone(player, "first_purchase", { key = pass.Key, robux = pass.Price })
+				countPass(player, pass, "game")
 			end
 		end
 	)
