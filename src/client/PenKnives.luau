@@ -3,7 +3,7 @@
 -- HopSeed, HopScale). Shared/PenHop says where each one is from the server clock, so every client
 -- sees the same hop; this just poses the model there: facing where it's going, leaning into the
 -- hop, landing with a little bounce. Coffins in a pen (tag "PenCoffin") rattle now and then.
--- The face itself is client/KnifeFace (it moves with the model).
+-- Faces are static (one expression each, built into the art): the hopping is what makes them alive.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")

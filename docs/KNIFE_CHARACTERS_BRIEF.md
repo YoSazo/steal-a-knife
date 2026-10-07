@@ -23,28 +23,22 @@ same toy style (bright flat colours, chunky blocks). Each one gets a face on the
   "Rusty Steve", Katana -> "Sir Slicealot". Put them in a table: `Config/KnifeCharacters.luau`
   `{ [knifeName] = { Display = "Rusty Steve", Personality = "derpy" } }`.
 
-### Face parts (the contract - the game finds and animates these by Role)
-| Role | What | The game does |
-|---|---|---|
-| `EyeWhite` | each eye's white (2 parts) | - |
-| `Pupil` | each pupil (2 parts), in front of its white | wobbles, looks at the nearest player |
-| `Lid` | each eyelid (2 parts), above the eye | lowered while asleep in the coffin / sleeping |
-| `Mouth_Happy` | the default mouth | shown normally |
-| `Mouth_Scared` | open "AAAH" mouth | shown while being carried / chased |
-| `Mouth_Sad` | crying mouth | shown when the boss takes it back |
-| `Mouth_Smug` | grin | shown when pulled out as the Murderer |
-| `Tear` (optional) | tear drops | shown with Mouth_Sad |
-| `Brow` | each eyebrow (2 parts), above the lids | tilted for angry / worried, raised for surprise |
-| `Mouth_Open` | an open mouth (same spot as Mouth_Happy) | flips with Mouth_Happy while it talks |
+### The face: ONE static face, done really well (no animation)
+Changed 2026-10-07: faces do NOT animate (no blinking, no expressions, no separate lids / brows /
+mouth variants). Steal an Egg's creatures have one simple face that never changes; the MOVEMENT
+(hopping around the pen) is what makes them feel alive. Put all the effort into one great face.
 
-Only one `Mouth_*` is visible at a time (the game toggles Transparency), so they can overlap.
-Keep the existing roles (`Grip`, `Guard`, `Blade`...) on the rest - auras and trails use them.
-
-**How they're animated (so you know what to build for):** procedurally in-game (client/KnifeFace),
-not Blender animations - the game moves these blocks directly. Lids scale down to blink, pupils
-slide to look around, brows tilt, mouths swap or open/close to talk. So: make each face piece its
-own block (or few blocks with the same Role), keep pupils small enough to slide inside their
-white, and lids sized to cover the whole eye when lowered.
+- **Steal an Egg's Golden Dog is the reference:** two BIG glossy eyes set wide apart, each a dark
+  rounded block with a bold white shine block in the upper corner (the shine is what makes it
+  cute), a thin dark outline / lid line along the top of each eye, and a SMALL simple mouth (or
+  none). Eyes are the face - they should take up most of the face area.
+- **Big:** the face fills at least half the blade's width and reads clearly from 30+ studs away at
+  1x scale. No tiny details: every face block at least ~0.08 studs at 1x (it'll be scaled up 2-9x).
+- **Simple:** about 6-12 blocks per face. Fewer, bigger, cleaner blocks beat many small ones.
+- **One expression per knife that matches its personality** (derpy Common: eyes a bit uneven,
+  tongue out; smug Legendary: half-lidded eyes; unhinged Cosmic: huge eyes with star shines).
+- Tag face blocks `Role = "Face"` (one role, nothing animates them). Drop Lid, Pupil, Brow,
+  Mouth_*, Tear, SleepSize/SleepOffset and the eye "Follow" welds.
 
 ### What they DO in the pen (design for it)
 - **Hop on their handle** around the pen (pogo-hop): the pommel is the foot, keep it flat and

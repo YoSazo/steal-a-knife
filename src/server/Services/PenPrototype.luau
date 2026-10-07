@@ -113,7 +113,6 @@ function PenPrototype.Build()
 		model:SetAttribute("HopSeed", seed * 101)
 		model:SetAttribute("HopScale", scale)
 		model:AddTag("PenKnife")
-		model:AddTag("KnifeFace")
 		seed += 1
 	end
 	-- two coffins waiting by the gate
