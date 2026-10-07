@@ -15,7 +15,6 @@
 -- Off unless GameConfig.Coffins.Enabled (Studio: ReplicatedStorage attribute DebugCoffins).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
@@ -25,6 +24,7 @@ local Net = require(script.Parent.Parent.Remotes)
 local DataService = require(script.Parent.DataService)
 local BaseService = require(script.Parent.BaseService)
 local Analytics = require(script.Parent.Analytics)
+local PenMode = require(ReplicatedStorage.Shared.PenMode)
 
 local CoffinService = {}
 CoffinService.OnOpened = nil :: ((Player, string) -> ())? -- (StealService: reveal its power)
@@ -33,7 +33,7 @@ local CONFIG = GameConfig.Coffins
 local target: { [Player]: number } = {} -- the coffin the owner asked to open with Robux
 
 function CoffinService.On(_player: Player): boolean
-	return CONFIG.Enabled or (RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugCoffins") == true)
+	return PenMode.Coffins()
 end
 
 local function roundsText(rounds: number): string

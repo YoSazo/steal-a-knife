@@ -113,8 +113,10 @@ function NextAction.Pick(s: State): Action?
 		end
 		return {
 			Id = "carry_home",
-			Text = "<b>RUN HOME</b> with your knife!",
-			Short = "RUN HOME with your knife!",
+			Text = if PenMode.Coffins()
+				then "<b>RUN HOME</b> with your coffin!"
+				else "<b>RUN HOME</b> with your knife!",
+			Short = if PenMode.Coffins() then "RUN HOME with your coffin!" else "RUN HOME with your knife!",
 			Target = "Home",
 		}
 	end

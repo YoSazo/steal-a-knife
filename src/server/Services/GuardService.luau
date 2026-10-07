@@ -27,6 +27,9 @@ local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local KnifeAura = require(ReplicatedStorage.Shared.KnifeAura)
 local SignTheme = require(ReplicatedStorage.Shared.SignTheme)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
+local CoffinModel = require(ReplicatedStorage.Shared.CoffinModel)
+local KnifeHaze = require(ReplicatedStorage.Shared.KnifeHaze)
+local PenMode = require(ReplicatedStorage.Shared.PenMode)
 local ToyBlockModel = require(ReplicatedStorage.Shared.ToyBlockModel)
 local BossTitleModel = require(ReplicatedStorage.Shared.BossTitleModel)
 local BossChairs = require(ReplicatedStorage.Shared.Config.BossChairs)
@@ -478,6 +481,43 @@ local function setSlot(boss: Boss, slot: Slot, item: string)
 	if not parsed then
 		return
 	end
+	-- Coffins on: the boss's graveyard - a coffin in the slot instead of the knife. You can see how
+	-- rare it is (size, colour, glow), never which knife is inside: that's the reveal at home.
+	if PenMode.Coffins() then
+		local rarity = parsed.Knife.Rarity
+		local floor = CFrame.new(slot.Pad.Position + Vector3.new(0, slot.Pad.Size.Y / 2, 0)) * slot.Spot.Rotation
+		local coffin = CoffinModel.Build(rarity, floor)
+		-- lying in its own little dug-up grave: a dirt patch with a raised rim
+		local _, size = coffin:GetBoundingBox()
+		local dirt = Color3.fromRGB(120, 78, 48)
+		for _, piece in
+			{
+				{ Vector3.new(size.X + 1.6, 0.25, size.Z + 1.6), Vector3.new(0, 0.12, 0) },
+				{ Vector3.new(size.X + 2.4, 0.5, 0.8), Vector3.new(0, 0.25, size.Z / 2 + 1.2) },
+				{ Vector3.new(size.X + 2.4, 0.5, 0.8), Vector3.new(0, 0.25, -size.Z / 2 - 1.2) },
+				{ Vector3.new(0.8, 0.5, size.Z + 1.6), Vector3.new(size.X / 2 + 1.2, 0.25, 0) },
+				{ Vector3.new(0.8, 0.5, size.Z + 1.6), Vector3.new(-size.X / 2 - 1.2, 0.25, 0) },
+			}
+		do
+			local mound = Instance.new("Part")
+			mound.Name = "Grave"
+			mound.Anchored = true
+			mound.CanCollide, mound.CanQuery, mound.CanTouch = false, false, false
+			mound.Size = piece[1]
+			mound.CFrame = floor * CFrame.new(piece[2])
+			mound.Color = if piece[1].Y < 0.3 then dirt:Lerp(Color3.new(0, 0, 0), 0.2) else dirt
+			mound.Material = Enum.Material.SmoothPlastic
+			mound.Parent = coffin
+		end
+		KnifeHaze.Add(coffin, rarity)
+		coffin.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+		coffin.Parent = boss.Folder
+		slot.Display = coffin
+		-- (no label: like Steal an Egg's eggs, the coffin speaks for itself; the prompt names it)
+		slot.Prompt.ObjectText = `{rarity} Coffin`
+		slot.Prompt.Enabled = true
+		return
+	end
 	local model = KnifeModel.Build(item, true)
 	KnifeModel.FitLength(model, 4) -- same display size as vault knives
 	model:PivotTo(slot.Spot)
@@ -624,14 +664,19 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 	model.Parent = folder
 	local W, D = lair.Width, lair.Depth
 	local wallZ = D / 2 - 1
+	-- Coffins on: no stash wall at all - a graveyard on the open grass (Steal an Egg's eggs lying
+	-- around the sleeping creature). Just the boss's chair, its speed sign and the coffins.
+	local graveyard = PenMode.Coffins()
 	local shell = ToyBlockModel.Build("Lair" .. config.Boss, true)
 	shell:PivotTo(frame)
-	shell.Parent = model
+	shell.Parent = if graveyard then nil else model
 	-- Original walking surface and back boundary remain; the block shell is cosmetic.
-	local stage = block(model, "Stage", Vector3.new(W, PLATFORM, D), at(0, PLATFORM / 2, 0), config.Color)
-	stage.Transparency = 1
-	local back = block(model, "BackWall", Vector3.new(W, 18, 2), at(0, 9 + PLATFORM, wallZ), config.Color)
-	back.Transparency = 1
+	if not graveyard then
+		local stage = block(model, "Stage", Vector3.new(W, PLATFORM, D), at(0, PLATFORM / 2, 0), config.Color)
+		stage.Transparency = 1
+		local back = block(model, "BackWall", Vector3.new(W, 18, 2), at(0, 9 + PLATFORM, wallZ), config.Color)
+		back.Transparency = 1
+	end
 	-- Mount canvases keep the original dimensions and frames, including transparent margins.
 	local signWidth = math.min(W - 6, 26)
 	local signSize = Vector2.new(1024, 256)
@@ -656,13 +701,13 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 		Vector3.new(ribbonWidth, ribbonHeight, 0.2),
 		at(0, PLATFORM + 14 - signWidth * signSize.Y / signSize.X / 2 - ribbonHeight / 2 + 0.3, wallZ - 1.3)
 	)
-	local titles = BossTitleModel.Build(config.Boss, sign, ribbon)
+	local titles = if graveyard then nil else BossTitleModel.Build(config.Boss, sign, ribbon)
 	if titles then
 		titles.Parent = model
 	end
 
 	-- Torches at both front corners of the stage
-	for _, x in { -W / 2 + 2, W / 2 - 2 } do
+	for _, x in (if graveyard then {} else { -W / 2 + 2, W / 2 - 2 }) :: { number } do
 		block(
 			model,
 			"TorchPost",
@@ -772,8 +817,62 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 	-- The wall slots: pedestals in a line in front of the wall, a glowing plaque behind each
 	local count = GameConfig.BossWallSlots
 	local span = W - 10
+	-- (the graveyard: scattered spots on the grass, the same for every server; kept off the chair)
+	local scatter = Random.new(index * 7919)
+	local chairLocal = frame:PointToObjectSpace(chairFrame.Position)
+	local graves: { Vector3 } = {}
+	for _ = 1, count do
+		local best, bestScore = Vector3.zero, -math.huge
+		for _ = 1, 24 do
+			local candidate =
+				Vector3.new(scatter:NextNumber(-W / 2 + 3, W / 2 - 3), 0, scatter:NextNumber(-D / 2 - 2, D / 2 - 3))
+			local score = math.min(
+				16,
+				(Vector3.new(candidate.X, 0, candidate.Z) - Vector3.new(chairLocal.X, 0, chairLocal.Z)).Magnitude
+			)
+			for _, other in graves do
+				score = math.min(score, (candidate - other).Magnitude)
+			end
+			if score > bestScore then
+				best, bestScore = candidate, score
+			end
+		end
+		table.insert(graves, best)
+	end
 	for i = 1, count do
 		local x = -span / 2 + (i - 1) * span / math.max(count - 1, 1)
+		if graveyard then
+			local grave = graves[i]
+			local turn = CFrame.Angles(0, math.rad(scatter:NextNumber(-40, 40)), 0)
+			local pad: Part =
+				block(model, "Grave", Vector3.new(4.5, 0.3, 4.5), at(grave.X, 0.15, grave.Z) * turn, config.Color)
+			pad.Transparency = 1
+			pad.CanCollide = false
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.ActionText = "Steal"
+			prompt.ObjectText = ""
+			prompt.HoldDuration = 0.5
+			prompt.MaxActivationDistance = 9
+			prompt.RequiresLineOfSight = false
+			prompt.KeyboardKeyCode = Enum.KeyCode.E
+			prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
+			prompt.Enabled = false
+			prompt:SetAttribute("BossSteal", true)
+			prompt.Parent = pad
+			table.insert(boss.Slots, {
+				Index = i,
+				Item = nil,
+				Out = false,
+				RestockAt = nil,
+				Spot = at(grave.X, 0, grave.Z) * turn,
+				Pad = pad :: BasePart,
+				Plaque = pad,
+				Frame = pad,
+				Display = nil,
+				Prompt = prompt,
+			})
+			continue
+		end
 		local plaque = block(
 			model,
 			"Plaque",

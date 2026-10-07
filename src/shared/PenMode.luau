@@ -19,6 +19,13 @@ function PenMode.On(): boolean
 		or (RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugPenLayout") == true)
 end
 
+-- Coffins on (GameConfig.Coffins.Enabled; Studio: ReplicatedStorage DebugCoffins): boss walls show
+-- coffins (rarity known, knife a surprise), carried home on your head, opening on the round clock
+function PenMode.Coffins(): boolean
+	return GameConfig.Coffins.Enabled
+		or (RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugCoffins") == true)
+end
+
 -- How many knives a base can hold at most (pens: Pens.MaxSlots; vaults: 4 floors)
 function PenMode.MaxSlots(): number
 	return if PenMode.On() then GameConfig.Pens.MaxSlots else GameConfig.MaxSlots

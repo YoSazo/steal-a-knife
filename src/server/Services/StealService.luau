@@ -31,6 +31,7 @@ local Targets = require(script.Parent.Targets)
 local Analytics = require(script.Parent.Analytics)
 local CoffinService = require(script.Parent.CoffinService)
 local PenMode = require(ReplicatedStorage.Shared.PenMode)
+local CoffinModel = require(ReplicatedStorage.Shared.CoffinModel)
 
 type Carry = {
 	Kind: string, -- "Case" | "Knife"
@@ -420,6 +421,14 @@ startCarry = function(
 		visual = KnifeModel.BuildCase(item, false)
 		above = head.CFrame * CFrame.new(0, 1.9, 0)
 		visual:PivotTo(above)
+	elseif boss and PenMode.Coffins() then
+		-- a boss's coffin, held over your head (what's in it stays a secret until it opens)
+		local parsed = Items.Parse(item)
+		visual = CoffinModel.Build(if parsed then parsed.Knife.Rarity else "Common", CFrame.identity)
+		local _, size = visual:GetBoundingBox()
+		visual:ScaleTo(visual:GetScale() * 3.6 / math.max(size.X, size.Y, size.Z))
+		above = head.CFrame * CFrame.new(0, 1.3, 0)
+		visual:PivotTo(above * CFrame.Angles(0, math.rad(90), 0))
 	else
 		visual = KnifeModel.Build(item, false)
 		KnifeModel.FitItem(visual, item, 3.6)
