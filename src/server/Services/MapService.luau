@@ -360,9 +360,9 @@ local LADDER_LANDING = 3.5 -- deck behind the ladder at the back, where you step
 local LADDER_HOLE = 3 -- the slot in front of the ladder you climb up through
 local LADDER_HOLE_HALF = 2.5
 local VAULT_DECK = VaultModel.Deck
-local HUB_HALF = GameConfig.ArenaWidth / 2 + VAULT_DEPTH + 0.5 -- the hub's outer wall (inner face), just behind the vaults
+local HUB_HALF: number = GameConfig.ArenaWidth / 2 + VAULT_DEPTH + 0.5 -- the hub's outer wall (inner face), just behind the vaults
 local COLUMN = 6 -- vaults down each side; 4 more across the back
-local HUB_BACK = COLUMN * 40 + 44 -- the hub ends right behind the back row of vaults
+local HUB_BACK: number = COLUMN * 40 + 44 -- the hub ends right behind the back row of vaults
 local NAVY = Color3.fromRGB(40, 44, 90)
 local KNIFE_TILT = 12 -- degrees
 MapService.Floors = FLOORS
@@ -396,6 +396,13 @@ local function buildBases()
 	local pens = PenMode.On()
 	local penWidth = GameConfig.Pens.Width
 	local penSpacing = GameConfig.Pens.Spacing
+	-- (a pen's full length, or a vault's depth: everything below is laid out from it)
+	local DEPTH = if pens then GameConfig.Pens.Depth else VAULT_DEPTH
+	-- Pens are bigger than vaults: the hub grows round them (wider sides, a longer plaza)
+	if pens then
+		HUB_HALF = GameConfig.ArenaWidth / 2 + DEPTH + 0.5
+		HUB_BACK = (GameConfig.Pens.Count // 2) * penSpacing + 4
+	end
 	if pens then
 		MapService.MaxBases = GameConfig.Pens.Count
 	end
@@ -409,21 +416,18 @@ local function buildBases()
 			local perSide = GameConfig.Pens.Count // 2
 			local side = if i <= perSide then -1 else 1
 			local row = (i - 1) % perSide
-			center = Vector3.new(side * (half + VAULT_DEPTH / 2), 0, -penSpacing / 2 - row * penSpacing)
+			center = Vector3.new(side * (half + DEPTH / 2), 0, -penSpacing / 2 - row * penSpacing)
 			frame = CFrame.new(center) * CFrame.Angles(0, math.rad(if side < 0 then 90 else -90), 0)
 		elseif sideways then
 			local side = if i <= COLUMN then -1 else 1
 			local row = (i - 1) % COLUMN
-			center = Vector3.new(side * (half + VAULT_DEPTH / 2), 0, -20 - row * VAULT_SPACING)
+			center = Vector3.new(side * (half + DEPTH / 2), 0, -20 - row * VAULT_SPACING)
 			-- Rotate so local +Z faces the plaza (the left column faces +X, the right column -X)
 			frame = CFrame.new(center) * CFrame.Angles(0, math.rad(if side < 0 then 90 else -90), 0)
 		else
 			local k = i - COLUMN * 2
-			center = Vector3.new(
-				-half + VAULT_WIDTH / 2 + (k - 1) * VAULT_WIDTH,
-				0,
-				-COLUMN * VAULT_SPACING - VAULT_DEPTH / 2
-			)
+			center =
+				Vector3.new(-half + VAULT_WIDTH / 2 + (k - 1) * VAULT_WIDTH, 0, -COLUMN * VAULT_SPACING - DEPTH / 2)
 			frame = CFrame.new(center) -- local +Z already faces the plaza
 		end
 		local function at(x: number, y: number, z: number): CFrame
@@ -437,16 +441,11 @@ local function buildBases()
 		-- An open platform (Tsunami style): a pale studded floor with a hint of the owner's colour
 		-- (a pen: a patch of bright grass inside its fence)
 		if pens then
-			local grass = block(
-				"Floor",
-				Vector3.new(penWidth, 1, VAULT_DEPTH),
-				at(0, 0.1, 0),
-				Color3.fromRGB(86, 196, 56),
-				folder
-			)
+			local grass =
+				block("Floor", Vector3.new(penWidth, 1, DEPTH), at(0, 0.1, 0), Color3.fromRGB(86, 196, 56), folder)
 			Toy.Dress(grass, { Enum.NormalId.Top }, 1, 4)
 		else
-			block("Floor", Vector3.new(VAULT_WIDTH, 1, VAULT_DEPTH), at(0, 0.1, 0), VAULT_DECK, folder)
+			block("Floor", Vector3.new(VAULT_WIDTH, 1, DEPTH), at(0, 0.1, 0), VAULT_DECK, folder)
 		end
 		-- Walls, gate towers and the gate itself depend on the owner's wall tier (VaultWalls)
 		local wallFolder = Instance.new("Folder")
@@ -464,7 +463,7 @@ local function buildBases()
 		local cashPads: { BasePart }, cashLabels: { TextLabel } = {}, {}
 		local plateArts: { ImageLabel } = {}
 		local inner = VAULT_WIDTH / 2 - 0.5
-		local back, front = -VAULT_DEPTH / 2 + 0.5, VAULT_DEPTH / 2 - 0.5
+		local back, front = -DEPTH / 2 + 0.5, DEPTH / 2 - 0.5
 		if pens then
 			-- No storeys or plates: invisible spots on the grass, one per knife (coffins wait on them,
 			-- raid prompts hang on them; the knives themselves hop around - BaseService). Walking in
@@ -477,7 +476,7 @@ local function buildBases()
 			for slot = 1, cols * rows do
 				local c, r = (slot - 1) % cols, (slot - 1) // cols
 				local x = (c - (cols - 1) / 2) * ((penWidth - 10) / (cols - 1))
-				local z = (r - (rows - 1) / 2) * ((VAULT_DEPTH - 14) / (rows - 1)) - 2
+				local z = (r - (rows - 1) / 2) * ((DEPTH - 14) / (rows - 1)) - 2
 				local spot = block(`Spot{slot}`, Vector3.new(3, 0.2, 3), at(x, 0.7, z), NAVY, levelFolder)
 				spot.Transparency = 1
 				spot.CanCollide, spot.CanQuery, spot.CanTouch = false, false, false
@@ -607,7 +606,7 @@ local function buildBases()
 		end
 
 		-- The owner's sign rides on top of the frame (BaseService moves it as the vault grows)
-		local signPart = block("Sign", Vector3.new(20, 5, 1), at(0, 18, -VAULT_DEPTH / 2 + 1.5), NAVY, folder)
+		local signPart = block("Sign", Vector3.new(20, 5, 1), at(0, 18, -DEPTH / 2 + 1.5), NAVY, folder)
 		signPart.Transparency = 1
 		signPart.CanCollide = false
 		signPart.CanQuery = false
@@ -622,7 +621,7 @@ local function buildBases()
 		-- The Haunted Wheel: a giant iron wheel you run inside to train Speed (the plate at the bottom
 		-- is what counts as "on it"). Clients spin it while its owner is training. It stands just
 		-- outside the vault's gate, so the inside is nothing but knives.
-		local wheelCenter = Vector3.new(-13, 6.6, VAULT_DEPTH / 2 + 7.5)
+		local wheelCenter = Vector3.new(-13, 6.6, DEPTH / 2 + 7.5)
 		-- Tsunami / Steal An Egg signs (client/Hud fills them in for their owner): Upgrade Base on the
 		-- other side of the gate (the next floor), Upgrade Wheel in front of the Haunted Wheel (the next
 		-- wheel or trail, with a small Robux board under it: RobuxBoard)
@@ -698,12 +697,12 @@ local function buildBases()
 			upgradeSign.Parent = folder
 			return upgradeSign
 		end
-		upgradeSignAt("UpgradeSign", 13, VAULT_DEPTH / 2 + 6, "Upgrade Base")
-		local wheelUpgrade = upgradeSignAt("WheelUpgradeSign", -13, VAULT_DEPTH / 2 + 15.5, "Upgrade Wheel")
+		upgradeSignAt("UpgradeSign", 13, DEPTH / 2 + 6, "Upgrade Base")
+		local wheelUpgrade = upgradeSignAt("WheelUpgradeSign", -13, DEPTH / 2 + 15.5, "Upgrade Wheel")
 		local robuxBoard = block(
 			"RobuxBoard",
 			Vector3.new(3.2, 1.2, 0.35),
-			at(-13, 2.3, VAULT_DEPTH / 2 + 16.1) * CFrame.Angles(0, math.pi, 0),
+			at(-13, 2.3, DEPTH / 2 + 16.1) * CFrame.Angles(0, math.pi, 0),
 			Color3.fromRGB(0, 176, 111),
 			wheelUpgrade
 		)
@@ -773,7 +772,7 @@ local function buildBases()
 		titleStroke.Parent = treadmillSign
 
 		-- Spawn just inside the door, facing out towards the plaza and the runway
-		local spawnPos = (at(0, 4, VAULT_DEPTH / 2 - 10)).Position
+		local spawnPos = (at(0, 4, DEPTH / 2 - 10)).Position
 		table.insert(MapService.Bases, {
 			Index = i,
 			Color = color,
@@ -786,9 +785,9 @@ local function buildBases()
 			Frame = frame,
 			-- Rotated 90 degrees, so the world footprint swaps width and depth
 			Bounds = if pens
-				then bounds(center, VAULT_DEPTH, penWidth)
-				elseif sideways then bounds(center, VAULT_DEPTH, VAULT_WIDTH)
-				else bounds(center, VAULT_WIDTH, VAULT_DEPTH),
+				then bounds(center, DEPTH, penWidth)
+				elseif sideways then bounds(center, DEPTH, VAULT_WIDTH)
+				else bounds(center, VAULT_WIDTH, DEPTH),
 			Spawn = CFrame.lookAt(spawnPos, spawnPos + frame:VectorToWorldSpace(Vector3.zAxis)),
 			SlotCFrames = slotCFrames,
 			SlotPads = slotPads,
