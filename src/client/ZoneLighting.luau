@@ -157,6 +157,23 @@ ZoneLighting.Moods = {
 -- Rounds: indoors, flat and even (bloom low so the rooms don't glow)
 local ROUND = mood({ Bloom = { Intensity = 0.25, Size = 56, Threshold = 1.6 } })
 
+-- The hub's biomes: the same looks with much less haze, glare and bloom - the white-gold zones
+-- washed the knives, auras and boss stashes out. (The round maps keep the full look: ROUND above
+-- is built from the untouched base.)
+local function softened(m: Mood, keepExposure: boolean): Mood
+	local out = table.clone(m)
+	out.Density = m.Density * 0.55
+	out.Haze = m.Haze * 0.45
+	out.Glare = m.Glare * 0.4
+	out.Bloom = { Intensity = m.Bloom.Intensity * 0.6, Size = m.Bloom.Size, Threshold = m.Bloom.Threshold + 0.35 }
+	out.Rays = { Intensity = m.Rays.Intensity * 0.6, Spread = m.Rays.Spread }
+	out.Exposure = if keepExposure then m.Exposure else m.Exposure * 0.4
+	return out
+end
+for index, m in ZoneLighting.Moods do
+	ZoneLighting.Moods[index] = softened(m, index == 8) -- (Outer Space's exposure lights the night)
+end
+
 local function find(className: string): Instance?
 	return Lighting:FindFirstChildOfClass(className)
 end
@@ -263,7 +280,7 @@ function ZoneLighting.MoodFor(zone: number): Mood
 	if zone < 0 then
 		return ROUND
 	end
-	return ZoneLighting.Moods[zone] or BASE
+	return ZoneLighting.Moods[zone] or ZoneLighting.Moods[1]
 end
 
 -- The mood right here: a round's, the plaza's, or a zone's - blended into the next zone's over
@@ -275,11 +292,11 @@ local function moodHere(): (Mood, number)
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not root then
-		return BASE, 0
+		return ZoneLighting.Moods[1], 0 -- (the plaza and pens: the softened base)
 	end
 	local pos = root.Position
 	if math.abs(pos.X) > GameConfig.ArenaWidth / 2 + 4 or pos.Z < 0 then
-		return BASE, 0
+		return ZoneLighting.Moods[1], 0 -- (the plaza and pens: the softened base)
 	end
 	local zones = #GameConfig.Zones
 	local zone = GameConfig.ZoneAtZ(pos.Z) or zones -- preserve the last biome's mood at the Manor
