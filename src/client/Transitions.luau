@@ -522,8 +522,8 @@ function Transitions.Init()
 	)
 	-- The Speed prize's payoff: ~30 shoes burst out of the "You won!" card and fly into the Speed
 	-- shoe at the bottom left (Ui.SpeedIcon), which pops with every one that lands
-	local function shoeShower(fromCard: GuiObject)
-		local target = Ui.SpeedIcon :: GuiObject?
+	local function shoeShower(fromCard: GuiObject, cash: boolean?)
+		local target = (if cash then Ui.CashIcon else Ui.SpeedIcon) :: GuiObject?
 		if not target or not target.Parent or not fromCard.Parent then
 			return
 		end
@@ -544,7 +544,7 @@ function Transitions.Init()
 			local shoe = Instance.new("ImageLabel")
 			shoe.Name = "PrizeShoe"
 			shoe.BackgroundTransparency = 1
-			shoe.Image = CartoonArt.Speed
+			shoe.Image = if cash then CartoonArt.Cash else CartoonArt.Speed
 			shoe.ScaleType = Enum.ScaleType.Fit
 			shoe.AnchorPoint = Vector2.new(0.5, 0.5)
 			shoe.Size = UDim2.fromOffset(size, size)
@@ -611,7 +611,7 @@ function Transitions.Init()
 		label(prizeCard, {
 			Position = UDim2.fromOffset(16, 12),
 			Size = UDim2.new(1, -32, 0, 48),
-			Text = if jackpot then "⭐ JACKPOT! You won! ⭐" else "🎉 You won!",
+			Text = if jackpot then "⭐ JACKPOT! You won the murder round! ⭐" else "🎉 You won the murder round!",
 			TextColor3 = Color3.fromRGB(255, 215, 70),
 			ZIndex = 46,
 		})
@@ -638,8 +638,8 @@ function Transitions.Init()
 		pop.Scale = 0.6
 		pop.Parent = prizeCard
 		TweenService:Create(pop, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-		if kind == "Speed" then
-			task.delay(0.9, shoeShower, prizeCard)
+		if kind == "Speed" or kind == "Cash" then
+			task.delay(0.9, shoeShower, prizeCard, kind == "Cash")
 		end
 		task.delay(4.5, function()
 			TweenService:Create(pop, TweenInfo.new(0.2), { Scale = 0.8 }):Play()

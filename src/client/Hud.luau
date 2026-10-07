@@ -24,8 +24,6 @@ local RoundPrize = require(ReplicatedStorage.Shared.RoundPrize)
 local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
 local TopLine = require(script.Parent.TopLine)
-local MapVoteCard = require(script.Parent.MapVoteCard)
-local RoundMapInfo = require(ReplicatedStorage.Shared.Config.RoundMapInfo)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Effects = require(script.Parent.Effects)
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("GameConfig"))
@@ -216,12 +214,12 @@ function Hud.Init()
 				local goal = if player:GetAttribute("Role") == "Murderer"
 					then "GET EVERYONE"
 					else if Ui.gui:GetAttribute("GuideRole") == "Sheriff" then "STOP THE MURDERER" else "SURVIVE"
-				-- (the Speed shoe after the prize, like the line before the round)
+				-- (the prize you picked after it - the Speed shoe or the cash, like the line before the round)
 				return {
 					Text = if Ui.Phone
 						then `{clock} · <b>{goal}</b> = <font color="#8CFF96">{prize.Text:gsub(" Speed$", "")}</font>`
 						else `🔪 {clock} · <b>{goal}</b> = <font color="#8CFF96">{prize.Text}</font>`,
-					Icon = CartoonArt.Speed,
+					Icon = if prize.Kind == "Cash" then CartoonArt.Cash else CartoonArt.Speed,
 				}
 			end
 			return {
@@ -243,22 +241,6 @@ function Hud.Init()
 		end
 		local timer = { Text = `🔪 MURDER ROUND in <b>{clock}</b>` }
 		local beat = os.clock() % 10
-		-- the map vote: half the time, with the counts
-		if left <= GameConfig.MapVoteWindow and left > GameConfig.RoundPrize.AnnounceAt and beat >= 5 then
-			local tally = MapVoteCard.Counts()
-			local bits = {}
-			for _, info in RoundMapInfo.List do
-				table.insert(
-					bits,
-					if Ui.Phone
-						then `{info.Name} <b>{tally[info.Name] or 0}</b>`
-						else `{info.Emoji} {info.Name} <b>{tally[info.Name] or 0}</b>`
-				)
-			end
-			-- (phones: short, it has to fit one line on an iPhone 13)
-			local lead = if Ui.Phone then "🗳️ Vote the map:" else "🗳️ Vote for the murder map!"
-			return { Text = `{lead}  {table.concat(bits, "  ·  ")}` }
-		end
 		local kind = ReplicatedStorage:GetAttribute("PrizeKind")
 		if type(kind) == "string" and left <= GameConfig.RoundPrize.AnnounceAt and left > 0 then
 			if beat < 4 then
@@ -281,10 +263,10 @@ function Hud.Init()
 				else nil
 			local outrun = if knives and prize.Reaches then ` = {knives}!` elseif knives then ` for {knives}` else ""
 			return {
-				Text = `{star}Win the round: <font color="#8CFF96"><b>{prize.Text}</b></font>{outrun}{done}`,
+				Text = `{star}{if player:GetAttribute("PrizePickOn") then "Your prize if you win" else "Win the round"}: <font color="#8CFF96"><b>{prize.Text}</b></font>{outrun}{done}`,
 				Short = `{clock} · Win <font color="#8CFF96"><b>{prize.Text}</b></font>{done}`,
 				Pill = not doubled,
-				Icon = CartoonArt.Speed, -- (the same shoe as your Speed readout)
+				Icon = if prize.Kind == "Cash" then CartoonArt.Cash else CartoonArt.Speed, -- (as your readout)
 			}
 		end
 		return timer
@@ -496,17 +478,14 @@ function Hud.Init()
 			local _, bounds = Ui.bounds()
 			chanceLabel.Size = UDim2.fromOffset(math.min(420, bounds.X - 24), 20)
 		end
-		-- (the map vote row takes this line's place while it's up - client/MapVoteCard)
 		-- (only after your first round: before that it's a number about something you haven't seen)
 		chanceLabel.Visible = type(chance) == "number"
 			and Ui.inHub()
-			and (gui:GetAttribute("VoteRow") ~= true or Ui.topStrip("Chance") ~= nil)
 			and ((player:GetAttribute("RoundsPlayed") or 0) :: number) > 0
 		chanceLabel.Text = `🔪 Murderer chance: {chance or 0}%`
 	end
 	player:GetAttributeChangedSignal("RoundsPlayed"):Connect(refreshChance)
 	player:GetAttributeChangedSignal("MurdererChance"):Connect(refreshChance)
-	gui:GetAttributeChangedSignal("VoteRow"):Connect(refreshChance)
 	player:GetAttributeChangedSignal("InRound"):Connect(refreshChance)
 	Ui.Layout.Changed:Connect(refreshChance)
 	local chanceChecked = 0
@@ -1381,7 +1360,7 @@ function Hud.Init()
 				RoundPrize.Stats(player),
 				((player:GetAttribute("Charge_DoublePrize") or 0) :: number) > 0
 			)
-			return `👟 {prize.Text}`
+			return `{if prize.Kind == "Cash" then "💵" else "👟"} {prize.Text}`
 		end
 		if final == "Murderer" then
 			-- Make the link obvious: this is the knife from YOUR vault, with its power
@@ -1500,6 +1479,7 @@ function Hud.Init()
 	local speedArt = Ui.art(stats, "Speed", { Image = CartoonArt.Speed }) -- the + badge is baked in
 	Ui.SpeedIcon = speedArt -- (the round prize's shoes fly into it: client/Transitions)
 	local cashArt = Ui.art(stats, "Cash", { Image = CartoonArt.Cash })
+	Ui.CashIcon = cashArt
 	local heatArt = Ui.art(stats, "Heat", { Image = CartoonArt.Heat })
 	heatLabel.Visible = true
 	heatLabel.Font = Enum.Font.LuckiestGuy

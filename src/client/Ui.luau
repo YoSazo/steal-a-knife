@@ -431,6 +431,7 @@ Ui.Menu = MenuController
 Ui.Panels = {} :: { [string]: GuiObject }
 -- The Speed shoe in the bottom-left readout (client/Hud), for the round prize's flying shoes
 Ui.SpeedIcon = nil :: GuiObject?
+Ui.CashIcon = nil :: GuiObject? -- (a cash prize flies into it)
 Layout.bind(Ui.root)
 player:WaitForChild("PlayerGui").ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor
 -- Phones: the free strip of Roblox's top bar, between its buttons on the left and our shift-lock

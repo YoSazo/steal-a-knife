@@ -290,9 +290,16 @@ local GameConfig = {
 		StepShare = 0.2,
 		PastLastShare = 0.1, -- past the last boss: of your Speed
 		MinSpeed = 300,
+		-- the cash choice (client/PrizePick): this many seconds of your income, at least MinCash
+		CashSeconds = 300,
+		MinCash = 5000,
+		-- the pick card shows from PickFrom s before the round: leaving ramps up from ~240 s before a
+		-- round (fewer leave in the first 2 min after one), so it lands just before most people go
+		PickFrom = 240,
+		PickUntil = 8, -- and stops this many seconds before it (no card as the round starts)
 		JackpotChance = 0.1, -- a JACKPOT round: x3
 		JackpotMultiplier = 3,
-		AnnounceAt = 60, -- the line under the timer shows this many seconds before the round
+		AnnounceAt = 240, -- "Your prize if you win" shows this many seconds before the round (= PickFrom)
 	},
 
 	-- Surprise gifts (server SurpriseGifts): a present drops near you at random moments while you

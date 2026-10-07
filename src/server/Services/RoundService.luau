@@ -2769,6 +2769,14 @@ local function endRound(round: Round)
 			local stats = round.PrizeStats[player]
 			if won and stats then
 				task.delay(GameConfig.ResultsTime + 2, payPrize, player, prizeKind, side, jackpot, seed, stats)
+			elseif stats and player.Parent then
+				-- lost: the prize they picked is still waiting - win the next one
+				local prize = RoundPrize.For(prizeKind, side, false, seed, stats, false)
+				task.delay(GameConfig.ResultsTime + 2, function()
+					if player.Parent then
+						Net.Notify(player, `So close! Win the next murder round for {prize.Text}`, "info")
+					end
+				end)
 			end
 		end
 	end
@@ -3192,6 +3200,40 @@ function RoundService.Init()
 	end)
 	Net.Remotes.Ability.OnServerEvent:Connect(onAbility)
 	Net.Remotes.Shoot.OnServerEvent:Connect(onShoot)
+	-- The prize you picked for the next round (client/PrizePick); RoundPrize.Stats reads it at round start
+	local lastPick: { [Player]: number } = {}
+	Net.Remotes.PrizePick.OnServerEvent:Connect(function(player: Player, pick: unknown)
+		if
+			pick ~= "Cash" and pick ~= "Speed"
+			or player:GetAttribute("InRound")
+			or player:GetAttribute("PrizePickOn") ~= true
+		then
+			return
+		end
+		if os.clock() - (lastPick[player] or 0) < 0.3 then
+			return
+		end
+		lastPick[player] = os.clock()
+		local before = player:GetAttribute("PrizePick")
+		player:SetAttribute("PrizePick", pick)
+		local endsAt = (ReplicatedStorage:GetAttribute("PhaseEndsAt") or 0) :: number
+		Analytics.Track(player, "prize.pick", {
+			pick = pick,
+			changed = before ~= nil and before ~= pick,
+			seconds_left = math.floor(endsAt - workspace:GetServerTimeNow()),
+		})
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		lastPick[player] = nil
+	end)
+	-- A/B "prize_pick": who gets the card (the rest keep the Speed-only prize)
+	local function pickGroup(player: Player)
+		player:SetAttribute("PrizePickOn", Analytics.Variant(player, "prize_pick") ~= "classic")
+	end
+	for _, player in Players:GetPlayers() do
+		pickGroup(player)
+	end
+	Players.PlayerAdded:Connect(pickGroup)
 	Net.Remotes.Stab.OnServerEvent:Connect(function(player: Player, target: any)
 		local round = current
 		local mine = round and killerRound(round, player)

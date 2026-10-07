@@ -40,7 +40,12 @@ local HEARTBEAT_EVERY = 60
 
 -- A/B tests: name -> variants. Every player lands in one variant per test for good (hash of their
 -- id), it rides on every event as ab_<name>, and game code asks Analytics.Variant(player, name).
-local EXPERIMENTS: { [string]: { string } } = {}
+local EXPERIMENTS: { [string]: { string } } = {
+	-- the "pick your prize" card before each murder round (client/PrizePick) vs the old Speed-only
+	-- prize. 50/50 so it reads in about a week at ~200 new players a day; judge on 2nd round, 10 min,
+	-- Rare knife home, session length and D1 (new players only), then ship the winner to everyone.
+	prize_pick = { "pick", "classic" },
+}
 
 -- The first-session funnel, in order. Each step is a milestone (Analytics.Milestone); the same
 -- steps go to Roblox's onboarding funnel (Creator Dashboard > Analytics > Funnels).
