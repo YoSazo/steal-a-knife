@@ -140,6 +140,18 @@ function CoffinList.Init()
 		Ui.Menu.Toggle(frame)
 	end)
 	local badge = Theme.badge(button)
+	-- (phones turn it into a small square: PhoneHud hides the words, so a coffin fills it)
+	if Ui.Phone then
+		local glyph = SimpleUi.text(button, "⚰️", {
+			Name = "Glyph",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(0.8, 0.8),
+			ZIndex = button.ZIndex + 2,
+			Max = 40,
+		})
+		glyph.Name = "Glyph"
+	end
 
 	local last = 0
 	RunService.Heartbeat:Connect(function()

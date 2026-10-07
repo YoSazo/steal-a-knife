@@ -14,6 +14,7 @@ local CAPTION = 14
 local CAPTIONS: { [string]: string } = {
 	KnivesButton = "Knives",
 	PowersButton = "Powers",
+	CoffinsButton = "Coffins",
 }
 
 local function caption(button: GuiObject, text: string)
@@ -62,7 +63,8 @@ function PhoneHud.Init()
 	local right: { GuiObject } = {}
 	-- the free chest pill first (only shown when it's ready), then the buttons
 	local timers = gui:FindFirstChild("Timers", true)
-	for _, name in { "KnivesButton", "PowersButton" } do
+	-- (Coffins last: it only shows while you have coffins waiting, so its gap sits at the bottom)
+	for _, name in { "KnivesButton", "PowersButton", "CoffinsButton" } do
 		local button = gui:FindFirstChild(name, true)
 		if button and button:IsA("GuiObject") then
 			if phone then
