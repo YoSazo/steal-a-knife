@@ -33,6 +33,12 @@ return {
 		Up = "rbxassetid://110235716882201",
 		Dn = "rbxassetid://80516369739171",
 	},
+	-- Soft light sprites for auras (Shared/KnifeHaze): a round glow and a 4-point flare, white on
+	-- transparent, tinted per knife (generated with PIL, uploaded via Studio)
+	Glow = {
+		Soft = "rbxassetid://90958089594860",
+		Flare = "rbxassetid://139779604711269",
+	},
 	-- Murderer perk badges (blender/scripts/make_icons.py)
 	PerkIcons = {
 		Fury = "rbxassetid://84497392515820",

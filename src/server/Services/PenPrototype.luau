@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Toy = require(ReplicatedStorage.Shared.Toy)
+local KnifeHaze = require(ReplicatedStorage.Shared.KnifeHaze)
 
 local PenPrototype = {}
 
@@ -112,6 +113,7 @@ function PenPrototype.Build()
 		model:SetAttribute("PenHalf", Vector3.new(HALF.X, 0, HALF.Y))
 		model:SetAttribute("HopSeed", seed * 101)
 		model:SetAttribute("HopScale", scale)
+		KnifeHaze.Add(model, info.Rarity) -- (the glow that grows with rarity)
 		model:AddTag("PenKnife")
 		seed += 1
 	end
@@ -124,6 +126,7 @@ function PenPrototype.Build()
 			CFrame.new(CENTRE + Vector3.new(i == 1 and -14 or 12, 0, hz - 12))
 		)
 		if ok and coffin then
+			KnifeHaze.Add(coffin, rarity)
 			coffin:AddTag("PenCoffin")
 		end
 	end
@@ -136,7 +139,13 @@ function PenPrototype.Init()
 	end
 	local function check()
 		if ReplicatedStorage:GetAttribute("DebugPens") == true then
-			PenPrototype.Build()
+			-- (in the background and caught: a half-finished art file must never stop the server starting)
+			task.spawn(function()
+				local ok, err = pcall(PenPrototype.Build)
+				if not ok then
+					warn(`[PenPrototype] couldn't build the pen: {err}`)
+				end
+			end)
 		end
 	end
 	ReplicatedStorage:GetAttributeChangedSignal("DebugPens"):Connect(check)
