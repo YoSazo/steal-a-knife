@@ -22,7 +22,6 @@ local RoundPrize = require(ReplicatedStorage.Shared.RoundPrize)
 local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
 local TopLine = require(script.Parent.TopLine)
-local Telemetry = require(script.Parent.Telemetry)
 local MapVoteCard = require(script.Parent.MapVoteCard)
 local RoundMapInfo = require(ReplicatedStorage.Shared.Config.RoundMapInfo)
 local Items = require(ReplicatedStorage.Shared.Items)
@@ -179,29 +178,7 @@ function Hud.Init()
 		end
 	)
 	TopLine.SetPill(doubleButton)
-	local lastGoal = ""
-	-- Your next goal after the tutorial: the next boss up from your best knife
-	local function nextGoal(): (string?, string?, number?)
-		if player:GetAttribute("TutorialDone") ~= true then
-			return nil
-		end
-		local stats = RoundPrize.Stats(player)
-		local index = stats.BestRank + 1
-		local zone = GameConfig.Zones[index] :: any
-		if not zone then
-			return nil
-		end
-		local need = (zone.SpeedNeeded or 0) :: number
-		local tint = (zone.Color :: Color3):Lerp(Color3.new(1, 1, 1), 0.3):ToHex()
-		if stats.Speed < need then
-			return `🎯 Run in your wheel to <b>{Ui.abbreviate(need)} Speed</b> for <font color="#{tint}">{string.upper(
-				zone.Rarity
-			)} knives</font>!`,
-				"train",
-				index
-		end
-		return `🎯 Go steal a <font color="#{tint}"><b>{string.upper(zone.Rarity)}</b></font> knife!`, "steal", index
-	end
+	-- (what to do next is the guide's DO line now - client/Guide; this line is information only)
 	TopLine.Resting = function(): TopLine.Rest?
 		if Ui.menuOpen() or Ui.gui:GetAttribute("FadeCover") == true then
 			return nil
@@ -296,14 +273,6 @@ function Hud.Init()
 				Pill = not doubled,
 				Icon = CartoonArt.Speed, -- (the same shoe as your Speed readout)
 			}
-		end
-		local goal, goalKind, zone = nextGoal()
-		if goal and beat >= 6 then
-			if goal ~= lastGoal then
-				lastGoal = goal
-				Telemetry.Track("goal.shown", { kind = goalKind, zone = zone })
-			end
-			return { Text = goal }
 		end
 		return timer
 	end
@@ -1537,6 +1506,8 @@ function Hud.Init()
 		local top = (Ui.gui:GetAttribute("TopLineHeight") or 0) :: number
 		if top == 0 and Ui.gui:GetAttribute("TutorialBar") == true then
 			top = ((Ui.gui:GetAttribute("TutorialBarHeight") or 36) :: number) + 2
+		elseif top == 0 and Ui.gui:GetAttribute("DoLine") == true and Ui.gui:GetAttribute("DoLineInStrip") ~= true then
+			top = ((Ui.gui:GetAttribute("DoLineHeight") or 38) :: number) + 2
 		end
 		chanceLabel.Position, chanceLabel.Size = UDim2.fromOffset(center, top), UDim2.fromOffset(width, 20)
 		timerFrame.Position, timerFrame.Size = UDim2.fromOffset(center, top + 18), UDim2.fromOffset(width, 40)
@@ -1586,6 +1557,7 @@ function Hud.Init()
 	Ui.gui:GetAttributeChangedSignal("TutorialBarHeight"):Connect(layout)
 	Ui.gui:GetAttributeChangedSignal("TopLine"):Connect(layout)
 	Ui.gui:GetAttributeChangedSignal("TopLineHeight"):Connect(layout)
+	Ui.gui:GetAttributeChangedSignal("DoLine"):Connect(layout)
 	layout()
 	Ui.Menu.Changed:Connect(function()
 		-- (toasts and announcements stay up with a menu open: they're how a click answers you)

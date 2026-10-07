@@ -406,7 +406,13 @@ local function loadAsync(player: Player): Profile?
 		offline = true
 	end
 	if offline then
-		return defaultProfile()
+		local fresh = defaultProfile()
+		-- (Studio: DebugTutorialDone = true skips the tutorial, to test what comes after it)
+		if RunService:IsStudio() and game:GetService("ServerStorage"):GetAttribute("DebugTutorialDone") then
+			fresh.TutorialDone = true
+			fresh.TutorialStep = 5
+		end
+		return fresh
 	end
 	for attempt = 1, MAX_ATTEMPTS do
 		local lockedElsewhere = false

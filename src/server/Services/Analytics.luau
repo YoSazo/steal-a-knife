@@ -447,6 +447,11 @@ local CLIENT_EVENTS: { [string]: { string } } = {
 	["welcome.close"] = { "seconds", "claimed" },
 	["favorite.prompt"] = { "result" }, -- (asked after your first knife lands on your wall)
 	["goal.shown"] = { "kind", "zone" }, -- the "Next:" line once the tutorial is done
+	-- The guide's DO line (client/Guide): what it asked, how long until it changed, and where players
+	-- sat on one instruction for a minute without moving (confusion)
+	["guide.shown"] = { "id", "zone" },
+	["guide.done"] = { "id", "seconds" },
+	["guide.stuck"] = { "id" },
 }
 local DEVICE_KEYS = { "touch", "keyboard", "mouse", "gamepad", "vr", "phone", "screen_w", "screen_h", "quality" }
 

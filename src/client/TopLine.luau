@@ -101,7 +101,10 @@ local function fit(text: string, withPill: boolean)
 	-- fits there on one line (at 14 or bigger) - it frees a whole row in the middle of the screen
 	local tutorialInStrip = Ui.gui:GetAttribute("TutorialBar") == true
 		and Ui.gui:GetAttribute("TutorialInStrip") == true
-	local strip = if tutorialInStrip then nil else Ui.topStrip()
+	-- (the guide's DO line comes first: the status line goes under it - client/Guide)
+	local doLine = Ui.gui:GetAttribute("DoLine") == true
+	local doInStrip = doLine and Ui.gui:GetAttribute("DoLineInStrip") == true
+	local strip = if tutorialInStrip or doInStrip then nil else Ui.topStrip()
 	local fade = FADE
 	if strip then
 		local stripLane = strip.W - 2 * 16 - pillWidth
@@ -139,6 +142,7 @@ local function fit(text: string, withPill: boolean)
 	end
 	local top = if Ui.gui:GetAttribute("TutorialBar") == true and not tutorialInStrip
 		then ((Ui.gui:GetAttribute("TutorialBarHeight") or 36) :: number) + 2
+		elseif doLine and not doInStrip then ((Ui.gui:GetAttribute("DoLineHeight") or 38) :: number) + 2
 		else 0
 	if strip then
 		frame.Position = UDim2.fromOffset(strip.X, strip.Y + (strip.H - tall) / 2)
@@ -267,6 +271,9 @@ function TopLine.Init()
 	Ui.gui:GetAttributeChangedSignal("TutorialBar"):Connect(refit)
 	Ui.gui:GetAttributeChangedSignal("TutorialBarHeight"):Connect(refit)
 	Ui.gui:GetAttributeChangedSignal("TutorialInStrip"):Connect(refit)
+	Ui.gui:GetAttributeChangedSignal("DoLine"):Connect(refit)
+	Ui.gui:GetAttributeChangedSignal("DoLineInStrip"):Connect(refit)
+	Ui.gui:GetAttributeChangedSignal("DoLineHeight"):Connect(refit)
 end
 
 return TopLine
