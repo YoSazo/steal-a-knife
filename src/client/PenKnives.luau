@@ -10,11 +10,39 @@ local RunService = game:GetService("RunService")
 
 local PenHop = require(ReplicatedStorage.Shared.PenHop)
 local Lod = require(script.Parent.Lod)
+local Effects = require(script.Parent.Effects)
+local Format = require(ReplicatedStorage.Shared.Format)
+
+local POP_EVERY = 4 -- seconds between a knife's money pops
 
 local PenKnives = {}
 
 function PenKnives.Init()
 	local coffinHome: { [Model]: CFrame } = {}
+	-- Money popping off each knife ("+$13K", Steal an Egg): what it earned since the last pop, over
+	-- its head, staggered so they don't all pop together
+	task.spawn(function()
+		while true do
+			task.wait(0.5)
+			local now = os.clock()
+			for _, model in CollectionService:GetTagged("PenKnife") do
+				local income = model:GetAttribute("Income")
+				local anchor = model:FindFirstChild("LabelAnchor") :: BasePart?
+				if type(income) ~= "number" or income <= 0 or not anchor then
+					continue
+				end
+				local seed = (model:GetAttribute("HopSeed") or 0) :: number
+				local phase = (now + (seed % 97) * 0.41) % POP_EVERY
+				if phase < 0.5 and Lod.Near(anchor.Position, 110) then
+					Effects.FloatText(
+						anchor.Position - Vector3.new(0, 1, 0),
+						`+{Format.Cash(income * POP_EVERY)}`,
+						Color3.fromRGB(110, 255, 90)
+					)
+				end
+			end
+		end
+	end)
 	RunService.RenderStepped:Connect(function()
 		local now = workspace:GetServerTimeNow()
 		for _, model in CollectionService:GetTagged("PenKnife") do

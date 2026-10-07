@@ -27,6 +27,8 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local ManorDecor = require(script.Parent.ManorDecor)
 local RoundMaps = require(script.Parent.RoundMaps)
 local VaultWalls = require(script.Parent.VaultWalls)
+local PenWalls = require(script.Parent.PenWalls)
+local PenMode = require(ReplicatedStorage.Shared.PenMode)
 local SignTheme = require(ReplicatedStorage.Shared.SignTheme)
 local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 local Toy = require(ReplicatedStorage.Shared.Toy)
@@ -390,13 +392,26 @@ local function buildBases()
 		Color3.fromRGB(180, 200, 255),
 	}
 	local half = GameConfig.ArenaWidth / 2
+	-- Pens (Shared/PenMode): fewer, bigger, flat - 5 down each side, the back of the plaza left open
+	local pens = PenMode.On()
+	local penWidth = GameConfig.Pens.Width
+	local penSpacing = GameConfig.Pens.Spacing
+	if pens then
+		MapService.MaxBases = GameConfig.Pens.Count
+	end
 
 	for i = 1, MapService.MaxBases do
 		task.wait() -- (one vault a frame: never trips the script timeout)
 		-- 1-6 down the left side, 7-12 down the right, 13-16 across the back of the plaza
 		local center: Vector3, frame: CFrame
-		local sideways = i <= COLUMN * 2
-		if sideways then
+		local sideways = pens or i <= COLUMN * 2
+		if pens then
+			local perSide = GameConfig.Pens.Count // 2
+			local side = if i <= perSide then -1 else 1
+			local row = (i - 1) % perSide
+			center = Vector3.new(side * (half + VAULT_DEPTH / 2), 0, -penSpacing / 2 - row * penSpacing)
+			frame = CFrame.new(center) * CFrame.Angles(0, math.rad(if side < 0 then 90 else -90), 0)
+		elseif sideways then
 			local side = if i <= COLUMN then -1 else 1
 			local row = (i - 1) % COLUMN
 			center = Vector3.new(side * (half + VAULT_DEPTH / 2), 0, -20 - row * VAULT_SPACING)
@@ -420,12 +435,26 @@ local function buildBases()
 		folder.Parent = bases
 
 		-- An open platform (Tsunami style): a pale studded floor with a hint of the owner's colour
-		block("Floor", Vector3.new(VAULT_WIDTH, 1, VAULT_DEPTH), at(0, 0.1, 0), VAULT_DECK, folder)
+		-- (a pen: a patch of bright grass inside its fence)
+		if pens then
+			local grass = block(
+				"Floor",
+				Vector3.new(penWidth, 1, VAULT_DEPTH),
+				at(0, 0.1, 0),
+				Color3.fromRGB(86, 196, 56),
+				folder
+			)
+			Toy.Dress(grass, { Enum.NormalId.Top }, 1, 4)
+		else
+			block("Floor", Vector3.new(VAULT_WIDTH, 1, VAULT_DEPTH), at(0, 0.1, 0), VAULT_DECK, folder)
+		end
 		-- Walls, gate towers and the gate itself depend on the owner's wall tier (VaultWalls)
 		local wallFolder = Instance.new("Folder")
 		wallFolder.Name = "Walls"
 		wallFolder.Parent = folder
-		local walls = VaultWalls.Build(wallFolder, frame, color, 1)
+		local walls = if pens
+			then PenWalls.Build(wallFolder, frame, color, 1)
+			else VaultWalls.Build(wallFolder, frame, color, 1)
 		-- The storeys. Each has its own folder so the vault can grow: decks with a hole at the back
 		-- middle, a ladder up from the floor below, a glass rail along the open front, the walkway
 		-- and ten plates (slots 1-10 ground, 11-20 next floor, ...)
@@ -436,7 +465,31 @@ local function buildBases()
 		local plateArts: { ImageLabel } = {}
 		local inner = VAULT_WIDTH / 2 - 0.5
 		local back, front = -VAULT_DEPTH / 2 + 0.5, VAULT_DEPTH / 2 - 0.5
-		for level = 1, FLOORS do
+		if pens then
+			-- No storeys or plates: invisible spots on the grass, one per knife (coffins wait on them,
+			-- raid prompts hang on them; the knives themselves hop around - BaseService). Walking in
+			-- collects your money, so every spot's "cash pad" is the spot itself.
+			local levelFolder = Instance.new("Folder")
+			levelFolder.Name = "Floor1"
+			levelFolder.Parent = folder
+			floorFolders[1] = levelFolder
+			local cols, rows = 8, 5
+			for slot = 1, cols * rows do
+				local c, r = (slot - 1) % cols, (slot - 1) // cols
+				local x = (c - (cols - 1) / 2) * ((penWidth - 10) / (cols - 1))
+				local z = (r - (rows - 1) / 2) * ((VAULT_DEPTH - 14) / (rows - 1)) - 2
+				local spot = block(`Spot{slot}`, Vector3.new(3, 0.2, 3), at(x, 0.7, z), NAVY, levelFolder)
+				spot.Transparency = 1
+				spot.CanCollide, spot.CanQuery, spot.CanTouch = false, false, false
+				spot.Name = `CashPad{slot}` -- (client/Places reads money waiting off these)
+				slotPads[slot] = spot
+				slotRims[slot] = spot
+				cashPads[slot] = spot
+				cashLabels[slot] = Instance.new("TextLabel") -- (unshown: money pops off the knives)
+				slotCFrames[slot] = at(x, 4.2, z)
+			end
+		end
+		for level = 1, if pens then 0 else FLOORS do
 			local levelFolder = Instance.new("Folder")
 			levelFolder.Name = `Floor{level}`
 			levelFolder.Parent = folder
@@ -732,8 +785,9 @@ local function buildBases()
 			Center = center,
 			Frame = frame,
 			-- Rotated 90 degrees, so the world footprint swaps width and depth
-			Bounds = if sideways
-				then bounds(center, VAULT_DEPTH, VAULT_WIDTH)
+			Bounds = if pens
+				then bounds(center, VAULT_DEPTH, penWidth)
+				elseif sideways then bounds(center, VAULT_DEPTH, VAULT_WIDTH)
 				else bounds(center, VAULT_WIDTH, VAULT_DEPTH),
 			Spawn = CFrame.lookAt(spawnPos, spawnPos + frame:VectorToWorldSpace(Vector3.zAxis)),
 			SlotCFrames = slotCFrames,
@@ -945,7 +999,37 @@ end
 
 -- Apply the physical finish to every storey, including unpurchased detached floors.
 -- Keep each prompt anchor, artwork canvas and cash hitbox in place.
+-- A pen at its current length (PenMode.Depth): the grass, the spots its knives / coffins sit on and
+-- its bounds follow the fence (the gate side stays put, the back moves out as it grows)
+function MapService.FitPen(base: BaseSite, depth: number)
+	local width = GameConfig.Pens.Width
+	local shift = GameConfig.Pens.Depth / 2 - depth / 2
+	local function at(x: number, y: number, z: number): CFrame
+		return base.Frame * CFrame.new(x, y, z + shift)
+	end
+	local floor = base.Folder:FindFirstChild("Floor") :: BasePart?
+	if floor then
+		floor.Size = Vector3.new(width, 1, depth)
+		floor.CFrame = at(0, 0.1, 0)
+	end
+	local cols, rows = 8, 5
+	for slot, pad in base.SlotPads do
+		local c, r = (slot - 1) % cols, (slot - 1) // cols
+		local x = (c - (cols - 1) / 2) * ((width - 8) / (cols - 1))
+		local z = (r - (rows - 1) / 2) * ((depth - 8) / (rows - 1))
+		pad.CFrame = at(x, 0.7, z)
+		base.SlotCFrames[slot] = at(x, 4.2, z)
+	end
+	-- world bounds: the pen is turned 90 degrees, so its length runs along world X
+	local centre = at(0, 0, 0).Position
+	local worldX = math.abs(base.Frame.LookVector.X) > 0.5
+	base.Bounds = if worldX then bounds(centre, depth, width) else bounds(centre, width, depth)
+end
+
 function MapService.SetVaultTier(base: BaseSite, level: number)
+	if PenMode.On() then
+		return -- (a pen's grass and fence don't change with the tier)
+	end
 	local palette = VaultModel.Style(level)
 	local floor = base.Folder:FindFirstChild("Floor")
 	if floor and floor:IsA("BasePart") then

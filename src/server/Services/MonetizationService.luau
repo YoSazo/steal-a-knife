@@ -17,6 +17,7 @@ local RunService = game:GetService("RunService")
 
 local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local PenMode = require(ReplicatedStorage.Shared.PenMode)
 local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
 local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
@@ -209,9 +210,9 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 			table.insert(got, `{Format.Cash(value)} (your wheel was already maxed)`)
 		end
 	elseif key == "Mount" then
-		if profile.Slots < GameConfig.MaxSlots then
+		if profile.Slots < PenMode.MaxSlots() then
 			DataService.Update(player, function(p)
-				p.Slots = math.min(GameConfig.MaxSlots, p.Slots + GameConfig.SlotsPerFloor)
+				p.Slots = math.min(PenMode.MaxSlots(), p.Slots + GameConfig.SlotsPerFloor)
 			end)
 			BaseService.RefreshRack(player)
 			table.insert(got, "a new vault floor")

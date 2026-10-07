@@ -8,6 +8,7 @@
 -- boss you can outrun; the wheel is the fallback while walls restock.
 local Format = require(script.Parent.Format)
 local GameConfig = require(script.Parent.Config.GameConfig)
+local PenMode = require(script.Parent.PenMode)
 
 local NextAction = {}
 
@@ -67,7 +68,7 @@ local function rarity(zone: number): string
 end
 
 local function floorAffordable(s: State): boolean
-	return s.Slots < GameConfig.MaxSlots
+	return s.Slots < PenMode.MaxSlots()
 		and s.Rebirths >= GameConfig.FloorRebirthsFor(s.Slots)
 		and s.Cash >= GameConfig.SlotCost(s.Slots)
 end

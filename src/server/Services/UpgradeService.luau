@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local PenMode = require(ReplicatedStorage.Shared.PenMode)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local Net = require(script.Parent.Parent.Remotes)
@@ -155,7 +156,7 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 		return true,
 			`Rebirth {profile.Rebirths}! Everything earns x{1 + profile.Rebirths * GameConfig.Rebirth.IncomeBonus}`
 	elseif kind == "Slot" then
-		if profile.Slots >= GameConfig.MaxSlots then
+		if profile.Slots >= PenMode.MaxSlots() then
 			return false, "Your vault is as tall as it gets!"
 		end
 		local floorRebirths = GameConfig.FloorRebirthsFor(profile.Slots)
@@ -168,7 +169,7 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			return false, "Not enough cash"
 		end
 		DataService.Update(player, function(p)
-			p.Slots = math.min(GameConfig.MaxSlots, p.Slots + GameConfig.SlotsPerFloor)
+			p.Slots = math.min(PenMode.MaxSlots(), p.Slots + GameConfig.SlotsPerFloor)
 		end)
 		BaseService.RefreshRack(player)
 		return true, `Your vault grew a floor: {profile.Slots} knife plates!`

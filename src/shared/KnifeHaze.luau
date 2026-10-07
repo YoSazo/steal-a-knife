@@ -110,10 +110,11 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 
 	-- 1. The core glow: one big soft sun, slowly breathing. Brighter tiers push past the bloom
 	-- threshold, which is what spreads the haze over everything near it.
-	local span = height * (1.3 + tier * 0.12)
+	-- (about the knife's own size: Steal an Egg's glow hugs the creature, it doesn't wash the pen)
+	local span = height * (0.75 + tier * 0.05)
 	if span > PARTICLE_MAX then
 		-- too big for a particle: the sun is an image; a smaller breathing particle glow still sits in it
-		sun(core, "CoreSun", span, tint, 0.3 - tier * 0.01, 1 + tier * 0.45, size.Z)
+		sun(core, "CoreSun", span, tint, 0.55 - tier * 0.01, 1 + tier * 0.35, size.Z)
 		span = PARTICLE_MAX
 	end
 	emitter(core, "CoreGlow", {
@@ -172,8 +173,8 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 	end
 	-- 4. A second, wider halo (Mythic+): the "sun inside it" that lights the air around it
 	if tier >= 5 then
-		local wide = height * (2.2 + (tier - 5) * 0.35)
-		sun(core, "Halo", wide, tint, 0.6, 1 + tier * 0.3, size.Z * 1.5)
+		local wide = height * (1.25 + (tier - 5) * 0.08)
+		sun(core, "Halo", wide, tint, 0.84, 1 + tier * 0.25, size.Z * 1.5)
 	end
 end
 

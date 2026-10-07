@@ -25,6 +25,80 @@ local Analytics = require(script.Parent.Analytics)
 local VaultWalls = require(script.Parent.VaultWalls)
 local VaultModel = require(ReplicatedStorage.Shared.VaultModel)
 local CoffinModel = require(ReplicatedStorage.Shared.CoffinModel)
+local PenMode = require(ReplicatedStorage.Shared.PenMode)
+local PenWalls = require(script.Parent.PenWalls)
+local KnifeHaze = require(ReplicatedStorage.Shared.KnifeHaze)
+
+-- A knife as a character hopping around its pen (Shared/PenMode): Codex's character art if it has
+-- one (Assets/KnifeCharacterAssets), else the plain knife standing on its pommel. Sized by rarity,
+-- hazed by rarity, posed by client/PenKnives (tag PenKnife). Returns the model and the part its
+-- nameplate hangs on (on top of its head, so it moves with the hops).
+local characterAssets: any = nil
+local function penKnife(
+	item: string,
+	parsed: Items.Item,
+	base: MapService.BaseSite,
+	slot: number,
+	parent: Instance
+): (Model, BasePart)
+	local scale = PenMode.Scale(parsed.Knife.Rarity) * (1 + (parsed.Size.Scale - 1) * 0.5)
+	local floor = base.Folder:FindFirstChild("Floor") :: BasePart
+	local floorTop = floor.Position + Vector3.new(0, floor.Size.Y / 2, 0)
+	local model: Model? = nil
+	if characterAssets == nil then
+		local ok, loaded = pcall(function()
+			return require(ReplicatedStorage.Shared.Assets.KnifeCharacterAssets) :: any
+		end)
+		characterAssets = if ok then loaded else false
+	end
+	if characterAssets then
+		local ok, built =
+			pcall(characterAssets.BuildCharacter, parsed.Name, nil, CFrame.new(floorTop), { Scale = scale })
+		if ok then
+			model = built
+		end
+	end
+	if not model then
+		-- (no character art yet: the knife itself, upright, its floor point under the pommel)
+		local knife = KnifeModel.Build(item, true)
+		KnifeModel.FitLength(knife, 2.4 * scale)
+		local box, size = knife:GetBoundingBox()
+		local root = Instance.new("Part")
+		root.Name = "PenRoot"
+		root.Size = Vector3.one * 0.2
+		root.Transparency = 1
+		root.Anchored = true
+		root.CanCollide, root.CanQuery, root.CanTouch = false, false, false
+		root.CFrame = CFrame.new(box.Position - Vector3.new(0, size.Y / 2, 0))
+		root.Parent = knife
+		knife.PrimaryPart = root
+		knife:PivotTo(CFrame.new(floorTop))
+		model = knife
+	end
+	local built = model :: Model
+	local _, size = built:GetBoundingBox()
+	local label = Instance.new("Part")
+	label.Name = "LabelAnchor"
+	label.Size = Vector3.one * 0.2
+	label.Transparency = 1
+	label.Anchored = true
+	label.CanCollide, label.CanQuery, label.CanTouch = false, false, false
+	label.CFrame = built:GetPivot() + Vector3.new(0, size.Y + 1.5, 0)
+	label.Parent = built
+	-- the pen it hops in, axis-aligned in the world (pens are turned 90 degrees: depth runs along X)
+	built:SetAttribute("PenCentre", floorTop)
+	built:SetAttribute(
+		"PenHalf",
+		Vector3.new(base.Bounds.MaxX - base.Bounds.MinX, 0, base.Bounds.MaxZ - base.Bounds.MinZ) / 2
+	)
+	built:SetAttribute("HopSeed", base.Index * 1000 + slot * 37)
+	built:SetAttribute("HopScale", scale)
+	KnifeHaze.Add(built, parsed.Knife.Rarity)
+	built:AddTag("PenKnife")
+	built.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+	built.Parent = parent
+	return built, label
+end
 
 local BaseService = {}
 
@@ -179,7 +253,13 @@ function BaseService.RefreshWalls(base: MapService.BaseSite)
 	local tier = if profile then profile.WallLevel else 1
 	local floors = if profile then GameConfig.FloorsFor(profile.Slots) else 1
 	MapService.SetFloors(base, floors)
-	local built = VaultWalls.Build(base.WallFolder, base.Frame, base.Color, tier, floors)
+	local penDepth = PenMode.Depth(if profile then profile.Slots else GameConfig.StartingSlots)
+	if PenMode.On() then
+		MapService.FitPen(base, penDepth)
+	end
+	local built = if PenMode.On()
+		then PenWalls.Build(base.WallFolder, base.Frame, base.Color, tier, penDepth)
+		else VaultWalls.Build(base.WallFolder, base.Frame, base.Color, tier, floors)
 	MapService.SetVaultTier(base, tier)
 	base.Gate = built.Gate
 	base.Blocker = built.Blocker
@@ -585,7 +665,12 @@ function BaseService.RefreshRack(player: Player)
 		end
 	end
 	-- Bought a floor: the vault grows (and its frame with it)
-	if base.Blocker:GetAttribute("Floors") ~= GameConfig.FloorsFor(profile.Slots) then
+	-- (a pen bought longer, or a vault a floor taller: rebuild the walls to fit)
+	if
+		if PenMode.On()
+			then base.Blocker:GetAttribute("PenDepth") ~= PenMode.Depth(profile.Slots)
+			else base.Blocker:GetAttribute("Floors") ~= GameConfig.FloorsFor(profile.Slots)
+	then
 		BaseService.RefreshWalls(base)
 	end
 	local equipped = profile.Equipped
@@ -627,7 +712,41 @@ function BaseService.RefreshRack(player: Player)
 			})
 			open:SetAttribute("Owner", player.UserId)
 			open:SetAttribute("CoffinPlate", slot)
-		elseif unlocked and index and item and parsed then
+		elseif unlocked and index and item and parsed and PenMode.On() then
+			-- A pen: the knife is a character hopping around (equip / sell from the Knives menu)
+			local penModel, labelAnchor = penKnife(item, parsed, base, slot, folder)
+			-- (no name tags from afar - Steal an Egg shows only money popping off its creatures,
+			-- client/PenKnives; the tag shows up close)
+			local perSecond = Items.Income(item) * multiplier
+			penModel:SetAttribute("Income", perSecond)
+			local perk = parsed.Perk and GameConfig.Perks[parsed.Perk]
+			SignTheme.knifeLabel(
+				folder,
+				labelAnchor,
+				Items.DisplayName(item),
+				parsed.Knife.Rarity,
+				Knives.RarityColors[parsed.Knife.Rarity],
+				`{Format.Cash(math.floor(perSecond * 10 + 0.5) / 10)}/s`,
+				if perk then `🔪 {perk.DisplayName}` else nil,
+				22
+			)
+			if item ~= BaseService.ProtectedItem(player) then
+				local steal = makePrompt(pad, {
+					ActionText = "Steal",
+					ObjectText = Items.DisplayName(item),
+					HoldDuration = GameConfig.Raid.StealTime,
+					KeyboardKeyCode = Enum.KeyCode.F,
+				})
+				steal:SetAttribute("Owner", player.UserId)
+				steal:SetAttribute("Steal", true)
+				steal.Enabled = false
+				steal.Triggered:Connect(function(who)
+					if who ~= player and BaseService.OnStealPrompt then
+						BaseService.OnStealPrompt(who, player, item)
+					end
+				end)
+			end
+		elseif unlocked and index and item and parsed and not PenMode.On() then
 			local model = KnifeModel.Build(item, true)
 			-- Bigger items float bigger (a Colossal towers over its pedestal)
 			KnifeModel.FitLength(model, 4 * (1 + (parsed.Size.Scale - 1) * 0.5)) -- universal display size (was 6)
@@ -681,7 +800,8 @@ function BaseService.RefreshRack(player: Player)
 					end
 				end)
 			end
-		elseif unlocked and not index then
+		elseif unlocked and not index and not PenMode.On() then
+			-- (a pen has no plates to aim for: walking in with a knife drops it in - StealService)
 			-- An empty plate takes the knife you're carrying (any of them, not just the next one)
 			local place = makePrompt(pad, {
 				ActionText = "Place Knife",
@@ -701,6 +821,18 @@ function BaseService.RefreshRack(player: Player)
 		VaultModel.SetPlateGlow(rim)
 	end
 	player:SetAttribute("Income", rackIncome(player))
+	-- Your waiting coffins for the Coffins panel (client/CoffinList): "plate,rarity,roundsLeft,opensAt;..."
+	-- (roundsLeft -1 = a plain timer; opensAt in server time, the offline fallback / timer)
+	local coffins = {}
+	for _, entry in profile.Sealed do
+		local index = DataService.IndexOnPlate(profile, entry.Plate)
+		local parsed = if index then Items.Parse(profile.Knives[index]) else nil
+		if parsed then
+			local opensAt = workspace:GetServerTimeNow() + (entry.ReadyAt - os.time())
+			table.insert(coffins, `{entry.Plate},{parsed.Knife.Rarity},{entry.Rounds or -1},{math.floor(opensAt)}`)
+		end
+	end
+	player:SetAttribute("CoffinList", table.concat(coffins, ";"))
 	MapService.SetWheelTier(base, profile.TreadmillLevel)
 end
 
@@ -1019,6 +1151,8 @@ function BaseService.Init()
 				if not auto and not MapService.InBounds(base.Bounds, root.Position, 2) then
 					continue
 				end
+				-- a pen: being anywhere inside it collects everything (Steal an Egg); no pads to walk over
+				local pen = PenMode.On()
 				for slot, pad in base.CashPads do
 					local waiting = profile.Pending[slot] or 0
 					if waiting <= 0 or not pad.Parent or not pad:IsDescendantOf(workspace) then
@@ -1027,6 +1161,7 @@ function BaseService.Init()
 					local offset = pad.CFrame:PointToObjectSpace(root.Position)
 					if
 						auto
+						or pen
 						or math.abs(offset.X) < pad.Size.X / 2 + 0.8
 							and math.abs(offset.Z) < pad.Size.Z / 2 + 0.8
 							and offset.Y > 0

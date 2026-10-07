@@ -46,6 +46,29 @@ local GameConfig = {
 	-- after HatchSeconds[rarity] - even while you're offline (come back to see it). Sealed = no income,
 	-- no equip/sell. "Open now" = Robux product CoffinOpen. Off until Enabled (Studio: ReplicatedStorage
 	-- attribute DebugCoffins = true). The tutorial's first knife never gets a coffin.
+	-- Pens instead of vaults (Shared/PenMode): Count pens (5 down each side of the plaza), each Width
+	-- along the row x Depth deep, holding up to MaxSlots knives (start StartingSlots; the upgrade adds
+	-- SlotsPerFloor). Knife characters are drawn Scale[rarity] x their 2.4-stud size (Common ~5 studs,
+	-- Cosmic ~48: over the hub walls, seen from spawn).
+	Pens = {
+		Enabled = false,
+		Count = 10,
+		Width = 48,
+		Spacing = 56, -- (8 studs of grass between neighbouring pens: each one its own plot)
+		Depth = 44, -- an upgraded pen's length (the gate stays put, the back fence moves out)
+		StartDepth = 30, -- a new pen's length
+		MaxSlots = 20,
+		Scale = {
+			Common = 2,
+			Rare = 3.3,
+			Epic = 5,
+			Legendary = 7.5,
+			Mythic = 10.5,
+			Godly = 13.5,
+			Celestial = 16.5,
+			Cosmic = 20,
+		},
+	},
 	-- The MURDER ROUNDS are the coffins' clock: a coffin opens after Rounds[rarity] rounds (a won
 	-- round counts WinRounds), all together right after the results (the opening ceremony). Offline,
 	-- each round still owed is OfflineSecondsPerRound of real time. A Common just takes CommonSeconds.

@@ -30,6 +30,7 @@ local Ragdoll = require(script.Parent.Ragdoll)
 local Targets = require(script.Parent.Targets)
 local Analytics = require(script.Parent.Analytics)
 local CoffinService = require(script.Parent.CoffinService)
+local PenMode = require(ReplicatedStorage.Shared.PenMode)
 
 type Carry = {
 	Kind: string, -- "Case" | "Knife"
@@ -813,6 +814,11 @@ local function tick()
 		if BaseService.IsInOwnBase(player, pos) then
 			if carry.Kind == "Case" then
 				deposit(player) -- cases open as soon as you're home
+				continue
+			end
+			-- A pen: walking in drops it in (no plates to find; it hops off to join the others)
+			if PenMode.On() then
+				deposit(player)
 				continue
 			end
 			-- Knives: you put them on a plate yourself (Tsunami style), StealService.Place
