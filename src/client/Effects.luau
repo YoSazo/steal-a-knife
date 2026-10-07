@@ -1358,7 +1358,14 @@ function Effects.Init()
 		local character = player.Character
 		local head = character and character:FindFirstChild("Head") :: BasePart?
 		if head then
-			local rate = GameConfig.Treadmills[level] and GameConfig.Treadmills[level].Rate or 0
+			local rate = GameConfig.TrainRate(
+				level,
+				(player:GetAttribute("Rebirths") or 0) :: number,
+				(player:GetAttribute("TrailLevel") or 0) :: number,
+				player:GetAttribute("Pass_PhantomTrail") == true,
+				player:GetAttribute("Pass_FastWheel") == true,
+				false
+			)
 			local gained = math.max(1, math.floor(rate * stride))
 			local jitter = Vector3.new(math.random(-10, 10) / 10, 2.5, math.random(-10, 10) / 10)
 			Effects.FloatText(head.Position + jitter, `+{Format.Short(gained)} ⚡`, Color3.fromRGB(120, 200, 255))

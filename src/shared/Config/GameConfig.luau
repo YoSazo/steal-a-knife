@@ -1114,6 +1114,25 @@ function GameConfig.WalkSpeedFor(speed: number): number
 	return math.min(walk, GameConfig.MaxWalkSpeed)
 end
 
+-- Speed per second your wheel really trains (tier x rebirths x trail x Fast Wheel pass x Training
+-- Potion): what the server adds, and what every number about the wheel shows (a kid read the bare
+-- tier rate, "+20 speed", and thought upgrades were worthless)
+function GameConfig.TrainRate(
+	level: number,
+	rebirths: number,
+	trailLevel: number,
+	phantom: boolean,
+	fastWheel: boolean,
+	training: boolean
+): number
+	local tier = GameConfig.Treadmills[math.clamp(level, 1, #GameConfig.Treadmills)]
+	return tier.Rate
+		* (1 + rebirths * GameConfig.Rebirth.SpeedBonus)
+		* (if fastWheel then 2 else 1)
+		* (if training then GameConfig.Consumables.TrainingMultiplier else 1)
+		* GameConfig.TrailMultiplier(trailLevel, phantom)
+end
+
 -- Speed training multiplier from your knife trail (and the Phantom Trail pass)
 function GameConfig.TrailMultiplier(level: number, phantom: boolean?): number
 	local trail = GameConfig.Trails[level]

@@ -1295,16 +1295,14 @@ function BaseService.Init()
 					base.Wheel:SetAttribute("SpinRate", 1.4 + profile.TreadmillLevel * 0.55)
 				end
 				if on and profile then
-					local rate = GameConfig.Treadmills[profile.TreadmillLevel].Rate
-						* (1 + profile.Rebirths * GameConfig.Rebirth.SpeedBonus)
-						* (if player:GetAttribute("Pass_FastWheel") then 2 else 1)
-						* (if DataService.BoostActive(profile, "Training")
-							then GameConfig.Consumables.TrainingMultiplier
-							else 1)
-						* GameConfig.TrailMultiplier(
-							profile.TrailLevel,
-							player:GetAttribute("Pass_PhantomTrail") == true
-						)
+					local rate = GameConfig.TrainRate(
+						profile.TreadmillLevel,
+						profile.Rebirths,
+						profile.TrailLevel,
+						player:GetAttribute("Pass_PhantomTrail") == true,
+						player:GetAttribute("Pass_FastWheel") == true,
+						DataService.BoostActive(profile, "Training")
+					)
 					DataService.Update(player, function(p)
 						p.Speed += rate * dt
 					end)

@@ -64,11 +64,27 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 		if not DataService.TrySpend(player, nextTier.Cost, "upgrade_wheel") then
 			return short(player, nextTier.Cost)
 		end
+		local function trains(level: number): number
+			return GameConfig.TrainRate(
+				level,
+				profile.Rebirths,
+				profile.TrailLevel,
+				player:GetAttribute("Pass_PhantomTrail") == true,
+				player:GetAttribute("Pass_FastWheel") == true,
+				false
+			)
+		end
+		local before = trains(profile.TreadmillLevel)
 		DataService.Update(player, function(p)
 			p.TreadmillLevel += 1
 		end)
 		BaseService.RefreshRack(player) -- updates the wheel's sign
-		return true, `{nextTier.Name}! +{nextTier.Rate} Speed per second`
+		local after = trains(profile.TreadmillLevel)
+		-- (what you really get now, and how much faster that is - never the bare tier number)
+		return true,
+			`{nextTier.Name}! Now +{Format.Short(after)} Speed every second ({string
+				.format("%.1f", after / math.max(before, 1))
+				:gsub("%.0$", "")}x faster)`
 	elseif kind == "Trail" then
 		local nextTrail = GameConfig.Trails[profile.TrailLevel + 1]
 		if not nextTrail then

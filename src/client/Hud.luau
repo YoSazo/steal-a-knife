@@ -791,12 +791,14 @@ function Hud.Init()
 		cashLabel.Text = `${Ui.abbreviate(cash)}`
 		speedLabel.Text = Ui.abbreviate(speed)
 		local training = player:GetAttribute("Training")
-		local rate = GameConfig.Treadmills[treadmill].Rate
-			* (1 + rebirths * GameConfig.Rebirth.SpeedBonus)
-			* GameConfig.TrailMultiplier(
-				(player:GetAttribute("TrailLevel") or 0) :: number,
-				player:GetAttribute("Pass_PhantomTrail") == true
-			)
+		local rate = GameConfig.TrainRate(
+			treadmill,
+			rebirths,
+			(player:GetAttribute("TrailLevel") or 0) :: number,
+			player:GetAttribute("Pass_PhantomTrail") == true,
+			player:GetAttribute("Pass_FastWheel") == true,
+			false
+		)
 		trainLabel.Text = if training
 			then `+{Ui.abbreviate(rate)}/s  running!`
 			else `{math.floor(GameConfig.WalkSpeedFor(speed))} walk speed`
