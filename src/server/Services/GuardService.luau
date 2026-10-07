@@ -800,39 +800,60 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 	-- way on every server, spaced by how big this zone's coffins are)
 	local scatter = Random.new(index * 7919)
 	local chairLocal = frame:PointToObjectSpace(chairFrame.Position)
-	local coffinLength = ({ 3, 4, 5.2, 6.6, 8.2, 10, 12, 14 })[math.clamp(index, 1, 8)]
-	local spacing = coffinLength * 0.75 + 2.5
-	local near = 5 + coffinLength * 0.4 -- (clear of the chair)
-	local far = near + spacing * 2.4
+	-- (sized for the biggest coffin this stash can roll: one rarity up. Coffins lie lengthwise along
+	-- local Z, turned at most TURN degrees, so two don't touch if they're a coffin-width apart side
+	-- by side or a coffin-length apart end to end - close, never overlapping)
+	local lengths = { 3, 4, 5.2, 6.6, 8.2, 10, 12, 14 }
+	local coffinLength = lengths[math.clamp(index + 1, 1, #lengths)]
+	local coffinWidth = coffinLength * 0.4
+	local TURN = 12
+	local slack = math.sin(math.rad(TURN)) * coffinLength
+	local gap = 1.2
+	local function apart(a: Vector3, b: Vector3): boolean
+		return math.abs(a.X - b.X) >= coffinWidth + slack + gap or math.abs(a.Z - b.Z) >= coffinLength + slack + gap
+	end
+	-- Spread over the lair's open floor along the wall (and a little out onto the runway), clear of
+	-- the boss's chair: a loose clump round the middle of the lair, never overlapping
+	local clear = 3 + coffinLength * 0.5 -- (room round the chair)
+	local centre = Vector3.new(0, 0, -2)
 	local graves: { Vector3 } = {}
 	for _ = 1, count do
-		local best, bestScore = Vector3.zero, -math.huge
-		for _ = 1, 40 do
-			local angle = math.rad(scatter:NextNumber(-65, 65))
-			local radius = scatter:NextNumber(near, far)
-			-- (out onto the runway in front of the lair: the lair itself is only a strip by the wall)
-			local candidate = Vector3.new(
-				math.clamp(chairLocal.X + math.sin(angle) * radius, -W / 2 + 3, W / 2 - 3),
-				0,
-				math.clamp(chairLocal.Z - math.cos(angle) * radius, -D / 2 - 20, D / 2 - 3)
-			)
-			-- room enough from the others, and the closer to the boss the better
-			local room = spacing
-			for _, other in graves do
-				room = math.min(room, (candidate - other).Magnitude)
+		local chosen: Vector3? = nil
+		local reach = 4 -- (how far out onto the runway it may go)
+		for _ = 1, 6 do
+			local best = math.huge
+			for _ = 1, 80 do
+				local candidate = Vector3.new(
+					scatter:NextNumber(-W / 2 + 2 + coffinWidth / 2, W / 2 - 2 - coffinWidth / 2),
+					0,
+					scatter:NextNumber(-D / 2 - reach, D / 2 - 2 - coffinLength / 2)
+				)
+				local fits = (Vector3.new(candidate.X - chairLocal.X, 0, candidate.Z - chairLocal.Z)).Magnitude
+					>= clear + coffinLength * 0.3
+				for _, other in graves do
+					if not fits then
+						break
+					end
+					fits = apart(candidate, other)
+				end
+				-- nearer the middle of the lair wins, with some luck: a loose clump that fills the floor
+				local score = (candidate - centre).Magnitude + scatter:NextNumber(0, W * 0.35)
+				if fits and score < best then
+					chosen, best = candidate, score
+				end
 			end
-			local score = room * 4 - radius * 0.5
-			if score > bestScore then
-				best, bestScore = candidate, score
+			if chosen then
+				break
 			end
+			reach += coffinLength -- (no room left: a bit further out onto the runway)
 		end
-		table.insert(graves, best)
+		table.insert(graves, chosen or Vector3.new(0, 0, -D / 2 - reach))
 	end
 	for i = 1, count do
 		local x = -span / 2 + (i - 1) * span / math.max(count - 1, 1)
 		if graveyard then
 			local grave = graves[i]
-			local turn = CFrame.Angles(0, math.rad(scatter:NextNumber(-40, 40)), 0)
+			local turn = CFrame.Angles(0, math.rad(scatter:NextNumber(-TURN, TURN)), 0)
 			local pad: Part =
 				block(model, "Grave", Vector3.new(4.5, 0.3, 4.5), at(grave.X, 0.15, grave.Z) * turn, config.Color)
 			pad.Transparency = 1
