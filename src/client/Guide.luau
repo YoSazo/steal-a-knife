@@ -752,7 +752,10 @@ function Guide.Init()
 			return
 		end
 		local action = current
-		if not visible or not action or Ui.gui:GetAttribute("GuideArrows") == false then
+		-- (the trail on the ground is for new players: after a few murder rounds the DO line is enough)
+		local beginner = ((player:GetAttribute("RoundsPlayed") or 0) :: number) < 3
+			and ((player:GetAttribute("Rebirths") or 0) :: number) == 0
+		if not visible or not action or not beginner or Ui.gui:GetAttribute("GuideArrows") == false then
 			Arrows.Hide("Guide")
 			return
 		end
