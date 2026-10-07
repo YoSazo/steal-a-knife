@@ -289,18 +289,9 @@ end
 -- Where to aim the arrows on the way to `target`: into your vault through its gate (the outside
 -- spot first), otherwise straight there
 function Places.Aim(from: Vector3, target: Vector3): Vector3
-	if Places.InVault(from) and not Places.InVault(target) then
-		local home = Places.HomeSpot()
-		if home and (Vector3.new(from.X, 0, from.Z) - Vector3.new(home.X, 0, home.Z)).Magnitude > 6 then
-			return home -- leave through your vault's actual gate, then straight to the knife
-		end
-	end
-	if Places.InVault(target) and not Places.InVault(from) then
-		local home = Places.HomeSpot()
-		if home and (Vector3.new(from.X, 0, from.Z) - Vector3.new(home.X, 0, home.Z)).Magnitude > 6 then
-			return home
-		end
-	end
+	-- (no stop at the vault's entrance on the way in or out: the vaults open onto the plaza, so the
+	-- arrows go straight to the plate or the knife - a detour arrow was a wasted step. Only an upper
+	-- floor still goes via its ladder.)
 	if Places.InVault(target) and Places.InVault(from) and target.Y > from.Y + 8 then
 		local vault = Places.Vault()
 		local best: BasePart? = nil

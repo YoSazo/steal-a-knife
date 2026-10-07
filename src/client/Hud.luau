@@ -12,7 +12,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TextService = game:GetService("TextService")
 local TweenService = game:GetService("TweenService")
 
 local Ui = require(script.Parent.Ui)
@@ -217,10 +216,12 @@ function Hud.Init()
 				local goal = if player:GetAttribute("Role") == "Murderer"
 					then "GET EVERYONE"
 					else if Ui.gui:GetAttribute("GuideRole") == "Sheriff" then "STOP THE MURDERER" else "SURVIVE"
+				-- (the Speed shoe after the prize, like the line before the round)
 				return {
 					Text = if Ui.Phone
-						then `{clock} · <b>{goal}</b>`
+						then `{clock} · <b>{goal}</b> = <font color="#8CFF96">{prize.Text:gsub(" Speed$", "")}</font>`
 						else `🔪 {clock} · <b>{goal}</b> = <font color="#8CFF96">{prize.Text}</font>`,
+					Icon = CartoonArt.Speed,
 				}
 			end
 			return {
@@ -479,31 +480,10 @@ function Hud.Init()
 	local function refreshChance()
 		local chance = player:GetAttribute("MurdererChance")
 		local inRound = player:GetAttribute("InRound") == true
-		roundPrizeIcon.Visible = inRound and Ui.Phone
-		if inRound and Ui.Phone then
-			local prize = RoundPrize.For(
-				"Speed",
-				"",
-				ReplicatedStorage:GetAttribute("PrizeJackpot") == true,
-				1,
-				RoundPrize.Stats(player),
-				((player:GetAttribute("Charge_DoublePrize") or 0) :: number) > 0
-			)
-			chanceLabel.Text = `Win {prize.Text}`
-			chanceLabel.TextColor3 = Color3.fromRGB(140, 255, 150)
-			chanceLabel.TextXAlignment = Enum.TextXAlignment.Left
-			chanceLabel.Visible = not Ui.menuOpen()
-			local strip = Ui.topStrip("Chance")
-			local width = TextService:GetTextSize(
-				chanceLabel.Text,
-				chanceLabel.TextSize,
-				chanceLabel.Font,
-				Vector2.new(1000, 100)
-			).X + 20
-			chanceLabel.Size = UDim2.fromOffset(width, if strip then strip.H else 20)
-			if strip then
-				chanceLabel.Position = UDim2.fromOffset(strip.X, strip.Y)
-			end
+		-- (in a round the status line already says "SURVIVE = +1.1K 👟": no second prize line)
+		roundPrizeIcon.Visible = false
+		if inRound then
+			chanceLabel.Visible = false
 			return
 		end
 		chanceLabel.TextColor3 = Color3.fromRGB(255, 110, 120)

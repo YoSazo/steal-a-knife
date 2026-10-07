@@ -177,9 +177,13 @@ local function buildBoards()
 		})
 		-- "VOTE" floating over it, like the shopkeepers' names
 		local billboard = Instance.new("BillboardGui")
-		billboard.Size = UDim2.fromOffset(200, 50)
+		-- (sized in studs, like the shopkeepers' titles: it shrinks with distance - in pixels it
+		-- stayed the same size on screen and looked huge from far away)
+		billboard.Size = UDim2.fromScale(9, 2.2)
+		billboard:SetAttribute("LabelCategory", "Shop")
+		billboard:AddTag("ResponsiveWorldLabel")
 		billboard.StudsOffsetWorldSpace = Vector3.new(0, 12, 0)
-		billboard.MaxDistance = 220
+		billboard.MaxDistance = 140
 		billboard.LightInfluence = 0
 		billboard.Adornee = board
 		billboard.Parent = board

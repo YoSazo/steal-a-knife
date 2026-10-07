@@ -558,13 +558,13 @@ local function buildBases()
 		signPart.Transparency = 1
 		signPart.CanCollide = false
 		signPart.CanQuery = false
-		local _, ownerFace = WorldSignModel.Attach("VaultOwner", signPart, Enum.NormalId.Back)
-		local sign = WorldSignModel.LiveText(
-			WorldSignModel.Surface(signPart, ownerFace, "OwnerGui", 160),
-			"Owner",
-			"Empty Vault",
-			color
-		)
+		-- (no board on the back any more: the owner's name floats over the entrance and your own vault
+		-- has the YOUR BASE house - client/BaseMarkers. The label stays, hidden, for BaseService.)
+		local ownerGui = Instance.new("SurfaceGui")
+		ownerGui.Name = "OwnerGui"
+		ownerGui.Enabled = false
+		ownerGui.Parent = signPart
+		local sign = WorldSignModel.LiveText(ownerGui, "Owner", "Empty Vault", color)
 
 		-- The Haunted Wheel: a giant iron wheel you run inside to train Speed (the plate at the bottom
 		-- is what counts as "on it"). Clients spin it while its owner is training. It stands just

@@ -215,6 +215,10 @@ function Arrows.Draw(owner: string, spec: Spec)
 	end
 	glow.Adornee = spec.Glow
 	glow.Enabled = spec.Glow ~= nil
+	-- A sign (its words and buttons on a SurfaceGui) gets an outline only: filled yellow, you
+	-- couldn't read it or see its green button. Knives and plates are filled.
+	local target = spec.Glow
+	glow.FillTransparency = if target and target:FindFirstChildWhichIsA("SurfaceGui", true) then 1 else 0.15
 end
 
 function Arrows.Hide(owner: string?)
