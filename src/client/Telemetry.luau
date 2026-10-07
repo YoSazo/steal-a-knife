@@ -102,6 +102,21 @@ local function finished(kind: string, key: string?, bought: boolean)
 end
 
 function Telemetry.Init()
+	-- Script errors on this device (a bug on someone's phone was invisible before): each different
+	-- error once a session, at most 10 (the server allow-lists it as error.client)
+	local reported: { [string]: boolean } = {}
+	local count = 0
+	game:GetService("ScriptContext").Error:Connect(function(message: string, trace: string, source: Instance?)
+		local where = if source then source.Name else "?"
+		local line = (trace:match("[Ll]ine (%d+)") or message:match(":(%d+):") or "?") :: string
+		local key = `{where}:{line}:{message:sub(1, 60)}`
+		if reported[key] or count >= 10 then
+			return
+		end
+		reported[key] = true
+		count += 1
+		Telemetry.Track("error.client", { script = where, line = line, message = message:gsub("^.-:%d+: ", "") })
+	end)
 	-- The device, once (the server keeps it on every later event)
 	local camera = workspace.CurrentCamera
 	local quality = UserSettings().GameSettings.SavedQualityLevel.Value

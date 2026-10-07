@@ -452,6 +452,7 @@ local CLIENT_EVENTS: { [string]: { string } } = {
 	["welcome.close"] = { "seconds", "claimed" },
 	["favorite.prompt"] = { "result", "moment" }, -- (asked after the first round you win: client/Favorite)
 	["notify.prompt"] = { "shown" }, -- Roblox's notifications opt-in (client/NotifyOptIn)
+	["error.client"] = { "script", "line", "message" }, -- a script error on the player's device
 	["goal.shown"] = { "kind", "zone" }, -- the "Next:" line once the tutorial is done
 	-- The guide's DO line (client/Guide): what it asked, how long until it changed, and where players
 	-- sat on one instruction for a minute without moving (confusion)
@@ -759,6 +760,25 @@ function Analytics.Recent(n: number?): { any }
 end
 
 function Analytics.Init()
+	-- Script errors on this server: each different one at most every 10 minutes, 30 a server at most
+	local lastError: { [string]: number } = {}
+	local errors = 0
+	game:GetService("ScriptContext").Error:Connect(function(message: string, trace: string, source: Instance?)
+		local where = if source then source.Name else "?"
+		local line = (trace:match("[Ll]ine (%d+)") or message:match(":(%d+):") or "?") :: string
+		local key = `{where}:{line}:{normalize(message)}`
+		local now = os.clock()
+		if now - (lastError[key] or -1e9) < 600 or errors >= 30 then
+			return
+		end
+		lastError[key] = now
+		errors += 1
+		Analytics.Track(nil, "error.server", {
+			script = where,
+			line = line,
+			message = (message:gsub("^.-:%d+: ", "")):sub(1, 120),
+		})
+	end)
 	-- Every "bad" message a player gets is a moment they were stopped from doing something
 	Net.SetNotifyHook(function(player: Player, text: string, kind: string)
 		if kind ~= "bad" then
