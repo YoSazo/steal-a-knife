@@ -813,42 +813,35 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 	local function apart(a: Vector3, b: Vector3): boolean
 		return math.abs(a.X - b.X) >= coffinWidth + slack + gap or math.abs(a.Z - b.Z) >= coffinLength + slack + gap
 	end
-	-- Spread over the lair's open floor along the wall (and a little out onto the runway), clear of
-	-- the boss's chair: a loose clump round the middle of the lair, never overlapping
-	local clear = 3 + coffinLength * 0.5 -- (room round the chair)
-	local centre = Vector3.new(0, 0, -2)
+	-- Steal an Egg's eggs: scattered loosely in FRONT of the sleeping creature (between it and you,
+	-- out on the floor towards the runway), some close, some further, well apart - not a clump
+	-- beside it. Blue-noise: each coffin takes the best of a few random spots in a fan out from the
+	-- chair, the one furthest from the coffins already down.
+	local near = 4 + coffinLength * 0.6 -- (room round the chair)
+	local far = near + coffinLength * 3.2 + 6
 	local graves: { Vector3 } = {}
 	for _ = 1, count do
 		local chosen: Vector3? = nil
-		local reach = 4 -- (how far out onto the runway it may go)
-		for _ = 1, 6 do
-			local best = math.huge
-			for _ = 1, 80 do
-				local candidate = Vector3.new(
-					scatter:NextNumber(-W / 2 + 2 + coffinWidth / 2, W / 2 - 2 - coffinWidth / 2),
-					0,
-					scatter:NextNumber(-D / 2 - reach, D / 2 - 2 - coffinLength / 2)
-				)
-				local fits = (Vector3.new(candidate.X - chairLocal.X, 0, candidate.Z - chairLocal.Z)).Magnitude
-					>= clear + coffinLength * 0.3
-				for _, other in graves do
-					if not fits then
-						break
-					end
-					fits = apart(candidate, other)
-				end
-				-- nearer the middle of the lair wins, with some luck: a loose clump that fills the floor
-				local score = (candidate - centre).Magnitude + scatter:NextNumber(0, W * 0.35)
-				if fits and score < best then
-					chosen, best = candidate, score
-				end
+		local bestRoom = -math.huge
+		for _ = 1, 24 do
+			local angle = math.rad(scatter:NextNumber(-65, 65))
+			local radius = scatter:NextNumber(near, far)
+			local candidate = Vector3.new(
+				math.clamp(chairLocal.X + math.sin(angle) * radius, -W / 2 - 6, W / 2 + 6),
+				0,
+				chairLocal.Z - math.cos(angle) * radius
+			)
+			local room = math.huge
+			local fits = true
+			for _, other in graves do
+				room = math.min(room, (candidate - other).Magnitude)
+				fits = fits and apart(candidate, other)
 			end
-			if chosen then
-				break
+			if fits and room > bestRoom then
+				chosen, bestRoom = candidate, room
 			end
-			reach += coffinLength -- (no room left: a bit further out onto the runway)
 		end
-		table.insert(graves, chosen or Vector3.new(0, 0, -D / 2 - reach))
+		table.insert(graves, chosen or Vector3.new(chairLocal.X, 0, chairLocal.Z - far - #graves * coffinLength))
 	end
 	for i = 1, count do
 		local x = -span / 2 + (i - 1) * span / math.max(count - 1, 1)
