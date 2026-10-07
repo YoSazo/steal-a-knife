@@ -68,7 +68,7 @@ end
 local function emitter(core: BasePart, name: string, props: { [string]: any }): ParticleEmitter
 	local e = Instance.new("ParticleEmitter")
 	e.Name = name
-	e.LightEmission = 1
+	e.LightEmission = 0.45 -- (half light, half paint: stacked auras glowed white and hid the knives)
 	e.LightInfluence = 0
 	e.LockedToPart = true
 	e.Speed = NumberRange.new(0)
@@ -114,7 +114,7 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 	local span = height * (0.75 + tier * 0.05)
 	if span > PARTICLE_MAX then
 		-- too big for a particle: the sun is an image; a smaller breathing particle glow still sits in it
-		sun(core, "CoreSun", span, tint, 0.55 - tier * 0.01, 1 + tier * 0.35, size.Z)
+		sun(core, "CoreSun", span, tint, 0.72, 1 + tier * 0.08, size.Z)
 		span = PARTICLE_MAX
 	end
 	emitter(core, "CoreGlow", {
@@ -123,9 +123,9 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 		Rate = 2.2,
 		Lifetime = NumberRange.new(2.4, 3.2),
 		Size = seq({ { 0, span * 0.85 }, { 0.5, span }, { 1, span * 0.9 } }),
-		Transparency = seq({ { 0, 1 }, { 0.35, 0.45 - tier * 0.02 }, { 0.7, 0.5 - tier * 0.02 }, { 1, 1 } }),
-		LightEmission = 0.35, -- (part painted, part light: keeps its colour on a bright day)
-		Brightness = 0.8 + tier * 0.55,
+		Transparency = seq({ { 0, 1 }, { 0.35, 0.62 - tier * 0.015 }, { 0.7, 0.68 - tier * 0.015 }, { 1, 1 } }),
+		LightEmission = 0.2, -- (part painted, part light: keeps its colour on a bright day)
+		Brightness = 0.7 + tier * 0.12,
 		RotSpeed = NumberRange.new(-8, 8),
 		ZOffset = -2, -- (behind the knife, so the face stays crisp)
 		Shape = Enum.ParticleEmitterShape.Box,
@@ -147,7 +147,7 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 			Lifetime = NumberRange.new(0.6, 1.1),
 			Size = seq({ { 0, 0 }, { 0.3, twinkle }, { 1, 0 } }),
 			Transparency = seq({ { 0, 0.2 }, { 1, 0.6 } }),
-			Brightness = 2 + tier * 0.4,
+			Brightness = 1.4 + tier * 0.1,
 			RotSpeed = NumberRange.new(-40, 40),
 			Shape = Enum.ParticleEmitterShape.Box,
 			ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume,
@@ -168,7 +168,7 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 			Acceleration = Vector3.new(0, height * 0.1, 0),
 			Size = seq({ { 0, math.min(height * 0.18, 4) }, { 1, 0 } }),
 			Transparency = seq({ { 0, 0.15 }, { 1, 1 } }),
-			Brightness = 2.5 + tier * 0.3,
+			Brightness = 1.4 + tier * 0.08,
 			Shape = Enum.ParticleEmitterShape.Box,
 			ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume,
 		})
@@ -176,7 +176,7 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 	-- 4. A second, wider halo (Mythic+): the "sun inside it" that lights the air around it
 	if tier >= 5 then
 		local wide = height * (1.25 + (tier - 5) * 0.08)
-		sun(core, "Halo", wide, tint, 0.84, 1 + tier * 0.25, size.Z * 1.5)
+		sun(core, "Halo", wide, tint, 0.92, 1 + tier * 0.05, size.Z * 1.5)
 	end
 	-- 5. Personality (Steal an Egg's monstrosity look): sprites with shapes of their own, stacked by rarity
 	local big = math.min(height, 14) -- (x1.4 for the biggest layers stays under PARTICLE_MAX)
@@ -195,7 +195,7 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 		props.Acceleration = Vector3.new(0, -big * 0.5, 0)
 		props.Rotation = NumberRange.new(0, 0)
 		props.LightEmission = 0.5
-		props.Brightness = 1.5
+		props.Brightness = 1.1
 		props.Shape = Enum.ParticleEmitterShape.Box
 		props.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
 		emitter(core, "Drips", props)
@@ -210,7 +210,7 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 			Size = seq({ { 0, big * 0.2 }, { 0.5, big * 0.5 }, { 1, big * 0.35 } }),
 			Transparency = seq({ { 0, 1 }, { 0.25, 0.3 }, { 0.75, 0.4 }, { 1, 1 } }),
 			RotSpeed = NumberRange.new(70, 140),
-			Brightness = 1.6,
+			Brightness = 1.15,
 			Shape = Enum.ParticleEmitterShape.Box,
 			ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume,
 		})
@@ -226,7 +226,7 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 			SpreadAngle = Vector2.new(180, 180),
 			Size = seq({ { 0, big * 0.22 }, { 1, 0 } }),
 			Transparency = seq({ { 0, 0 }, { 1, 0.8 } }),
-			Brightness = 3,
+			Brightness = 1.5,
 			Shape = Enum.ParticleEmitterShape.Box,
 			ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume,
 			LockedToPart = false,
@@ -256,9 +256,9 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 			Rate = 0.9,
 			Lifetime = NumberRange.new(5, 6),
 			Size = seq({ { 0, big * 1.1 }, { 1, big * 1.4 } }),
-			Transparency = seq({ { 0, 1 }, { 0.25, 0.55 }, { 0.75, 0.6 }, { 1, 1 } }),
+			Transparency = seq({ { 0, 1 }, { 0.25, 0.7 }, { 0.75, 0.75 }, { 1, 1 } }),
 			RotSpeed = NumberRange.new(12, 18),
-			Brightness = 2.2,
+			Brightness = 1.2,
 			ZOffset = -3,
 		})
 	end
@@ -271,7 +271,7 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 		bolt.Lifetime = NumberRange.new(1.6, 1.6)
 		bolt.Size = seq({ { 0, big * 0.9 }, { 1, big * 0.9 } })
 		bolt.Transparency = seq({ { 0, 0 }, { 1, 0 } })
-		bolt.Brightness = 4
+		bolt.Brightness = 1.8
 		bolt.Shape = Enum.ParticleEmitterShape.Box
 		bolt.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
 		emitter(core, "Bolts", bolt)
@@ -291,7 +291,7 @@ function KnifeHaze.Add(model: Model, rarity: string, color: Color3?)
 			Size = seq({ { 0, big * 1.1 }, { 1, big * 1.3 } }),
 			Transparency = seq({ { 0, 1 }, { 0.3, 0.35 }, { 0.7, 0.45 }, { 1, 1 } }),
 			Rotation = NumberRange.new(0, 0),
-			Brightness = 2,
+			Brightness = 1.2,
 			Shape = Enum.ParticleEmitterShape.Box,
 			ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume,
 		})
