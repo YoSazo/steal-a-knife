@@ -425,7 +425,7 @@ Monetization.Products = {
 	{
 		-- (Id 0 until created: Studio fakes it; analytics/ npm run setup creates it on Roblox)
 		Key = "CoffinOpen",
-		Id = 0,
+		Id = 3717127486,
 		Price = 19,
 		Name = "Open Coffin Now",
 		Description = "Open a coffin right now - no waiting.",
