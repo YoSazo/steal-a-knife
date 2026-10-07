@@ -231,8 +231,21 @@ end
 local function updateEffects()
 	local range = profile.ParticleRange
 	for _, effect in effectList do
+		local parent = effect.Parent
 		local position = positionOf(effect)
-		if position and effect.Parent then
+		if parent and parent:IsA("BasePart") and math.max(parent.Size.X, parent.Size.Y, parent.Size.Z) > 20 then
+			-- (a long part - a lava channel, a cloud bank: the nearest point of it, not its middle)
+			local half = parent.Size / 2
+			local here = parent.CFrame:PointToObjectSpace(cameraPosition)
+			position = parent.CFrame:PointToWorldSpace(
+				Vector3.new(
+					math.clamp(here.X, -half.X, half.X),
+					math.clamp(here.Y, -half.Y, half.Y),
+					math.clamp(here.Z, -half.Z, half.Z)
+				)
+			)
+		end
+		if position and parent then
 			setCulled(effect, (position - cameraPosition).Magnitude > range, effects)
 		end
 	end
