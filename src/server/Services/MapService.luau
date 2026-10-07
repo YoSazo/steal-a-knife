@@ -364,6 +364,9 @@ local VAULT_DECK = VaultModel.Deck
 local HUB_HALF: number = GameConfig.ArenaWidth / 2 + VAULT_DEPTH + 0.5 -- the hub's outer wall (inner face), just behind the vaults
 local COLUMN = 6 -- vaults down each side; 4 more across the back
 local HUB_BACK: number = COLUMN * 40 + 44 -- the hub ends right behind the back row of vaults
+-- (pens: where the side walls step in behind the front row - the back row has fewer pens, so its
+-- outer corners would be empty grass)
+local HUB_STEP: { X: number, Z: number }? = nil
 local NAVY = Color3.fromRGB(40, 44, 90)
 local KNIFE_TILT = 12 -- degrees
 MapService.Floors = FLOORS
@@ -420,7 +423,13 @@ local function buildBases()
 			return a.Magnitude < b.Magnitude
 		end)
 		HUB_HALF = walkway + 5 + cols * (penWidth + 10)
-		HUB_BACK = front + 2 * DEPTH + aisle + 70 -- (room behind for the merchant and the map vote)
+		-- (just behind the back row: the merchant and the map vote stand in the walkway)
+		HUB_BACK = front + 2 * DEPTH + aisle + 26
+		-- the pens actually used (nearest first): the back row may not fill every column
+		local backCols = math.ceil(math.max(0, GameConfig.Pens.Count - 2 * cols) / 2)
+		if backCols < cols then
+			HUB_STEP = { X = walkway + 5 + backCols * (penWidth + 10), Z = front + DEPTH + aisle / 2 }
+		end
 		MapService.LobbySpawn = CFrame.new(0, 4, -30)
 	end
 	if pens then
@@ -820,15 +829,26 @@ local function buildBases()
 		})
 	end
 
-	-- The plaza between the two columns of vaults, out to the hub's outer wall
-	local plaza = block(
-		"Plaza",
-		Vector3.new(HUB_HALF * 2, 1, HUB_BACK),
-		CFrame.new(0, -0.3, -HUB_BACK / 2),
-		Toy.Grass, -- the same grass as the runway: one place
-		bases
-	)
-	Toy.Dress(plaza, nil, 1, 5)
+	-- The plaza between the two columns of vaults, out to the hub's outer wall (pens: narrower
+	-- behind the front row, where the walls step in)
+	local step = HUB_STEP
+	local plazas: { { number } } = if step
+		then {
+			{ HUB_HALF, 0, step.Z },
+			{ step.X, step.Z, HUB_BACK },
+		}
+		else { { HUB_HALF, 0, HUB_BACK } }
+	for _, piece in plazas do
+		local halfWidth, fromZ, toZ = piece[1], piece[2], piece[3]
+		local plaza = block(
+			"Plaza",
+			Vector3.new(halfWidth * 2, 1, toZ - fromZ),
+			CFrame.new(0, -0.3, -(fromZ + toZ) / 2),
+			Toy.Grass, -- the same grass as the runway: one place
+			bases
+		)
+		Toy.Dress(plaza, nil, 1, 5)
+	end
 	-- No shadows anywhere in the vaults (decks, frames, roofs): the insides stay bright
 	for _, d in bases:GetDescendants() do
 		if d:IsA("BasePart") then
@@ -838,16 +858,52 @@ local function buildBases()
 	-- One dirt wall all the way round the hub, so you can't wander off anywhere: the two sides,
 	-- the back behind the plaza, and the shoulders joining them to the runway walls
 	local wallX = HUB_HALF + WALL_THICK / 2
+	local backHalf = if step then step.X else HUB_HALF
 	for _, side in { -1, 1 } do
-		Toy.DirtWall(
-			block(
-				"HubWall",
-				Vector3.new(WALL_THICK, WALL_HEIGHT, HUB_BACK + WALL_THICK * 2),
-				CFrame.new(side * wallX, WALL_HEIGHT / 2, -HUB_BACK / 2),
-				Toy.Dirt,
-				bases
+		if step then
+			-- out at full width past the front row, then in round the empty back corner
+			Toy.DirtWall(
+				block(
+					"HubWall",
+					Vector3.new(WALL_THICK, WALL_HEIGHT, step.Z + WALL_THICK * 2),
+					CFrame.new(side * wallX, WALL_HEIGHT / 2, -step.Z / 2),
+					Toy.Dirt,
+					bases
+				)
 			)
-		)
+			Toy.DirtWall(
+				block(
+					"HubWall",
+					Vector3.new(HUB_HALF - step.X + WALL_THICK, WALL_HEIGHT, WALL_THICK),
+					CFrame.new(side * (HUB_HALF + step.X + WALL_THICK) / 2, WALL_HEIGHT / 2, -step.Z - WALL_THICK / 2),
+					Toy.Dirt,
+					bases
+				)
+			)
+			Toy.DirtWall(
+				block(
+					"HubWall",
+					Vector3.new(WALL_THICK, WALL_HEIGHT, HUB_BACK - step.Z + WALL_THICK),
+					CFrame.new(
+						side * (step.X + WALL_THICK / 2),
+						WALL_HEIGHT / 2,
+						-(step.Z + HUB_BACK) / 2 - WALL_THICK / 2
+					),
+					Toy.Dirt,
+					bases
+				)
+			)
+		else
+			Toy.DirtWall(
+				block(
+					"HubWall",
+					Vector3.new(WALL_THICK, WALL_HEIGHT, HUB_BACK + WALL_THICK * 2),
+					CFrame.new(side * wallX, WALL_HEIGHT / 2, -HUB_BACK / 2),
+					Toy.Dirt,
+					bases
+				)
+			)
+		end
 		local from, to = half, HUB_HALF + WALL_THICK
 		Toy.DirtWall(
 			block(
@@ -862,7 +918,7 @@ local function buildBases()
 	Toy.DirtWall(
 		block(
 			"HubWall",
-			Vector3.new(HUB_HALF * 2 + WALL_THICK * 2, WALL_HEIGHT, WALL_THICK),
+			Vector3.new(backHalf * 2 + WALL_THICK * 2, WALL_HEIGHT, WALL_THICK),
 			CFrame.new(0, WALL_HEIGHT / 2, -HUB_BACK - WALL_THICK / 2),
 			Toy.Dirt,
 			bases

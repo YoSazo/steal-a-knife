@@ -1160,6 +1160,12 @@ function BaseService.Init()
 						if tool then
 							tool:Destroy()
 						end
+					elseif player:GetAttribute("InRound") then
+						-- (a murder round: only the round's weapons in your hotbar; it's back after)
+						local tool = hatchTool(player, held.Plate)
+						if tool then
+							tool:Destroy()
+						end
 					else
 						giveHatchTool(player, held, false)
 					end
