@@ -9,13 +9,23 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
+local TopLine = require(script.Parent.TopLine)
+
 local player = Players.LocalPlayer
 local PlaceTap = {}
 
+-- A knife fresh out of its coffin, in your hand (BaseService.HoldHatched)
+local function holdingHatched(): boolean
+	local character = player.Character
+	local tool = character and character:FindFirstChildOfClass("Tool")
+	return tool ~= nil and tool:GetAttribute("HatchPlate") ~= nil
+end
+
 local function ready(): boolean
-	return player:GetAttribute("PlaceReady") == true
-		and player:GetAttribute("Carrying") ~= nil
-		and ReplicatedStorage:GetAttribute("PenServer") ~= false
+	if ReplicatedStorage:GetAttribute("PenServer") == false then
+		return false
+	end
+	return (player:GetAttribute("PlaceReady") == true and player:GetAttribute("Carrying") ~= nil) or holdingHatched()
 end
 
 -- Your own pen's grass
@@ -63,7 +73,14 @@ function PlaceTap.Init()
 		Remotes:WaitForChild("PlaceAt"):FireServer(at)
 	end
 
+	-- (holding a hatched knife: say what to do with it)
+	local hinted = false
 	RunService.RenderStepped:Connect(function()
+		local holding = holdingHatched()
+		if holding and not hinted then
+			TopLine.Show("🏠 Tap your pen to put your new knife down!", 4, "PlaceHatched")
+		end
+		hinted = holding
 		if not ready() then
 			ring.Transparency = 1
 			return

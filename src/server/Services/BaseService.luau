@@ -134,12 +134,23 @@ local hadBoost: { [Player]: boolean } = {}
 local hadSpeed: { [Player]: boolean } = {}
 local padWalks: { [Player]: number } = {}
 local trainingSince: { [Player]: number } = {} -- analytics: how long each wheel session lasts
--- A knife fresh out of its coffin rides in your hand (Steal an Egg: the creature flies into you)
--- until you're in your pen, then hops back to where its coffin stood. Not saved: leave and it's
--- simply on its spot next time.
-local hatching: { [Player]: { Plate: number, Item: string, Since: number } } = {}
+-- A knife fresh out of its coffin flies into you and waits in your hotbar (Steal an Egg) until you
+-- tap where it goes in your pen. Not saved: leave and it's simply on its spot next time.
+local hatching: { [Player]: { { Plate: number, Item: string } } } = {}
 local hoppedIn: { [Player]: { [number]: number } } = {} -- plate -> server time it came home
-local HOLD_MIN = 2.4 -- (s: the fly-in finishes and you get a look at it before it can hop off)
+local HATCH_FLIGHT = 1.7 -- (s: client Effects CoffinHatch - it stands there, hops, flies into you)
+-- (is the knife on this plate the hatched one in your hand right now?)
+local function heldOn(player: Player, plate: number): boolean
+	local list = hatching[player]
+	if list then
+		for _, held in list do
+			if held.Plate == plate then
+				return true
+			end
+		end
+	end
+	return false
+end
 Players.PlayerRemoving:Connect(function(player)
 	trainedFor[player], hadBoost[player], hadSpeed[player], padWalks[player] = nil, nil, nil, nil
 	hatching[player], hoppedIn[player] = nil, nil
@@ -802,7 +813,7 @@ function BaseService.RefreshRack(player: Player)
 			and item
 			and parsed
 			and PenMode.On()
-			and not (hatching[player] and hatching[player].Plate == slot) -- (in your hand right now)
+			and not heldOn(player, slot) -- (in your hand right now)
 		then
 			-- A pen: the knife is a character hopping around (equip / sell from the Knives menu)
 			local since = hoppedIn[player] and hoppedIn[player][slot]
@@ -1032,41 +1043,98 @@ local function onCharacterAdded(player: Player, character: Model)
 	end)
 end
 
--- CoffinService.Reveal: the knife that just hatched is in your hand now
+local function hatchTool(player: Player, plate: number): Tool?
+	for _, container in { player.Character, player:FindFirstChildOfClass("Backpack") } :: { Instance? } do
+		if container then
+			for _, child in container:GetChildren() do
+				if child:IsA("Tool") and child:GetAttribute("HatchPlate") == plate then
+					return child
+				end
+			end
+		end
+	end
+	return nil
+end
+
+-- (gives the Tool if it's missing - a respawn or a round empties the backpack)
+local function giveHatchTool(player: Player, held: { Plate: number, Item: string }, equip: boolean)
+	if hatchTool(player, held.Plate) or player:GetAttribute("InRound") then
+		return
+	end
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not humanoid or not backpack then
+		return
+	end
+	local tool = KnifeModel.BuildTool(held.Item)
+	tool:SetAttribute("HatchPlate", held.Plate) -- (client/PlaceTap: tap your pen to put it down)
+	tool.ToolTip = "Tap your pen to put it down"
+	tool.Parent = backpack
+	if equip and not player:GetAttribute("Carrying") then
+		humanoid:EquipTool(tool)
+	end
+end
+
+-- CoffinService.Reveal: the knife pops out, flies into you (client Effects CoffinHatch) and waits
+-- in your hotbar until you tap where it goes in your pen (Steal an Egg)
 function BaseService.HoldHatched(player: Player, plate: number, item: string)
 	if PenMode.On() then
-		local held = { Plate = plate, Item = item, Since = os.clock() }
-		hatching[player] = held
-		-- (in your hand once it has flown there - client Effects CoffinHatch; CombatService arms it)
-		task.delay(1.2, function()
-			if hatching[player] == held then
-				player:SetAttribute("HoldingHatch", item)
+		local list = hatching[player] or {}
+		hatching[player] = list
+		local held = { Plate = plate, Item = item }
+		table.insert(list, held)
+		task.delay(HATCH_FLIGHT, function()
+			if player.Parent and table.find(list, held) then
+				giveHatchTool(player, held, true)
+				player:SetAttribute("HoldingHatch", #list)
 			end
 		end)
 	end
 	BaseService.RefreshRack(player)
 end
 
--- The hatched knife you're holding (CombatService.WieldedKnife), if any
-function BaseService.HatchedItem(player: Player): string?
-	local held = hatching[player]
-	return held and held.Item
-end
-
--- In your pen: it jumps out of your hand and hops back to its spot
-local function hatchHome(player: Player)
-	local held = hatching[player]
+-- client/PlaceTap -> StealService.PlaceAt: put the hatched knife in your hand down where you tapped
+function BaseService.PlaceHatched(player: Player, position: Vector3)
+	local list = hatching[player]
 	local base = baseOf[player]
-	hatching[player] = nil
-	player:SetAttribute("HoldingHatch", nil)
-	if not held or not base or not base.SlotCFrames[held.Plate] then
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local tool = character and character:FindFirstChildOfClass("Tool")
+	local plate = tool and tool:GetAttribute("HatchPlate")
+	if not list or not base or not root or not tool or type(plate) ~= "number" then
 		return
 	end
-	local FLIGHT = 0.6
+	if not BaseService.IsInOwnBase(player, root.Position) or not MapService.InBounds(base.Bounds, position, -2) then
+		return
+	end
+	local index: number? = nil
+	for i, held in list do
+		if held.Plate == plate then
+			index = i
+		end
+	end
+	if not index then
+		return
+	end
+	local held = table.remove(list, index) :: { Plate: number, Item: string }
+	player:SetAttribute("HoldingHatch", if #list > 0 then #list else nil)
+	local here = base.Frame:PointToObjectSpace(position)
+	DataService.Update(player, function(p)
+		p.Spots[tostring(plate)] = { math.floor(here.X * 10) / 10, math.floor(here.Z * 10) / 10 }
+	end)
+	BaseService.ApplySpot(player, plate)
+	local hand = character and character:FindFirstChild("RightHand") :: BasePart?
+	local from = if hand then hand.Position else root.Position
+	tool:Destroy()
+	if character then
+		Net.Animate(character, "Pickup")
+	end
+	local FLIGHT = 0.5
 	local perPlate = hoppedIn[player] or {}
 	hoppedIn[player] = perPlate
-	perPlate[held.Plate] = workspace:GetServerTimeNow() + FLIGHT + 1.2 -- (lands, then a beat before it hops off)
-	Net.Remotes.Effect:FireAllClients("HatchHome", player, held.Item, base.SlotCFrames[held.Plate].Position, FLIGHT)
+	perPlate[plate] = workspace:GetServerTimeNow() + FLIGHT + 1 -- (lands, then a beat before it hops off)
+	Net.Remotes.Effect:FireAllClients("HatchHome", from, held.Item, base.SlotCFrames[plate].Position, FLIGHT)
 	task.delay(FLIGHT, function()
 		if player.Parent then
 			BaseService.RefreshRack(player)
@@ -1075,27 +1143,26 @@ local function hatchHome(player: Player)
 end
 
 function BaseService.Init()
-	-- Holding a hatched knife: it hops home once you're in your pen (and the knife's still yours)
+	-- Hatched knives in hand: still yours? still in your hotbar (respawns / rounds empty it)?
 	task.spawn(function()
 		while true do
-			task.wait(0.25)
-			for player, held in hatching do
+			task.wait(0.5)
+			for player, list in hatching do
 				local profile = DataService.Get(player)
-				local index = profile and DataService.IndexOnPlate(profile, held.Plate)
-				if not profile or not index or profile.Knives[index] ~= held.Item then
-					hatching[player] = nil -- (sold / traded / stolen meanwhile)
-					player:SetAttribute("HoldingHatch", nil)
-					continue
+				for i = #list, 1, -1 do
+					local held = list[i]
+					local index = profile and DataService.IndexOnPlate(profile, held.Plate)
+					if not profile or not index or profile.Knives[index] ~= held.Item then
+						table.remove(list, i) -- (sold / traded / stolen meanwhile)
+						local tool = hatchTool(player, held.Plate)
+						if tool then
+							tool:Destroy()
+						end
+					else
+						giveHatchTool(player, held, false)
+					end
 				end
-				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
-				if
-					root
-					and os.clock() - held.Since >= HOLD_MIN
-					and not player:GetAttribute("InRound")
-					and BaseService.IsInOwnBase(player, root.Position)
-				then
-					hatchHome(player)
-				end
+				player:SetAttribute("HoldingHatch", if #list > 0 then #list else nil)
 			end
 		end
 	end)

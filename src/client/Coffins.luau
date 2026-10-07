@@ -153,10 +153,95 @@ function Coffins.Init()
 		end
 	end
 
+	-- The coffin bursts apart (Steal an Egg's shell): the lid flies up and off, the two halves of the
+	-- box fall away to the sides, the pieces lie on the grass a moment and fade. Client-only debris.
+	local function shatter(info: Tracked)
+		local body = info.Body.CFrame
+		local groups: { [string]: { BasePart } } = { Lid = {}, Left = {}, Right = {} }
+		for _, d in info.Model:GetDescendants() do
+			if d:IsA("BillboardGui") or d:IsA("ParticleEmitter") then
+				(d :: any).Enabled = false
+			end
+			if not d:IsA("BasePart") or d == info.Body or d.Transparency >= 1 then
+				continue
+			end
+			local role = d:GetAttribute("Role")
+			if role ~= "Lid" and role ~= "Body" then
+				d.Transparency = 1 -- (eyes, glow seam, crack: gone with the coffin)
+				continue
+			end
+			local key = if role == "Lid"
+				then "Lid"
+				elseif body:PointToObjectSpace(d.Position).X < 0 then "Left"
+				else "Right"
+			local piece = d:Clone()
+			piece:ClearAllChildren()
+			table.insert(groups[key], piece)
+			d.Transparency = 1
+		end
+		local folder = Instance.new("Folder")
+		folder.Name = "CoffinDebris"
+		folder.Parent = workspace
+		local all: { BasePart } = {}
+		for key, parts in groups do
+			if #parts == 0 then
+				continue
+			end
+			-- one solid hull per chunk (so it lands on the grass), the pieces welded to it
+			local holder = Instance.new("Model")
+			for _, p in parts do
+				p.Parent = holder
+			end
+			local cf, size = holder:GetBoundingBox()
+			local hull = Instance.new("Part")
+			hull.Name = "Hull"
+			hull.Size =
+				Vector3.new(math.max(0.4, size.X * 0.8), math.max(0.3, size.Y * 0.8), math.max(0.4, size.Z * 0.8))
+			hull.CFrame = cf
+			hull.Transparency = 1
+			hull.CanQuery, hull.CanTouch = false, false
+			hull.Parent = folder
+			for _, p in parts do
+				p.Anchored = false
+				p.CanCollide, p.CanQuery, p.CanTouch = false, false, false
+				p.Massless = true
+				local weld = Instance.new("WeldConstraint")
+				weld.Part0, weld.Part1 = hull, p
+				weld.Parent = p
+				p.Parent = folder
+				table.insert(all, p)
+			end
+			holder:Destroy()
+			local rank = info.Rank
+			local up = body.UpVector
+			local side = body.RightVector
+			local push = if key == "Lid"
+				then up * (22 + rank * 2) - body.LookVector * 6
+				elseif key == "Left" then -side * (10 + rank) + up * 9
+				else side * (10 + rank) + up * 9
+			hull.AssemblyLinearVelocity = push
+			hull.AssemblyAngularVelocity = Vector3.new(
+				(math.random() - 0.5) * 14,
+				(math.random() - 0.5) * 6,
+				(if key == "Left" then 1 elseif key == "Right" then -1 else 0) * 6 + (math.random() - 0.5) * 6
+			)
+		end
+		-- lie there a moment, then fade away
+		task.delay(2.2, function()
+			for _, p in all do
+				TweenService:Create(p, TweenInfo.new(0.6), { Transparency = 1 }):Play()
+			end
+			task.delay(0.7, function()
+				folder:Destroy()
+			end)
+		end)
+	end
+
 	-- The moment the lid goes: a burst, a crack, a beam of light up into the sky, a shake (rarer =
 	-- bigger and louder)
 	local function boom(info: Tracked)
 		local at = info.Body.Position
+		shatter(info)
 		local rarity = tostring(info.Model:GetAttribute("Rarity") or "Common")
 		local color = Knives.RarityColors[rarity] or Color3.fromRGB(255, 230, 120)
 		local rank = info.Rank

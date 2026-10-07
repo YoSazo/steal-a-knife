@@ -795,22 +795,32 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 	-- The wall slots: pedestals in a line in front of the wall, a glowing plaque behind each
 	local count = GameConfig.BossWallSlots
 	local span = W - 10
-	-- (the graveyard: scattered spots on the grass, the same for every server; kept off the chair)
+	-- (the graveyard: Steal an Egg's eggs lie in a loose clump right in front of the sleeping
+	-- creature, a few steps from it - so you sneak up to the boss to take one. Scattered the same
+	-- way on every server, spaced by how big this zone's coffins are)
 	local scatter = Random.new(index * 7919)
 	local chairLocal = frame:PointToObjectSpace(chairFrame.Position)
+	local coffinLength = ({ 3, 4, 5.2, 6.6, 8.2, 10, 12, 14 })[math.clamp(index, 1, 8)]
+	local spacing = coffinLength * 0.75 + 2.5
+	local near = 5 + coffinLength * 0.4 -- (clear of the chair)
+	local far = near + spacing * 2.4
 	local graves: { Vector3 } = {}
 	for _ = 1, count do
 		local best, bestScore = Vector3.zero, -math.huge
-		for _ = 1, 24 do
-			local candidate =
-				Vector3.new(scatter:NextNumber(-W / 2 + 3, W / 2 - 3), 0, scatter:NextNumber(-D / 2 - 2, D / 2 - 3))
-			local score = math.min(
-				16,
-				(Vector3.new(candidate.X, 0, candidate.Z) - Vector3.new(chairLocal.X, 0, chairLocal.Z)).Magnitude
+		for _ = 1, 40 do
+			local angle = math.rad(scatter:NextNumber(-80, 80))
+			local radius = scatter:NextNumber(near, far)
+			local candidate = Vector3.new(
+				math.clamp(chairLocal.X + math.sin(angle) * radius, -W / 2 + 3, W / 2 - 3),
+				0,
+				math.clamp(chairLocal.Z - math.cos(angle) * radius, -D / 2 - 2, D / 2 - 3)
 			)
+			-- room enough from the others, and the closer to the boss the better
+			local room = spacing
 			for _, other in graves do
-				score = math.min(score, (candidate - other).Magnitude)
+				room = math.min(room, (candidate - other).Magnitude)
 			end
+			local score = room * 4 - radius * 0.5
 			if score > bestScore then
 				best, bestScore = candidate, score
 			end

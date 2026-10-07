@@ -789,6 +789,10 @@ function StealService.PlaceAt(player: Player, position: Vector3)
 	local root = rootPart(player)
 	local profile = DataService.Get(player)
 	local base = BaseService.GetBase(player)
+	if PenMode.On() and not carry then
+		BaseService.PlaceHatched(player, position) -- (a knife fresh out of its coffin, in your hand)
+		return
+	end
 	if not PenMode.On() or not carry or carry.Kind ~= "Knife" or not root or not profile or not base then
 		return
 	end

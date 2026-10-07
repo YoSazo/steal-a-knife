@@ -18,6 +18,7 @@ local Props = require(ReplicatedStorage.Shared:WaitForChild("Props"))
 local Format = require(ReplicatedStorage.Shared:WaitForChild("Format"))
 local Items = require(ReplicatedStorage.Shared:WaitForChild("Items"))
 local KnifeModel = require(ReplicatedStorage.Shared:WaitForChild("KnifeModel"))
+local PenMode = require(ReplicatedStorage.Shared:WaitForChild("PenMode"))
 local CoffinModel = require(ReplicatedStorage.Shared:WaitForChild("CoffinModel"))
 local Lod = require(script.Parent.Lod)
 local Ui = require(script.Parent.Ui)
@@ -563,44 +564,130 @@ local handlers: { [string]: (...any) -> () } = {
 		end
 		TopLine.Show(text, 2.4, "Equipped")
 	end,
-	-- A coffin hatched (server CoffinService): the knife pops up out of it, hangs a beat, then flies
-	-- into its owner's hand with a burst (Steal an Egg's creature flying into you). The character
-	-- itself is already hopping in the pen; your fighting knife doesn't change.
+	-- A coffin opened (CoffinService.Reveal): the knife stands where it was, full size, with a white
+	-- swoosh round it, looks at its owner, hops, then flies into their hand and shrinks into the
+	-- hotbar (Steal an Egg). ~1.7 s, matching BaseService HATCH_FLIGHT.
 	CoffinHatch = function(who: Player, item: string, from: Vector3)
-		local character = who.Character
-		local hand = character
-			and (character:FindFirstChild("RightHand") or character:FindFirstChild("HumanoidRootPart")) :: BasePart?
-		if not hand or not Lod.Near(from, 160) then
+		if not Lod.Near(from, 160) then
 			return
 		end
-		local top = from + Vector3.new(0, 7, 0)
-		flyKnife(item, from, top, 0.45, 3.5, true)
-		task.delay(0.75, function()
-			local to = hand.Position
-			flyKnife(item, top, to, 0.5, 3, true)
-			task.delay(0.5, function()
-				Effects.Burst(to, Items.Color(item), 40, 18, 0.8)
-				Effects.Sound(Sounds.Unsheath, to, 1)
-			end)
-		end)
+		local parsed = Items.Parse(item)
+		local model = buildFlying(item, true)
+		local _, natural = model:GetBoundingBox()
+		local full = PenMode.Scale(if parsed then parsed.Knife.Rarity else "Common")
+		for _, d in model:GetDescendants() do
+			if d:IsA("BasePart") then
+				d.Anchored = true
+				d.CanCollide, d.CanQuery, d.CanTouch = false, false, false
+			end
+		end
+		-- where it stands: the grass under the coffin
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		local ignore: { Instance } = { model }
+		for _, other in Players:GetPlayers() do
+			if other.Character then
+				table.insert(ignore, other.Character)
+			end
+		end
+		for _, coffin in CollectionService:GetTagged("Coffin") do
+			table.insert(ignore, coffin) -- (its own coffin may not have gone yet)
+		end
+		params.FilterDescendantsInstances = ignore
+		local ground = workspace:Raycast(from + Vector3.new(0, 2, 0), Vector3.new(0, -14, 0), params)
+		local floor = if ground then ground.Position else from - Vector3.new(0, 3.5, 0)
+		model:ScaleTo(full * 0.2)
+		model.Parent = workspace
+		local color = Items.Color(item)
+		-- the swoosh: a bright white streak sweeping round it
+		local radius = math.max(3, natural.Y * full * 0.55)
+		local swoosh = Instance.new("Part")
+		swoosh.Name = "HatchSwoosh"
+		swoosh.Size = Vector3.one * 0.2
+		swoosh.Transparency = 1
+		swoosh.Anchored = true
+		swoosh.CanCollide, swoosh.CanQuery, swoosh.CanTouch = false, false, false
+		local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+		a0.Position, a1.Position = Vector3.new(0, -0.9, 0), Vector3.new(0, 0.9, 0)
+		a0.Parent, a1.Parent = swoosh, swoosh
+		local trail = Instance.new("Trail")
+		trail.Attachment0, trail.Attachment1 = a0, a1
+		trail.Lifetime = 0.35
+		trail.LightEmission = 1
+		trail.Brightness = 3
+		trail.FaceCamera = true
+		trail.Color = ColorSequence.new(Color3.new(1, 1, 1), color:Lerp(Color3.new(1, 1, 1), 0.6))
+		trail.Transparency = NumberSequence.new(0, 1)
+		trail.WidthScale = NumberSequence.new(1, 0.2)
+		trail.Parent = swoosh
+		swoosh.CFrame = CFrame.new(floor + Vector3.new(radius, radius * 0.6, 0))
+		swoosh.Parent = workspace
+		Effects.Burst(floor + Vector3.new(0, 1.5, 0), Color3.new(1, 1, 1), 26, 14, 0.5)
+		Effects.Sound(Sounds.Reveal, floor, 0.8)
 		if who == player then
-			local tint = Items.Color(item):Lerp(Color3.new(1, 1, 1), 0.25)
+			local tint = color:Lerp(Color3.new(1, 1, 1), 0.25)
 			TopLine.Show(
 				`🎉 It's a <font color="#{tint:ToHex()}"><b>{Items.DisplayName(item)}</b></font>!`,
 				3,
 				"Hatched"
 			)
 		end
+		local GROW, STAND, FLY = 0.35, 0.85, 0.5
+		local start = os.clock()
+		local flyFrom: Vector3? = nil
+		local connection: RBXScriptConnection
+		connection = RunService.RenderStepped:Connect(function()
+			local t = os.clock() - start
+			local character = who.Character
+			local hand = character
+				and (character:FindFirstChild("RightHand") or character:FindFirstChild("HumanoidRootPart")) :: BasePart?
+			local target = if hand then hand.Position else floor + Vector3.new(0, 3, 0)
+			local flat = Vector3.new(target.X - floor.X, 0, target.Z - floor.Z)
+			local facing = if flat.Magnitude > 0.1 then flat.Unit else Vector3.new(0, 0, -1)
+			-- (the swoosh sweeps once round it, rising)
+			if t < 0.4 then
+				local angle = t / 0.4 * math.pi * 2
+				swoosh.CFrame = CFrame.new(
+					floor + Vector3.new(math.cos(angle) * radius, radius * (0.4 + t), math.sin(angle) * radius)
+				)
+			elseif swoosh.Parent then
+				swoosh:Destroy()
+			end
+			if t < GROW + STAND then
+				-- pop up to full size, look at its owner, then a little hop
+				local grow = math.min(1, t / GROW)
+				local c1, c3 = 1.70158, 2.70158
+				local eased = 1 + c3 * (grow - 1) ^ 3 + c1 * (grow - 1) ^ 2
+				model:ScaleTo(math.max(0.05, full * (0.2 + 0.8 * eased)))
+				local hopT = (t - GROW - 0.35) / 0.35
+				local lift = if hopT > 0 and hopT < 1 then 4 * hopT * (1 - hopT) * (1 + full * 0.4) else 0
+				model:PivotTo(CFrame.lookAt(floor + Vector3.new(0, lift, 0), floor + Vector3.new(0, lift, 0) + facing))
+				return
+			end
+			-- fly into its owner, spinning and shrinking to hand size
+			local f = math.min(1, (t - GROW - STAND) / FLY)
+			flyFrom = flyFrom or model:GetPivot().Position
+			local eased = 1 - (1 - f) ^ 2
+			local at = (flyFrom :: Vector3):Lerp(target, eased) + Vector3.new(0, math.sin(f * math.pi) * 4, 0)
+			model:ScaleTo(math.max(0.05, full * (1 - 0.8 * eased)))
+			model:PivotTo(CFrame.new(at) * CFrame.Angles(0, f * math.pi * 3, 0))
+			if f >= 1 then
+				connection:Disconnect()
+				model:Destroy()
+				if swoosh.Parent then
+					swoosh:Destroy()
+				end
+				Effects.Burst(target, color, 40, 18, 0.8)
+				Effects.Sound(Sounds.Unsheath, target, 1)
+			end
+		end)
 	end,
 	-- ...and when you're back in your pen it jumps out of your hand and hops to where its coffin stood
-	HatchHome = function(who: Player, item: string, to: Vector3, flight: number)
-		local character = who.Character
-		local hand = character
-			and (character:FindFirstChild("RightHand") or character:FindFirstChild("HumanoidRootPart")) :: BasePart?
-		if not hand or not Lod.Near(to, 160) then
+	HatchHome = function(from: Vector3, item: string, to: Vector3, flight: number)
+		if not Lod.Near(to, 160) then
 			return
 		end
-		flyKnife(item, hand.Position, to, flight, 3.5, true)
+		flyKnife(item, from, to, flight, 3.5, true)
 		task.delay(flight, function()
 			Effects.Burst(to, Items.Color(item), 30, 14, 0.7)
 			Effects.Sound(Sounds.Reveal, to, 0.6)
