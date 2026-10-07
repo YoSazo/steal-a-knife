@@ -1,0 +1,705 @@
+[
+  {
+    "Name": "SlimeDrip",
+    "File": "SlimeDrip.png",
+    "Size": [
+      1024,
+      1024
+    ],
+    "CellSize": [
+      256,
+      256
+    ],
+    "FrameCount": 16,
+    "Flipbook": "Grid4x4",
+    "Loop": true,
+    "WhiteRGB": true,
+    "StraightAlpha": true,
+    "PaddingPass": true,
+    "FrameBounds": [
+      [
+        69,
+        30,
+        186,
+        225
+      ],
+      [
+        69,
+        28,
+        186,
+        226
+      ],
+      [
+        70,
+        27,
+        185,
+        227
+      ],
+      [
+        70,
+        26,
+        185,
+        229
+      ],
+      [
+        71,
+        26,
+        184,
+        230
+      ],
+      [
+        70,
+        26,
+        185,
+        232
+      ],
+      [
+        70,
+        27,
+        185,
+        234
+      ],
+      [
+        69,
+        28,
+        186,
+        234
+      ],
+      [
+        69,
+        30,
+        186,
+        234
+      ],
+      [
+        68,
+        31,
+        187,
+        234
+      ],
+      [
+        67,
+        32,
+        188,
+        234
+      ],
+      [
+        67,
+        33,
+        188,
+        232
+      ],
+      [
+        66,
+        33,
+        189,
+        230
+      ],
+      [
+        67,
+        33,
+        188,
+        229
+      ],
+      [
+        67,
+        32,
+        188,
+        227
+      ],
+      [
+        68,
+        31,
+        187,
+        226
+      ]
+    ],
+    "LoopWrapMeanDifference": 0.007181504193474264,
+    "SourceInfo": {
+      "Source": "sources/SlimeDrip.png",
+      "SourceCrop": [
+        109,
+        78,
+        916,
+        1423
+      ],
+      "SourceSize": [
+        1024,
+        1536
+      ],
+      "FixedPivot": [
+        128.0,
+        128.0
+      ]
+    },
+    "SHA256": "143bb8a3e7d8f64af8e1d1bb53f822a0df670205ea0f4e14fc30d02a236923c2"
+  },
+  {
+    "Name": "Spiral",
+    "File": "Spiral.png",
+    "Size": [
+      256,
+      256
+    ],
+    "CellSize": [
+      256,
+      256
+    ],
+    "FrameCount": 1,
+    "Flipbook": null,
+    "Loop": null,
+    "WhiteRGB": true,
+    "StraightAlpha": true,
+    "PaddingPass": true,
+    "FrameBounds": [
+      [
+        27,
+        21,
+        228,
+        235
+      ]
+    ],
+    "LoopWrapMeanDifference": null,
+    "SourceInfo": {
+      "Source": "sources/Spiral.png",
+      "SourceCrop": [
+        123,
+        126,
+        1092,
+        1165
+      ],
+      "SourceSize": [
+        1254,
+        1254
+      ],
+      "FixedPivot": [
+        128.0,
+        128.0
+      ]
+    },
+    "SHA256": "03676918e6d27b45b469a1acc50c9dfeae9f7b11513c84a1f4577f29e268a334"
+  },
+  {
+    "Name": "LightningShard",
+    "File": "LightningShard.png",
+    "Size": [
+      256,
+      256
+    ],
+    "CellSize": [
+      256,
+      256
+    ],
+    "FrameCount": 1,
+    "Flipbook": null,
+    "Loop": null,
+    "WhiteRGB": true,
+    "StraightAlpha": true,
+    "PaddingPass": true,
+    "FrameBounds": [
+      [
+        46,
+        21,
+        209,
+        235
+      ]
+    ],
+    "LoopWrapMeanDifference": null,
+    "SourceInfo": {
+      "Source": "sources/LightningShard.png",
+      "SourceCrop": [
+        267,
+        82,
+        1100,
+        1181
+      ],
+      "SourceSize": [
+        1254,
+        1254
+      ],
+      "FixedPivot": [
+        128.0,
+        128.0
+      ]
+    },
+    "SHA256": "d59831986a2b5d1c8153e32c7ce91c102dd831f2142def5c53212767d341e2b8"
+  },
+  {
+    "Name": "LightningBolt",
+    "File": "LightningBolt.png",
+    "Size": [
+      1024,
+      1024
+    ],
+    "CellSize": [
+      256,
+      256
+    ],
+    "FrameCount": 16,
+    "Flipbook": "Grid4x4",
+    "Loop": false,
+    "WhiteRGB": true,
+    "StraightAlpha": true,
+    "PaddingPass": true,
+    "FrameBounds": [
+      [
+        99,
+        31,
+        156,
+        224
+      ],
+      [
+        98,
+        30,
+        158,
+        225
+      ],
+      [
+        96,
+        30,
+        161,
+        225
+      ],
+      [
+        97,
+        30,
+        158,
+        225
+      ],
+      [
+        97,
+        30,
+        159,
+        225
+      ],
+      [
+        96,
+        30,
+        161,
+        225
+      ],
+      [
+        97,
+        30,
+        158,
+        225
+      ],
+      [
+        97,
+        30,
+        159,
+        225
+      ],
+      [
+        96,
+        30,
+        161,
+        225
+      ],
+      [
+        97,
+        30,
+        158,
+        225
+      ],
+      [
+        97,
+        30,
+        159,
+        225
+      ],
+      [
+        96,
+        30,
+        161,
+        225
+      ],
+      [
+        98,
+        30,
+        157,
+        225
+      ],
+      [
+        98,
+        30,
+        158,
+        225
+      ],
+      [
+        98,
+        31,
+        159,
+        224
+      ],
+      null
+    ],
+    "LoopWrapMeanDifference": null,
+    "SourceInfo": {
+      "Source": "sources/LightningBolt.png",
+      "SourceCrop": [
+        451,
+        45,
+        826,
+        1213
+      ],
+      "SourceSize": [
+        1254,
+        1254
+      ],
+      "FixedPivot": [
+        128.0,
+        128.0
+      ]
+    },
+    "SHA256": "b450b58144410c40eef9ea7a48a03b5ffa167d24efc2b8aad4dc7e5dae5544ff"
+  },
+  {
+    "Name": "SmokeWisp",
+    "File": "SmokeWisp.png",
+    "Size": [
+      1024,
+      1024
+    ],
+    "CellSize": [
+      256,
+      256
+    ],
+    "FrameCount": 16,
+    "Flipbook": "Grid4x4",
+    "Loop": true,
+    "WhiteRGB": true,
+    "StraightAlpha": true,
+    "PaddingPass": true,
+    "FrameBounds": [
+      [
+        62,
+        25,
+        190,
+        229
+      ],
+      [
+        62,
+        27,
+        192,
+        230
+      ],
+      [
+        63,
+        29,
+        195,
+        230
+      ],
+      [
+        64,
+        31,
+        197,
+        229
+      ],
+      [
+        64,
+        32,
+        198,
+        228
+      ],
+      [
+        64,
+        34,
+        199,
+        227
+      ],
+      [
+        64,
+        34,
+        199,
+        225
+      ],
+      [
+        63,
+        34,
+        198,
+        224
+      ],
+      [
+        63,
+        33,
+        196,
+        222
+      ],
+      [
+        62,
+        32,
+        194,
+        221
+      ],
+      [
+        62,
+        30,
+        192,
+        221
+      ],
+      [
+        62,
+        28,
+        189,
+        221
+      ],
+      [
+        62,
+        27,
+        188,
+        222
+      ],
+      [
+        62,
+        25,
+        187,
+        224
+      ],
+      [
+        62,
+        25,
+        187,
+        226
+      ],
+      [
+        62,
+        25,
+        188,
+        227
+      ]
+    ],
+    "LoopWrapMeanDifference": 0.01033486758961397,
+    "SourceInfo": {
+      "Source": "sources/SmokeWisp.png",
+      "SourceCrop": [
+        258,
+        74,
+        1015,
+        1212
+      ],
+      "SourceSize": [
+        1254,
+        1254
+      ],
+      "FixedPivot": [
+        128.0,
+        128.0
+      ]
+    },
+    "SHA256": "26de03ded76d1845008175d63476b50daf6fcb87034f5f237a8f8ebc8ceffe83"
+  },
+  {
+    "Name": "Star",
+    "File": "Star.png",
+    "Size": [
+      256,
+      256
+    ],
+    "CellSize": [
+      256,
+      256
+    ],
+    "FrameCount": 1,
+    "Flipbook": null,
+    "Loop": null,
+    "WhiteRGB": true,
+    "StraightAlpha": true,
+    "PaddingPass": true,
+    "FrameBounds": [
+      [
+        35,
+        35,
+        221,
+        221
+      ]
+    ],
+    "LoopWrapMeanDifference": null,
+    "SourceInfo": {
+      "Source": "procedural",
+      "FixedPivot": [
+        128.0,
+        128.0
+      ]
+    },
+    "SHA256": "6c04381a6f0217b5fa2312df31c761f6bdb9a21bd79acbae93822a47f645b134"
+  },
+  {
+    "Name": "Ember",
+    "File": "Ember.png",
+    "Size": [
+      512,
+      512
+    ],
+    "CellSize": [
+      256,
+      256
+    ],
+    "FrameCount": 4,
+    "Flipbook": "Grid2x2",
+    "Loop": true,
+    "WhiteRGB": true,
+    "StraightAlpha": true,
+    "PaddingPass": true,
+    "FrameBounds": [
+      [
+        73,
+        30,
+        182,
+        225
+      ],
+      [
+        74,
+        26,
+        178,
+        229
+      ],
+      [
+        78,
+        30,
+        177,
+        225
+      ],
+      [
+        76,
+        33,
+        183,
+        222
+      ]
+    ],
+    "LoopWrapMeanDifference": 0.02541031182981005,
+    "SourceInfo": {
+      "Source": "sources/Ember.png",
+      "SourceCrop": [
+        380,
+        167,
+        879,
+        1113
+      ],
+      "SourceSize": [
+        1254,
+        1254
+      ],
+      "FixedPivot": [
+        128.0,
+        128.0
+      ]
+    },
+    "SHA256": "f7d70b3c359256f0b83a84360386b808d421c70f177d010deb422bf3e579b3bf"
+  },
+  {
+    "Name": "RainbowArc",
+    "File": "RainbowArc.png",
+    "Size": [
+      512,
+      256
+    ],
+    "CellSize": [
+      512,
+      256
+    ],
+    "FrameCount": 1,
+    "Flipbook": null,
+    "Loop": null,
+    "WhiteRGB": true,
+    "StraightAlpha": true,
+    "PaddingPass": true,
+    "FrameBounds": [
+      [
+        41,
+        62,
+        471,
+        194
+      ]
+    ],
+    "LoopWrapMeanDifference": null,
+    "SourceInfo": {
+      "Source": "sources/RainbowArc.png",
+      "SourceCrop": [
+        36,
+        203,
+        1730,
+        723
+      ],
+      "SourceSize": [
+        1774,
+        887
+      ],
+      "FixedPivot": [
+        256.0,
+        128.0
+      ]
+    },
+    "SHA256": "adb67a4da45771371bab86cda566a5d03ee24e85a2ad666c2b217d77aa963494"
+  },
+  {
+    "Name": "ShockRing",
+    "File": "ShockRing.png",
+    "Size": [
+      256,
+      256
+    ],
+    "CellSize": [
+      256,
+      256
+    ],
+    "FrameCount": 1,
+    "Flipbook": null,
+    "Loop": null,
+    "WhiteRGB": true,
+    "StraightAlpha": true,
+    "PaddingPass": true,
+    "FrameBounds": [
+      [
+        22,
+        22,
+        234,
+        234
+      ]
+    ],
+    "LoopWrapMeanDifference": null,
+    "SourceInfo": {
+      "Source": "procedural",
+      "FixedPivot": [
+        128.0,
+        128.0
+      ]
+    },
+    "SHA256": "b3e99953b414fdf2dcb7b35dce75efb2edba630264f2a01f92cf5c591a699d38"
+  },
+  {
+    "Name": "LightRays",
+    "File": "LightRays.png",
+    "Size": [
+      512,
+      512
+    ],
+    "CellSize": [
+      512,
+      512
+    ],
+    "FrameCount": 1,
+    "Flipbook": null,
+    "Loop": null,
+    "WhiteRGB": true,
+    "StraightAlpha": true,
+    "PaddingPass": true,
+    "FrameBounds": [
+      [
+        80,
+        71,
+        434,
+        408
+      ]
+    ],
+    "LoopWrapMeanDifference": null,
+    "SourceInfo": {
+      "Source": "procedural",
+      "FixedPivot": [
+        256.0,
+        256.0
+      ]
+    },
+    "SHA256": "d11f08dec51898220a3fae3964138b4be80f95e51c7edf2b11c86722eb8628d9"
+  }
+]

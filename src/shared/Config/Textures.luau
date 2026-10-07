@@ -39,6 +39,19 @@ return {
 		Soft = "rbxassetid://90958089594860",
 		Flare = "rbxassetid://139779604711269",
 	},
+	-- Art only: tools/make_aura_sprites.py. Existing Glow sprites above are preserved.
+	AuraSprites = {
+		SlimeDrip = { Id = "rbxassetid://78150221812929", Flipbook = "Grid4x4", Loop = true },
+		Spiral = { Id = "rbxassetid://113212498369880" },
+		LightningShard = { Id = "rbxassetid://73038089248263" },
+		LightningBolt = { Id = "rbxassetid://91437977789073", Flipbook = "Grid4x4", Loop = false },
+		SmokeWisp = { Id = "rbxassetid://118299896019808", Flipbook = "Grid4x4", Loop = true },
+		Star = { Id = "rbxassetid://124854871484890" },
+		Ember = { Id = "rbxassetid://98348187767598", Flipbook = "Grid2x2", Loop = true },
+		RainbowArc = { Id = "rbxassetid://75916291727116" },
+		ShockRing = { Id = "rbxassetid://125086362106104" },
+		LightRays = { Id = "rbxassetid://88911631872318" },
+	},
 	-- Murderer perk badges (blender/scripts/make_icons.py)
 	PerkIcons = {
 		Fury = "rbxassetid://84497392515820",
