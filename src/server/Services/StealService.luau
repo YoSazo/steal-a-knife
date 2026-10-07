@@ -36,6 +36,7 @@ local CoffinModel = require(ReplicatedStorage.Shared.CoffinModel)
 type Carry = {
 	Kind: string, -- "Case" | "Knife"
 	Item: string, -- the case's rarity, or the knife item
+	ReadySince: number?, -- (pens) when they walked into their pen holding it: PlaceAfter fallback
 	StolenFrom: number?, -- UserId of the vault it was stolen from
 	Boss: { Zone: number, Slot: number }?,
 	Helpers: { Player }, -- players who helped with a boss steal (team steal) -- taken off a biome boss's wall (GuardService)
@@ -780,6 +781,31 @@ end
 
 -- Put the carried knife on a plate: any empty, unlocked plate in your own vault. A short
 -- animation (the knife flies from your hands onto the plate), then it's mounted.
+-- Pens: put what you carry down at `position` (a tap on your pen's grass: client/PlaceTap). It
+-- takes the first free plate and that plate's spot moves to where you tapped (saved: profile.Spots)
+function StealService.PlaceAt(player: Player, position: Vector3)
+	local carry = carriers[player]
+	local root = rootPart(player)
+	local profile = DataService.Get(player)
+	local base = BaseService.GetBase(player)
+	if not PenMode.On() or not carry or carry.Kind ~= "Knife" or not root or not profile or not base then
+		return
+	end
+	if not BaseService.IsInOwnBase(player, root.Position) or not MapService.InBounds(base.Bounds, position, -2) then
+		return
+	end
+	local plate = DataService.FreePlate(profile)
+	if not plate then
+		return
+	end
+	local here = base.Frame:PointToObjectSpace(position)
+	DataService.Update(player, function(p)
+		p.Spots[tostring(plate)] = { math.floor(here.X * 10) / 10, math.floor(here.Z * 10) / 10 }
+	end)
+	BaseService.ApplySpot(player, plate)
+	StealService.Place(player, plate)
+end
+
 function StealService.Place(player: Player, slot: number)
 	local carry = carriers[player]
 	local root = rootPart(player)
@@ -835,9 +861,21 @@ local function tick()
 				deposit(player) -- cases open as soon as you're home
 				continue
 			end
-			-- A pen: walking in drops it in (no plates to find; it hops off to join the others)
+			-- A pen: you tap where to put it down (client/PlaceTap -> Remotes.PlaceAt). A full pen
+			-- (bag only) takes it straight away; and nobody stands holding it forever (PlaceAfter)
 			if PenMode.On() then
-				deposit(player)
+				local profile = DataService.Get(player)
+				if profile and not DataService.FreePlate(profile) then
+					deposit(player)
+					continue
+				end
+				if not player:GetAttribute("PlaceReady") then
+					player:SetAttribute("PlaceReady", true)
+					carry.ReadySince = now
+					Net.Notify(player, "Tap where you want to put it!", "good")
+				elseif now - (carry.ReadySince or now) > GameConfig.Pens.PlaceAfter then
+					deposit(player)
+				end
 				continue
 			end
 			-- Knives: you put them on a plate yourself (Tsunami style), StealService.Place
@@ -1074,6 +1112,11 @@ end
 
 function StealService.Init()
 	Net.Remotes.Drop.OnServerEvent:Connect(StealService.Drop)
+	Net.Remotes.PlaceAt.OnServerEvent:Connect(function(player: Player, position: unknown)
+		if typeof(position) == "Vector3" then
+			StealService.PlaceAt(player, position)
+		end
+	end)
 	-- A coffin opening shows the power it was hiding
 	CoffinService.OnOpened = function(player: Player, item: string)
 		local parsed = Items.Parse(item)

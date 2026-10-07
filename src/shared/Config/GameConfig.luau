@@ -58,6 +58,7 @@ local GameConfig = {
 		Depth = 60, -- an upgraded pen's length (the gate stays put, the back fence moves out)
 		StartDepth = 42, -- a new pen's length
 		MaxSlots = 20,
+		PlaceAfter = 30, -- carrying something in your pen this long without tapping: it goes down anyway
 		Bag = 10, -- with the pen full, this many more wait in your bag (Knives menu), never lost
 		Scale = {
 			Common = 2,

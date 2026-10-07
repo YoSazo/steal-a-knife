@@ -108,6 +108,14 @@ function NextAction.Pick(s: State): Action?
 		if carrying:match("^Case:") then
 			return { Id = "carry_case", Text = "Bring your case home!", Target = "Home" }
 		end
+		if s.InVault and PenMode.On() then
+			return {
+				Id = "carry_place",
+				Text = "<b>Tap</b> where you want to put it!",
+				Short = "Tap where to put it!",
+				Target = "Home",
+			}
+		end
 		if s.InVault and s.FreePlate then
 			return { Id = "carry_place", Text = "Put your knife on the <b>glowing plate</b>!", Target = "Plate" }
 		end

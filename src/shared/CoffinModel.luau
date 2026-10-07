@@ -67,11 +67,11 @@ end
 -- Welds every part of a coffin to its PrimaryPart (to carry it: unanchored, it moves as one)
 function CoffinModel.Weld(model: Model)
 	local primary = model.PrimaryPart :: BasePart
-	for _, part in model:GetDescendants() do
-		if part:IsA("BasePart") and part ~= primary then
+	for _, piece in model:GetDescendants() do
+		if piece:IsA("BasePart") and piece ~= primary then
 			local weld = Instance.new("WeldConstraint")
-			weld.Part0, weld.Part1 = primary, part
-			weld.Parent = part
+			weld.Part0, weld.Part1 = primary, piece
+			weld.Parent = piece
 		end
 	end
 end

@@ -313,6 +313,26 @@ function BaseService.RefreshWalls(base: MapService.BaseSite)
 	end
 end
 
+-- A pen plate at the spot its owner tapped (profile.Spots), kept inside the pen's grass
+function BaseService.ApplySpot(player: Player, plate: number)
+	local base = baseOf[player]
+	local profile = DataService.Get(player)
+	local spot = profile and profile.Spots[tostring(plate)]
+	local pad = base and base.SlotPads[plate]
+	if not base or not spot or not pad then
+		return
+	end
+	local floor = base.Folder:FindFirstChild("Floor") :: BasePart?
+	local x, z = spot[1], spot[2]
+	if floor then
+		local centre = base.Frame:PointToObjectSpace(floor.Position)
+		x = math.clamp(x, centre.X - floor.Size.X / 2 + 2, centre.X + floor.Size.X / 2 - 2)
+		z = math.clamp(z, centre.Z - floor.Size.Z / 2 + 2, centre.Z + floor.Size.Z / 2 - 2)
+	end
+	pad.CFrame = base.Frame * CFrame.new(x, 0.7, z)
+	base.SlotCFrames[plate] = base.Frame * CFrame.new(x, 4.2, z)
+end
+
 function BaseService.GetBase(player: Player): MapService.BaseSite?
 	return baseOf[player]
 end
@@ -687,6 +707,12 @@ function BaseService.RefreshRack(player: Player)
 			else base.Blocker:GetAttribute("Floors") ~= GameConfig.FloorsFor(profile.Slots)
 	then
 		BaseService.RefreshWalls(base)
+	end
+	-- Every plate where its owner put it down (profile.Spots; after the walls, which re-lay the pen)
+	if PenMode.On() then
+		for plate in base.SlotPads do
+			BaseService.ApplySpot(player, plate)
+		end
 	end
 	local equipped = profile.Equipped
 	local multiplier = BaseService.IncomeMultiplier(player)

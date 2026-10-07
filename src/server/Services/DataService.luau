@@ -24,6 +24,8 @@ export type Profile = {
 	TotalKills: number,
 	RoundsWon: number,
 	RoundsPlayed: number, -- murder rounds taken part in (a new player's first one: they're the Murderer)
+	-- where you put each knife / coffin down in your pen (pen-local X/Z, keyed by plate as a string)
+	Spots: { [string]: { number } },
 	NotifyAsked: boolean, -- shown Roblox's notifications opt-in (NotifyService plans "come back" messages)
 	-- knives still in their coffin (CoffinService): Rounds = murder rounds left (nil = a plain timer);
 	-- ReadyAt (os.time) = when it opens anyway, the offline fallback
@@ -112,6 +114,7 @@ local function defaultProfile(): Profile
 		RoundsWon = 0,
 		RoundsPlayed = 0,
 		NotifyAsked = false,
+		Spots = {},
 		Sealed = {},
 		Equipped = "",
 		Discovered = {},
