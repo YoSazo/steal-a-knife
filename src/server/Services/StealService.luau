@@ -727,6 +727,14 @@ local function deposit(player: Player)
 	-- Deposit effect too, so the tutorial must not infer success from that effect or inventory size.
 	-- Publish the exact mounted item/plate before confirmation, so the guide can point at it.
 	local opensIn = if sealed and placedPlate then CoffinService.Seal(player, placedPlate, item) else nil
+	-- (the tutorial's coffin opens the moment it lands: a new player never waits for their first knife)
+	if not opensIn and carry.Boss and PenMode.Coffins() and placedPlate then
+		local home = BaseService.GetBase(player)
+		local at = home and home.SlotCFrames[placedPlate]
+		if at then
+			Net.Remotes.Effect:FireAllClients("CoffinOpen", at.Position, Knives.RarityColors[parsed.Knife.Rarity])
+		end
+	end
 	player:SetAttribute("LastPlacedKnife", item)
 	player:SetAttribute("LastPlacedKnifePlate", placedPlate)
 	local placementSerial = (player:GetAttribute("KnifePlacementSerial") or 0) :: number

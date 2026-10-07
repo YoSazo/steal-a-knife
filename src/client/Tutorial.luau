@@ -116,7 +116,9 @@ local function run(startAt: number, replay: boolean)
 	local trainingSince: number? = nil
 	local steps: { Step } = {
 		{
-			Text = "Follow the arrows to Frank's knife!",
+			Text = if PenMode.Coffins()
+				then "Follow the arrows to Frank's coffins!"
+				else "Follow the arrows to Frank's knife!",
 			Target = function(): Vector3?
 				local prompt = chosenPad and chosenPad:FindFirstChildOfClass("ProximityPrompt")
 				if

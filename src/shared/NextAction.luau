@@ -100,7 +100,7 @@ function NextAction.Pick(s: State): Action?
 			end
 			return {
 				Id = "carry_full",
-				Text = "Your vault is full! <b>Sell</b> a knife to make room!",
+				Text = PenMode.Words("Your vault is full! <b>Sell</b> a knife to make room!"),
 				Target = if s.Spare ~= false then "Sell" else nil,
 				Ui = if s.Spare == false then "Knives" else nil,
 			}
@@ -137,7 +137,7 @@ function NextAction.Pick(s: State): Action?
 	if not full and freshTier and freshTier <= reach and stockedAt(freshTier) then
 		return {
 			Id = "new_tier",
-			Text = `Fast enough! Steal a {rarity(freshTier)} knife!`,
+			Text = `Fast enough! Steal a {rarity(freshTier)} {if PenMode.Coffins() then "coffin" else "knife"}!`,
 			Short = `Steal a {rarity(freshTier)} knife!`,
 			Target = "Lair",
 			Zone = freshTier,
@@ -209,7 +209,7 @@ function NextAction.Pick(s: State): Action?
 		if stockedAt(zone) then
 			return {
 				Id = "steal",
-				Text = `Steal another {rarity(zone)} knife!`,
+				Text = `Steal another {rarity(zone)} {if PenMode.Coffins() then "coffin" else "knife"}!`,
 				Target = "Lair",
 				Zone = zone,
 			}
