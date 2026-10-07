@@ -808,12 +808,13 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 	for _ = 1, count do
 		local best, bestScore = Vector3.zero, -math.huge
 		for _ = 1, 40 do
-			local angle = math.rad(scatter:NextNumber(-80, 80))
+			local angle = math.rad(scatter:NextNumber(-65, 65))
 			local radius = scatter:NextNumber(near, far)
+			-- (out onto the runway in front of the lair: the lair itself is only a strip by the wall)
 			local candidate = Vector3.new(
 				math.clamp(chairLocal.X + math.sin(angle) * radius, -W / 2 + 3, W / 2 - 3),
 				0,
-				math.clamp(chairLocal.Z - math.cos(angle) * radius, -D / 2 - 2, D / 2 - 3)
+				math.clamp(chairLocal.Z - math.cos(angle) * radius, -D / 2 - 20, D / 2 - 3)
 			)
 			-- room enough from the others, and the closer to the boss the better
 			local room = spacing
