@@ -403,6 +403,53 @@ function KnifeModel.FitItem(model: Model, _item: string, length: number)
 	KnifeModel.FitLength(model, length)
 end
 
+-- Knife characters (Codex's art, Assets/KnifeCharacterAssets): the held knife IS the character,
+-- held by its grip, blade up, with its FACE TURNED BACK TOWARD ITS OWNER - you see your buddy
+-- while you hunt. (Measured in Studio: with a plain grip a knife's front points the way you face,
+-- so the face would only ever show victims the back of its head.) Studio only until characters
+-- ship: ReplicatedStorage attribute DebugCharacters = true. Returns false if this knife has no
+-- character yet (then the normal model is used).
+local function characterTool(tool: Tool, knifeName: string): boolean
+	if not (RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugCharacters") == true) then
+		return false
+	end
+	local shared = script.Parent
+	local assetsFolder = shared:FindFirstChild("Assets")
+	local assetsModule = assetsFolder and assetsFolder:FindFirstChild("KnifeCharacterAssets")
+	local configModule = shared.Config:FindFirstChild("KnifeCharacters")
+	if not assetsModule or not configModule then
+		return false
+	end
+	local info = (require :: any)(configModule)[knifeName]
+	if not info then
+		return false
+	end
+	local model = (require :: any)(assetsModule).BuildCharacter(knifeName, nil, CFrame.identity, { Scale = 1 }) :: Model
+	KnifeModel.FitLength(model, TOOL_LENGTH)
+	local scale = model:GetScale()
+	local handle = model.PrimaryPart :: BasePart -- (its origin: the floor point under the pommel)
+	handle.Name = "Handle"
+	for _, piece in model:GetDescendants() do
+		if piece:IsA("BasePart") then
+			piece.Anchored = false
+			piece.CanCollide, piece.CanTouch, piece.CanQuery = false, false, false
+			piece.Massless = piece ~= handle
+			if piece ~= handle and not piece:FindFirstChildOfClass("WeldConstraint") then
+				local weld = Instance.new("WeldConstraint")
+				weld.Part0, weld.Part1 = handle, piece
+				weld.Parent = piece
+			end
+		end
+	end
+	for _, child in model:GetChildren() do
+		child.Parent = tool
+	end
+	model:Destroy()
+	-- in the fist at its grip, then a half turn so the face looks back at you
+	tool.Grip = CFrame.new((info.GripOffset :: Vector3) * scale) * CFrame.Angles(0, math.pi, 0)
+	return true
+end
+
 -- Tool version, wielded in the hub and by the Murderer. The PrimaryPart is already called "Handle".
 function KnifeModel.BuildTool(name: string): Tool
 	local parsed = Items.Parse(name)
@@ -418,6 +465,10 @@ function KnifeModel.BuildTool(name: string): Tool
 	-- Held upright in the fist, MM2 style: tip pointing at the sky. (Measured in Studio: R15's
 	-- RightGripAttachment is already turned -90 on X, so a plain grip stands the blade straight up.)
 	tool.Grip = CFrame.new()
+	if characterTool(tool, parsed.Knife.Name) then
+		KnifeAura.Held(tool, name)
+		return tool
+	end
 	local model = KnifeModel.Build(name, false)
 	KnifeModel.FitLength(model, TOOL_LENGTH)
 	for _, child in model:GetChildren() do
