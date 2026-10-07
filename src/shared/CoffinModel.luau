@@ -43,7 +43,7 @@ local function codexCoffin(rarity: string, at: CFrame): Model?
 		return nil
 	end
 	local ok, built = pcall(function()
-		return (require :: any)(assets).BuildCoffin(rarity, nil, at)
+		return (require :: any)(assets).BuildCoffin(rarity, nil, at, { Peek = true }) -- (eyes in the crack)
 	end)
 	if not ok or not built then
 		return nil

@@ -422,7 +422,7 @@ startCarry = function(
 		visual = KnifeModel.BuildCase(item, false)
 		above = head.CFrame * CFrame.new(0, 1.9, 0)
 		visual:PivotTo(above)
-	elseif boss and PenMode.Coffins() then
+	elseif (boss or source == "coffin") and PenMode.Coffins() then
 		-- a boss's coffin, held over your head (what's in it stays a secret until it opens)
 		local parsed = Items.Parse(item)
 		visual = CoffinModel.Build(if parsed then parsed.Knife.Rarity else "Common", CFrame.identity)
@@ -519,12 +519,13 @@ function StealService.StartCarry(
 	kind: string,
 	item: string,
 	stolenFrom: number?,
-	boss: { Zone: number, Slot: number }?
+	boss: { Zone: number, Slot: number }?,
+	source: string? -- "coffin": a coffin stolen out of someone's pen (it lands in your pen sealed again)
 )
 	if carriers[player] then
 		return
 	end
-	startCarry(player, kind, item, stolenFrom, boss)
+	startCarry(player, kind, item, stolenFrom, boss, source)
 end
 
 -- A boss caught their thief: the knife goes back on the wall (OnBossCarryEnded, not delivered)
@@ -693,7 +694,7 @@ local function deposit(player: Player)
 	local parsed = Items.Parse(item) :: Items.Item
 	local isNew = not table.find(profile.Discovered, parsed.Name)
 	-- A boss's knife comes home in a COFFIN that opens later (CoffinService) - never in the tutorial
-	local sealed = carry.Boss ~= nil and CoffinService.On(player) and not toBag
+	local sealed = (carry.Boss ~= nil or carry.Source == "coffin") and CoffinService.On(player) and not toBag
 	-- (the tutorial's coffin: it lands and counts down a few seconds - Steal an Egg's egg - then opens)
 	local quick = sealed and (starter or not profile.TutorialDone)
 	if carry.Boss then

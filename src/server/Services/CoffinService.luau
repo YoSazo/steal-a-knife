@@ -65,7 +65,34 @@ function CoffinService.Seal(player: Player, plate: number, item: string, seconds
 	return if rounds <= 0 then `in {Format.Duration(CONFIG.CommonSeconds)}` else roundsText(rounds)
 end
 
+local POP_TIME = 1.1 -- the coffin rattles and its lid swings open this long before the knife shows
+local popping: { [string]: boolean } = {}
+
 function CoffinService.Open(player: Player, plate: number, how: string)
+	local profile = DataService.Get(player)
+	if not profile then
+		return
+	end
+	local entry = DataService.SealedEntry(profile, plate)
+	local index = DataService.IndexOnPlate(profile, plate)
+	local key = `{player.UserId}:{plate}`
+	if not entry or not index or popping[key] then
+		return
+	end
+	popping[key] = true
+	-- The pop (client/Coffins): everyone sees it shake harder and the lid fly open, then the reveal
+	local first = Items.Parse(profile.Knives[index])
+	Net.Remotes.Effect:FireAllClients("CoffinPop", player.UserId, plate, if first then first.Knife.Rarity else "Common")
+	task.delay(POP_TIME, function()
+		popping[key] = nil
+		if player.Parent then
+			CoffinService.Reveal(player, plate, how)
+		end
+	end)
+end
+
+-- The reveal: the knife appears and flies to its owner (CoffinService.Open pops the lid first)
+function CoffinService.Reveal(player: Player, plate: number, how: string)
 	local profile = DataService.Get(player)
 	if not profile then
 		return
@@ -86,7 +113,12 @@ function CoffinService.Open(player: Player, plate: number, how: string)
 	local base = BaseService.GetBase(player)
 	local at = if base and base.SlotCFrames[plate] then base.SlotCFrames[plate].Position else nil
 	if at then
-		Net.Remotes.Effect:FireAllClients("CoffinOpen", at, Knives.RarityColors[rarity])
+		Net.Remotes.Effect:FireAllClients(
+			"CoffinOpen",
+			at,
+			Knives.RarityColors[rarity],
+			table.find(Knives.Rarities, rarity) or 1
+		)
 		-- (Steal an Egg: what hatched pops up and flies into its owner - client Effects CoffinHatch)
 		Net.Remotes.Effect:FireAllClients("CoffinHatch", player, item, at)
 	end

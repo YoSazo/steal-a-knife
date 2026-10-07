@@ -46,6 +46,24 @@ function NotifyService.Init()
 			return
 		end
 		local cash = waiting(player)
+		-- A coffin waiting in the pen beats "your vault filled up": "Your coffin opened! Come meet your
+		-- new knife" at the moment the first one is ready (offline each owed round is a fixed wait)
+		local firstReady: number? = nil
+		for _, entry in profile.Sealed do
+			if not firstReady or entry.ReadyAt < firstReady then
+				firstReady = entry.ReadyAt
+			end
+		end
+		if firstReady then
+			task.spawn(Analytics.Post, "/api/notify", {
+				action = "schedule",
+				user_id = player.UserId,
+				send_at = math.max(firstReady, os.time() + 60),
+				kind = "coffin",
+				params = { cash = Format.Cash(math.max(cash, 1)) }, -- (the cash message is the fallback text)
+			})
+			return
+		end
 		if cash <= 0 then
 			return
 		end

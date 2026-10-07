@@ -32,7 +32,7 @@ if (env("ROBLOX_API_KEY")) {
       setInterval(() => {
         if (sending) return;
         sending = true;
-        sendDue({ rb, universeId, messageId })
+        sendDue({ rb, universeId, messageId, coffinMessageId: env("NOTIFY_MESSAGE_ID_COFFIN") })
           .then((r) => r.due && console.log("notify", r))
           .catch((err) => console.error("notify", err))
           .finally(() => (sending = false));

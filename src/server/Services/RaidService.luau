@@ -110,7 +110,7 @@ end
 
 -- Stealing from a vault ------------------------------------------------------------------------
 
-local function steal(thief: Player, owner: Player, item: string)
+local function steal(thief: Player, owner: Player, item: string, coffinPlate: number?)
 	if not raiding or thief == owner or thief:GetAttribute("InRound") or StealService.IsCarrying(thief) then
 		return
 	end
@@ -123,6 +123,13 @@ local function steal(thief: Player, owner: Player, item: string)
 		return
 	end
 	local index = table.find(profile.Knives, item)
+	if coffinPlate then
+		-- (a whole coffin: that plate, and it must really still be sealed)
+		index = DataService.IndexOnPlate(profile, coffinPlate)
+		if not index or profile.Knives[index] ~= item or not DataService.SealedEntry(profile, coffinPlate) then
+			return
+		end
+	end
 	local thiefRoot = rootOf(thief)
 	if not index or item == BaseService.ProtectedItem(owner) or not thiefRoot then
 		return
@@ -137,9 +144,11 @@ local function steal(thief: Player, owner: Player, item: string)
 		DataService.RemoveKnife(p, index)
 	end)
 	BaseService.RefreshRack(owner)
-	StealService.StartCarry(thief, "Knife", item, owner.UserId)
+	StealService.StartCarry(thief, "Knife", item, owner.UserId, nil, if coffinPlate then "coffin" else nil)
 	Analytics.Track(owner, "moon.robbed", { knife = Items.Name(item), value = Items.Income(item) })
-	local name = Items.DisplayName(item)
+	-- (a coffin keeps its secret: it's "a Mythic Coffin", never the knife inside)
+	local parsedItem = Items.Parse(item)
+	local name = if coffinPlate and parsedItem then `{parsedItem.Knife.Rarity} Coffin` else Items.DisplayName(item)
 	Net.Notify(owner, `🌕 {thief.DisplayName} is stealing your {name}! Hit them!`, "bad")
 	Net.Announce(`🌕 {thief.DisplayName} stole {owner.DisplayName}'s {name}!`, Color3.fromRGB(255, 80, 80), 2)
 end

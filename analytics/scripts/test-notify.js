@@ -70,3 +70,16 @@ assert.deepEqual(sentBody, {
 
 app.close();
 console.log("notify: all checks passed");
+
+// A "coffin" plan sends the coffin message when it's configured, else the main one
+{
+  const calls2 = [];
+  const rb2 = { sendNotification: async (args) => calls2.push(args) };
+  await query("insert into notify_queue (user_id, send_at, kind, params) values (21, now() - interval '1 minute', 'coffin', '{\"cash\":\"$1\"}')");
+  await sendDue({ rb: rb2, universeId: 99, messageId: "main", coffinMessageId: "coffin-msg" });
+  assert.equal(calls2[0].messageId, "coffin-msg");
+  await query("insert into notify_queue (user_id, send_at, kind, params) values (22, now() - interval '1 minute', 'coffin', '{}')");
+  await sendDue({ rb: rb2, universeId: 99, messageId: "main" });
+  assert.equal(calls2[1].messageId, "main", "no coffin message set: falls back to the main one");
+  console.log("notify: coffin message checks passed");
+}

@@ -628,12 +628,21 @@ local handlers: { [string]: (...any) -> () } = {
 		end
 	end,
 	-- A coffin on a vault plate pops open (server CoffinService): a burst in its rarity colour
-	CoffinOpen = function(position: Vector3, color: Color3?)
+	CoffinOpen = function(position: Vector3, color: Color3?, rank: number?)
 		local tint = color or Color3.fromRGB(255, 230, 120)
-		Effects.Burst(position, tint, 40, 22, 0.8)
-		Effects.Burst(position, Color3.new(1, 1, 1), 16, 14, 0.5)
+		local size = rank or 1
+		Effects.Burst(position, tint, 40 + size * 8, 22 + size, 0.8)
+		Effects.Burst(position + Vector3.new(0, 3, 0), Color3.new(1, 1, 1), 16 + size * 3, 14, 0.5)
 		Effects.Sound(Sounds.Reveal, position, 1)
-		Effects.FloatText(position + Vector3.new(0, 4, 0), "IT'S OPEN!", tint)
+		if size >= 4 then
+			Effects.Sound(Sounds.Sting, position, 0.8)
+			Effects.Shake(math.min(7, size), 0.4)
+		end
+		Effects.FloatText(
+			position + Vector3.new(0, 4 + size * 0.5, 0),
+			if size >= 6 then "WOW!!" else "IT'S OPEN!",
+			tint
+		)
 	end,
 	TrapSnap = function(position: Vector3)
 		Effects.Burst(position + Vector3.new(0, 1, 0), Color3.fromRGB(200, 200, 210), 25, 12, 0.5)

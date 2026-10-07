@@ -111,7 +111,7 @@ local rackModels: { [Player]: Folder } = {}
 BaseService.OnSellPrompt = nil :: ((Player, number) -> ())?
 BaseService.OnEquipPrompt = nil :: ((Player, string) -> ())?
 -- Set by RaidService: someone held "Steal" on a knife on another player's plate (Blood Moon)
-BaseService.OnStealPrompt = nil :: ((thief: Player, owner: Player, item: string) -> ())?
+BaseService.OnStealPrompt = nil :: ((thief: Player, owner: Player, item: string, coffinPlate: number?) -> ())?
 -- Set by RaidService: a vault's walls were rebuilt (new tier, or the vault changed hands)
 BaseService.OnWallsBuilt = nil :: ((MapService.BaseSite, Player?) -> ())?
 BaseService.OnUpgradeWalls = nil :: ((Player) -> ())?
@@ -738,6 +738,7 @@ function BaseService.RefreshRack(player: Player)
 			local slotCF = base.SlotCFrames[slot]
 			local floorCF = CFrame.new(pad.Position + Vector3.new(0, pad.Size.Y / 2, 0)) * slotCF.Rotation
 			local coffin = CoffinModel.Build(parsed.Knife.Rarity, floorCF)
+			KnifeHaze.Add(coffin, parsed.Knife.Rarity) -- (a glow on it from the start: you can see it's worth something)
 			coffin:SetAttribute("Owner", player.UserId)
 			coffin:SetAttribute("Plate", slot)
 			-- (server time, so every client counts down to the same moment)
@@ -753,6 +754,21 @@ function BaseService.RefreshRack(player: Player)
 			})
 			open:SetAttribute("Owner", player.UserId)
 			open:SetAttribute("CoffinPlate", slot)
+			-- Thief Moon: anyone else can grab the whole coffin (client/Raid lights this up for them)
+			local steal = makePrompt(pad, {
+				ActionText = "Steal coffin",
+				ObjectText = `{parsed.Knife.Rarity} Coffin`,
+				HoldDuration = GameConfig.Raid.StealTime,
+				KeyboardKeyCode = Enum.KeyCode.F,
+			})
+			steal:SetAttribute("Owner", player.UserId)
+			steal:SetAttribute("Steal", true)
+			steal.Enabled = false
+			steal.Triggered:Connect(function(who)
+				if who ~= player and BaseService.OnStealPrompt then
+					BaseService.OnStealPrompt(who, player, item, slot)
+				end
+			end)
 		elseif unlocked and index and item and parsed and PenMode.On() then
 			-- A pen: the knife is a character hopping around (equip / sell from the Knives menu)
 			local penModel, labelAnchor = penKnife(item, parsed, base, slot, folder)
