@@ -51,7 +51,7 @@ local GameConfig = {
 	-- SlotsPerFloor). Knife characters are drawn Scale[rarity] x their 2.4-stud size (Common ~5 studs,
 	-- Cosmic ~48: over the hub walls, seen from spawn).
 	Pens = {
-		Enabled = false,
+		Enabled = false :: boolean | string, -- false / true / "Split" (half the servers: the A/B launch)
 		Count = 10,
 		Width = 48,
 		Spacing = 56, -- (8 studs of grass between neighbouring pens: each one its own plot)
@@ -73,7 +73,7 @@ local GameConfig = {
 	-- round counts WinRounds), all together right after the results (the opening ceremony). Offline,
 	-- each round still owed is OfflineSecondsPerRound of real time. A Common just takes CommonSeconds.
 	Coffins = {
-		Enabled = false,
+		Enabled = false :: boolean | string, -- false / true / "WithPens" (on wherever pens are)
 		Rounds = { Common = 0, Rare = 1, Epic = 1, Legendary = 2, Mythic = 2, Godly = 3, Celestial = 4, Cosmic = 5 },
 		CommonSeconds = 20,
 		WinRounds = 2,

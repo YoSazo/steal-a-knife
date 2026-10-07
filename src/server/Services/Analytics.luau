@@ -219,6 +219,10 @@ local function context(player: Player): { [string]: any }
 		server_players = #Players:GetPlayers(),
 		studio = isStudio() or nil,
 		phase = ReplicatedStorage:GetAttribute("Phase"),
+		-- which half of the pens A/B this server is (Shared/PenMode "Split")
+		ab_pens = if GameConfig.Pens.Enabled == "Split"
+			then (if ReplicatedStorage:GetAttribute("PenServer") then "pens" else "vaults")
+			else nil,
 	}
 	if session then
 		props.session_s = math.floor(os.clock() - session.Started)
