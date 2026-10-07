@@ -1758,6 +1758,7 @@ function GuardService.Init()
 				end
 			end
 			for _, boss in bosses do
+				local stocked = 0
 				for _, slot in boss.Slots do
 					if slot.RestockAt and t >= slot.RestockAt and not slot.Item and not slot.Out then
 						local item = rollItem(boss)
@@ -1765,6 +1766,14 @@ function GuardService.Init()
 						Net.Remotes.Effect:FireAllClients("Smoke", slot.Spot.Position)
 						announceIfRare(boss, item)
 					end
+					if slot.Prompt.Enabled then
+						stocked += 1
+					end
+				end
+				-- how many knives are on this wall right now (client/Guide: steal here, or wait / train)
+				if boss.Folder:GetAttribute("Stocked") ~= stocked then
+					boss.Folder:SetAttribute("Stocked", stocked)
+					boss.Folder:SetAttribute("Zone", boss.Index)
 				end
 			end
 		end

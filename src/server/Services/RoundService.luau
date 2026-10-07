@@ -361,23 +361,10 @@ local function pickMurderer(participants: { Player }): Player
 	return participants[#participants]
 end
 
--- The equipped knife if they still own it, otherwise their highest earner
+-- The knife they fight with (BaseService.BestKnife: their pick, else their best power - the same
+-- knife whose power the HUD shows), else the Rusty Shank
 local function murdererKnife(player: Player): string
-	local profile = DataService.Get(player)
-	if not profile then
-		return "RustyShank"
-	end
-	if profile.Equipped ~= "" and table.find(profile.Knives, profile.Equipped) then
-		return profile.Equipped
-	end
-	local best, bestIncome = "RustyShank", -1
-	for _, item in profile.Knives do
-		local income = Items.Income(item)
-		if income > bestIncome then
-			best, bestIncome = item, income
-		end
-	end
-	return best
+	return BaseService.BestKnife(player) or "RustyShank"
 end
 
 -- Analytics: the round as this player saw it ------------------------------------------------

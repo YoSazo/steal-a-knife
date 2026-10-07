@@ -16,7 +16,6 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local Net = require(script.Parent.Parent.Remotes)
-local DataService = require(script.Parent.DataService)
 local GuardService = require(script.Parent.GuardService)
 local Ragdoll = require(script.Parent.Ragdoll)
 local Analytics = require(script.Parent.Analytics)
@@ -45,23 +44,9 @@ type Flying = {
 local flying: { Flying } = {}
 local flyingFolder: Folder
 
--- The knife you fight with: the equipped one if you still own it, else your best, else the starter
+-- The knife you fight with (BaseService.BestKnife: your pick, else your best power), else the starter
 function CombatService.WieldedKnife(player: Player): string
-	local profile = DataService.Get(player)
-	if not profile then
-		return GameConfig.StarterKnife
-	end
-	if profile.Equipped ~= "" and table.find(profile.Knives, profile.Equipped) then
-		return profile.Equipped
-	end
-	local best, bestDamage = GameConfig.StarterKnife, -1
-	for _, item in profile.Knives do
-		local damage = Items.Damage(item)
-		if damage > bestDamage then
-			best, bestDamage = item, damage
-		end
-	end
-	return best
+	return BaseService.BestKnife(player) or GameConfig.StarterKnife
 end
 
 local function rootOf(player: Player): BasePart?

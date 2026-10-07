@@ -378,6 +378,7 @@ local function endCarry(player: Player, deposited: boolean, dropAt: Vector3?, wh
 	visual:Destroy()
 	player:SetAttribute("Carrying", nil)
 	player:SetAttribute("StolenFrom", nil)
+	player:SetAttribute("BossCarry", nil)
 	BaseService.RefreshWalkSpeed(player)
 	local where = dropAt or fallback
 	if carry.Boss then
@@ -491,6 +492,7 @@ startCarry = function(
 	Net.Animate(character, "Pickup")
 	player:SetAttribute("Carrying", if kind == "Case" then `Case:{item}` else item)
 	player:SetAttribute("StolenFrom", stolenFrom) -- the UserId it was taken from, if anyone
+	player:SetAttribute("BossCarry", if boss then boss.Zone else nil) -- (a boss is after you)
 	BaseService.RefreshWalkSpeed(player)
 	-- (a boss steal gets no toast: GuardService already says "<BOSS> IS COMING! RUN HOME!")
 	if kind == "Case" then
@@ -927,6 +929,7 @@ function StealService.Suspend(player: Player)
 	carry.Visual:Destroy()
 	player:SetAttribute("Carrying", nil)
 	player:SetAttribute("StolenFrom", nil)
+	player:SetAttribute("BossCarry", nil)
 	player:SetAttribute("PlaceReady", nil)
 	BaseService.RefreshWalkSpeed(player)
 	local chaserAt, chasing = nil, false

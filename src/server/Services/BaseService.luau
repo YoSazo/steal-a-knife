@@ -10,6 +10,7 @@ local SignTheme = require(ReplicatedStorage.Shared.SignTheme)
 local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
+local KnifePowers = require(ReplicatedStorage.Shared.Config.KnifePowers)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local KnifeAura = require(ReplicatedStorage.Shared.KnifeAura)
@@ -94,24 +95,58 @@ function BaseService.RackIncome(player: Player): number
 end
 local rackIncome = BaseService.RackIncome
 
--- The knife a player fights with (equipped, or their hardest-hitting one) can never be stolen or
--- looted - nobody loses their weapon
-function BaseService.ProtectedItem(player: Player): string?
+-- THE knife a player fights with, everywhere (the hub Tool, the Murderer's weapon, the power you
+-- use in rounds, the one that can't be stolen): the one they chose (Equipped) if they still own it,
+-- otherwise automatically their best POWER (tier, then its level), then the hardest hitter. Nobody
+-- has to equip anything to bring their best power into a round. (Each caller used to pick its own
+-- "best" - by damage or by income - so the weapon and the power could be from different knives.)
+-- Frozen while you're in a round, so a prize or a Sheriff steal never swaps it mid-round.
+local roundPick: { [Player]: string } = {}
+Players.PlayerRemoving:Connect(function(player)
+	roundPick[player] = nil
+end)
+local function powerScore(profile: any, item: string): number
+	local parsed = Items.Parse(item)
+	local id = parsed and parsed.Perk
+	local entry = id and KnifePowers.ById[id]
+	if not entry then
+		return 0
+	end
+	local level = GameConfig.PowerLevelFor(profile.PowerXP[id] or 0)
+	return KnifePowers.TierRank(entry.Tier) * 1000 + level
+end
+function BaseService.BestKnife(player: Player): string?
 	local profile = DataService.Get(player)
 	if not profile or #profile.Knives == 0 then
 		return nil
 	end
-	if profile.Equipped ~= "" and table.find(profile.Knives, profile.Equipped) then
-		return profile.Equipped
-	end
-	local best, bestDamage = nil, -1
-	for _, item in profile.Knives do
-		local damage = Items.Damage(item)
-		if damage > bestDamage then
-			best, bestDamage = item, damage
+	if player:GetAttribute("InRound") then
+		local kept = roundPick[player]
+		if kept and table.find(profile.Knives, kept) then
+			return kept
 		end
 	end
-	return best
+	local pick: string?
+	if profile.Equipped ~= "" and table.find(profile.Knives, profile.Equipped) then
+		pick = profile.Equipped
+	else
+		local bestScore, bestDamage = -1, -1
+		for _, item in profile.Knives do
+			local score, damage = powerScore(profile, item), Items.Damage(item)
+			if score > bestScore or (score == bestScore and damage > bestDamage) then
+				pick, bestScore, bestDamage = item, score, damage
+			end
+		end
+	end
+	if pick and not player:GetAttribute("InRound") then
+		roundPick[player] = pick
+	end
+	return pick
+end
+
+-- The knife a player fights with can never be stolen or looted - nobody loses their weapon
+function BaseService.ProtectedItem(player: Player): string?
+	return BaseService.BestKnife(player)
 end
 
 function BaseService.OwnerOf(base: MapService.BaseSite): Player?
@@ -919,10 +954,16 @@ function BaseService.Init()
 						end
 					end
 				end)
+				local pendingTotal = 0
 				for slot, label in base.CashLabels do
 					local waiting = profile.Pending[slot] or 0
 					label.Text = if waiting > 0 and slot <= profile.Slots then Format.Cash(waiting) else ""
+					if slot <= profile.Slots then
+						pendingTotal += waiting
+					end
 				end
+				-- (client/Guide: "Grab your money!" when it's worth the walk)
+				player:SetAttribute("PendingCash", math.floor(pendingTotal))
 			end
 		end
 	end)
@@ -964,6 +1005,10 @@ function BaseService.Init()
 						Analytics.Milestone(player, "cash_collected")
 						Analytics.Count(player, if auto then "pad_auto" else "pad_walks")
 						base.CashLabels[slot].Text = ""
+						player:SetAttribute(
+							"PendingCash",
+							math.max(0, ((player:GetAttribute("PendingCash") or 0) :: number) - math.floor(waiting))
+						)
 						Net.Remotes.Effect:FireClient(player, "CashBurst", pad.Position, waiting, auto)
 						-- Lots of pad-walking this visit: offer to do it for them
 						if not auto then
