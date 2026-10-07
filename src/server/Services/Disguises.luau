@@ -561,13 +561,29 @@ function Disguises.Shift(player: Player, taken: { [string]: boolean }): string?
 		return nil
 	end
 	local outfit = free[Random.new():NextInteger(1, #free)]
+	-- Re-dressing rebuilds the body and destroyed the knife in your hand: put it in the backpack for
+	-- the change and back in your hand after
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local held = character and character:FindFirstChildOfClass("Tool")
+	if humanoid and held then
+		humanoid:UnequipTools()
+	end
 	putOn(player, outfit)
+	if humanoid and held and held.Parent and humanoid.Health > 0 then
+		humanoid:EquipTool(held)
+	end
+	-- a new person has their own money over their head (Overheads), or the tag would give you away
+	player:SetAttribute("DisguiseCash", math.floor(10 ^ Random.new():NextNumber(4, 11)))
+	player:SetAttribute("DisguiseVIP", Random.new():NextNumber() < 0.2)
 	return outfit.Name
 end
 
 -- Back to their own avatar (only needed for people who are still alive; respawns reload it anyway)
 function Disguises.Remove(player: Player)
 	player:SetAttribute("Disguise", nil)
+	player:SetAttribute("DisguiseCash", nil)
+	player:SetAttribute("DisguiseVIP", nil)
 	local original = originals[player]
 	originals[player] = nil
 	local character = player.Character

@@ -61,14 +61,19 @@ local function attach(owner: Instance, character: Model)
 	stroke.Color = Color3.fromRGB(15, 60, 20)
 	stroke.Parent = text
 	local function refresh()
-		local cash = (owner:GetAttribute(cashKey) or 0) :: number
+		-- (a shape-shifted Murderer shows their new person's money: DisguiseCash / DisguiseVIP)
+		local fake = owner:GetAttribute("DisguiseCash")
+		local cash = (if type(fake) == "number" then fake else owner:GetAttribute(cashKey) or 0) :: number
 		text.Text = `${Format.Short(cash)}`
-		vip.Visible = owner:GetAttribute(vipKey) == true
+		vip.Visible = if type(fake) == "number"
+			then owner:GetAttribute("DisguiseVIP") == true
+			else owner:GetAttribute(vipKey) == true
 	end
 	refresh()
 	local connections = {
 		owner:GetAttributeChangedSignal(cashKey):Connect(refresh),
 		owner:GetAttributeChangedSignal(vipKey):Connect(refresh),
+		owner:GetAttributeChangedSignal("DisguiseCash"):Connect(refresh),
 	}
 	gui.Destroying:Connect(function()
 		for _, connection in connections do

@@ -601,6 +601,7 @@ end
 
 local spawnRevolver: (Round, Vector3?) -> ()
 local giveRevolver: (Round, Player) -> ()
+local giveWeapon: (Round) -> ()
 local giveRevolverToBot: (Round, Bot) -> ()
 
 local function dropRevolver(round: Round, position: Vector3)
@@ -1336,8 +1337,13 @@ local function usePerk(round: Round, direction: Vector3)
 		if newName then
 			round.Names[murderer] = newName
 			Net.Remotes.Effect:FireAllClients("Smoke", root.Position)
-			Net.Notify(murderer, `You are now {newName}!`, "good")
-			Net.Remotes.Role:FireClient(murderer, "Murderer", newName)
+			Net.Notify(murderer, `Poof! You are now {newName}!`, "good")
+			-- (no Role event: that replayed the whole role reel. Just the poof.)
+			-- Safety net: the knife must survive the change of clothes
+			local weapon = round.Weapon
+			if weapon and not weapon:IsDescendantOf(game) and round.Alive[murderer] then
+				giveWeapon(round)
+			end
 		end
 	elseif perkId == "Snare" then
 		-- A hidden snare at your feet: the next innocent (or bot) to step in is stuck
@@ -2154,7 +2160,7 @@ end
 
 -- Round flow --------------------------------------------------------------------------------
 
-local function giveWeapon(round: Round)
+giveWeapon = function(round: Round)
 	tunePerk(round)
 	local murderer = round.Murderer
 	if not murderer then
