@@ -45,8 +45,9 @@ local flying: { Flying } = {}
 local flyingFolder: Folder
 
 -- The knife you fight with (BaseService.BestKnife: your pick, else your best power), else the starter
+-- (a knife fresh out of its coffin rides in your hand until it hops into your pen)
 function CombatService.WieldedKnife(player: Player): string
-	return BaseService.BestKnife(player) or GameConfig.StarterKnife
+	return BaseService.HatchedItem(player) or BaseService.BestKnife(player) or GameConfig.StarterKnife
 end
 
 local function rootOf(player: Player): BasePart?
@@ -396,6 +397,9 @@ function CombatService.Init()
 		end)
 		player:GetAttributeChangedSignal("Knives"):Connect(function()
 			CombatService.Arm(player)
+		end)
+		player:GetAttributeChangedSignal("HoldingHatch"):Connect(function()
+			CombatService.Arm(player, player:GetAttribute("HoldingHatch") ~= nil)
 		end)
 		-- Hands full while carrying a stolen knife; your own knife comes back once you're home
 		player:GetAttributeChangedSignal("Carrying"):Connect(function()

@@ -117,7 +117,9 @@ function CoffinService.Reveal(player: Player, plate: number, how: string)
 		Analytics.Milestone(player, "discovered_" .. parsed.Knife.Rarity)
 	end
 	local rarity = if parsed then parsed.Knife.Rarity else "Common"
-	BaseService.RefreshRack(player)
+	-- (it pops out and flies into your hand, and hops back to its spot once you're in your pen;
+	-- the pen leaves it out meanwhile)
+	BaseService.HoldHatched(player, plate, item)
 	local base = BaseService.GetBase(player)
 	local at = if base and base.SlotCFrames[plate] then base.SlotCFrames[plate].Position else nil
 	if at then

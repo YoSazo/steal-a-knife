@@ -41,6 +41,7 @@ type Tracked = {
 	PopAt: number?,
 	Rank: number,
 	Boomed: boolean,
+	Cracked: boolean, -- (lid pushed up a little: it's about to open)
 }
 
 -- 0 -> 1 with a little overshoot (the lid slams open and settles)
@@ -130,6 +131,7 @@ function Coffins.Init()
 			PopAt = nil,
 			Rank = table.find(Knives.Rarities, rarity) or 1,
 			Boomed = false,
+			Cracked = false,
 		}
 	end
 	for _, model in CollectionService:GetTagged("Coffin") do
@@ -278,6 +280,14 @@ function Coffins.Init()
 					model:PivotTo(info.Home)
 					info.NextRattle = now + (if close then 0.6 else 2 + math.random() * 3)
 				end
+			end
+			-- about to open: something inside pushes the lid up a crack and peeks out
+			if close then
+				info.Cracked = true
+				setLid(info, 8 + 4 * math.sin(now * 5))
+			elseif info.Cracked then
+				info.Cracked = false
+				setLid(info, 0)
 			end
 		end
 	end)

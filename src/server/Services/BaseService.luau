@@ -39,7 +39,8 @@ local function penKnife(
 	parsed: Items.Item,
 	base: MapService.BaseSite,
 	slot: number,
-	parent: Instance
+	parent: Instance,
+	since: number? -- (server time it came out of its coffin: it starts on its spot)
 ): (Model, BasePart)
 	local scale = PenMode.Scale(parsed.Knife.Rarity) * (1 + (parsed.Size.Scale - 1) * 0.5)
 	local floor = base.Folder:FindFirstChild("Floor") :: BasePart
@@ -93,6 +94,9 @@ local function penKnife(
 	)
 	built:SetAttribute("HopSeed", base.Index * 1000 + slot * 37)
 	built:SetAttribute("HopScale", scale)
+	-- (it roams round its own spot - where you put it down, where its coffin stood)
+	built:SetAttribute("HopHome", base.SlotCFrames[slot].Position)
+	built:SetAttribute("HopSince", since)
 	built:SetAttribute("Rarity", parsed.Knife.Rarity)
 	KnifeHaze.Add(built, parsed.Knife.Rarity)
 	built:AddTag("PenKnife")
@@ -130,8 +134,15 @@ local hadBoost: { [Player]: boolean } = {}
 local hadSpeed: { [Player]: boolean } = {}
 local padWalks: { [Player]: number } = {}
 local trainingSince: { [Player]: number } = {} -- analytics: how long each wheel session lasts
+-- A knife fresh out of its coffin rides in your hand (Steal an Egg: the creature flies into you)
+-- until you're in your pen, then hops back to where its coffin stood. Not saved: leave and it's
+-- simply on its spot next time.
+local hatching: { [Player]: { Plate: number, Item: string, Since: number } } = {}
+local hoppedIn: { [Player]: { [number]: number } } = {} -- plate -> server time it came home
+local HOLD_MIN = 2.4 -- (s: the fly-in finishes and you get a look at it before it can hop off)
 Players.PlayerRemoving:Connect(function(player)
 	trainedFor[player], hadBoost[player], hadSpeed[player], padWalks[player] = nil, nil, nil, nil
+	hatching[player], hoppedIn[player] = nil, nil
 end)
 
 function BaseService.IncomeMultiplier(player: Player): number
@@ -729,6 +740,18 @@ function BaseService.RefreshRack(player: Player)
 				else (if typeof(vaultInset) == "Color3" then vaultInset else Color3.fromRGB(30, 160, 215)))
 			else Color3.fromRGB(150, 150, 160)
 		rim.Material = if unlocked then Enum.Material.Neon else Enum.Material.SmoothPlastic
+		if PenMode.On() then
+			-- (a pen has no plates: knives and coffins stand on the grass; the pad stays as an
+			-- invisible anchor for prompts)
+			for _, part in { pad, rim } do
+				part.Transparency = 1
+				for _, d in part:GetDescendants() do
+					if d:IsA("BasePart") or d:IsA("Decal") or d:IsA("Texture") then
+						(d :: any).Transparency = 1
+					end
+				end
+			end
+		end
 		-- Knives keep their own plate (profile.Plates), so selling one never shuffles the rest
 		local index = DataService.IndexOnPlate(profile, slot)
 		local item = if index then profile.Knives[index] else nil
@@ -738,7 +761,9 @@ function BaseService.RefreshRack(player: Player)
 			-- Still in its coffin (CoffinService): the coffin, its countdown, "Open now" for the owner.
 			-- No income, no equip / sell / steal until it opens. (client/Coffins: countdown, rattle)
 			local slotCF = base.SlotCFrames[slot]
-			local floorCF = CFrame.new(pad.Position + Vector3.new(0, pad.Size.Y / 2, 0)) * slotCF.Rotation
+			local grass = if PenMode.On() then base.Folder:FindFirstChild("Floor") :: BasePart? else nil
+			local floorY = if grass then grass.Position.Y + grass.Size.Y / 2 else pad.Position.Y + pad.Size.Y / 2
+			local floorCF = CFrame.new(pad.Position.X, floorY, pad.Position.Z) * slotCF.Rotation
 			local coffin = CoffinModel.Build(parsed.Knife.Rarity, floorCF)
 			KnifeHaze.Add(coffin, parsed.Knife.Rarity) -- (a glow on it from the start: you can see it's worth something)
 			coffin:SetAttribute("Owner", player.UserId)
@@ -771,9 +796,17 @@ function BaseService.RefreshRack(player: Player)
 					BaseService.OnStealPrompt(who, player, item, slot)
 				end
 			end)
-		elseif unlocked and index and item and parsed and PenMode.On() then
+		elseif
+			unlocked
+			and index
+			and item
+			and parsed
+			and PenMode.On()
+			and not (hatching[player] and hatching[player].Plate == slot) -- (in your hand right now)
+		then
 			-- A pen: the knife is a character hopping around (equip / sell from the Knives menu)
-			local penModel, labelAnchor = penKnife(item, parsed, base, slot, folder)
+			local since = hoppedIn[player] and hoppedIn[player][slot]
+			local penModel, labelAnchor = penKnife(item, parsed, base, slot, folder, since)
 			-- (no name tags from afar - Steal an Egg shows only money popping off its creatures,
 			-- client/PenKnives; the tag shows up close)
 			local perSecond = Items.Income(item) * multiplier
@@ -999,7 +1032,73 @@ local function onCharacterAdded(player: Player, character: Model)
 	end)
 end
 
+-- CoffinService.Reveal: the knife that just hatched is in your hand now
+function BaseService.HoldHatched(player: Player, plate: number, item: string)
+	if PenMode.On() then
+		local held = { Plate = plate, Item = item, Since = os.clock() }
+		hatching[player] = held
+		-- (in your hand once it has flown there - client Effects CoffinHatch; CombatService arms it)
+		task.delay(1.2, function()
+			if hatching[player] == held then
+				player:SetAttribute("HoldingHatch", item)
+			end
+		end)
+	end
+	BaseService.RefreshRack(player)
+end
+
+-- The hatched knife you're holding (CombatService.WieldedKnife), if any
+function BaseService.HatchedItem(player: Player): string?
+	local held = hatching[player]
+	return held and held.Item
+end
+
+-- In your pen: it jumps out of your hand and hops back to its spot
+local function hatchHome(player: Player)
+	local held = hatching[player]
+	local base = baseOf[player]
+	hatching[player] = nil
+	player:SetAttribute("HoldingHatch", nil)
+	if not held or not base or not base.SlotCFrames[held.Plate] then
+		return
+	end
+	local FLIGHT = 0.6
+	local perPlate = hoppedIn[player] or {}
+	hoppedIn[player] = perPlate
+	perPlate[held.Plate] = workspace:GetServerTimeNow() + FLIGHT + 1.2 -- (lands, then a beat before it hops off)
+	Net.Remotes.Effect:FireAllClients("HatchHome", player, held.Item, base.SlotCFrames[held.Plate].Position, FLIGHT)
+	task.delay(FLIGHT, function()
+		if player.Parent then
+			BaseService.RefreshRack(player)
+		end
+	end)
+end
+
 function BaseService.Init()
+	-- Holding a hatched knife: it hops home once you're in your pen (and the knife's still yours)
+	task.spawn(function()
+		while true do
+			task.wait(0.25)
+			for player, held in hatching do
+				local profile = DataService.Get(player)
+				local index = profile and DataService.IndexOnPlate(profile, held.Plate)
+				if not profile or not index or profile.Knives[index] ~= held.Item then
+					hatching[player] = nil -- (sold / traded / stolen meanwhile)
+					player:SetAttribute("HoldingHatch", nil)
+					continue
+				end
+				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if
+					root
+					and os.clock() - held.Since >= HOLD_MIN
+					and not player:GetAttribute("InRound")
+					and BaseService.IsInOwnBase(player, root.Position)
+				then
+					hatchHome(player)
+				end
+			end
+		end
+	end)
 	Net.Remotes.SellSign.OnServerEvent:Connect(function(player: Player, sign: unknown)
 		local pressed = typeof(sign) == "Instance" and sellSignPressed[sign :: Instance] or nil
 		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?

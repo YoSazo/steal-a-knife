@@ -486,29 +486,7 @@ local function setSlot(boss: Boss, slot: Slot, item: string)
 	if PenMode.Coffins() then
 		local rarity = parsed.Knife.Rarity
 		local floor = CFrame.new(slot.Pad.Position + Vector3.new(0, slot.Pad.Size.Y / 2, 0)) * slot.Spot.Rotation
-		local coffin = CoffinModel.Build(rarity, floor)
-		-- lying in its own little dug-up grave: a dirt patch with a raised rim
-		local _, size = coffin:GetBoundingBox()
-		local dirt = Color3.fromRGB(120, 78, 48)
-		for _, piece in
-			{
-				{ Vector3.new(size.X + 1.6, 0.25, size.Z + 1.6), Vector3.new(0, 0.12, 0) },
-				{ Vector3.new(size.X + 2.4, 0.5, 0.8), Vector3.new(0, 0.25, size.Z / 2 + 1.2) },
-				{ Vector3.new(size.X + 2.4, 0.5, 0.8), Vector3.new(0, 0.25, -size.Z / 2 - 1.2) },
-				{ Vector3.new(0.8, 0.5, size.Z + 1.6), Vector3.new(size.X / 2 + 1.2, 0.25, 0) },
-				{ Vector3.new(0.8, 0.5, size.Z + 1.6), Vector3.new(-size.X / 2 - 1.2, 0.25, 0) },
-			}
-		do
-			local mound = Instance.new("Part")
-			mound.Name = "Grave"
-			mound.Anchored = true
-			mound.CanCollide, mound.CanQuery, mound.CanTouch = false, false, false
-			mound.Size = piece[1]
-			mound.CFrame = floor * CFrame.new(piece[2])
-			mound.Color = if piece[1].Y < 0.3 then dirt:Lerp(Color3.new(0, 0, 0), 0.2) else dirt
-			mound.Material = Enum.Material.SmoothPlastic
-			mound.Parent = coffin
-		end
+		local coffin = CoffinModel.Build(rarity, floor) -- (straight on the floor, no tray)
 		KnifeHaze.Add(coffin, rarity)
 		coffin.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 		coffin.Parent = boss.Folder

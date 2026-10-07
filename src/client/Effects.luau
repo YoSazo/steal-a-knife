@@ -592,6 +592,20 @@ local handlers: { [string]: (...any) -> () } = {
 			)
 		end
 	end,
+	-- ...and when you're back in your pen it jumps out of your hand and hops to where its coffin stood
+	HatchHome = function(who: Player, item: string, to: Vector3, flight: number)
+		local character = who.Character
+		local hand = character
+			and (character:FindFirstChild("RightHand") or character:FindFirstChild("HumanoidRootPart")) :: BasePart?
+		if not hand or not Lod.Near(to, 160) then
+			return
+		end
+		flyKnife(item, hand.Position, to, flight, 3.5, true)
+		task.delay(flight, function()
+			Effects.Burst(to, Items.Color(item), 30, 14, 0.7)
+			Effects.Sound(Sounds.Reveal, to, 0.6)
+		end)
+	end,
 	-- A surprise gift landed by you: a pop, a chime and a burst of light
 	GiftDrop = function(at: Vector3)
 		Effects.Burst(at, Color3.fromRGB(255, 215, 80), 30, 14, 0.6)

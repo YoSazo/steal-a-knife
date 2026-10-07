@@ -427,9 +427,9 @@ startCarry = function(
 		local parsed = Items.Parse(item)
 		visual = CoffinModel.Build(if parsed then parsed.Knife.Rarity else "Common", CFrame.identity)
 		CoffinModel.Weld(visual) -- (all of it rides on your head, not just one piece)
+		-- (full size, as it lay in the graveyard: a big one is a big haul, and everyone sees it)
 		local _, size = visual:GetBoundingBox()
-		visual:ScaleTo(visual:GetScale() * 3.6 / math.max(size.X, size.Y, size.Z))
-		above = head.CFrame * CFrame.new(0, 1.3, 0)
+		above = head.CFrame * CFrame.new(0, 0.9 + size.Y / 2, 0)
 		visual:PivotTo(above * CFrame.Angles(0, math.rad(90), 0))
 	else
 		visual = KnifeModel.Build(item, false)

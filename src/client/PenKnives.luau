@@ -60,7 +60,13 @@ function PenKnives.Init()
 			local hopper = {
 				Seed = (model:GetAttribute("HopSeed") or 1) :: number,
 				Scale = (model:GetAttribute("HopScale") or 1) :: number,
+				Home = nil :: Vector2?,
+				Since = model:GetAttribute("HopSince") :: number?,
 			}
+			local home = model:GetAttribute("HopHome")
+			if typeof(home) == "Vector3" then
+				hopper.Home = Vector2.new(home.X - centre.X, home.Z - centre.Z)
+			end
 			local at, facing, air = PenHop.At({ Centre = centre, Half = Vector2.new(half.X, half.Z) }, hopper, now)
 			-- lean forward on the way up, back on the way down; a squat-bounce right after landing
 			local lean = if air < 1 then math.sin(air * math.pi * 2) * 0.22 else 0

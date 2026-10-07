@@ -34,6 +34,51 @@ end
 -- Codex's coffin art (Config/ToyGeometry/Coffin_<Rarity>, built by Assets/KnifeCharacterAssets)
 -- when it exists for this rarity, given an invisible "Body" box over it (clients hang the countdown
 -- on it); nil when there's no art yet (then the stand-in below)
+-- Codex drew the lid ajar (a dark crack with eyes in it). Ours rest shut: the lid drops onto the
+-- body, the crack goes, the glowing seam sits on the join; the lid only cracks open when it's about
+-- to pop (client/Coffins), which is when the eyes peek out.
+local function closeLid(model: Model)
+	local pivot = model:GetPivot()
+	local bodyTop, lidBottom = -math.huge, math.huge
+	for _, p in model:GetDescendants() do
+		if p:IsA("BasePart") then
+			local role = p:GetAttribute("Role")
+			local y = pivot:PointToObjectSpace(p.Position).Y
+			if role == "Body" then
+				bodyTop = math.max(bodyTop, y + p.Size.Y / 2)
+			elseif role == "Lid" then
+				lidBottom = math.min(lidBottom, y - p.Size.Y / 2)
+			end
+		end
+	end
+	local gap = lidBottom - bodyTop
+	if gap <= 0 or gap ~= gap or gap == math.huge then
+		return
+	end
+	local scale = model:GetScale()
+	for _, p in model:GetDescendants() do
+		if p:IsA("BasePart") then
+			local role = p:GetAttribute("Role")
+			if role == "Lid" then
+				p.CFrame += pivot:VectorToWorldSpace(Vector3.new(0, -gap, 0))
+				local rest = p:GetAttribute("RestOffset")
+				if typeof(rest) == "Vector3" then
+					p:SetAttribute("RestOffset", rest - Vector3.new(0, gap / scale, 0))
+				end
+			elseif role == "Crack" then
+				p.Transparency = 1
+			elseif role == "Glow" then
+				local y = pivot:PointToObjectSpace(p.Position).Y
+				p.CFrame += pivot:VectorToWorldSpace(Vector3.new(0, bodyTop - y, 0))
+			end
+		end
+	end
+	local hinge = model:GetAttribute("LidHinge")
+	if typeof(hinge) == "CFrame" then
+		model:SetAttribute("LidHinge", CFrame.new(hinge.Position - Vector3.new(0, gap / scale, 0)))
+	end
+end
+
 local function codexCoffin(rarity: string, at: CFrame): Model?
 	local shared = script.Parent
 	local geometry = shared.Config.ToyGeometry:FindFirstChild("Coffin_" .. rarity)
@@ -49,6 +94,7 @@ local function codexCoffin(rarity: string, at: CFrame): Model?
 		return nil
 	end
 	local model = built :: Model
+	closeLid(model)
 	model.Name = "Coffin"
 	model:SetAttribute("Rarity", rarity)
 	local cf, size = model:GetBoundingBox()
