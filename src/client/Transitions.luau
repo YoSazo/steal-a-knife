@@ -466,15 +466,16 @@ function Transitions.Init()
 		TextColor3 = Color3.fromRGB(255, 90, 100),
 		ZIndex = 41,
 	})
+	-- "They took your" / the knife, centred / its name (one column, read top to bottom)
 	local killArt = Ui.art(kill, "", {
-		Position = UDim2.fromOffset(16, 54),
-		Size = UDim2.fromOffset(130, 130),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 86),
+		Size = UDim2.fromOffset(108, 108),
 		ZIndex = 41,
 	})
 	local killKnife = label(kill, {
-		Position = UDim2.fromOffset(156, 58),
-		Size = UDim2.new(1, -168, 0, 32),
-		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(12, 52),
+		Size = UDim2.new(1, -24, 0, 30),
 		ZIndex = 41,
 	})
 	local killRarity = label(kill, {
@@ -755,8 +756,11 @@ function Transitions.Init()
 		local scale = kill:FindFirstChild("Pop") :: UIScale? or Instance.new("UIScale")
 		scale.Name = "Pop"
 		scale.Parent = kill
-		scale.Scale = 0.7
-		TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+		-- (fits a short phone screen: the knife card is 300 tall, a 640x300 screen cut its button off)
+		local screen = workspace.CurrentCamera.ViewportSize
+		local fit = math.min(1, (screen.Y - 40) / kill.Size.Y.Offset, (screen.X - 40) / kill.Size.X.Offset)
+		scale.Scale = 0.7 * fit
+		TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = fit }):Play()
 		task.delay(if lost then 7 else 4, function()
 			if token == killToken then
 				kill.Visible = false
