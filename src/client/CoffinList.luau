@@ -179,8 +179,8 @@ function CoffinList.Init()
 				done = 1 - entry.Rounds / total
 				r.Left.Text = if entry.Rounds <= 0
 					then "Opening!"
-					elseif entry.Rounds == 1 then "1 round left"
-					else `{entry.Rounds} rounds left`
+					elseif entry.Rounds == 1 then "1 murder round left"
+					else `{entry.Rounds} murder rounds left`
 			else
 				local left = math.max(0, entry.OpensAt - now)
 				done = 1 - left / math.max(1, CONFIG.CommonSeconds)

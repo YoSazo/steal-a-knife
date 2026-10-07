@@ -65,7 +65,7 @@ function Coffins.Init()
 		local rarity = tostring(model:GetAttribute("Rarity") or "")
 		local gui = Instance.new("BillboardGui")
 		gui.Name = "CoffinTimer"
-		gui.Size = UDim2.fromOffset(120, 44) -- (a fixed small size on screen, like Steal an Egg's "Egg 35s")
+		gui.Size = UDim2.fromOffset(170, 44) -- (a fixed small size on screen, like Steal an Egg's "Egg 35s")
 		gui.StudsOffsetWorldSpace = Vector3.new(0, body.Size.Y * 2.2 + 1.5, 0)
 		gui.MaxDistance = 220
 		gui.LightInfluence = 0
@@ -296,14 +296,14 @@ function Coffins.Init()
 				continue
 			end
 			local left = ((model:GetAttribute("OpensAt") or serverNow) :: number) - serverNow
-			-- the murder rounds are its clock: "2 rounds left" (a Common counts down in seconds)
+			-- the murder rounds are its clock: "2 murder rounds left" (a Common counts down in seconds)
 			local rounds = model:GetAttribute("RoundsLeft")
 			local close = false
 			if type(rounds) == "number" then
 				info.Label.Text = if rounds <= 0
 					then "Opening!"
-					elseif rounds == 1 then "1 round left"
-					else `{rounds} rounds left`
+					elseif rounds == 1 then "1 murder round left"
+					else `{rounds} murder rounds left`
 				left = if rounds <= 0 then 0 else 999 -- (the rattle speeds up when it's about to open)
 				close = rounds <= 1
 			else
