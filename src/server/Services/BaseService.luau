@@ -785,6 +785,7 @@ function BaseService.RefreshRack(player: Player)
 			local sealed = DataService.SealedEntry(profile, slot)
 			coffin:SetAttribute("RoundsLeft", if sealed then sealed.Rounds else nil)
 			coffin:AddTag("Coffin")
+			coffin:AddTag("CoffinOdds")
 			-- (whole or not at all: client/Coffins swings and shatters every lid piece it finds)
 			coffin.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 			coffin.Parent = folder
