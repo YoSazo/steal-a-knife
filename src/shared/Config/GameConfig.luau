@@ -41,7 +41,7 @@ local GameConfig = {
 	-- To switch on: create the notification string on Creator Dashboard (Engagement -> Notifications,
 	-- with a {cash} parameter), set NOTIFY_MESSAGE_ID on Render, give the API key
 	-- user.user-notification:write, then Enabled = true.
-	Notify = { Enabled = false, AskAfterRounds = 2, SendAfterHours = 22 },
+	Notify = { Enabled = true, AskAfterRounds = 2, SendAfterHours = 22 },
 	Daily = DAILY,
 	-- New players can't lose knives (vault break-ins, burglars, Murderer loot) until they've played
 	-- this long, so nobody gets robbed in their first few minutes

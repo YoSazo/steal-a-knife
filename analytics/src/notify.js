@@ -42,6 +42,9 @@ export async function handleNotify(body) {
 // Sends every due notification (oldest first, a batch at a time). Failed sends are logged and
 // dropped: a missed reminder is better than a duplicate one.
 export async function sendDue({ rb, universeId, messageId, limit = 100 }) {
+  // Hours late (server asleep, or switched on with old plans waiting): too late to be "come back
+  // now", so drop them rather than send a burst of stale reminders
+  await query("delete from notify_queue where send_at < now() - interval '6 hours'");
   const due = await query(
     "select user_id, kind, params from notify_queue where send_at <= now() order by send_at limit $1",
     [limit],
@@ -57,7 +60,8 @@ export async function sendDue({ rb, universeId, messageId, limit = 100 }) {
         universeId,
         messageId,
         parameters: params,
-        launchData: `notify=${row.kind}`,
+        // (a tap on it joins with this: shows up as source "notify" / campaign = kind on the dashboard)
+        launchData: `utm_source=notify&utm_campaign=${row.kind}`,
         category: row.kind,
       });
       sent++;

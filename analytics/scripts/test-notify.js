@@ -36,6 +36,7 @@ assert.deepEqual(result, { due: 1, sent: 1, failed: 0 });
 assert.equal(calls[0].userId, "7");
 assert.equal(calls[0].parameters.cash, "$5K");
 assert.equal(calls[0].messageId, "msg-1");
+assert.equal(calls[0].launchData, "utm_source=notify&utm_campaign=comeback");
 assert.deepEqual((await query("select user_id from notify_queue")).map((r) => Number(r.user_id)), [8], "not due yet stays");
 const failing = { sendNotification: async () => { throw new Error("HTTP 403 not opted in"); } };
 await query("update notify_queue set send_at = now() - interval '1 minute'");
@@ -43,6 +44,11 @@ assert.deepEqual(await sendDue({ rb: failing, universeId: 99, messageId: "msg-1"
 assert.equal((await query("select * from notify_queue")).length, 0, "a failed send is dropped, never retried into a duplicate");
 const log = await query("select ok, error from notify_log order by id");
 assert.deepEqual(log.map((r) => r.ok), [true, false]);
+
+// A plan that's hours overdue is dropped, not sent
+await query("insert into notify_queue (user_id, send_at) values (9, now() - interval '2 days')");
+assert.deepEqual(await sendDue({ rb, universeId: 99, messageId: "msg-1" }), { due: 0, sent: 0, failed: 0 });
+assert.equal((await query("select * from notify_queue")).length, 0);
 
 // The Open Cloud request itself
 const { client } = await import("../src/roblox.js");
