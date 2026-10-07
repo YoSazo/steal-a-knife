@@ -8,6 +8,7 @@ import { timingSafeEqual } from "node:crypto";
 import { ingest } from "./ingest.js";
 import * as Q from "./queries.js";
 import { syncAll } from "./sync.js";
+import { handleNotify } from "./notify.js";
 import { bar, card, esc, n, page, pct, secs, table } from "./views.js";
 
 const INGEST_KEY = process.env.INGEST_KEY || "";
@@ -399,6 +400,20 @@ async function handle(req, res) {
     }
     const count = await ingest(body);
     return send(res, 200, JSON.stringify({ ok: true, count }), "application/json");
+  }
+
+  // "Come back" notification plans from the game (src/notify.js): { action, user_id, send_at, kind, params }
+  if (path === "/api/notify" && req.method === "POST") {
+    const key = req.headers["x-ingest-key"];
+    if (!INGEST_KEY || typeof key !== "string" || !same(key, INGEST_KEY)) return send(res, 401, "no", "text/plain");
+    let body;
+    try {
+      body = JSON.parse(await readBody(req));
+    } catch {
+      return send(res, 400, "bad json", "text/plain");
+    }
+    const status = await handleNotify(body);
+    return send(res, 200, JSON.stringify({ ok: true, status }), "application/json");
   }
 
   // Ad spend from a sync job: { rows: [{ day, channel, campaign, spend, impressions?, clicks? }] }

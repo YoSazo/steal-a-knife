@@ -50,6 +50,7 @@ local Remotes = {
 	SellSign = event("SellSign"), -- client -> server: (sign: BasePart) tapped a Sell sign with a tool in hand
 	SlowMode = event("SlowMode"), -- client -> server: (on: boolean) walk at normal speed in the hub
 	MapVote = event("MapVote"), -- client -> server: (mapName) vote for the next murder map (the vote card)
+	NotifyAsked = event("NotifyAsked"), -- client -> server: () Roblox's notifications opt-in was shown
 	PrizePick = event("PrizePick"), -- client -> server: ("Cash" | "Speed") your prize if you win the next round
 	Drop = event("Drop"), -- client -> server: () put down what you're carrying (boss knives go back on the wall)
 	Gamble = func("Gamble"), -- client -> server: (action, arg) -> (ok, message, extra), see Gamble

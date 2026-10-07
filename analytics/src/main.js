@@ -5,6 +5,7 @@ import { connect } from "./db.js";
 import { client } from "./roblox.js";
 import { createApp } from "./server.js";
 import { syncAll } from "./sync.js";
+import { sendDue } from "./notify.js";
 
 await connect();
 
@@ -24,6 +25,19 @@ if (env("ROBLOX_API_KEY")) {
     };
     setTimeout(run, 30_000);
     setInterval(run, 6 * 3600_000);
+    // "Come back" notifications: off until NOTIFY_MESSAGE_ID is set (see src/notify.js)
+    const messageId = env("NOTIFY_MESSAGE_ID");
+    if (messageId) {
+      let sending = false;
+      setInterval(() => {
+        if (sending) return;
+        sending = true;
+        sendDue({ rb, universeId, messageId })
+          .then((r) => r.due && console.log("notify", r))
+          .catch((err) => console.error("notify", err))
+          .finally(() => (sending = false));
+      }, 5 * 60_000);
+    }
   } catch (err) {
     console.error("Roblox setup failed (analytics sync off):", err.message);
   }

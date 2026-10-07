@@ -105,3 +105,13 @@ session: `$session_id`, `session_s`, `session_n`, `days_since_first`, `playtime_
    in_round = true)
 4. **Store**: offer.shown → offer.click → store.prompt → store.result(bought) → purchase.*, by key
 5. **Churn**: session.end `last_event` grouped: the last thing people did before quitting
+
+## "Come back" notifications
+Roblox Experience Notifications, sent by the analytics server because game servers don't exist
+after everyone leaves. Game: `client/NotifyOptIn` shows Roblox's opt-in after a player's
+`GameConfig.Notify.AskAfterRounds`-th round (event `notify.prompt`; profile `NotifyAsked`);
+`NotifyService` POSTs `/api/notify` (schedule on leave: "your vault filled up: {cash} waiting",
+`SendAfterHours` later; cancel on join). Server: `analytics/src/notify.js` keeps one plan per player
+in `notify_queue` (raw UserIds, only for asked players, deleted once sent/cancelled) and every 5 min
+sends what's due through Open Cloud (`notify_log`: kind / ok / error, no ids). Only 13+ players who
+opted in get it, max one a day. Off until `NOTIFY_MESSAGE_ID` (Render) and `GameConfig.Notify.Enabled`.

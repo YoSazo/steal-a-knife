@@ -450,7 +450,8 @@ local CLIENT_EVENTS: { [string]: { string } } = {
 	["tutorial.replay"] = {},
 	["round.intro"] = { "seconds" },
 	["welcome.close"] = { "seconds", "claimed" },
-	["favorite.prompt"] = { "result" }, -- (asked after your first knife lands on your wall)
+	["favorite.prompt"] = { "result", "moment" }, -- (asked after the first round you win: client/Favorite)
+	["notify.prompt"] = { "shown" }, -- Roblox's notifications opt-in (client/NotifyOptIn)
 	["goal.shown"] = { "kind", "zone" }, -- the "Next:" line once the tutorial is done
 	-- The guide's DO line (client/Guide): what it asked, how long until it changed, and where players
 	-- sat on one instruction for a minute without moving (confusion)
@@ -693,6 +694,22 @@ local function auth(): any
 		secret = if ok and value then value else KEY
 	end
 	return secret
+end
+
+-- POST anything else to the analytics server (same key): "/api/notify" for NotifyService
+function Analytics.Post(path: string, body: { [string]: any }): boolean
+	if isStudio() then
+		return false
+	end
+	local ok, response = pcall(function()
+		return HttpService:RequestAsync({
+			Url = URL:gsub("/ingest$", "") .. path,
+			Method = "POST",
+			Headers = { ["Content-Type"] = "application/json", ["X-Ingest-Key"] = auth() },
+			Body = HttpService:JSONEncode(body),
+		})
+	end)
+	return ok and (response :: any).Success == true
 end
 
 local function send(batch: { any }): boolean

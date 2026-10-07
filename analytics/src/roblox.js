@@ -105,6 +105,23 @@ export function client({ apiKey, fetchImpl = fetch }) {
     updateSecret: (universeId, id, secret) =>
       call("PATCH", `/cloud/v2/universes/${universeId}/secrets/${id}`, { json: secret, what: "update secret" }),
 
+    // Experience Notifications (user.user-notification:write): one "come back" message to one player.
+    // parameters: { name: "value" } -> the notification string's {name} placeholders
+    sendNotification: ({ userId, universeId, messageId, parameters = {}, launchData = "", category = "" }) =>
+      call("POST", `/cloud/v2/users/${userId}/notifications`, {
+        json: {
+          source: { universe: `universes/${universeId}` },
+          payload: {
+            message_id: messageId,
+            type: "MOMENT",
+            parameters: Object.fromEntries(Object.entries(parameters).map(([k, v]) => [k, { string_value: String(v) }])),
+          },
+          join_experience: { launch_data: launchData },
+          analytics_data: { category },
+        },
+        what: "send notification",
+      }),
+
     async listCampaigns() {
       const out = [];
       let token = "";

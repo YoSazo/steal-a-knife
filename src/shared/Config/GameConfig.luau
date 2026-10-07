@@ -34,6 +34,14 @@ local GameConfig = {
 	-- Reasons to come back: the vault keeps earning while you're away (a fraction, capped), and a
 	-- 7-day login streak (miss a day and it starts over). Cash days pay seconds of your income.
 	Offline = { Fraction = 0.5, MaxHours = 8, MinAway = 120 },
+	-- "Come back" notifications (Roblox Experience Notifications, 13+ players who opt in, one a day):
+	-- after AskAfterRounds rounds a player is shown the opt-in (client/NotifyOptIn); when they leave,
+	-- NotifyService asks our analytics server to send "your vault filled up: $X waiting" SendAfterHours
+	-- later (about the same time of day they played), cancelled if they're back first.
+	-- To switch on: create the notification string on Creator Dashboard (Engagement -> Notifications,
+	-- with a {cash} parameter), set NOTIFY_MESSAGE_ID on Render, give the API key
+	-- user.user-notification:write, then Enabled = true.
+	Notify = { Enabled = false, AskAfterRounds = 2, SendAfterHours = 22 },
 	Daily = DAILY,
 	-- New players can't lose knives (vault break-ins, burglars, Murderer loot) until they've played
 	-- this long, so nobody gets robbed in their first few minutes

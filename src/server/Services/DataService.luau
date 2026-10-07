@@ -24,6 +24,7 @@ export type Profile = {
 	TotalKills: number,
 	RoundsWon: number,
 	RoundsPlayed: number, -- murder rounds taken part in (a new player's first one: they're the Murderer)
+	NotifyAsked: boolean, -- shown Roblox's notifications opt-in (NotifyService plans "come back" messages)
 	Equipped: string, -- item you fight with / bring into rounds as the Murderer; "" = best owned
 	Discovered: { string }, -- every catalog knife ever owned (plain names), for the collection book
 	Powers: { [string]: number }, -- Innocent Power id -> level (1..3)
@@ -107,6 +108,7 @@ local function defaultProfile(): Profile
 		TotalKills = 0,
 		RoundsWon = 0,
 		RoundsPlayed = 0,
+		NotifyAsked = false,
 		Equipped = "",
 		Discovered = {},
 		Powers = {},

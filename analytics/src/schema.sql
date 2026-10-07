@@ -104,3 +104,23 @@ create table if not exists sync_log (
   ok boolean not null,
   detail text
 );
+
+-- "Come back" notifications the game planned (src/notify.js): one row per player, deleted once
+-- sent or cancelled. The only raw Roblox UserIds we keep, and only for players the game asked.
+create table if not exists notify_queue (
+  user_id bigint primary key,
+  send_at timestamptz not null,
+  kind text not null default 'comeback',
+  params jsonb not null default '{}',
+  created_at timestamptz not null default now()
+);
+create index if not exists notify_queue_due on notify_queue (send_at);
+
+-- What was sent (no user ids): kind, worked or not, Roblox's error
+create table if not exists notify_log (
+  id bigserial primary key,
+  sent_at timestamptz not null default now(),
+  kind text not null,
+  ok boolean not null,
+  error text
+);
