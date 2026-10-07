@@ -24,6 +24,7 @@ local MapService = require(script.Parent.MapService)
 local Analytics = require(script.Parent.Analytics)
 local VaultWalls = require(script.Parent.VaultWalls)
 local VaultModel = require(ReplicatedStorage.Shared.VaultModel)
+local CoffinModel = require(ReplicatedStorage.Shared.CoffinModel)
 
 local BaseService = {}
 
@@ -89,7 +90,9 @@ function BaseService.RackIncome(player: Player): number
 		if i > profile.Slots then
 			break
 		end
-		total += Items.Income(item)
+		if not DataService.IsSealedIndex(profile, i) then -- (still in its coffin: earns nothing yet)
+			total += Items.Income(item)
+		end
 	end
 	return total * BaseService.IncomeMultiplier(player)
 end
@@ -134,7 +137,10 @@ function BaseService.BestKnife(player: Player): string?
 		pick = profile.Equipped
 	else
 		local bestScore, bestDamage = -1, -1
-		for _, item in profile.Knives do
+		for i, item in profile.Knives do
+			if DataService.IsSealedIndex(profile, i) then
+				continue -- (can't fight with a knife still in its coffin)
+			end
 			local score, damage = powerScore(profile, item), Items.Damage(item)
 			if score > bestScore or (score == bestScore and damage > bestDamage) then
 				pick, bestScore, bestDamage = item, score, damage
@@ -599,7 +605,26 @@ function BaseService.RefreshRack(player: Player)
 		local index = DataService.IndexOnPlate(profile, slot)
 		local item = if index then profile.Knives[index] else nil
 		local parsed = item and Items.Parse(item)
-		if unlocked and index and item and parsed then
+		local readyAt = if index then DataService.SealedReadyAt(profile, slot) else nil
+		if unlocked and index and item and parsed and readyAt then
+			-- Still in its coffin (CoffinService): the coffin, its countdown, "Open now" for the owner.
+			-- No income, no equip / sell / steal until it opens. (client/Coffins: countdown, rattle)
+			local slotCF = base.SlotCFrames[slot]
+			local floorCF = CFrame.new(pad.Position + Vector3.new(0, pad.Size.Y / 2, 0)) * slotCF.Rotation
+			local coffin = CoffinModel.Build(parsed.Knife.Rarity, floorCF)
+			coffin:SetAttribute("Owner", player.UserId)
+			coffin:SetAttribute("Plate", slot)
+			-- (server time, so every client counts down to the same moment)
+			coffin:SetAttribute("OpensAt", workspace:GetServerTimeNow() + (readyAt - os.time()))
+			coffin:AddTag("Coffin")
+			coffin.Parent = folder
+			local open = makePrompt(pad, {
+				ActionText = "Open now",
+				ObjectText = `{parsed.Knife.Rarity} Coffin`,
+			})
+			open:SetAttribute("Owner", player.UserId)
+			open:SetAttribute("CoffinPlate", slot)
+		elseif unlocked and index and item and parsed then
 			local model = KnifeModel.Build(item, true)
 			-- Bigger items float bigger (a Colossal towers over its pedestal)
 			KnifeModel.FitLength(model, 4 * (1 + (parsed.Size.Scale - 1) * 0.5)) -- universal display size (was 6)
@@ -954,7 +979,7 @@ function BaseService.Init()
 				DataService.Update(player, function(p)
 					for index, item in p.Knives do
 						local plate = p.Plates[index] or index
-						if plate <= p.Slots then
+						if plate <= p.Slots and not DataService.SealedReadyAt(p, plate) then
 							p.Pending[plate] = (p.Pending[plate] or 0) + Items.Income(item) * multiplier
 						end
 					end

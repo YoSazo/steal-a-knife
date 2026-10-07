@@ -423,6 +423,16 @@ Monetization.Products = {
 		Charge = { Name = "Reroll", Count = 10 },
 	},
 	{
+		-- (Id 0 until created: Studio fakes it; analytics/ npm run setup creates it on Roblox)
+		Key = "CoffinOpen",
+		Id = 0,
+		Price = 19,
+		Name = "Open Coffin Now",
+		Description = "Open a coffin right now - no waiting.",
+		Icon = "⚰️",
+		Color = rgb(150, 90, 230),
+	},
+	{
 		Key = "CollectSession",
 		Id = 3716624561,
 		Price = 25,

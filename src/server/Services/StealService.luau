@@ -29,6 +29,7 @@ local Offers = require(script.Parent.Offers)
 local Ragdoll = require(script.Parent.Ragdoll)
 local Targets = require(script.Parent.Targets)
 local Analytics = require(script.Parent.Analytics)
+local CoffinService = require(script.Parent.CoffinService)
 
 type Carry = {
 	Kind: string, -- "Case" | "Knife"
@@ -677,6 +678,8 @@ local function deposit(player: Player)
 		else Fuel.RollPower(player, carry.Item)
 	local parsed = Items.Parse(item) :: Items.Item
 	local isNew = not table.find(profile.Discovered, parsed.Name)
+	-- A boss's knife comes home in a COFFIN that opens later (CoffinService) - never in the tutorial
+	local sealed = carry.Boss ~= nil and not starter and profile.TutorialDone and CoffinService.On(player)
 	if carry.Boss then
 		Fuel.AddHeat(player, 1, "Stole from a boss!")
 		Fuel.AddMeter(player, 1)
@@ -693,8 +696,8 @@ local function deposit(player: Player)
 			ServerEvents.Start("CosmicRush", player.DisplayName)
 		end
 	end
-	if parsed.Perk then
-		revealPower(player, item)
+	if parsed.Perk and not sealed then
+		revealPower(player, item) -- (a coffin keeps its power a secret until it opens)
 	end
 	local placedPlate: number? = nil
 	DataService.Update(player, function(p)
@@ -713,6 +716,7 @@ local function deposit(player: Player)
 	-- Only this successful carried-knife deposit confirms placement. Unboxes use the cosmetic
 	-- Deposit effect too, so the tutorial must not infer success from that effect or inventory size.
 	-- Publish the exact mounted item/plate before confirmation, so the guide can point at it.
+	local opensIn = if sealed and placedPlate then CoffinService.Seal(player, placedPlate, item) else nil
 	player:SetAttribute("LastPlacedKnife", item)
 	player:SetAttribute("LastPlacedKnifePlate", placedPlate)
 	local placementSerial = (player:GetAttribute("KnifePlacementSerial") or 0) :: number
@@ -739,7 +743,9 @@ local function deposit(player: Player)
 	local name = Items.DisplayName(item)
 	BaseService.RefreshRack(player)
 	-- The plate already labels name/income. Let a Murderer-power reveal have the screen to itself.
-	if not parsed.Perk then
+	if opensIn then
+		Net.Notify(player, `⚰️ {parsed.Knife.Rarity} Coffin! It opens in {Format.Duration(opensIn)}`, "good")
+	elseif not parsed.Perk then
 		Net.Notify(player, `{if isNew then "NEW! " else ""}{name} +{Format.Cash(Items.Income(item))}/s`, "good")
 	end
 	Net.Remotes.Effect:FireAllClients("Deposit", player, parsed.Knife.Rarity)
@@ -1043,6 +1049,13 @@ end
 
 function StealService.Init()
 	Net.Remotes.Drop.OnServerEvent:Connect(StealService.Drop)
+	-- A coffin opening shows the power it was hiding
+	CoffinService.OnOpened = function(player: Player, item: string)
+		local parsed = Items.Parse(item)
+		if parsed and parsed.Perk then
+			revealPower(player, item)
+		end
+	end
 	-- Carriers are hub-knife targets (CombatService swings and throws ask Targets)
 	Targets.AddProvider(function()
 		local list = {}

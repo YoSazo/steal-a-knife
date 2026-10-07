@@ -29,6 +29,7 @@ local GuardService = require(script.Parent.GuardService)
 local Fuel = require(script.Parent.Fuel)
 local Rewards = require(script.Parent.Rewards)
 local Analytics = require(script.Parent.Analytics)
+local CoffinService = require(script.Parent.CoffinService)
 
 local MonetizationService = {}
 
@@ -256,6 +257,15 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 			p.NextFreeChest = 0
 		end)
 		table.insert(got, "a full free chest")
+	elseif key == "CoffinOpen" then
+		if CoffinService.OpenNow(player) then
+			table.insert(got, "your coffin, open")
+		else
+			-- Nothing sealed any more (it opened on its own meanwhile): its worth in cash instead
+			local value = GameConfig.Pay({ Min = 5000, Seconds = 600 }, BaseService.RackIncome(player))
+			DataService.AddCash(player, value, "robux_product")
+			table.insert(got, `{Format.Cash(value)} (that coffin had already opened)`)
+		end
 	elseif key == "CollectSession" then
 		player:SetAttribute("SessionAutoCollect", true) -- gone when they leave (never saved)
 		table.insert(got, "Auto Collect until you leave")

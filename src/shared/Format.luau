@@ -60,4 +60,17 @@ function Format.Cash(n: number): string
 	return "$" .. Format.Short(n)
 end
 
+-- A wait, short: "45s", "3m", "1h 30m", "4h"
+function Format.Duration(seconds: number): string
+	seconds = math.max(0, math.ceil(seconds))
+	if seconds < 60 then
+		return `{seconds}s`
+	elseif seconds < 3600 then
+		local m, s = seconds // 60, seconds % 60
+		return if s > 0 and m < 10 then `{m}m {s}s` else `{m}m`
+	end
+	local h, m = seconds // 3600, (seconds % 3600) // 60
+	return if m > 0 then `{h}h {m}m` else `{h}h`
+end
+
 return Format

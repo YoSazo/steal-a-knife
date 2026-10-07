@@ -44,6 +44,18 @@ local function equip(player: Player, name: unknown): boolean
 		Net.Notify(player, "That knife is gone", "bad")
 		return false
 	end
+	if name ~= "" then
+		local usable = false
+		for i, item in profile.Knives do
+			if item == name and not DataService.IsSealedIndex(profile, i) then
+				usable = true
+			end
+		end
+		if not usable then
+			Net.Notify(player, "It's still in its coffin!", "bad")
+			return false
+		end
+	end
 	DataService.Update(player, function(p)
 		p.Equipped = name
 	end)
@@ -71,6 +83,10 @@ local function sell(player: Player, index: unknown): boolean
 	local name = profile.Knives[index]
 	if not name or index % 1 ~= 0 then
 		Net.Notify(player, "That knife is gone", "bad")
+		return false
+	end
+	if DataService.IsSealedIndex(profile, index) then
+		Net.Notify(player, "It's still in its coffin!", "bad")
 		return false
 	end
 	local price = InventoryService.SellPrice(name)

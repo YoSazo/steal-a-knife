@@ -25,6 +25,7 @@ export type Profile = {
 	RoundsWon: number,
 	RoundsPlayed: number, -- murder rounds taken part in (a new player's first one: they're the Murderer)
 	NotifyAsked: boolean, -- shown Roblox's notifications opt-in (NotifyService plans "come back" messages)
+	Sealed: { { Plate: number, ReadyAt: number } }, -- knives still in their coffin (CoffinService): os.time()
 	Equipped: string, -- item you fight with / bring into rounds as the Murderer; "" = best owned
 	Discovered: { string }, -- every catalog knife ever owned (plain names), for the collection book
 	Powers: { [string]: number }, -- Innocent Power id -> level (1..3)
@@ -109,6 +110,7 @@ local function defaultProfile(): Profile
 		RoundsWon = 0,
 		RoundsPlayed = 0,
 		NotifyAsked = false,
+		Sealed = {},
 		Equipped = "",
 		Discovered = {},
 		Powers = {},
@@ -404,9 +406,44 @@ function DataService.UseCharge(player: Player, name: string): boolean
 end
 
 function DataService.RemoveKnife(profile: Profile, index: number): string?
+	local plate = profile.Plates[index]
 	local item = table.remove(profile.Knives, index)
 	table.remove(profile.Plates, index)
+	if plate then
+		DataService.Unseal(profile, plate) -- (a coffin that leaves takes its timer with it)
+	end
 	return item
+end
+
+-- Coffins (CoffinService): a knife on its plate that hasn't opened yet. While sealed it earns
+-- nothing and can't be equipped, sold or fought with.
+function DataService.SealedReadyAt(profile: Profile, plate: number): number?
+	for _, entry in profile.Sealed do
+		if entry.Plate == plate then
+			return entry.ReadyAt
+		end
+	end
+	return nil
+end
+
+function DataService.IsSealedIndex(profile: Profile, index: number): boolean
+	local plate = profile.Plates[index]
+	return plate ~= nil and DataService.SealedReadyAt(profile, plate) ~= nil
+end
+
+function DataService.Seal(profile: Profile, plate: number, readyAt: number)
+	DataService.Unseal(profile, plate)
+	table.insert(profile.Sealed, { Plate = plate, ReadyAt = readyAt })
+end
+
+function DataService.Unseal(profile: Profile, plate: number): boolean
+	for i, entry in profile.Sealed do
+		if entry.Plate == plate then
+			table.remove(profile.Sealed, i)
+			return true
+		end
+	end
+	return false
 end
 
 function DataService.PlateOf(profile: Profile, index: number): number

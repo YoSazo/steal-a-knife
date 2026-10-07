@@ -42,6 +42,23 @@ local GameConfig = {
 	-- with a {cash} parameter), set NOTIFY_MESSAGE_ID on Render, give the API key
 	-- user.user-notification:write, then Enabled = true.
 	Notify = { Enabled = true, AskAfterRounds = 2, SendAfterHours = 22 },
+	-- Coffins (Steal an Egg's egg): a stolen boss knife lands on its plate SEALED in a coffin and opens
+	-- after HatchSeconds[rarity] - even while you're offline (come back to see it). Sealed = no income,
+	-- no equip/sell. "Open now" = Robux product CoffinOpen. Off until Enabled (Studio: ReplicatedStorage
+	-- attribute DebugCoffins = true). The tutorial's first knife never gets a coffin.
+	Coffins = {
+		Enabled = false,
+		HatchSeconds = {
+			Common = 20,
+			Rare = 60,
+			Epic = 180,
+			Legendary = 600,
+			Mythic = 1800,
+			Godly = 3600,
+			Celestial = 7200,
+			Cosmic = 14400,
+		},
+	},
 	Daily = DAILY,
 	-- New players can't lose knives (vault break-ins, burglars, Murderer loot) until they've played
 	-- this long, so nobody gets robbed in their first few minutes
