@@ -529,6 +529,35 @@ local handlers: { [string]: (...any) -> () } = {
 		end
 		TopLine.Show(text, 2.4, "Equipped")
 	end,
+	-- A coffin hatched (server CoffinService): the knife pops up out of it, hangs a beat, then flies
+	-- into its owner's hand with a burst (Steal an Egg's creature flying into you). The character
+	-- itself is already hopping in the pen; your fighting knife doesn't change.
+	CoffinHatch = function(who: Player, item: string, from: Vector3)
+		local character = who.Character
+		local hand = character
+			and (character:FindFirstChild("RightHand") or character:FindFirstChild("HumanoidRootPart")) :: BasePart?
+		if not hand or not Lod.Near(from, 160) then
+			return
+		end
+		local top = from + Vector3.new(0, 7, 0)
+		flyKnife(item, from, top, 0.45, 3.5)
+		task.delay(0.75, function()
+			local to = hand.Position
+			flyKnife(item, top, to, 0.5, 3)
+			task.delay(0.5, function()
+				Effects.Burst(to, Items.Color(item), 40, 18, 0.8)
+				Effects.Sound(Sounds.Unsheath, to, 1)
+			end)
+		end)
+		if who == player then
+			local tint = Items.Color(item):Lerp(Color3.new(1, 1, 1), 0.25)
+			TopLine.Show(
+				`🎉 It's a <font color="#{tint:ToHex()}"><b>{Items.DisplayName(item)}</b></font>!`,
+				3,
+				"Hatched"
+			)
+		end
+	end,
 	-- A surprise gift landed by you: a pop, a chime and a burst of light
 	GiftDrop = function(at: Vector3)
 		Effects.Burst(at, Color3.fromRGB(255, 215, 80), 30, 14, 0.6)

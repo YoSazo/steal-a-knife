@@ -8,6 +8,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PenMode = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PenMode"))
 
 local Ui = require(script.Parent.Ui)
 local TopLine = require(script.Parent.TopLine)
@@ -24,8 +25,8 @@ end
 -- id -> text (phone, desktop)
 local TEXT: { [string]: { string } } = {
 	Caught = {
-		"Caught! Your knife went back.",
-		"Caught! Your knife went back.",
+		if PenMode.Coffins() then "Caught! The coffin went back." else "Caught! Your knife went back.",
+		if PenMode.Coffins() then "Caught! The coffin went back." else "Caught! Your knife went back.",
 	},
 	Knocked = {
 		"You dropped your knife!",

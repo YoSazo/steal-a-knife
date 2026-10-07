@@ -31,8 +31,57 @@ local function part(model: Model, name: string, size: Vector3, cf: CFrame, color
 	return p
 end
 
+-- Codex's coffin art (Config/ToyGeometry/Coffin_<Rarity>, built by Assets/KnifeCharacterAssets)
+-- when it exists for this rarity, given an invisible "Body" box over it (clients hang the countdown
+-- on it); nil when there's no art yet (then the stand-in below)
+local function codexCoffin(rarity: string, at: CFrame): Model?
+	local shared = script.Parent
+	local geometry = shared.Config.ToyGeometry:FindFirstChild("Coffin_" .. rarity)
+	local assetsFolder = shared:FindFirstChild("Assets")
+	local assets = assetsFolder and assetsFolder:FindFirstChild("KnifeCharacterAssets")
+	if not geometry or not assets then
+		return nil
+	end
+	local ok, built = pcall(function()
+		return (require :: any)(assets).BuildCoffin(rarity, nil, at)
+	end)
+	if not ok or not built then
+		return nil
+	end
+	local model = built :: Model
+	model.Name = "Coffin"
+	model:SetAttribute("Rarity", rarity)
+	local cf, size = model:GetBoundingBox()
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Size = size
+	body.CFrame = cf
+	body.Transparency = 1
+	body.Anchored = true
+	body.CanCollide, body.CanQuery, body.CanTouch = false, false, false
+	body.Parent = model
+	model.PrimaryPart = body
+	return model
+end
+
+-- Welds every part of a coffin to its PrimaryPart (to carry it: unanchored, it moves as one)
+function CoffinModel.Weld(model: Model)
+	local primary = model.PrimaryPart :: BasePart
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") and part ~= primary then
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0, weld.Part1 = primary, part
+			weld.Parent = part
+		end
+	end
+end
+
 -- A coffin lying on the plate at `at` (its bottom centre), long side along local Z, face up
 function CoffinModel.Build(rarity: string, at: CFrame): Model
+	local art = codexCoffin(rarity, at)
+	if art then
+		return art
+	end
 	local model = Instance.new("Model")
 	model.Name = "Coffin"
 	model:SetAttribute("Rarity", rarity)

@@ -95,6 +95,7 @@ local function penKnife(
 	built:SetAttribute("HopScale", scale)
 	KnifeHaze.Add(built, parsed.Knife.Rarity)
 	built:AddTag("PenKnife")
+	built:AddTag("KnifeFace") -- (client/KnifeBlink)
 	built.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	built.Parent = parent
 	return built, label

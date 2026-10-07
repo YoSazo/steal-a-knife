@@ -406,11 +406,12 @@ end
 -- Knife characters (Codex's art, Assets/KnifeCharacterAssets): the held knife IS the character,
 -- held by its grip, blade up, with its FACE TURNED BACK TOWARD ITS OWNER - you see your buddy
 -- while you hunt. (Measured in Studio: with a plain grip a knife's front points the way you face,
--- so the face would only ever show victims the back of its head.) Studio only until characters
--- ship: ReplicatedStorage attribute DebugCharacters = true. Returns false if this knife has no
--- character yet (then the normal model is used).
+-- so the face would only ever show victims the back of its head.) On wherever pens are
+-- (Shared/PenMode; in Studio also ReplicatedStorage DebugCharacters = true). Returns false if this
+-- knife has no character yet (then the normal model is used).
 local function characterTool(tool: Tool, knifeName: string): boolean
-	if not (RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugCharacters") == true) then
+	local penMode = require(script.Parent.PenMode) :: any
+	if not (penMode.On() or (RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugCharacters") == true)) then
 		return false
 	end
 	local shared = script.Parent
@@ -447,6 +448,7 @@ local function characterTool(tool: Tool, knifeName: string): boolean
 	model:Destroy()
 	-- in the fist at its grip, then a half turn so the face looks back at you
 	tool.Grip = CFrame.new((info.GripOffset :: Vector3) * scale) * CFrame.Angles(0, math.pi, 0)
+	tool:AddTag("KnifeFace") -- (it blinks at you: client/KnifeBlink)
 	return true
 end
 

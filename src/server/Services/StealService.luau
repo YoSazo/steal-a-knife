@@ -425,6 +425,7 @@ startCarry = function(
 		-- a boss's coffin, held over your head (what's in it stays a secret until it opens)
 		local parsed = Items.Parse(item)
 		visual = CoffinModel.Build(if parsed then parsed.Knife.Rarity else "Common", CFrame.identity)
+		CoffinModel.Weld(visual) -- (all of it rides on your head, not just one piece)
 		local _, size = visual:GetBoundingBox()
 		visual:ScaleTo(visual:GetScale() * 3.6 / math.max(size.X, size.Y, size.Z))
 		above = head.CFrame * CFrame.new(0, 1.3, 0)

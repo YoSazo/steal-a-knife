@@ -1151,7 +1151,11 @@ local function snatch(guard: Guard, thief: Player)
 		else
 			Offers.Show(thief, "Escape3", "Caught at the last second? An Escape Token breaks you free WITH the knife.")
 		end
-		Net.Notify(thief, "Caught! The knife went back.", "bad")
+		Net.Notify(
+			thief,
+			if PenMode.Coffins() then "Caught! The coffin went back." else "Caught! The knife went back.",
+			"bad"
+		)
 		Net.Remotes.Effect:FireClient(thief, "Tip", "Caught")
 		Net.Remotes.Effect:FireClient(thief, "Damage", root.Position + Vector3.new(0, 3, 0), "CAUGHT!")
 	end

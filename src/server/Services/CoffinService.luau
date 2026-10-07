@@ -87,6 +87,8 @@ function CoffinService.Open(player: Player, plate: number, how: string)
 	local at = if base and base.SlotCFrames[plate] then base.SlotCFrames[plate].Position else nil
 	if at then
 		Net.Remotes.Effect:FireAllClients("CoffinOpen", at, Knives.RarityColors[rarity])
+		-- (Steal an Egg: what hatched pops up and flies into its owner - client Effects CoffinHatch)
+		Net.Remotes.Effect:FireAllClients("CoffinHatch", player, item, at)
 	end
 	Net.Notify(
 		player,
