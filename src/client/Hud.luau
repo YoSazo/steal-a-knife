@@ -183,9 +183,36 @@ function Hud.Init()
 		end
 	)
 	TopLine.SetPill(doubleButton)
+	-- Phones, in a round: the prize gets its own badge on the left, just above the thumbstick
+	-- ("2:04 · GET EVERYONE = +$5K" didn't fit the top line and ended in "...")
+	local prizeBadge = Ui.new("Frame", {
+		Name = "RoundPrizeBadge",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 14, 0.56, 0),
+		Size = UDim2.fromOffset(92, 74),
+		BackgroundColor3 = Color3.fromRGB(24, 22, 36),
+		BackgroundTransparency = 0.25,
+		Visible = false,
+	}, gui) :: Frame
+	Ui.corner(prizeBadge, 12)
+	Ui.new("UIStroke", { Color = Color3.fromRGB(140, 255, 150), Thickness = 2 }, prizeBadge)
+	local badgeIcon = Ui.art(prizeBadge, "Icon", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 4),
+		Size = UDim2.fromOffset(34, 34),
+	})
+	local badgeText = Ui.label({
+		Name = "Prize",
+		Position = UDim2.fromOffset(4, 40),
+		Size = UDim2.new(1, -8, 0, 28),
+		Text = "",
+		TextColor3 = Color3.fromRGB(140, 255, 150),
+	}, prizeBadge)
+	Ui.textStroke(badgeText, 2)
 	-- (what to do next is the guide's DO line now - client/Guide; this line is information only)
 	TopLine.Resting = function(): TopLine.Rest?
 		if Ui.menuOpen() or Ui.gui:GetAttribute("FadeCover") == true then
+			prizeBadge.Visible = false
 			return nil
 		end
 		local phase = ReplicatedStorage:GetAttribute("Phase")
@@ -198,6 +225,7 @@ function Hud.Init()
 			local alive = ReplicatedStorage:GetAttribute("Alive") or 0
 			-- (not during the first seconds: it would give your role away before the role reel lands)
 			local elapsed = GameConfig.RoundTime - left
+			prizeBadge.Visible = false
 			if player:GetAttribute("InRound") and elapsed < 6 then
 				return { Text = `🔪 {clock}  ·  {alive} alive` }
 			end
@@ -214,18 +242,25 @@ function Hud.Init()
 				local goal = if player:GetAttribute("Role") == "Murderer"
 					then "GET EVERYONE"
 					else if Ui.gui:GetAttribute("GuideRole") == "Sheriff" then "STOP THE MURDERER" else "SURVIVE"
-				-- (the prize you picked after it - the Speed shoe or the cash, like the line before the round)
+				-- (the prize you picked after it - the Speed shoe or the cash, like the line before the round;
+				-- phones: on the badge instead, the line only fits the clock and the goal)
+				local icon = if prize.Kind == "Cash" then CartoonArt.Cash else CartoonArt.Speed
+				if Ui.Phone then
+					prizeBadge.Visible = true
+					badgeIcon.Image = icon
+					badgeText.Text = `WIN {prize.Text:gsub(" Speed$", "")}`
+					return { Text = `{clock} · <b>{goal}</b>` }
+				end
 				return {
-					Text = if Ui.Phone
-						then `{clock} · <b>{goal}</b> = <font color="#8CFF96">{prize.Text:gsub(" Speed$", "")}</font>`
-						else `🔪 {clock} · <b>{goal}</b> = <font color="#8CFF96">{prize.Text}</font>`,
-					Icon = if prize.Kind == "Cash" then CartoonArt.Cash else CartoonArt.Speed,
+					Text = `🔪 {clock} · <b>{goal}</b> = <font color="#8CFF96">{prize.Text}</font>`,
+					Icon = icon,
 				}
 			end
 			return {
 				Text = `🔪 {ReplicatedStorage:GetAttribute("MapName") or "Murder Round"} {clock}  ·  {alive} alive  ·  steal while they're busy!`,
 			}
 		end
+		prizeBadge.Visible = false
 		local raidEnds = ReplicatedStorage:GetAttribute("RaidEndsAt")
 		if type(raidEnds) == "number" then
 			return { Text = `<font color="#FF5050">🌕 BLOOD MOON</font> ends in {Ui.clock(raidEnds - now)}` }

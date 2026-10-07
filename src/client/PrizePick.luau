@@ -191,11 +191,11 @@ function PrizePick.Init()
 		SimpleUi.set(speedButton, `<b>{speed.Text}</b>`)
 		-- what the Speed is for, in knives you can see ("= RARE knives!" when it gets you there)
 		reach.Text = if speed.Rarity and speed.Reaches
-			then `= UNLOCK {string.upper(speed.Rarity)} KNIVES`
+			then `UNLOCK {string.upper(speed.Rarity)} KNIVES!`
 			elseif speed.Rarity then `toward {string.upper(speed.Rarity)} knives`
 			else ""
 		local buys = cashBuys(cash.Amount)
-		cashNote.Text = if buys then `= {buys}` else ""
+		cashNote.Text = if buys then `{buys}!` else ""
 	end)
 end
 

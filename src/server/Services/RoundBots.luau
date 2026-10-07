@@ -36,13 +36,18 @@ export type Bot = {
 	Gun: Tool?, -- the Revolver, when this bot is the Sheriff
 	NextShot: number,
 	AimUntil: number, -- 0 = not aiming
+	NextJump: number, -- os.clock() of its next hop (players hop around; bots do too)
+	StuckSince: number?, -- walking somewhere but not moving: jump over it
 }
 
 -- Roblox's own R15 idle / run (the same ones the guards use)
 local ANIMATIONS: { [string]: string } = {
 	Idle = "rbxassetid://507766388",
 	Run = "rbxassetid://507767714",
+	Jump = "rbxassetid://507765000",
 }
+
+local rng = Random.new()
 
 local mapParams = RaycastParams.new()
 mapParams.FilterType = Enum.RaycastFilterType.Include
@@ -65,7 +70,10 @@ local function loadTracks(humanoid: Humanoid): { [string]: AnimationTrack }
 		animation.AnimationId = id
 		local ok, track = pcall((animator :: Animator).LoadAnimation, animator :: Animator, animation)
 		if ok then
-			track.Looped = true
+			track.Looped = key ~= "Jump" -- (the hop plays once, over the run)
+			if key == "Jump" then
+				track.Priority = Enum.AnimationPriority.Action
+			end
 			tracks[key] = track
 		end
 	end
@@ -119,6 +127,8 @@ function RoundBots.Spawn(at: CFrame, role: string, taken: { [string]: boolean },
 		Gun = nil,
 		NextShot = 0,
 		AimUntil = 0,
+		NextJump = os.clock() + rng:NextNumber(2, 8),
+		StuckSince = nil,
 	}
 end
 
@@ -237,6 +247,26 @@ function RoundBots.Step(bot: Bot)
 	end
 	local velocity = root.AssemblyLinearVelocity
 	local speed = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
+	-- Hop like a player: now and then while running (more when running for its life), and
+	-- straight away when it's walking into something and not getting anywhere
+	local now = os.clock()
+	local moving = goal ~= nil and not stunned
+	if moving and speed < 1 then
+		bot.StuckSince = bot.StuckSince or now
+	else
+		bot.StuckSince = nil
+	end
+	local stuck = bot.StuckSince ~= nil and now - (bot.StuckSince :: number) > 0.8
+	if moving and humanoid.FloorMaterial ~= Enum.Material.Air and (stuck or (speed > 6 and now >= bot.NextJump)) then
+		humanoid.Jump = true
+		local hop = bot.Tracks.Jump
+		if hop then
+			hop:Play(0.1)
+		end
+		local fleeing = humanoid.WalkSpeed >= 14
+		bot.NextJump = now + (if fleeing then rng:NextNumber(1.5, 4.5) else rng:NextNumber(3, 9))
+		bot.StuckSince = nil
+	end
 	if speed > 1 then
 		play(bot, "Run", math.max(0.6, speed / 16))
 	else
