@@ -53,6 +53,7 @@ local StealService = require(script.Parent.StealService)
 local RoundBots = require(script.Parent.RoundBots)
 local Ragdoll = require(script.Parent.Ragdoll)
 local Analytics = require(script.Parent.Analytics)
+local CoffinService = require(script.Parent.CoffinService)
 local MapVote = require(script.Parent.MapVote)
 local Gamble = require(script.Parent.Gamble)
 local SurpriseGifts = require(script.Parent.SurpriseGifts)
@@ -2757,6 +2758,13 @@ local function endRound(round: Round)
 			)
 		end)
 	end
+	-- Coffins: the murder rounds are their clock - one round off everyone's, two for the winners
+	local coffinWinners: { [Player]: boolean } = {}
+	for player in round.Names do
+		local role = roleOf(round, player)
+		coffinWinners[player] = if role == "murderer" then not innocentsWon else innocentsWon
+	end
+	CoffinService.RoundEnded(coffinWinners)
 	-- The round prize: the winning side gets what the countdown promised, once they're home
 	local prizeKind = ReplicatedStorage:GetAttribute("PrizeKind")
 	if type(prizeKind) == "string" then

@@ -616,6 +616,9 @@ function BaseService.RefreshRack(player: Player)
 			coffin:SetAttribute("Plate", slot)
 			-- (server time, so every client counts down to the same moment)
 			coffin:SetAttribute("OpensAt", workspace:GetServerTimeNow() + (readyAt - os.time()))
+			-- (round-based: how many murder rounds are left - the label shows that, not a clock)
+			local sealed = DataService.SealedEntry(profile, slot)
+			coffin:SetAttribute("RoundsLeft", if sealed then sealed.Rounds else nil)
 			coffin:AddTag("Coffin")
 			coffin.Parent = folder
 			local open = makePrompt(pad, {

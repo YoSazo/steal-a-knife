@@ -744,7 +744,7 @@ local function deposit(player: Player)
 	BaseService.RefreshRack(player)
 	-- The plate already labels name/income. Let a Murderer-power reveal have the screen to itself.
 	if opensIn then
-		Net.Notify(player, `⚰️ {parsed.Knife.Rarity} Coffin! It opens in {Format.Duration(opensIn)}`, "good")
+		Net.Notify(player, `⚰️ {parsed.Knife.Rarity} Coffin! It opens {opensIn}`, "good")
 	elseif not parsed.Perk then
 		Net.Notify(player, `{if isNew then "NEW! " else ""}{name} +{Format.Cash(Items.Income(item))}/s`, "good")
 	end

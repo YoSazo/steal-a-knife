@@ -46,18 +46,16 @@ local GameConfig = {
 	-- after HatchSeconds[rarity] - even while you're offline (come back to see it). Sealed = no income,
 	-- no equip/sell. "Open now" = Robux product CoffinOpen. Off until Enabled (Studio: ReplicatedStorage
 	-- attribute DebugCoffins = true). The tutorial's first knife never gets a coffin.
+	-- The MURDER ROUNDS are the coffins' clock: a coffin opens after Rounds[rarity] rounds (a won
+	-- round counts WinRounds), all together right after the results (the opening ceremony). Offline,
+	-- each round still owed is OfflineSecondsPerRound of real time. A Common just takes CommonSeconds.
 	Coffins = {
 		Enabled = false,
-		HatchSeconds = {
-			Common = 20,
-			Rare = 60,
-			Epic = 180,
-			Legendary = 600,
-			Mythic = 1800,
-			Godly = 3600,
-			Celestial = 7200,
-			Cosmic = 14400,
-		},
+		Rounds = { Common = 0, Rare = 1, Epic = 1, Legendary = 2, Mythic = 2, Godly = 3, Celestial = 4, Cosmic = 5 },
+		CommonSeconds = 20,
+		WinRounds = 2,
+		OfflineSecondsPerRound = 900,
+		AnnounceFrom = "Mythic", -- coffins of this rarity and up are announced to the server
 	},
 	Daily = DAILY,
 	-- New players can't lose knives (vault break-ins, burglars, Murderer loot) until they've played

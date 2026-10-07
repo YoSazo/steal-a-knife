@@ -25,7 +25,9 @@ export type Profile = {
 	RoundsWon: number,
 	RoundsPlayed: number, -- murder rounds taken part in (a new player's first one: they're the Murderer)
 	NotifyAsked: boolean, -- shown Roblox's notifications opt-in (NotifyService plans "come back" messages)
-	Sealed: { { Plate: number, ReadyAt: number } }, -- knives still in their coffin (CoffinService): os.time()
+	-- knives still in their coffin (CoffinService): Rounds = murder rounds left (nil = a plain timer);
+	-- ReadyAt (os.time) = when it opens anyway, the offline fallback
+	Sealed: { { Plate: number, ReadyAt: number, Rounds: number? } },
 	Equipped: string, -- item you fight with / bring into rounds as the Murderer; "" = best owned
 	Discovered: { string }, -- every catalog knife ever owned (plain names), for the collection book
 	Powers: { [string]: number }, -- Innocent Power id -> level (1..3)
@@ -431,9 +433,18 @@ function DataService.IsSealedIndex(profile: Profile, index: number): boolean
 	return plate ~= nil and DataService.SealedReadyAt(profile, plate) ~= nil
 end
 
-function DataService.Seal(profile: Profile, plate: number, readyAt: number)
+function DataService.Seal(profile: Profile, plate: number, readyAt: number, rounds: number?)
 	DataService.Unseal(profile, plate)
-	table.insert(profile.Sealed, { Plate = plate, ReadyAt = readyAt })
+	table.insert(profile.Sealed, { Plate = plate, ReadyAt = readyAt, Rounds = rounds })
+end
+
+function DataService.SealedEntry(profile: Profile, plate: number): { Plate: number, ReadyAt: number, Rounds: number? }?
+	for _, entry in profile.Sealed do
+		if entry.Plate == plate then
+			return entry
+		end
+	end
+	return nil
 end
 
 function DataService.Unseal(profile: Profile, plate: number): boolean

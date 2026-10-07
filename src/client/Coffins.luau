@@ -95,7 +95,17 @@ function Coffins.Init()
 				continue
 			end
 			local left = ((model:GetAttribute("OpensAt") or serverNow) :: number) - serverNow
-			info.Label.Text = if left > 0.5 then Format.Duration(left) else "Opening!"
+			-- the murder rounds are its clock: "2 rounds left" (a Common counts down in seconds)
+			local rounds = model:GetAttribute("RoundsLeft")
+			if type(rounds) == "number" then
+				info.Label.Text = if rounds <= 0
+					then "Opening!"
+					elseif rounds == 1 then "1 round left"
+					else `{rounds} rounds left`
+				left = if rounds <= 0 then 0 else 999 -- (the rattle speeds up when it's about to open)
+			else
+				info.Label.Text = if left > 0.5 then Format.Duration(left) else "Opening!"
+			end
 			-- the seam and the peeking eyes pulse, faster in the last 10 s
 			local speed = if left < 10 then 10 else 3
 			local pulse = 0.25 + 0.25 * math.sin(now * speed)
