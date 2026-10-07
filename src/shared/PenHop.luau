@@ -4,7 +4,7 @@
 -- the same knife in the same spot without the server streaming positions, and the server can ask
 -- the same question (e.g. for a steal prompt later).
 --   hop k: from spot(k-1) to spot(k), in the air for Air s, then a pause; spots are random points in
---   the pen (from the seed), each at most MaxHop from the last. Bigger knives hop slower and longer.
+--   the pen (from the seed), each at most MaxHop from the last. Big or small, they all hop alike.
 --   With a Home (where its owner put it / where its coffin stood) it roams near that spot instead of
 --   the whole pen, and with Since (server time) it sits right on Home until then and wanders off
 --   from there - a knife fresh out of its coffin starts where the coffin was.
@@ -15,11 +15,9 @@ export type Hopper = { Seed: number, Scale: number, Home: Vector2?, Since: numbe
 
 local MARGIN = 3 -- keep clear of the fence
 
-local function timing(scale: number): (number, number, number)
-	local air = 0.42 + scale * 0.06 -- (a Cosmic stomps: long, heavy hops)
-	local pause = 0.6 + scale * 0.12
-	local height = 1.2 + scale * 0.45
-	return air, pause, height
+-- (every knife hops with the same quick bounce, however big: a Colossal is as lively as a Common)
+local function timing(_scale: number): (number, number, number)
+	return 0.48, 0.72, 1.65 -- air time, pause, height
 end
 
 -- A wander goal somewhere in the pen; it changes every HOPS_PER_GOAL hops
@@ -45,7 +43,7 @@ local function spot(pen: Pen, hopper: Hopper, k: number): Vector2
 	local along = (k - g * HOPS_PER_GOAL) / HOPS_PER_GOAL
 	local base = goal(pen, hopper, g):Lerp(goal(pen, hopper, g + 1), along)
 	local rng = Random.new(hopper.Seed * 104729 + k)
-	local wobble = 0.6 + hopper.Scale * 0.25
+	local wobble = 0.85
 	local margin = MARGIN + hopper.Scale * 0.6
 	local hx, hz = math.max(1, pen.Half.X - margin), math.max(1, pen.Half.Y - margin)
 	local p = base + Vector2.new(rng:NextNumber(-wobble, wobble), rng:NextNumber(-wobble, wobble))
