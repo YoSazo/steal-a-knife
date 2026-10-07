@@ -662,12 +662,14 @@ local function deposit(player: Player)
 		return
 	end
 	local profile = DataService.Get(player)
-	if not profile or #profile.Knives >= profile.Slots then
+	if not profile or #profile.Knives >= PenMode.Capacity(profile.Slots) then
 		Net.Notify(player, "Your vault is full! Sell a knife first.", "bad")
 		Offers.Show(player, "Mount", "Your vault is full! Get more room right now.")
 		endCarry(player, false, nil, "vault_full")
 		return
 	end
+	-- (pen full, bag has room: it goes in the bag - no coffin to sit in the pen)
+	local toBag = #profile.Knives >= profile.Slots
 	if carry.Kind == "Case" then
 		local rarity = carry.Item
 		endCarry(player, true)
@@ -690,7 +692,7 @@ local function deposit(player: Player)
 	local parsed = Items.Parse(item) :: Items.Item
 	local isNew = not table.find(profile.Discovered, parsed.Name)
 	-- A boss's knife comes home in a COFFIN that opens later (CoffinService) - never in the tutorial
-	local sealed = carry.Boss ~= nil and CoffinService.On(player)
+	local sealed = carry.Boss ~= nil and CoffinService.On(player) and not toBag
 	-- (the tutorial's coffin: it lands and counts down a few seconds - Steal an Egg's egg - then opens)
 	local quick = sealed and (starter or not profile.TutorialDone)
 	if carry.Boss then
@@ -758,7 +760,10 @@ local function deposit(player: Player)
 	local name = Items.DisplayName(item)
 	BaseService.RefreshRack(player)
 	-- The plate already labels name/income. Let a Murderer-power reveal have the screen to itself.
-	if opensIn then
+	if toBag then
+		Net.Notify(player, `Your pen is full! {name} is waiting in your bag - sell one or get a bigger pen.`, "info")
+		Offers.Show(player, "Mount", "Your pen is full! Get more room right now.")
+	elseif opensIn then
 		Net.Notify(player, `⚰️ {parsed.Knife.Rarity} Coffin! It opens {opensIn}`, "good")
 	elseif not parsed.Perk then
 		Net.Notify(player, `{if isNew then "NEW! " else ""}{name} +{Format.Cash(Items.Income(item))}/s`, "good")
@@ -890,7 +895,7 @@ function StealService.Recover(thief: Player, owner: Player): string?
 		return nil
 	end
 	local profile = DataService.Get(owner)
-	if not profile or #profile.Knives >= profile.Slots then
+	if not profile or #profile.Knives >= PenMode.Capacity(profile.Slots) then
 		return nil
 	end
 	local item = carry.Item

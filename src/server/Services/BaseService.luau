@@ -162,8 +162,8 @@ function BaseService.RackIncome(player: Player): number
 	end
 	local total = 0
 	for i, item in profile.Knives do
-		if i > profile.Slots then
-			break
+		if (profile.Plates[i] or i) > profile.Slots then
+			continue -- (in the bag, not on show: earns nothing yet)
 		end
 		if not DataService.IsSealedIndex(profile, i) then -- (still in its coffin: earns nothing yet)
 			total += Items.Income(item)
@@ -655,6 +655,20 @@ function BaseService.RefreshRack(player: Player)
 	local profile = DataService.Get(player)
 	if not base or not profile then
 		return
+	end
+	-- Room in the pen again (sold one / bigger pen): knives waiting in the bag move in
+	if PenMode.On() then
+		DataService.Update(player, function(p)
+			for i in p.Knives do
+				if (p.Plates[i] or i) > p.Slots then
+					local free = DataService.FreePlate(p)
+					if not free then
+						break
+					end
+					p.Plates[i] = free
+				end
+			end
+		end)
 	end
 	local folder = rackModels[player]
 	folder:ClearAllChildren()

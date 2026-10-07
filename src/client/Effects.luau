@@ -330,8 +330,29 @@ local function pillar(position: Vector3, color: Color3, height: number, duration
 end
 
 -- A copy of a knife flying in an arc from `from` to `to` (placing it, equipping it)
-local function flyKnife(item: string, from: Vector3, to: Vector3, duration: number, length: number)
-	local model = KnifeModel.Build(item, true)
+-- (a knife character - Codex's art with its face - when this knife has one, else the plain knife)
+local characterAssets: any = nil
+local function buildFlying(item: string, character: boolean?): Model
+	if character then
+		if characterAssets == nil then
+			local ok, loaded = pcall(function()
+				return require(ReplicatedStorage.Shared.Assets.KnifeCharacterAssets) :: any
+			end)
+			characterAssets = if ok then loaded else false
+		end
+		local parsed = Items.Parse(item)
+		if characterAssets and parsed then
+			local ok, built = pcall(characterAssets.BuildCharacter, parsed.Name, nil, CFrame.identity, { Scale = 1 })
+			if ok and built then
+				return built
+			end
+		end
+	end
+	return KnifeModel.Build(item, true)
+end
+
+local function flyKnife(item: string, from: Vector3, to: Vector3, duration: number, length: number, character: boolean?)
+	local model = buildFlying(item, character)
 	KnifeModel.FitLength(model, length)
 	for _, d in model:GetDescendants() do
 		if d:IsA("BasePart") then
@@ -540,10 +561,10 @@ local handlers: { [string]: (...any) -> () } = {
 			return
 		end
 		local top = from + Vector3.new(0, 7, 0)
-		flyKnife(item, from, top, 0.45, 3.5)
+		flyKnife(item, from, top, 0.45, 3.5, true)
 		task.delay(0.75, function()
 			local to = hand.Position
-			flyKnife(item, top, to, 0.5, 3)
+			flyKnife(item, top, to, 0.5, 3, true)
 			task.delay(0.5, function()
 				Effects.Burst(to, Items.Color(item), 40, 18, 0.8)
 				Effects.Sound(Sounds.Unsheath, to, 1)

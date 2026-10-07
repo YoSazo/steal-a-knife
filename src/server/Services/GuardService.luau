@@ -1508,7 +1508,7 @@ local function onSteal(player: Player, boss: Boss, slot: Slot)
 	if not profile then
 		return
 	end
-	if #profile.Knives >= profile.Slots then
+	if #profile.Knives >= PenMode.Capacity(profile.Slots) then
 		Net.Notify(player, "Your vault is full! Sell a knife first.", "bad")
 		return
 	end

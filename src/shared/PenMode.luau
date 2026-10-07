@@ -53,6 +53,12 @@ function PenMode.MaxSlots(): number
 	return if PenMode.On() then GameConfig.Pens.MaxSlots else GameConfig.MaxSlots
 end
 
+-- How many knives you can own before a steal is refused: the pen, plus the bag with pens on
+-- (Steal an Egg: a full pen never loses what you hatched - it waits in your inventory)
+function PenMode.Capacity(slots: number): number
+	return slots + (if PenMode.On() then GameConfig.Pens.Bag else 0)
+end
+
 -- How long a pen is for `slots` knives: StartDepth for a new pen, Depth when fully upgraded
 function PenMode.Depth(slots: number): number
 	local config = GameConfig.Pens
