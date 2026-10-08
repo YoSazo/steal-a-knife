@@ -58,6 +58,11 @@ local GameConfig = {
 		Depth = 60, -- an upgraded pen's length (the gate stays put, the back fence moves out)
 		StartDepth = 42, -- a new pen's length
 		MaxSlots = 20,
+		-- Steal An Egg's pen: room grows one knife at a time, the first upgrade nearly free (an
+		-- instant first purchase), then steeper. Cost of the upgrade from 10, 11, ... 19 slots.
+		-- (Was one +10 jump at the vault's 2nd-floor price, $1.5M.)
+		SlotCosts = { 1e3, 2.5e5, 5e6, 7.5e7, 1e9, 1.5e10, 2.5e11, 4e12, 6e13, 1e15 },
+		PassRoom = 3, -- the Extra Room pass (Monetization ExtraFloor) adds this many on pens
 		PlaceAfter = 30, -- carrying something in your pen this long without tapping: it goes down anyway
 		Bag = 10, -- with the pen full, this many more wait in your bag (Knives menu), never lost
 		Scale = {
@@ -81,7 +86,7 @@ local GameConfig = {
 		-- Godly ~2h, Celestial ~3.4h, Cosmic ~5h - a real wait, the way Steal An Egg's top eggs are.
 		-- (x1.7 when rounds came 1.7x as often - IntermissionTime 360 -> 180, RoundTime 150 -> 120 -
 		-- so the waits stay about the same in real time; Rare stays 1 round, now ~5 min)
-		Rounds = { Common = 0, Rare = 1, Epic = 3, Legendary = 7, Mythic = 13, Godly = 24, Celestial = 40, Cosmic = 60 },
+		Rounds = { Common = 0, Rare = 1, Epic = 2, Legendary = 7, Mythic = 13, Godly = 24, Celestial = 40, Cosmic = 60 },
 		CommonSeconds = 20,
 		TutorialSeconds = 6, -- a new player's first coffins: a short countdown, then it opens
 		WinRounds = 2,
@@ -110,11 +115,15 @@ local GameConfig = {
 	-- the way theirs does (16.7x,20x,24x,25x,40x...), not a flat multiple. tools/pacing_sim.py
 	-- validates this against Steal An Egg-paced milestones - keep both in step.
 	Treadmills = {
+		-- Money gates the early game again (Steal An Egg: the 2nd treadmill takes ~10+ min of a new
+		-- player's income). Our early incomes are ~10-20x theirs, so at $15K the 2nd wheel took ~1
+		-- min and every early upgrade felt free. Tiers 2-5 (and trails 1-4) cost x8 / x5 / x3 / x2;
+		-- tier 6 up is unchanged.
 		{ Name = "Creaky Wheel", Rate = 10, Cost = 0 },
-		{ Name = "Iron Wheel", Rate = 25, Cost = 15000 },
-		{ Name = "Steam Wheel", Rate = 60, Cost = 180000 },
-		{ Name = "Haunted Wheel", Rate = 150, Cost = 2.52e6 },
-		{ Name = "Cursed Wheel", Rate = 350, Cost = 40.3e6 },
+		{ Name = "Iron Wheel", Rate = 25, Cost = 120000 }, -- (early tiers x8 / x5 / x3 / x2: see below)
+		{ Name = "Steam Wheel", Rate = 60, Cost = 900000 },
+		{ Name = "Haunted Wheel", Rate = 150, Cost = 7.56e6 },
+		{ Name = "Cursed Wheel", Rate = 350, Cost = 80.6e6 },
 		{ Name = "Bone Wheel", Rate = 850, Cost = 726e6 },
 		{ Name = "Thief Moon Wheel", Rate = 2000, Cost = 14.5e9 },
 		{ Name = "Phantom Wheel", Rate = 5000, Cost = 319e9 },
@@ -131,28 +140,28 @@ local GameConfig = {
 			Name = "Rusty Trail",
 			Knife = "RustyShank",
 			Multiplier = 1.5,
-			Cost = 20000,
+			Cost = 160000,
 			Color = Color3.fromRGB(190, 150, 120),
 		},
 		{
 			Name = "Kitchen Trail",
 			Knife = "KitchenKnife",
 			Multiplier = 2,
-			Cost = 250000,
+			Cost = 1.25e6,
 			Color = Color3.fromRGB(200, 225, 255),
 		},
 		{
 			Name = "Hunter Trail",
 			Knife = "HunterBlade",
 			Multiplier = 3,
-			Cost = 3e6,
+			Cost = 9e6,
 			Color = Color3.fromRGB(110, 230, 140),
 		},
 		{
 			Name = "Thorn Trail",
 			Knife = "ThornDagger",
 			Multiplier = 4,
-			Cost = 40e6,
+			Cost = 80e6,
 			Color = Color3.fromRGB(120, 220, 110),
 		},
 		{

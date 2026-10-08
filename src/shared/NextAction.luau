@@ -69,9 +69,8 @@ local function monster(zone: number): string
 end
 
 local function floorAffordable(s: State): boolean
-	return s.Slots < PenMode.MaxSlots()
-		and s.Rebirths >= GameConfig.FloorRebirthsFor(s.Slots)
-		and s.Cash >= GameConfig.SlotCost(s.Slots)
+	local cost, _, rebirths = PenMode.RoomUpgrade(s.Slots)
+	return s.Slots < PenMode.MaxSlots() and s.Rebirths >= rebirths and s.Cash >= cost
 end
 
 -- Is the money on your pads worth the walk? It enables an upgrade, or you're already home.

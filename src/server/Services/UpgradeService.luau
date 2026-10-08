@@ -152,20 +152,20 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 		if profile.Slots >= PenMode.MaxSlots() then
 			return false, "Your vault is as tall as it gets!"
 		end
-		local floorRebirths = GameConfig.FloorRebirthsFor(profile.Slots)
+		local cost, step, floorRebirths = PenMode.RoomUpgrade(profile.Slots)
 		if profile.Rebirths < floorRebirths then
 			Offers.Show(player, "Mount", "Want it now? Add the next floor instantly.")
 			return false, `The next floor needs Rebirth {floorRebirths}`
 		end
-		if not DataService.TrySpend(player, GameConfig.SlotCost(profile.Slots), "upgrade_floor") then
-			Offers.Show(player, "Mount", "Want it now? Add the next floor instantly.")
+		if not DataService.TrySpend(player, cost, "upgrade_floor") then
+			Offers.Show(player, "Mount", PenMode.Words("Want it now? Make your vault bigger instantly."))
 			return false, "Not enough cash"
 		end
 		DataService.Update(player, function(p)
-			p.Slots = math.min(PenMode.MaxSlots(), p.Slots + GameConfig.SlotsPerFloor)
+			p.Slots = math.min(PenMode.MaxSlots(), p.Slots + step)
 		end)
 		BaseService.RefreshRack(player)
-		return true, `Your vault grew a floor: {profile.Slots} knife plates!`
+		return true, PenMode.Words(`Your vault is bigger: room for {profile.Slots} knives!`)
 	elseif kind == "Ticket" then
 		if profile.Tickets >= GameConfig.MaxTickets then
 			return false, `You can hold {GameConfig.MaxTickets} tickets at most`

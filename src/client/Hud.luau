@@ -351,11 +351,11 @@ function Hud.Init()
 				local knives = (player:GetAttribute("KnifeCount") or 0) :: number
 				labels.Title.Text = PenMode.Words("Bigger Vault")
 				labels.Count.Text = `{knives}/{slots}`
-				if slots >= GameConfig.MaxSlots then
+				if slots >= PenMode.MaxSlots() then
 					labels.Price.Text = "MAX"
 					labels.Alert.Visible = false
 				else
-					local cost = GameConfig.SlotCost(slots)
+					local cost = PenMode.RoomUpgrade(slots)
 					labels.Price.Text = `${Ui.abbreviate(cost)}`
 					labels.Alert.Visible = cash >= cost
 				end

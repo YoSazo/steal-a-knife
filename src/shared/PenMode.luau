@@ -34,6 +34,17 @@ function PenMode.MaxSlots(): number
 	return if PenMode.On() then GameConfig.Pens.MaxSlots else GameConfig.MaxSlots
 end
 
+-- The next room upgrade at `slots`: (its cost, how many slots it adds, rebirths it needs).
+-- Pens grow one knife at a time (GameConfig.Pens.SlotCosts); vaults a floor of 10 at a time.
+function PenMode.RoomUpgrade(slots: number): (number, number, number)
+	if PenMode.On() then
+		local costs = GameConfig.Pens.SlotCosts
+		local cost = costs[slots - GameConfig.StartingSlots + 1] or costs[#costs]
+		return if slots >= GameConfig.Pens.MaxSlots then math.huge else cost, 1, 0
+	end
+	return GameConfig.SlotCost(slots), GameConfig.SlotsPerFloor, GameConfig.FloorRebirthsFor(slots)
+end
+
 -- How many knives you can own before a steal is refused: the pen, plus the bag with pens on
 -- (Steal an Egg: a full pen never loses what you hatched - it waits in your inventory)
 function PenMode.Capacity(slots: number): number

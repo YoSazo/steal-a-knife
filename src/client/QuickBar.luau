@@ -78,15 +78,14 @@ local function buildKnivesPanel(): (Frame, () -> ())
 		local equipped = player:GetAttribute("FightingKnife") or ""
 		selectionMode.Text = if player:GetAttribute("Equipped") ~= "" then "Your pick" else "Best knife: auto"
 		count.Text = PenMode.Words(`{#owned}/{slots} in your vault`)
-		-- The next floor: +10 plates (later floors wait for a rebirth)
-		local floorRebirths = GameConfig.FloorRebirthsFor(slots)
-		if slots >= GameConfig.MaxSlots then
+		-- The next room upgrade (pens: +1, vaults: a floor of +10 that may wait for a rebirth)
+		local cost, step, floorRebirths = PenMode.RoomUpgrade(slots)
+		if slots >= PenMode.MaxSlots() then
 			SimpleUi.set(floorButton, PenMode.Words("Vault is max size"), GOLD, false)
 		elseif ((player:GetAttribute("Rebirths") or 0) :: number) < floorRebirths then
 			SimpleUi.set(floorButton, "🔒 More room after Rebirth", Color3.fromRGB(160, 70, 235), false)
 		else
-			local cost = GameConfig.SlotCost(slots)
-			SimpleUi.set(floorButton, `+10 room  ${Ui.abbreviate(cost)}`, GREEN, cash >= cost)
+			SimpleUi.set(floorButton, `+{step} room  ${Ui.abbreviate(cost)}`, GREEN, cash >= cost)
 		end
 		if #owned == 0 then
 			local empty = new("Frame", { Size = UDim2.new(1, 0, 0, 90), BackgroundTransparency = 1, ZIndex = 6 }, list)

@@ -31,21 +31,21 @@ BASE_WALK, SPEED_CURVE, MAX_WALK = 16, 3.6, 135  # GameConfig.WalkSpeedFor
 # Rate (Speed/step), Cost. Rescaled to Steal An Egg's own published ratios: rate grows ~2.4x a
 # tier (was ~3.1x) and the top tier sits at the same rate-vs-hardest-zone ratio theirs does; cost
 # escalates tier to tier like theirs (10x,12x,14x...), not a flat multiple (GameConfig.Treadmills).
-WHEELS = [(10, 0), (25, 15000), (60, 180000), (150, 2.52e6), (350, 40.3e6), (850, 726e6),
+WHEELS = [(10, 0), (25, 120000), (60, 900000), (150, 7.56e6), (350, 80.6e6), (850, 726e6),
           (2000, 14.5e9), (5000, 319e9), (12000, 7.66e12), (29000, 199e12), (70000, 5.58e15),
           (170000, 167e15), (400000, 5.36e18)]
-TRAILS = [(1.5, 20000), (2, 250000), (3, 3e6), (4, 40e6), (6, 500e6), (8, 7e9), (12, 100e9), (16, 1.5e12),
+TRAILS = [(1.5, 160000), (2, 1.25e6), (3, 9e6), (4, 80e6), (6, 500e6), (8, 7e9), (12, 100e9), (16, 1.5e12),
           (17, 25e12), (20, 400e12)]  # multiplier, cost (kept through rebirth) - top trimmed, see GameConfig
-STARTING_SLOTS, SLOTS_PER_FLOOR, MAX_SLOTS = 10, 10, 40
-FLOOR_COSTS = [1.5e6, 2e10, 1e14]  # 2nd, 3rd, 4th floor
-FLOOR_REBIRTHS = [0, 1, 3]  # rebirths needed for the 2nd, 3rd, 4th floor
+# Pens (GameConfig.Pens): room grows one knife at a time, 10 -> 20 (Pens.SlotCosts)
+STARTING_SLOTS, MAX_SLOTS = 10, 20
+PEN_COSTS = [1e3, 2.5e5, 5e6, 7.5e7, 1e9, 1.5e10, 2.5e11, 4e12, 6e13, 1e15]
 REBIRTH_BASE, REBIRTH_GROWTH = 2e9, 6
 REBIRTH_INCOME, REBIRTH_SPEED = 0.5, 0.3
 REBIRTH_NEEDS = ["Mythic", "Godly", "Godly", "Celestial", "Celestial", "Cosmic"]  # then Cosmic (was Legendary first)
 INTERMISSION, ROUND = 180, 120
 # A stolen knife's income doesn't count until its coffin's murder-round wait is over
 # (GameConfig.Coffins.Rounds; was 0/1/1/2/2/3/4/5).
-COFFIN_ROUNDS = {"Common": 0, "Rare": 1, "Epic": 3, "Legendary": 7, "Mythic": 13,
+COFFIN_ROUNDS = {"Common": 0, "Rare": 1, "Epic": 2, "Legendary": 7, "Mythic": 13,
                  "Godly": 24, "Celestial": 40, "Cosmic": 60}
 STEP_SHARE, MIN_SPEED_PRIZE = 0.03, 300  # RoundPrize.StepShare / MinSpeed (was 0.2: see GameConfig)
 WIN_CHANCE = 0.65  # rough share of rounds a player ends up on the winning side
@@ -109,7 +109,6 @@ def simulate(hours, seed=1):
         bought = True
         while bought:
             bought = False
-            floor = slots // SLOTS_PER_FLOOR  # floors owned
             ready_now = [k for k in wall if k[2] <= t]
             if wheel + 1 < len(WHEELS) and cash >= WHEELS[wheel + 1][1]:
                 cash -= WHEELS[wheel + 1][1]
@@ -119,12 +118,12 @@ def simulate(hours, seed=1):
                 cash -= TRAILS[trail][1]
                 trail += 1
                 bought = True
-            elif (slots < MAX_SLOTS and len(ready_now) >= slots and cash >= FLOOR_COSTS[floor - 1]
-                  and rebirths >= FLOOR_REBIRTHS[floor - 1]):
-                cash -= FLOOR_COSTS[floor - 1]
-                slots += SLOTS_PER_FLOOR
+            elif (slots < MAX_SLOTS and len(ready_now) >= slots
+                  and cash >= PEN_COSTS[slots - STARTING_SLOTS]):
+                cash -= PEN_COSTS[slots - STARTING_SLOTS]
+                slots += 1
                 bought = True
-                note(f"floor {floor + 1}")
+                note(f"pen {slots}")
         best_zone = max(i for i in range(len(RARITIES)) if speed >= speed_needed(i))
         rarity = RARITIES[best_zone]
         note(f"can farm {rarity}")
