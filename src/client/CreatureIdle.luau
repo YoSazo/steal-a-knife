@@ -18,7 +18,15 @@ local NOD = math.rad(7) -- the head sinks and lifts with each breath
 local SWAY = math.rad(14) -- the tail sways slowly from side to side
 
 type Piece = { Part: BasePart, Offset: CFrame, Group: string }
-type Sleeper = { Rest: CFrame, Seed: number, Pieces: { Piece }, Head: Vector3?, Tail: Vector3?, Scale: number }
+type Sleeper = {
+	Rest: CFrame,
+	Seed: number,
+	Pieces: { Piece },
+	Head: Vector3?,
+	Tail: Vector3?,
+	Scale: number,
+	Zs: { TextLabel }, -- the Zzz BillboardGui's "Z1".."Z3" (GuardService), animated below
+}
 local sleepers: { [Model]: Sleeper } = {}
 local geometry: { [string]: any } = {}
 
@@ -56,7 +64,40 @@ local function snapshot(model: Model)
 		Head = if data and data.Head then data.Head.Asleep.Position * scale else nil,
 		Tail = if data and data.Tail then data.Tail.Asleep.Position * scale else nil,
 		Scale = scale,
+		Zs = {},
 	}
+end
+
+-- The Zzz gui's Z labels (the server may add the gui a moment after the creature lies down)
+local function findZs(model: Model, sleeper: Sleeper)
+	local head = model:FindFirstChild("Head")
+	local gui = head and head:FindFirstChild("Zzz")
+	if gui then
+		for i = 1, 3 do
+			local z = gui:FindFirstChild(`Z{i}`)
+			if z and z:IsA("TextLabel") then
+				table.insert(sleeper.Zs, z)
+			end
+		end
+	end
+end
+
+-- Steal An Egg's sleeping Z's: each one comes up out of the top of the body small, grows as it
+-- drifts up and a little to the side, then fades away; three of them a third of a loop apart
+local Z_LOOP = 2.4 -- seconds for one Z to rise and fade
+local function animateZs(zs: { TextLabel }, now: number, seed: number)
+	for i, z in zs do
+		local p = ((now + seed) / Z_LOOP + (i - 1) / #zs) % 1
+		local fade = if p < 0.15 then 1 - p / 0.15 elseif p > 0.7 then (p - 0.7) / 0.3 else 0
+		z.Position = UDim2.fromScale(0.3 + 0.35 * p + math.sin(p * math.pi * 2) * 0.05, 1 - 0.8 * p)
+		z.TextSize = 16 + 26 * p
+		z.Rotation = -18 + 16 * p
+		z.TextTransparency = fade
+		local stroke = z:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			stroke.Transparency = fade
+		end
+	end
 end
 
 local function refresh(model: Model)
@@ -91,6 +132,12 @@ function CreatureIdle.Init()
 			if not model.Parent or model:GetAttribute("Asleep") ~= true then
 				sleepers[model] = nil
 				continue
+			end
+			if #sleeper.Zs == 0 then
+				findZs(model, sleeper)
+			end
+			if #sleeper.Zs > 0 and Lod.Near(sleeper.Rest.Position, 260) then
+				animateZs(sleeper.Zs, now, sleeper.Seed)
 			end
 			if not Lod.Near(sleeper.Rest.Position, 120) then
 				continue

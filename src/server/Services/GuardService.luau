@@ -556,35 +556,39 @@ local function setAsleep(guard: Guard, asleep: boolean)
 		label.Text = "💤"
 		label.Parent = gui
 		if guard.Hound then
-			-- A giant creature: big stacked Z's floating up off its head, readable from down the runway
-			-- (the round characters' little emoji sat hidden inside its head)
-			local scale = guard.Model:GetScale()
-			-- A fixed, small size on screen (pixels, not studs): sized in studs it grew huge as you
-			-- walked up and swamped the view from afar
-			gui.Size = UDim2.fromOffset(70, 92)
-			-- Above the whole sleeping body, not offset from the synthetic Head anchor: on a giant
-			-- creature that offset landed inside its head. (World space, so it never swings into the
-			-- body as the camera moves.)
+			-- A giant creature: Steal An Egg's sleeping Z's - three of them rise out of the top of its
+			-- body, grow, drift up and fade, on a loop (client/CreatureIdle animates "Z1".."Z3"). A
+			-- fixed small size on screen (pixels, not studs), its bottom just inside the body's top.
+			label:Destroy()
+			gui.Size = UDim2.fromOffset(110, 170)
+			gui.SizeOffset = Vector2.new(0.25, 0.5) -- (the gui grows up and a little to the side)
 			local cf, size = guard.Model:GetBoundingBox()
 			local top = cf.Position.Y + size.Y / 2
 			gui.StudsOffset = Vector3.zero
-			gui.StudsOffsetWorldSpace = Vector3.new(0, top - (head :: BasePart).Position.Y + 2 * scale, 0)
+			gui.StudsOffsetWorldSpace =
+				Vector3.new(0, top - (head :: BasePart).Position.Y - 0.6 * guard.Model:GetScale(), 0)
 			gui.MaxDistance = 260
-			label.Font = Enum.Font.FredokaOne
-			label.RichText = true
-			label.Text = `<font size="34">Z</font><font size="26">z</font><font size="18">z</font>`
-			label.TextColor3 = Color3.new(1, 1, 1)
-			label.TextScaled = false
-			label.TextSize = 34
-			label.TextXAlignment = Enum.TextXAlignment.Left
-			label.Rotation = -12
-			local stroke = Instance.new("UIStroke")
-			stroke.Thickness = 2.5
-			stroke.Color = Color3.fromRGB(40, 50, 110)
-			stroke.Parent = label
-			local scaler = Instance.new("UITextSizeConstraint")
-			scaler.MaxTextSize = 34
-			scaler.Parent = label
+			gui.ClipsDescendants = false
+			for i = 1, 3 do
+				local z = Instance.new("TextLabel")
+				z.Name = `Z{i}`
+				z.AnchorPoint = Vector2.new(0.5, 1)
+				z.Position = UDim2.fromScale(0.3, 1)
+				z.Size = UDim2.fromOffset(60, 60)
+				z.BackgroundTransparency = 1
+				z.Font = Enum.Font.FredokaOne
+				z.Text = "Z"
+				z.TextSize = 20
+				z.TextColor3 = Color3.fromRGB(150, 220, 255)
+				z.TextTransparency = 1
+				z.Rotation = -10
+				local stroke = Instance.new("UIStroke")
+				stroke.Thickness = 3
+				stroke.Color = Color3.fromRGB(30, 70, 150)
+				stroke.Transparency = 1
+				stroke.Parent = z
+				z.Parent = gui
+			end
 		end
 		gui.Parent = head
 	end
