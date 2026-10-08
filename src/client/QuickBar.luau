@@ -42,7 +42,7 @@ local function buildKnivesPanel(): (Frame, () -> ())
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Max = 34,
 	})
-	local selectionMode = SimpleUi.text(body, "Best power: auto", {
+	local selectionMode = SimpleUi.text(body, "Best knife: auto", {
 		Position = UDim2.fromScale(0.35, 0),
 		Size = UDim2.new(0.3, -8, 0, S.Top),
 		Max = 20,
@@ -76,7 +76,7 @@ local function buildKnivesPanel(): (Frame, () -> ())
 		local slots = (player:GetAttribute("Slots") or GameConfig.StartingSlots) :: number
 		local cash = (player:GetAttribute("Cash") or 0) :: number
 		local equipped = player:GetAttribute("FightingKnife") or ""
-		selectionMode.Text = if player:GetAttribute("Equipped") ~= "" then "Your pick: ON" else "Best power: auto"
+		selectionMode.Text = if player:GetAttribute("Equipped") ~= "" then "Your pick" else "Best knife: auto"
 		count.Text = PenMode.Words(`{#owned}/{slots} in your vault`)
 		-- The next floor: +10 plates (later floors wait for a rebirth)
 		local floorRebirths = GameConfig.FloorRebirthsFor(slots)

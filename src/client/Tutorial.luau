@@ -24,7 +24,6 @@ local FADE = 60
 
 local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
-local PowerShowcase = require(script.Parent.PowerShowcase)
 local Places = require(script.Parent.Places)
 local Arrows = require(script.Parent.Arrows)
 local Sounds = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Sounds"))
@@ -272,8 +271,6 @@ local function run(startAt: number, replay: boolean)
 			Effects.FloatText(me.Position + Vector3.new(0, 3, 0), "+Speed!", Color3.fromRGB(120, 255, 140))
 		end
 		-- (its own sound: the power-reveal sting here made equipping sound like the steal again)
-		-- Then what that knife's power actually does, with a one-tap demo
-		task.delay(1.2, PowerShowcase.Show)
 	end
 
 	local function showStep()

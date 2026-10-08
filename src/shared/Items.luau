@@ -139,8 +139,11 @@ function Items.Parse(item: string): Item?
 	local knife = Knives.ByName[name]
 	local m = mutationById[mutation]
 	local s = sizeById[size]
-	-- A set power (a valid id) wins; anything else is the knife type's power
-	local perk: string? = if power and KnifePowers.ById[power] then power else knife and knife.Perk
+	-- Murderer powers are cut (docs/PLAN.md item 4): every Murderer plays by the same MM2 rules, and
+	-- the knife is a flex (looks, rarity, mutation), not an ability. Perk stays in the type so old
+	-- 4-field items still parse; it's always nil now, which turns every power branch off.
+	local _ = power
+	local perk: string? = nil
 	if not knife or not m or not s or #fields > 4 then
 		invalid[item] = true
 		return nil

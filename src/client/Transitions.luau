@@ -250,8 +250,8 @@ function Transitions.Init()
 		mDetail.Text = `{if knife ~= "" then Items.DisplayName(knife) else "Knife"} · {info.Kills or 0} kills`
 		mDetail.TextColor3 = if knife ~= "" then Items.Color(knife) else Color3.new(1, 1, 1)
 		setPhoto(mPhoto, tonumber(info.MurdererId) or 0, info.MurdererFace)
-		mPower.Text = if type(info.MurdererPower) == "string" then `⚡ {info.MurdererPower}` else "No power"
-		mPower.TextColor3 = if info.MurdererPower then Color3.fromRGB(255, 215, 70) else Color3.fromRGB(160, 160, 175)
+		-- (no Murderer powers any more: the card shows the knife they flexed, not a power line)
+		mPower.Visible = false
 		if info.SheriffName then
 			-- The Sheriff, whether or not they got the shot
 			hName.Text = tostring(info.SheriffName)

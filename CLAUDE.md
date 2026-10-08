@@ -28,7 +28,9 @@ the next boss you can't outrun yet; the win card + ~30 shoes flying into the Spe
   0/180/-90/90 for north/south/west/east walls). Anything named "Floor" is where coins/Revolver land.
   Tags the client animates: "Flicker" (+ attribute Flame = soft waver), "ClockHand" (real time), "Coin",
   "ShopNPC" (shopkeeper fidgets).
-- Murderer perks: Spam Knife is passive (every click throws at the cursor, no stab, Range 1000; client sends
+- **Murderer powers are OFF** (docs/PLAN.md item 4): `Items.Parse` always returns `Perk = nil`, so every perk
+  branch below is dormant (every Murderer: click = stab, hold = throw). Delete the dormant code with Studio to hand.
+- Murderer perks (dormant): Spam Knife is passive (every click throws at the cursor, no stab, Range 1000; client sends
   `Ability(aim, "Spam")`); Hellfire's Q sets player SpamUntil for the same click-throw mode with flaming knives.
   Stunned (Flash / trap: StunnedUntil) Murderers can't stab, throw or use perks. Perk icons are Blender renders
   (`blender/scripts/make_icons.py` -> Config/Textures.PerkIcons): ability button, perk card, knife cards.
