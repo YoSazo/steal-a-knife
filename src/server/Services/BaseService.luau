@@ -18,7 +18,6 @@ local Net = require(script.Parent.Parent.Remotes)
 local DataService = require(script.Parent.DataService)
 local Fuel = require(script.Parent.Fuel)
 local Offers = require(script.Parent.Offers)
-local ServerEvents = require(script.Parent.ServerEvents)
 local Social = require(script.Parent.Social)
 local MapService = require(script.Parent.MapService)
 local Analytics = require(script.Parent.Analytics)
@@ -166,11 +165,8 @@ function BaseService.IncomeMultiplier(player: Player): number
 	if player:GetAttribute("Pass_VIP") then
 		multiplier *= 1.1
 	end
-	-- 🔥 Heat from playing both games, friends playing with you, and the server's Cash Rush
+	-- 🔥 Heat from playing both games, friends playing with you
 	multiplier *= Fuel.IncomeMultiplier(player) * Social.FriendsMultiplier(player)
-	if ServerEvents.Active("CashRush") then
-		multiplier *= 2
-	end
 	-- 2x Cash Potion (Robux consumable)
 	if profile and DataService.BoostActive(profile, "Cash") then
 		multiplier *= GameConfig.Consumables.CashMultiplier

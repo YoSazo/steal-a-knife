@@ -435,51 +435,6 @@ function Hud.Init()
 		end
 	end)
 
-	-- 🤝 The server goal and any live events (ServerEvents), under the timer
-	local goalLabel = Ui.label({
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 122),
-		Size = UDim2.fromOffset(460, 22),
-		Text = "",
-		TextColor3 = Color3.fromRGB(150, 230, 255),
-	}, gui)
-	Ui.textStroke(goalLabel, 1.5)
-	local eventLabel = Ui.label({
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 146),
-		Size = UDim2.fromOffset(520, 26),
-		Text = "",
-		TextColor3 = Color3.fromRGB(255, 230, 120),
-	}, gui)
-	Ui.textStroke(eventLabel, 2)
-	local EVENT_TEXT: { { Name: string, Text: string } } = {
-		{ Name = "LuckyRush", Text = "🍀 LUCKY RUSH · better powers" },
-		{ Name = "CashRush", Text = "💸 CASH RUSH · 2x cash" },
-		{ Name = "HeatWave", Text = "🔥 HEAT WAVE · 2x Heat" },
-		{ Name = "CosmicRush", Text = "🪐 COSMIC RUSH · deep bosses refill fast" },
-	}
-	task.spawn(function()
-		while true do
-			task.wait(0.5)
-			local inRound = player:GetAttribute("InRound") == true
-			local text = ReplicatedStorage:GetAttribute("GoalText")
-			local progress = ReplicatedStorage:GetAttribute("GoalProgress") or 0
-			local need = ReplicatedStorage:GetAttribute("GoalNeed") or 1
-			goalLabel.Visible = not inRound and type(text) == "string"
-			goalLabel.Text = `🤝 Server goal: {text} ({progress}/{need})`
-			local now = workspace:GetServerTimeNow()
-			local live = {}
-			for _, event in EVENT_TEXT do
-				local ends = ReplicatedStorage:GetAttribute(`Event_{event.Name}`)
-				if type(ends) == "number" and ends > now then
-					table.insert(live, `{event.Text} {Ui.clock(ends - now)}`)
-				end
-			end
-			eventLabel.Visible = #live > 0 and not player:GetAttribute("InRound") and not Ui.menuOpen()
-			eventLabel.Text = table.concat(live, "   ")
-		end
-	end)
-
 	-- "Your chance to be the Murderer: 6%" (MM2 style), between rounds
 	local chanceLabel = Ui.label({
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -1064,11 +1019,7 @@ function Hud.Init()
 				line1,
 				line("#8CFF96", "WIN IT:", `{string.upper(prize.Text)}`),
 				if prize.Rarity then line("#FFE14B", "FOR", `{string.upper(prize.Rarity)} KNIVES`) else "",
-				line(
-					"#5AF08C",
-					if ReplicatedStorage:GetAttribute("GoalKind") == "Survives" then "TEAM: SURVIVE" else "TEAM: STEAL",
-					`{ReplicatedStorage:GetAttribute("GoalProgress") or 0}/{ReplicatedStorage:GetAttribute("GoalNeed") or "?"}`
-				),
+				"", -- (no server goals any more)
 			}
 			for _, face in (board :: Instance):GetChildren() do
 				for i = 1, #texts do
@@ -1580,12 +1531,6 @@ function Hud.Init()
 	chestIcon.Size, chestIcon.Position = UDim2.fromOffset(26, 32), UDim2.fromOffset(2, 6)
 	chestText.Position, chestText.Size = UDim2.fromOffset(36, 4), UDim2.fromOffset(80, 36)
 	chestText.TextScaled, chestText.TextWrapped = true, false
-	goalLabel.Visible = false
-	goalLabel:GetPropertyChangedSignal("Visible"):Connect(function()
-		if goalLabel.Visible then
-			goalLabel.Visible = false
-		end
-	end)
 	-- The coin pill (rounds): a slim line just above the health bar, sized to its words
 	energyFrame.AnchorPoint, energyFrame.Position, energyFrame.Size =
 		Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -38), UDim2.fromOffset(0, 26)
@@ -1642,10 +1587,7 @@ function Hud.Init()
 		timerFrame.Position, timerFrame.Size = UDim2.fromOffset(center, top + 18), UDim2.fromOffset(width, 40)
 		subLabel.Position, subLabel.Size = UDim2.fromOffset(center, top + 22), UDim2.fromOffset(width, 20)
 		subLabel.TextWrapped = false
-		eventLabel.Position, eventLabel.Size = UDim2.fromOffset(center, top + 44), UDim2.fromOffset(width, 20)
-		goalLabel.Position = UDim2.new(0.5, 0, 0, top + 66)
 		Ui.gui:SetAttribute("HudTop", top) -- (under the top line: RoundIntro's rule line follows it)
-		eventLabel.TextScaled, eventLabel.TextSize, eventLabel.TextTruncate = false, 14, Enum.TextTruncate.AtEnd
 		banner.Size = UDim2.fromOffset(math.min(600, bounds.X - 24), 44)
 		announceHolder.Size = UDim2.fromOffset(math.min(480, bounds.X - 24), 60)
 		if Ui.Phone then

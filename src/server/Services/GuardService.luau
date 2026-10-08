@@ -49,7 +49,6 @@ local Obstacles = require(script.Parent.Obstacles)
 local Ragdoll = require(script.Parent.Ragdoll)
 local StealService = require(script.Parent.StealService)
 local Analytics = require(script.Parent.Analytics)
-local ServerEvents = require(script.Parent.ServerEvents)
 local StuckKnives = require(script.Parent.StuckKnives)
 
 type ZoneConfig = {
@@ -1533,8 +1532,7 @@ local function onBossCarryEnded(zone: number, slotIndex: number, item: string, d
 	end
 	if delivered then
 		slot.Out = false
-		local rush = ServerEvents.Active("CosmicRush") and boss.Index > #GameConfig.Zones / 2
-		slot.RestockAt = now() + boss.Config.Restock * (if rush then 0.1 else 1)
+		slot.RestockAt = now() + boss.Config.Restock
 	else
 		setSlot(boss, slot, item)
 		-- Put down (the Drop button) or lost: whoever was chasing for this boss and whose thief no

@@ -21,7 +21,6 @@ local MapService = require(script.Parent.MapService)
 local DataService = require(script.Parent.DataService)
 local PowerService = require(script.Parent.PowerService)
 local StealService = require(script.Parent.StealService)
-local ServerEvents = require(script.Parent.ServerEvents)
 local Analytics = require(script.Parent.Analytics)
 local Ragdoll = require(script.Parent.Ragdoll)
 local Targets = require(script.Parent.Targets)
@@ -324,16 +323,6 @@ function RaidService.Init()
 	Players.PlayerRemoving:Connect(function(player)
 		knockedAt[player] = nil
 	end)
-	-- A Murderer wipe calls the Blood Moon (now, or as soon as the intermission allows)
-	ServerEvents.OnWipe = function(name: string)
-		Net.Announce(`🔪 {name}'s massacre is calling the Blood Moon!`, Color3.fromRGB(255, 70, 70), 3)
-		if raiding then
-			raidEndsAt += 60
-			ReplicatedStorage:SetAttribute("RaidEndsAt", raidEndsAt)
-		else
-			pendingSummon = name
-		end
-	end
 	Players.PlayerRemoving:Connect(function(player)
 		stolenFrom[player] = nil
 	end)

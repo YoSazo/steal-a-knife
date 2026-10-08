@@ -592,7 +592,6 @@ function Menus.Init()
 	tile("Stolen", 7, "🔪", "Knives stolen", Color3.fromRGB(255, 120, 120))
 	tile("Cases", 8, "🎁", "Cases opened", Color3.fromRGB(255, 200, 120))
 	tile("Friends", 10, "👥", "Friend boost", Color3.fromRGB(120, 230, 200))
-	tile("Goal", 11, "🎯", "Team goal", Color3.fromRGB(255, 230, 120))
 	tile("Shield", 12, "🛡️", "Knives safe for", Color3.fromRGB(140, 220, 255))
 	tile("Boost", 13, "⚡", "Cash boost", Color3.fromRGB(120, 255, 140))
 	tile("Luck", 14, "🍀", "Better cases", Color3.fromRGB(150, 255, 150))
@@ -611,23 +610,6 @@ function Menus.Init()
 		set("Stolen", Ui.abbreviate(player:GetAttribute("KnivesStolen") or 0))
 		set("Cases", Ui.abbreviate(player:GetAttribute("CasesOpened") or 0))
 		set("Friends", `+{(player:GetAttribute("FriendsHere") or 0) * 10}%`)
-		local goal = ReplicatedStorage:GetAttribute("GoalText")
-		set(
-			"Goal",
-			`{ReplicatedStorage:GetAttribute("GoalProgress") or 0}/{ReplicatedStorage:GetAttribute("GoalNeed") or 1}`,
-			goal ~= nil
-		)
-		if goal then
-			local nameLabel = tiles.Goal.Frame:FindFirstChildWhichIsA("TextLabel", false)
-			for _, child in tiles.Goal.Frame:GetChildren() do
-				if child:IsA("TextLabel") and child ~= tiles.Goal.Value then
-					nameLabel = child
-				end
-			end
-			if nameLabel then
-				nameLabel.Text = `🎯  {goal}`
-			end
-		end
 		set("Shield", Ui.clock(player:GetAttribute("ShieldLeft") or 0), player:GetAttribute("Shielded") == true)
 		local boost = player:GetAttribute("BoostUntil")
 		set(

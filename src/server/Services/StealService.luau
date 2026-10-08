@@ -22,7 +22,6 @@ local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local Fuel = require(script.Parent.Fuel)
-local ServerEvents = require(script.Parent.ServerEvents)
 local MapService = require(script.Parent.MapService)
 local Offers = require(script.Parent.Offers)
 local Ragdoll = require(script.Parent.Ragdoll)
@@ -699,17 +698,12 @@ local function deposit(player: Player)
 	if carry.Boss then
 		Fuel.AddHeat(player, 1, "Stole from a boss!")
 		Fuel.AddMeter(player, 1)
-		ServerEvents.Progress("Steals")
 		-- 🤝 Whoever helped (near you when you grabbed it, or your teammate) shares the glory
 		for _, helper in carry.Helpers do
 			if helper.Parent and helper ~= player then
 				Fuel.AddHeat(helper, 1, `Team steal with {player.DisplayName}!`)
 				Fuel.AddMeter(helper, 1)
 			end
-		end
-		-- The last boss's knife: the deep bosses restock fast for everyone for a while
-		if carry.Boss.Zone >= #GameConfig.Zones and not ServerEvents.Active("CosmicRush") then
-			ServerEvents.Start("CosmicRush", player.DisplayName)
 		end
 	end
 	if parsed.Perk and not sealed then

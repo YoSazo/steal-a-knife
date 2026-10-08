@@ -21,7 +21,6 @@ local Items = require(ReplicatedStorage.Shared.Items)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local Net = require(script.Parent.Parent.Remotes)
 local DataService = require(script.Parent.DataService)
-local ServerEvents = require(script.Parent.ServerEvents)
 local Social = require(script.Parent.Social)
 local KnifePowers = require(ReplicatedStorage.Shared.Config.KnifePowers)
 local Offers = require(script.Parent.Offers)
@@ -53,11 +52,8 @@ function Fuel.PowerLuck(player: Player): number
 	if profile.RevengeUntil > os.time() then
 		luck *= CONFIG.RevengeLuck
 	end
-	-- Playing together: friends here, and the server's Lucky Rush
+	-- Playing together: friends here
 	luck *= Social.FriendsMultiplier(player)
-	if ServerEvents.Active("LuckyRush") then
-		luck *= 2
-	end
 	return luck
 end
 
@@ -68,9 +64,6 @@ function Fuel.AddHeat(player: Player, delta: number, reason: string)
 		return
 	end
 	local before = profile.Heat
-	if delta > 0 and ServerEvents.Active("HeatWave") then
-		delta *= 2
-	end
 	local after = math.clamp(before + delta, 0, CONFIG.MaxHeat)
 	if after == before then
 		return
@@ -79,10 +72,6 @@ function Fuel.AddHeat(player: Player, delta: number, reason: string)
 		p.Heat = after
 	end)
 	Net.Remotes.Effect:FireClient(player, "Heat", after, after - before, reason)
-	-- Maxed out: the whole server catches fire
-	if after == CONFIG.MaxHeat and before < CONFIG.MaxHeat then
-		ServerEvents.Start("HeatWave", player.DisplayName)
-	end
 end
 
 -- Dying in a round: half your Heat goes

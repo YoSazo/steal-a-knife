@@ -39,7 +39,6 @@ local CombatService = require(script.Parent.CombatService)
 local DataService = require(script.Parent.DataService)
 local Offers = require(script.Parent.Offers)
 local Fuel = require(script.Parent.Fuel)
-local ServerEvents = require(script.Parent.ServerEvents)
 local MapService = require(script.Parent.MapService)
 local PowerService = require(script.Parent.PowerService)
 local Stealth = require(script.Parent.Stealth)
@@ -2789,10 +2788,6 @@ local function endRound(round: Round)
 	end
 	if murderer and murderer.Parent and not innocentsWon then
 		Fuel.AddHeat(murderer, 1, "You won as the Murderer!")
-		-- A massacre of real players calls the Thief Moon early: chaos spills into the hub
-		if round.HumanKills >= 2 then
-			ServerEvents.Wipe(murderer.DisplayName)
-		end
 	end
 	local fewLeft = #survivors <= math.max(1, math.ceil(#round.Innocents * GameConfig.LastAliveFraction))
 
@@ -2809,7 +2804,6 @@ local function endRound(round: Round)
 	for _, player in survivors do
 		Fuel.AddHeat(player, 1, "Survived the round!")
 		Fuel.AddMeter(player, 1)
-		ServerEvents.Progress("Survives")
 		local reward = pay(round, player, GameConfig.RoundPay.Survive)
 			+ (if fewLeft then pay(round, player, GameConfig.RoundPay.LastAlive) else 0)
 		Fuel.GivePowerXP(player, GameConfig.PowerXP.Survive)
