@@ -55,8 +55,7 @@ local GameConfig = {
 		Count = 8, -- one pen per player: 8-player servers (Creator Dashboard -> Places -> Server size)
 		Width = 64,
 		-- (10 studs of grass between neighbouring pens: each one its own plot - MapService)
-		Depth = 60, -- an upgraded pen's length (the gate stays put, the back fence moves out)
-		StartDepth = 42, -- a new pen's length
+		Depth = 60, -- every pen's length (all the same size)
 		MaxSlots = 20,
 		-- Steal An Egg's pen: room grows one knife at a time, the first upgrade nearly free (an
 		-- instant first purchase), then steeper. Cost of the upgrade from 10, 11, ... 19 slots.

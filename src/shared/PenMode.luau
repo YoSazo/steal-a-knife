@@ -51,12 +51,11 @@ function PenMode.Capacity(slots: number): number
 	return slots + (if PenMode.On() then GameConfig.Pens.Bag else 0)
 end
 
--- How long a pen is for `slots` knives: StartDepth for a new pen, Depth when fully upgraded
-function PenMode.Depth(slots: number): number
-	local config = GameConfig.Pens
-	local start = GameConfig.StartingSlots
-	local t = math.clamp((slots - start) / math.max(1, config.MaxSlots - start), 0, 1)
-	return config.StartDepth + (config.Depth - config.StartDepth) * t
+-- How long a pen is: always its full length now. (It used to grow from StartDepth with your
+-- upgrades, but the pen sits where a full-length one fits, so a short one left an empty strip
+-- behind its fence and looked cut off next to the others; and room grows a slot at a time now.)
+function PenMode.Depth(_slots: number): number
+	return GameConfig.Pens.Depth
 end
 
 -- Messages and labels say "pen" instead of "vault" with pens on ("Your vault is full!" ->
