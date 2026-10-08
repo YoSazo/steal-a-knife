@@ -9,25 +9,58 @@ faster → steal deeper. The round is also the stage where you flex your best kn
 
 Test every step in Studio before starting the next (nothing here was tested yet).
 
-## Status (cloud session, 2026-10-08: code done, NOT tested in Studio)
+## Status (cloud session, 2026-10-08): code done, NOT tested in Studio
 
-Done, one commit each (type-checked and formatted, not played):
-- Item 2, the switch: pens + coffins everywhere, Pens.Count = 8, both A/B tests gone (prize_pick
-  removed). **Not done yet:** deleting the dormant vault code (VaultModel, VaultWalls, vault layout,
-  BaseService vault branches) and the pen upgrade costs still reading vault `FloorCosts`.
-- Item 3: no knife loot / AtRisk / Insurance (refund once), Classic and Double Trouble off (code
-  dormant), map vote gone.
-- Item 1: shells only for zones 1-2; deep biomes back to the dirt wall + ManorDecor props + floor
+Everything below was written in a cloud session with no Studio: it is type-checked (luau-lsp) and
+formatted (StyLua), never played. **Desktop session: go over each one in Studio, on desktop AND on
+phone sizes (the owner will give the phone dimensions), and refine what doesn't look or feel
+right.** Each is its own commit on `main-eftg5w`, so a bad one can be reverted alone.
+
+Done:
+- **Item 2 (switch):** pens + coffins everywhere, Pens.Count = 8, both A/B tests gone (pens/vaults
+  split, prize_pick). Not done: deleting the dormant vault code.
+- **Item 3:** no knife loot / AtRisk / Insurance (leftover charges refunded once), Classic and
+  Double Trouble off (code dormant), map vote gone (random map).
+- **Item 1:** shells only for zones 1-2; deep biomes back to the dirt wall + ManorDecor props + floor
   dressing; ~71k lines of shell data deleted.
-- Item 5: Zzz above the creature, speed sign clear of it. Item 8b: plaza knife monument gone.
-- Item 29: Monster names (GameConfig `Monster`, `GameConfig.MonsterName`) and every goal line.
-- Item 28: round moments shown in rounds, bigger top line / toasts, pen wording, rewrites. **Not
-  done yet:** the two-line prize layout + moving the x2 pill, shop descriptions (item 20).
-- Item 4: powers off at the source (`Items.Parse` Perk = nil), PowerShowcase gone. **Not done yet:**
+- **Item 5 + 8b:** creature labels (speed sign clear of the body, bigger, higher); plaza knife
+  monument gone. The sleeping Z's rise out of the body, grow and fade on a loop at a fixed small
+  screen size (client/CreatureIdle animates GuardService's "Z1".."Z3").
+- **Item 29:** monster names (GameConfig `Monster`, `GameConfig.MonsterName`) on tags and every
+  goal line ("outrun the FLOWER TOAD").
+- **Item 28:** round moments shown in rounds (`Net.Notify(..., inRound)`), bigger top line /
+  toasts, pen wording, rewrites. Not done: the two-line prize layout + moving the x2 pill.
+- **Item 4:** powers off at the source (`Items.Parse` Perk = nil), PowerShowcase gone. Not done:
   deleting the dormant power code; the per-rarity kill effect.
+- **Item 6 (HUD):** the guide's DO line is the big objective (36 px, phones 28); the core loop's
+  line and red trail never retire (tests/GuidePolicy updated); Speed / Cash bigger, tap either to
+  open the shop on its tab (`Ui.OpenShop`), a + badge on Cash.
+- **Items 9 + 10 (the night):** a 10 s warning; a carried boss knife goes back when the round starts
+  (`StealService.EndForRound`); everyone comes home to their pen; every stash re-rolls
+  (`GuardService.RestockAll`, "NEW COFFINS!"); cycle 180 s + 120 s round with coffin rounds, offline
+  seconds and the prize StepShare rescaled (pacing unchanged).
+- **Item 11 (rebalance):** early wheel / trail tiers cost more (x8 / x5 / x3 / x2) so money gates
+  the start; pens grow one slot at a time from a $1K first upgrade (`Pens.SlotCosts`,
+  `PenMode.RoomUpgrade`; fixes Extra Room going past a pen's max); Epic coffins 2 rounds.
+  pacing_sim (now models pens): Rare 0.34 h, Epic 1.2 h, Legendary 4.0 h, Mythic 8.2 h.
+- **Hub ("]" shape):** the hub is the runway's last stretch at its own 160 width: 4 pens down each
+  side of a 38-stud lane, gates facing it, each pen's wheel + Upgrade Wheel sign in the gap beside
+  it, the Lucky Wheel at the far end (`MapService.LuckyWheelAt`), SAFE ZONE paint fits the lane.
+- **Other fixes:** the red chase glow ends at the safe line; deeper monsters throw you further
+  (x1 -> ~x2.3); torches / braziers / lava vents use the cartoon flame sprite (`Shared/SpriteFire`)
+  instead of Roblox Fire.
 
-Check first in Studio: a deep biome (walls, props, lair), a creature lair (Zzz, speed sign), a
-solo bot round (no loot, no powers, round messages showing, the VS card), the 8-pen hub.
+**Test first in Studio (desktop + phone):** the hub (pens, wheels in the gaps, walking out of your
+gate, the Lucky Wheel, nothing left inside pens); a deep biome; a creature lair (Z's, sign); a solo
+bot round (no loot, no powers, the round messages, the 10 s warning, coming home to your pen, the
+NEW COFFINS restock); the HUD (big objective line, the trail after several deliveries, tapping
+Speed / Cash); the sprite fires (sizes are guesses: torch 2.2, brazier 4, vent 6); early pacing
+(the 2nd wheel should take ~10 min of a new player's income).
+
+**Not started (next):** the hatch layer (items 13-17: see-through "x-ray" coffin - glass in the
+rarity colour with a glowing knife shape inside, Diamond+ a second sparkle glow; human names;
+manual opening; Winner's Luck; the fuse machine), the shop rebuild (item 20), deleting the dormant
+vault / power / Classic code, and the rest of the plan below.
 
 ---
 
