@@ -41,11 +41,11 @@ local BASE: Mood = {
 	Offset = 0.3,
 	Color = rgb(255, 248, 235),
 	Decay = rgb(220, 208, 192),
-	Glare = 4,
+	Glare = 10,
 	Haze = 1.2,
-	Bloom = { Intensity = 1, Size = 56, Threshold = 1.6 },
-	Rays = { Intensity = 0.28, Spread = 0.85 },
-	Grade = { Brightness = 0, Contrast = 0.1, Saturation = 0.12, Tint = rgb(255, 253, 248) },
+	Bloom = { Intensity = 0.95, Size = 100, Threshold = 1.45 },
+	Rays = { Intensity = 0.5, Spread = 1 },
+	Grade = { Brightness = 0, Contrast = 0.12, Saturation = 0.3, Tint = rgb(255, 253, 248) },
 	Exposure = 0,
 	Clock = 13.5,
 	Latitude = 3,
@@ -71,6 +71,8 @@ ZoneLighting.Moods = {
 		Color = rgb(222, 246, 232),
 		Decay = rgb(120, 206, 178),
 		Haze = 2.2,
+		Glare = 4, -- pinned to the old base value: BASE's own Glare/Rays jumped hard for Egg's sky
+		Rays = { Intensity = 0.28, Spread = 0.85 },
 		Bloom = { Intensity = 1, Size = 56, Threshold = 1.5 },
 		Grade = { Brightness = 0.02, Contrast = 0.1, Saturation = 0.16, Tint = rgb(255, 251, 240) },
 		Exposure = 0.05,
@@ -82,6 +84,7 @@ ZoneLighting.Moods = {
 		Decay = rgb(124, 142, 222),
 		Haze = 2.2,
 		Glare = 3,
+		Rays = { Intensity = 0.28, Spread = 0.85 }, -- pinned: BASE's own Rays jumped hard for Egg's sky
 		Grade = { Brightness = 0.02, Contrast = 0.12, Saturation = 0.06, Tint = rgb(246, 248, 255) },
 	}),
 	-- Catacombs: Leo the Collector's treasure: warm amber glow in the dust
@@ -90,6 +93,8 @@ ZoneLighting.Moods = {
 		Color = rgb(246, 232, 204),
 		Decay = rgb(204, 162, 92),
 		Haze = 2.1,
+		Glare = 4, -- pinned to the old base value: BASE's own Glare/Rays jumped hard for Egg's sky
+		Rays = { Intensity = 0.28, Spread = 0.85 },
 		Bloom = { Intensity = 1.1, Size = 56, Threshold = 1.4 },
 		Grade = { Brightness = 0.02, Contrast = 0.11, Saturation = 0.14, Tint = rgb(255, 248, 234) },
 	}),

@@ -193,7 +193,7 @@ local function buildLighting()
 	atmosphere.Decay = Color3.fromRGB(220, 208, 192)
 	atmosphere:SetAttribute("HubColor", atmosphere.Color)
 	atmosphere:SetAttribute("HubDecay", atmosphere.Decay)
-	atmosphere.Glare = 4 -- the big soft bloom of light around the sun
+	atmosphere.Glare = 10 -- the big soft glow around the sun (max - see the Bloom/Grade below)
 	atmosphere.Haze = 1.2 -- natural sun haze, not a cyan wash
 	atmosphere.Parent = Lighting
 	local sky = Instance.new("Sky")
@@ -204,19 +204,29 @@ local function buildLighting()
 	sky.MoonAngularSize = 0
 	sky.Parent = Lighting
 	local bloom = Instance.new("BloomEffect")
-	bloom.Intensity = 1 -- the sun glows; the threshold keeps the world itself crisp
-	bloom.Size = 56
-	bloom.Threshold = 1.6
+	-- Egg's own sun photographs as near-pure white clipping G/B to 255 over a huge soft radius
+	-- (checked pixel-for-pixel against a reference screenshot, not eyeballed) - a small tight glow
+	-- reads nothing like it. Size maxes out well past the old 56; Threshold pulled back a little so
+	-- the hot white core doesn't linger too far from the sun itself once Saturation (below) is doing
+	-- the rest of the work.
+	bloom.Intensity = 0.95
+	bloom.Size = 100
+	bloom.Threshold = 1.45
 	local rays = Instance.new("SunRaysEffect")
 	-- Light streaming out of the sun (that lifelike glow you see looking up at it)
-	rays.Intensity = 0.28
-	rays.Spread = 0.85
+	rays.Intensity = 0.5
+	rays.Spread = 1
 	rays.Parent = Lighting
 	bloom.Parent = Lighting
 	local grade = Instance.new("ColorCorrectionEffect")
-	-- Punchy and bright, like Tsunami: extra saturation and a little contrast (muted read gloomy)
-	grade.Contrast = 0.1
-	grade.Saturation = 0.12
+	-- Punchy and bright, like Tsunami - pushed further toward Egg's own vivid sky (sampling their
+	-- screenshot showed the clear sky sitting at G/B ~255, fully saturated). Tried matching that
+	-- literally (Saturation 1.3): it blew out everywhere ELSE instead - skin, walls and the warm
+	-- atmosphere haze (itself already warm-toned) all swung hard orange once amplified that hard,
+	-- confirmed by sampling THAT screenshot too (skin clipped to pure (255,112,7)). 0.3 is the
+	-- highest that still reads vivid in normal gameplay framing without cooking the rest of the scene.
+	grade.Contrast = 0.12
+	grade.Saturation = 0.3
 	grade.TintColor = Color3.fromRGB(255, 253, 248)
 	grade.Brightness = 0
 	grade.Parent = Lighting
