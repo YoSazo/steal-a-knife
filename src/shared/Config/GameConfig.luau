@@ -101,23 +101,26 @@ local GameConfig = {
 	CarrySpeedMultiplier = 0.9,
 	-- Haunted Wheel tiers (the code calls it the treadmill): Rate = Speed per second while running
 	-- in it; Cost to buy that tier
-	-- Costs grow ~14x a tier (was ~7x: a tier paid for itself in minutes of the income it was meant
-	-- to take hours to reach - a committed kid found the WHOLE game too easy; tools/pacing_sim.py
-	-- validates this against Steal An Egg-paced milestones - keep both in step)
+	-- Checked against Steal An Egg's own published treadmill table: rate grows ~2.4x a tier there
+	-- (ours was ~3.1x) and its best treadmill is tiny next to its hardest biome's need (ratio
+	-- 4.3e-7); ours was 21x more generous at the equivalent comparison even after the cost fix
+	-- below. Rate rescaled to the same ratio; cost now escalates tier to tier (10x,12x,14x...)
+	-- the way theirs does (16.7x,20x,24x,25x,40x...), not a flat multiple. tools/pacing_sim.py
+	-- validates this against Steal An Egg-paced milestones - keep both in step.
 	Treadmills = {
 		{ Name = "Creaky Wheel", Rate = 10, Cost = 0 },
-		{ Name = "Iron Wheel", Rate = 30, Cost = 15000 },
-		{ Name = "Steam Wheel", Rate = 80, Cost = 210000 },
-		{ Name = "Haunted Wheel", Rate = 250, Cost = 2.94e6 },
-		{ Name = "Cursed Wheel", Rate = 800, Cost = 41.2e6 },
-		{ Name = "Bone Wheel", Rate = 2500, Cost = 576e6 },
-		{ Name = "Thief Moon Wheel", Rate = 8000, Cost = 8.07e9 },
-		{ Name = "Phantom Wheel", Rate = 25000, Cost = 113e9 },
-		{ Name = "Infernal Wheel", Rate = 80000, Cost = 1.58e12 },
-		{ Name = "Olympian Wheel", Rate = 250000, Cost = 22.1e12 },
-		{ Name = "Angelic Wheel", Rate = 800000, Cost = 310e12 },
-		{ Name = "Celestial Wheel", Rate = 2.5e6, Cost = 4.34e15 },
-		{ Name = "Cosmic Wheel", Rate = 8e6, Cost = 60.7e15 },
+		{ Name = "Iron Wheel", Rate = 25, Cost = 15000 },
+		{ Name = "Steam Wheel", Rate = 60, Cost = 180000 },
+		{ Name = "Haunted Wheel", Rate = 150, Cost = 2.52e6 },
+		{ Name = "Cursed Wheel", Rate = 350, Cost = 40.3e6 },
+		{ Name = "Bone Wheel", Rate = 850, Cost = 726e6 },
+		{ Name = "Thief Moon Wheel", Rate = 2000, Cost = 14.5e9 },
+		{ Name = "Phantom Wheel", Rate = 5000, Cost = 319e9 },
+		{ Name = "Infernal Wheel", Rate = 12000, Cost = 7.66e12 },
+		{ Name = "Olympian Wheel", Rate = 29000, Cost = 199e12 },
+		{ Name = "Angelic Wheel", Rate = 70000, Cost = 5.58e15 },
+		{ Name = "Celestial Wheel", Rate = 170000, Cost = 167e15 },
+		{ Name = "Cosmic Wheel", Rate = 400000, Cost = 5.36e18 },
 	},
 	-- Knife Trails (Steal An Egg style): bought with cash, each one multiplies the Speed your wheel
 	-- trains and sends a stream of that knife spinning off behind you when you run

@@ -28,10 +28,12 @@ INCOME = {  # average of each rarity's three knives (Config/Knives)
 GUARD_SPEED = [12.5, 26, 47, 70, 82, 94, 104, 114]  # GameConfig.Zones[i].GuardSpeed
 CARRY = 0.9  # GameConfig.CarrySpeedMultiplier
 BASE_WALK, SPEED_CURVE, MAX_WALK = 16, 3.6, 135  # GameConfig.WalkSpeedFor
-# Rate (Speed/step), Cost. Costs grow ~14x a tier (GameConfig.Treadmills; was ~7x).
-WHEELS = [(10, 0), (30, 15000), (80, 210000), (250, 2.94e6), (800, 41.2e6), (2500, 576e6),
-          (8000, 8.07e9), (25000, 113e9), (80000, 1.58e12), (250000, 22.1e12), (800000, 310e12),
-          (2.5e6, 4.34e15), (8e6, 60.7e15)]
+# Rate (Speed/step), Cost. Rescaled to Steal An Egg's own published ratios: rate grows ~2.4x a
+# tier (was ~3.1x) and the top tier sits at the same rate-vs-hardest-zone ratio theirs does; cost
+# escalates tier to tier like theirs (10x,12x,14x...), not a flat multiple (GameConfig.Treadmills).
+WHEELS = [(10, 0), (25, 15000), (60, 180000), (150, 2.52e6), (350, 40.3e6), (850, 726e6),
+          (2000, 14.5e9), (5000, 319e9), (12000, 7.66e12), (29000, 199e12), (70000, 5.58e15),
+          (170000, 167e15), (400000, 5.36e18)]
 TRAILS = [(1.5, 20000), (2, 250000), (3, 3e6), (4, 40e6), (6, 500e6), (8, 7e9), (12, 100e9), (16, 1.5e12),
           (22, 25e12), (30, 400e12)]  # multiplier, cost (kept through rebirth)
 STARTING_SLOTS, SLOTS_PER_FLOOR, MAX_SLOTS = 10, 10, 40
