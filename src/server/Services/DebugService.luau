@@ -22,7 +22,6 @@ local Items = require(ReplicatedStorage.Shared.Items)
 local RoundService = require(script.Parent.RoundService)
 local StealService = require(script.Parent.StealService)
 local CoffinService = require(script.Parent.CoffinService)
-local RaidService = require(script.Parent.RaidService)
 local GuardService = require(script.Parent.GuardService)
 
 local DebugService = {}
@@ -128,30 +127,28 @@ local commands: { [string]: (Player, ...any) -> any } = {
 		return GuardService.DebugSteal(player, zone or 1)
 	end,
 	-- Start carrying a knife right now, as if just stolen (tests the run home / placing)
-	Carry = function(player: Player, name: string?)
-		StealService.StartCarry(player, "Knife", name or "KitchenKnife")
+	Carry = function(player: Player, name: string?, sealed: boolean?)
+		StealService.StartCarry(player, "Knife", name or "KitchenKnife", nil, if sealed then "coffin" else nil)
+		return true
+	end,
+	Knock = function(player: Player)
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root then
+			StealService.KnockLoose(player, player, root.Position - Vector3.xAxis)
+		end
+		return root ~= nil
+	end,
+	Pickup = function(player: Player, model: Model)
+		return StealService.TakeDrop(player, model)
+	end,
+	SuspendResume = function(player: Player)
+		StealService.Suspend(player)
+		StealService.Resume(player)
 		return true
 	end,
 	-- A mystery coffin, as a gift / wheel prize / daily streak would give it
 	Coffin = function(player: Player, rarity: string?)
 		return CoffinService.GiveRarity(player, rarity or "Epic", "Studio") ~= nil
-	end,
-	Raid = function(player: Player, enabled: boolean?)
-		local start = if enabled == nil then not RaidService.IsRaiding() else enabled
-		if not start then
-			RaidService.Stop()
-		else
-			RaidService.Start()
-		end
-		local active = RaidService.IsRaiding()
-		Net.Notify(player, if active then "Studio debug: raid active" else "Studio debug: raid inactive", "info")
-		return active
-	end,
-	Walls = function(player: Player, level: number)
-		DataService.Update(player, function(p)
-			p.WallLevel = math.clamp(level, 1, #GameConfig.Walls)
-		end)
-		return true
 	end,
 	BotRound = function(player: Player, role: string)
 		if ReplicatedStorage:GetAttribute("Phase") ~= "Intermission" then

@@ -33,7 +33,6 @@ type Carry = {
 	Kind: string, -- "Knife"
 	Item: string, -- the knife item
 	ReadySince: number?, -- (pens) when they walked into their pen holding it: PlaceAfter fallback
-	StolenFrom: number?, -- UserId of the vault it was stolen from
 	Boss: { Zone: number, Slot: number }?,
 	Helpers: { Player }, -- players who helped with a boss steal (team steal) -- taken off a biome boss's wall (GuardService)
 	Visual: Model,
@@ -41,7 +40,7 @@ type Carry = {
 	LastCheck: number,
 	Plate: number?, -- the plate the owner chose to put it on (Place)
 	Started: number, -- os.clock() it was picked up (analytics)
-	Source: string, -- "boss" | "vault" | "ground" | "coffin" (analytics)
+	Source: string, -- "boss" | "ground" (analytics)
 	Zone: number, -- zone it was picked up in, 0 = outside the biomes (analytics)
 }
 
@@ -101,15 +100,8 @@ local function tag(adornee: BasePart, lines: { { Text: string, Color: Color3, He
 	end
 end
 
-local function ownerName(userId: number?): string?
-	if not userId then
-		return nil
-	end
-	local owner = Players:GetPlayerByUserId(userId)
-	return if owner then owner.DisplayName else nil
-end
-
-local startCarry: (Player, string, string, number?, { Zone: number, Slot: number }?, string?, boolean?) -> ()
+local startCarry: (Player, string, string, { Zone: number, Slot: number }?, string?, boolean?) -> ()
+local dropped: { [Model]: { Item: string, Prompt: ProximityPrompt, Sealed: boolean } } = {}
 
 -- Somewhere on the floor under `position`, ignoring bodies, players and other drops
 local function floorAt(position: Vector3): number
@@ -172,10 +164,15 @@ end
 local function canPickUp(player: Player, anchor: BasePart, prompt: ProximityPrompt): boolean
 	local root = rootPart(player)
 	local profile = DataService.Get(player)
-	if not root or not profile or player:GetAttribute("InRound") or carriers[player] then
-		return false
-	end
-	if player:GetAttribute("KnockedUntil") then
+	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if
+		not root
+		or not profile
+		or not humanoid
+		or humanoid.Health <= 0
+		or player:GetAttribute("InRound")
+		or carriers[player]
+	then
 		return false
 	end
 	if (root.Position - anchor.Position).Magnitude > prompt.MaxActivationDistance + 6 then
@@ -193,89 +190,76 @@ local function canPickUp(player: Player, anchor: BasePart, prompt: ProximityProm
 	return true
 end
 
+-- One authoritative pickup path for native prompts and Studio regression checks. Invalidating
+-- the registered drop before granting its carry also prevents duplicate pickup requests.
+function StealService.TakeDrop(player: Player, model: Model): boolean
+	local entry = dropped[model]
+	local anchor = model.PrimaryPart
+	if
+		not entry
+		or not anchor
+		or not model:IsDescendantOf(dropFolder)
+		or not canPickUp(player, anchor, entry.Prompt)
+	then
+		return false
+	end
+	dropped[model] = nil
+	model:Destroy()
+	startCarry(player, "Knife", entry.Item, nil, if entry.Sealed then "coffin" else "ground")
+	local zone = zoneIndexAt(anchor.Position)
+	if zone and StealService.OnPickup then
+		StealService.OnPickup(player, zone)
+	end
+	return carriers[player] ~= nil
+end
+
 -- Puts a knife item on the floor: glowing, tagged, spinning, and gone after a while.
--- `stolenFrom` marks a knife lifted from someone's vault: its owner can take it straight back.
-function StealService.DropKnife(item: string, position: Vector3, stolenFrom: number?)
+function StealService.DropKnife(item: string, position: Vector3, sealed: boolean?)
 	local parsed = Items.Parse(item)
 	if not parsed then
 		return
 	end
 	local floorY = floorAt(position)
 	local at = Vector3.new(position.X, floorY + 2.2, position.Z)
-	local model = KnifeModel.Build(item, true)
-	KnifeModel.FitItem(model, item, 3.2)
+	local coffin = sealed == true and PenMode.Coffins()
+	local model = if coffin
+		then CoffinModel.Build(parsed.Knife.Rarity, CFrame.identity)
+		else KnifeModel.Build(item, true)
+	if not coffin then
+		KnifeModel.FitItem(model, item, 3.2)
+	end
 	model:PivotTo(CFrame.new(at) * CFrame.Angles(0, 0, math.rad(20)))
-	model.Name = `Dropped_{parsed.Name}`
-	local color = Items.Color(item)
+	model.Name = if coffin then "DroppedCoffin" else `Dropped_{parsed.Name}`
+	model:SetAttribute("SealedDrop", coffin)
+	local color = if coffin then Knives.RarityColors[parsed.Knife.Rarity] else Items.Color(item)
 	local knife = parsed.Knife
 	local anchor = model.PrimaryPart :: BasePart
-	local victim = ownerName(stolenFrom)
-	local lines = {
-		{ Text = Items.DisplayName(item), Color = color, Height = 30 },
-		{ Text = knife.Rarity:upper(), Color = Knives.RarityColors[knife.Rarity], Height = 18 },
-		{
-			Text = `Damage {Items.Damage(item)}  ·  {Format.Cash(Items.Income(item))}/s`,
-			Color = Color3.new(1, 1, 1),
-			Height = 22,
-		},
-	}
-	if victim then
-		table.insert(lines, { Text = `Stolen from {victim}!`, Color = Color3.fromRGB(255, 120, 120), Height = 18 })
-	end
+	local lines = if coffin
+		then {
+			{ Text = `{knife.Rarity:upper()} COFFIN`, Color = color, Height = 30 },
+		}
+		else {
+			{ Text = Items.DisplayName(item), Color = color, Height = 30 },
+			{ Text = knife.Rarity:upper(), Color = Knives.RarityColors[knife.Rarity], Height = 18 },
+			{
+				Text = `Damage {Items.Damage(item)}  ·  {Format.Cash(Items.Income(item))}/s`,
+				Color = Color3.new(1, 1, 1),
+				Height = 22,
+			},
+		}
 	tag(anchor, lines)
-	local prompt = dress(model, color, floorY, at, Items.DisplayName(item))
+	local prompt = dress(model, color, floorY, at, if coffin then `{knife.Rarity} Coffin` else Items.DisplayName(item))
+	dropped[model] = { Item = item, Prompt = prompt, Sealed = coffin }
+	model.Destroying:Connect(function()
+		dropped[model] = nil
+	end)
 	prompt.Triggered:Connect(function(player)
-		if not model.Parent then
-			return
-		end
-		-- The owner takes their own knife straight back
-		if stolenFrom and player.UserId == stolenFrom then
-			local profile = DataService.Get(player)
-			local root = rootPart(player)
-			if profile and root and (root.Position - anchor.Position).Magnitude < prompt.MaxActivationDistance + 6 then
-				if #profile.Knives < profile.Slots then
-					model:Destroy()
-					DataService.Update(player, function(p)
-						DataService.AddKnife(p, item)
-					end)
-					BaseService.RefreshRack(player)
-					Net.Notify(player, `Got your {Items.DisplayName(item)} back!`, "good")
-					Net.Remotes.Effect:FireAllClients("Recovered", root.Position, color)
-					return
-				end
-			end
-		end
-		if not canPickUp(player, anchor, prompt) then
-			return
-		end
-		model:Destroy()
-		startCarry(
-			player,
-			"Knife",
-			item,
-			if stolenFrom and player.UserId ~= stolenFrom then stolenFrom else nil,
-			nil,
-			"ground"
-		)
-		local zone = zoneIndexAt(at)
-		if zone and StealService.OnPickup then
-			StealService.OnPickup(player, zone)
-		end
+		StealService.TakeDrop(player, model)
 	end)
 	model.Parent = dropFolder
-	task.delay(if stolenFrom then GameConfig.DroppedKnifeLifetime * 2 else GameConfig.DroppedKnifeLifetime, function()
+	task.delay(GameConfig.DroppedKnifeLifetime, function()
 		if model.Parent then
 			model:Destroy()
-			-- A stolen knife nobody picked up goes home rather than vanishing
-			local owner = stolenFrom and Players:GetPlayerByUserId(stolenFrom)
-			local profile = owner and DataService.Get(owner)
-			if owner and profile and #profile.Knives < profile.Slots then
-				DataService.Update(owner, function(p)
-					DataService.AddKnife(p, item)
-				end)
-				BaseService.RefreshRack(owner)
-				Net.Notify(owner, `Your {Items.DisplayName(item)} came back home!`, "good")
-			end
 		end
 	end)
 end
@@ -304,8 +288,8 @@ local function carryProps(carry: Carry, extra: { [string]: any }?): { [string]: 
 	return props
 end
 
--- why (analytics): "home" | "caught" | "died" | "knocked" | "slipped" | "vault_full" | "moon" |
--- "recovered" | "left" | "forced" (the steal.<why> event)
+-- why (analytics): "home" | "caught" | "died" | "knocked" | "slipped" | "vault_full" |
+-- "left" | "forced" | "drop" (the steal.<why> event)
 local function endCarry(player: Player, deposited: boolean, dropAt: Vector3?, why: string?)
 	local carry = carriers[player]
 	if not carry then
@@ -334,7 +318,6 @@ local function endCarry(player: Player, deposited: boolean, dropAt: Vector3?, wh
 	local fallback = visual.PrimaryPart and (visual.PrimaryPart :: BasePart).Position
 	visual:Destroy()
 	player:SetAttribute("Carrying", nil)
-	player:SetAttribute("StolenFrom", nil)
 	player:SetAttribute("BossCarry", nil)
 	BaseService.RefreshWalkSpeed(player)
 	local where = dropAt or fallback
@@ -347,7 +330,7 @@ local function endCarry(player: Player, deposited: boolean, dropAt: Vector3?, wh
 		return
 	end
 	if not deposited and where then
-		StealService.DropKnife(carry.Item, where, carry.StolenFrom)
+		StealService.DropKnife(carry.Item, where, carry.Source == "coffin")
 	end
 end
 
@@ -356,7 +339,6 @@ startCarry = function(
 	player: Player,
 	kind: string,
 	item: string,
-	stolenFrom: number?,
 	boss: { Zone: number, Slot: number }?,
 	source: string?,
 	resumed: boolean?
@@ -424,13 +406,12 @@ startCarry = function(
 		Helpers = helpers,
 		Kind = kind,
 		Item = item,
-		StolenFrom = stolenFrom,
 		Boss = boss,
 		Visual = visual,
 		LastPos = root.Position,
 		LastCheck = os.clock(),
 		Started = os.clock(),
-		Source = source or (if boss then "boss" elseif stolenFrom then "vault" else "ground"),
+		Source = source or (if boss then "boss" else "ground"),
 		Zone = if boss then boss.Zone else (zoneIndexAt(root.Position) or 0),
 	}
 	if not resumed then
@@ -448,14 +429,11 @@ startCarry = function(
 	end
 	Net.Animate(character, "Pickup")
 	player:SetAttribute("Carrying", item)
-	player:SetAttribute("StolenFrom", stolenFrom) -- the UserId it was taken from, if anyone
 	player:SetAttribute("BossCarry", if boss then boss.Zone else nil) -- (a boss is after you)
 	BaseService.RefreshWalkSpeed(player)
 	-- (a boss steal gets no toast: GuardService already says "<BOSS> IS COMING! RUN HOME!")
 	if boss then
 		return
-	elseif stolenFrom then
-		Net.Notify(player, `You took a {Items.DisplayName(item)}! RUN HOME!`, "good")
 	else
 		Net.Notify(player, `You got a {Items.DisplayName(item)}! RUN HOME!`, "good")
 	end
@@ -465,14 +443,13 @@ function StealService.StartCarry(
 	player: Player,
 	kind: string,
 	item: string,
-	stolenFrom: number?,
 	boss: { Zone: number, Slot: number }?,
-	source: string? -- "coffin": a coffin stolen out of someone's pen (it lands in your pen sealed again)
+	source: string?
 )
 	if carriers[player] then
 		return
 	end
-	startCarry(player, kind, item, stolenFrom, boss, source)
+	startCarry(player, kind, item, boss, source)
 end
 
 -- A boss caught their thief: the knife goes back on the wall (OnBossCarryEnded, not delivered)
@@ -508,6 +485,11 @@ local function deposit(player: Player)
 	end
 	-- (pen full, bag has room: it goes in the bag - no coffin to sit in the pen)
 	local toBag = #profile.Knives >= profile.Slots
+	local needsCoffin = (carry.Boss ~= nil or carry.Source == "coffin") and CoffinService.On(player)
+	if needsCoffin and not DataService.FreePlate(profile) then
+		Net.Notify(player, "Your pen is full! Make room before placing the coffin.", "bad")
+		return -- keep carrying it; storage must not turn a sealed coffin into an open knife
+	end
 	-- The tutorial's first knife always gets the starter power (Shadow: vanish), so every new player
 	-- starts with the same simple, easy-to-show power; after that it's the knife type's own power
 	local starter = not profile.TutorialDone and profile.TutorialStep <= 2 and #profile.Knives <= 1
@@ -515,7 +497,7 @@ local function deposit(player: Player)
 	local parsed = Items.Parse(item) :: Items.Item
 	local isNew = not table.find(profile.Discovered, parsed.Name)
 	-- A boss's knife comes home in a COFFIN that opens later (CoffinService) - never in the tutorial
-	local sealed = (carry.Boss ~= nil or carry.Source == "coffin") and CoffinService.On(player) and not toBag
+	local sealed = needsCoffin
 	-- (the tutorial's coffin: it lands and counts down a few seconds - Steal an Egg's egg - then opens)
 	local quick = sealed and (starter or not profile.TutorialDone)
 	if sealed and not quick then
@@ -543,8 +525,8 @@ local function deposit(player: Player)
 		if isNew and not sealed then -- (a coffin's knife joins your Index when it opens)
 			table.insert(p.Discovered, parsed.Name)
 		end
-		if carry.StolenFrom then
-			p.KnivesStolen += 1
+		if carry.Boss then
+			p.KnivesStolen += 1 -- (the "Stolen" leaderboard: knives taken from bosses)
 		end
 	end)
 	-- Only this successful carried-knife deposit confirms placement. Unboxes use the cosmetic
@@ -557,7 +539,6 @@ local function deposit(player: Player)
 	player:SetAttribute("LastPlacedKnifePlate", placedPlate)
 	local placementSerial = (player:GetAttribute("KnifePlacementSerial") or 0) :: number
 	player:SetAttribute("KnifePlacementSerial", placementSerial + 1)
-	local stolenFrom = carry.StolenFrom
 	Analytics.Track(player, "knife.mounted", {
 		knife = parsed.Name,
 		rarity = parsed.Knife.Rarity,
@@ -587,10 +568,6 @@ local function deposit(player: Player)
 		Net.Notify(player, `{if isNew then "NEW! " else ""}{name} +{Format.Cash(Items.Income(item))}/s`, "good")
 	end
 	Net.Remotes.Effect:FireAllClients("Deposit", player, parsed.Knife.Rarity)
-	if stolenFrom then
-		local victim = ownerName(stolenFrom) or "someone"
-		Net.Announce(`{player.DisplayName} stole {victim}'s {name}!`, Color3.fromRGB(255, 90, 90), 1)
-	end
 	if player.Character then
 		Net.Animate(player.Character, "Cheer")
 	end
@@ -659,9 +636,7 @@ function StealService.Place(player: Player, slot: number)
 	end
 	carry.Plate = slot
 	-- (a boss's knife / a stolen coffin lands as a coffin: the flying thing must not reveal the knife)
-	local asCoffin = (carry.Boss ~= nil or carry.Source == "coffin")
-		and CoffinService.On(player)
-		and #profile.Knives < profile.Slots
+	local asCoffin = (carry.Boss ~= nil or carry.Source == "coffin") and CoffinService.On(player)
 	local parsed = Items.Parse(carry.Item)
 	Net.Remotes.Effect:FireAllClients(
 		"PlaceKnife",
@@ -753,34 +728,13 @@ function StealService.IsCarrying(player: Player): boolean
 end
 
 -- Rounds pull everyone out of the arena, knockdowns knock it loose: whatever they carried drops
--- `owner` caught `thief` running off with `owner`'s knife: it goes straight back on their wall
--- (or onto the floor for them to grab if the wall is full). Returns the item, or nil.
-function StealService.Recover(thief: Player, owner: Player): string?
-	local carry = carriers[thief]
-	if not carry or carry.Kind ~= "Knife" or carry.StolenFrom ~= owner.UserId then
-		return nil
-	end
-	local profile = DataService.Get(owner)
-	if not profile or #profile.Knives >= PenMode.Capacity(profile.Slots) then
-		return nil
-	end
-	local item = carry.Item
-	endCarry(thief, true, nil, "recovered")
-	Analytics.Track(owner, "moon.recovered", { knife = Items.Name(item) })
-	DataService.Update(owner, function(p)
-		DataService.AddKnife(p, item)
-	end)
-	BaseService.RefreshRack(owner)
-	return item
-end
-
 -- A round pulled a carrier in: the carry is set aside (the boss's slot stays empty) and handed back
 -- on the way home (Resume, via BaseService.OnReturnedHome), so they're back where they were, still
 -- holding it. Released (back to the wall / dropped) if they leave or never come back for it.
 type Suspended = {
 	Kind: string,
 	Item: string,
-	StolenFrom: number?,
+	Source: string,
 	Boss: { Zone: number, Slot: number }?,
 	At: Vector3?,
 	ChaserAt: CFrame?,
@@ -803,7 +757,7 @@ local function release(player: Player)
 			hook(held.Boss.Zone, held.Boss.Slot, held.Item, false)
 		end
 	elseif held.At then
-		StealService.DropKnife(held.Item, held.At, held.StolenFrom)
+		StealService.DropKnife(held.Item, held.At, held.Source == "coffin")
 	end
 end
 
@@ -816,7 +770,6 @@ function StealService.Suspend(player: Player)
 	Analytics.Track(player, "steal.suspended", carryProps(carry))
 	carry.Visual:Destroy()
 	player:SetAttribute("Carrying", nil)
-	player:SetAttribute("StolenFrom", nil)
 	player:SetAttribute("BossCarry", nil)
 	player:SetAttribute("PlaceReady", nil)
 	BaseService.RefreshWalkSpeed(player)
@@ -827,7 +780,7 @@ function StealService.Suspend(player: Player)
 	suspended[player] = {
 		Kind = carry.Kind,
 		Item = carry.Item,
-		StolenFrom = carry.StolenFrom,
+		Source = carry.Source,
 		Boss = carry.Boss,
 		At = carry.LastPos,
 		ChaserAt = chaserAt,
@@ -842,7 +795,7 @@ function StealService.Resume(player: Player)
 		return
 	end
 	suspended[player] = nil
-	startCarry(player, held.Kind, held.Item, held.StolenFrom, held.Boss, nil, true)
+	startCarry(player, held.Kind, held.Item, held.Boss, held.Source, true)
 	if not carriers[player] then
 		-- couldn't hand it back (no character): don't lose it
 		suspended[player] = held
@@ -896,7 +849,7 @@ function StealService.KnockLoose(victim: Player, attacker: Player, from: Vector3
 	local item, boss = carry.Item, carry.Boss
 	if boss then
 		endCarry(victim, true, nil, "knocked")
-		StealService.DropKnife(item, at)
+		StealService.DropKnife(item, at, PenMode.Coffins())
 	else
 		endCarry(victim, false, at, "knocked")
 	end
@@ -908,15 +861,6 @@ function StealService.KnockLoose(victim: Player, attacker: Player, from: Vector3
 	Net.Notify(victim, `{attacker.DisplayName} made you drop it!`, "bad")
 	Net.Remotes.Effect:FireClient(victim, "Tip", "Knocked")
 	Net.Notify(attacker, "They dropped it! Grab it!", "good")
-end
-
--- A boss's knife being carried goes straight back on its wall (no penalty: the Blood Moon closing
--- the biomes, not the boss catching you)
-function StealService.CancelBossCarry(player: Player)
-	local carry = carriers[player]
-	if carry and carry.Boss then
-		endCarry(player, false, nil, "moon")
-	end
 end
 
 -- The Drop button (Tsunami style): don't want it after all? A boss's knife goes straight back on

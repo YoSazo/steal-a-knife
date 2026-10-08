@@ -2790,10 +2790,8 @@ local function loop()
 				newcomerWaiting
 				-- a newcomer brings the round forward, but the hub break never drops below
 				-- NewcomerMinBreak (every ad player joining kept cutting it to 100 s)
-				and math.max(os.clock() + GameConfig.NewcomerRoundIn, startedAt + GameConfig.NewcomerMinBreak) < endsAt - 5
-				-- never cut a Thief Moon short (it runs out the intermission)
-				and not ReplicatedStorage:GetAttribute("Raid")
-				and ReplicatedStorage:GetAttribute("NextRaidAt") == nil
+				and math.max(os.clock() + GameConfig.NewcomerRoundIn, startedAt + GameConfig.NewcomerMinBreak)
+					< endsAt - 5
 			then
 				newcomerWaiting = false
 				endsAt = math.max(os.clock() + GameConfig.NewcomerRoundIn, startedAt + GameConfig.NewcomerMinBreak)

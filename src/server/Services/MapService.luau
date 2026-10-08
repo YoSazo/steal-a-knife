@@ -43,7 +43,7 @@ export type BaseSite = {
 	Folder: Folder,
 	WallFolder: Folder, -- rebuilt by VaultWalls whenever the owner's wall tier changes
 	Gate: Model,
-	Blocker: Part, -- the gate's hit / collision part (attributes: Owner, Health, MaxHealth, Open)
+	Blocker: Part, -- the invisible gate marker (attributes: Owner, OwnerName, Tier, Floors, PenDepth)
 	SignPart: Part,
 	Center: Vector3,
 	Frame: CFrame, -- local +Z points out of the vault's open side, towards the plaza

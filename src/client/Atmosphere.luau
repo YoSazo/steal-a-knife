@@ -89,7 +89,6 @@ function Atmosphere.Init()
 
 	-- Music ---------------------------------------------------------------------------------------
 	local hubMusic = track(Sounds.HubMusic, if Sounds.HubMusic ~= "" then 0.12 else 0) -- (quiet: under everything)
-	local raidMusic = track(Sounds.RaidMusic, 0.3)
 	if Sounds.HubMusic ~= "" then
 		hubMusic:Play()
 	end
@@ -101,66 +100,10 @@ function Atmosphere.Init()
 	end
 	local function refreshMusic()
 		local inRound = player:GetAttribute("InRound") == true
-		local raid = ReplicatedStorage:GetAttribute("Raid") == true
-		fade(hubMusic, if inRound or raid then 0 else hubMusic:GetAttribute("Target") :: number)
-		fade(raidMusic, if raid and not inRound then raidMusic:GetAttribute("Target") :: number else 0)
+		fade(hubMusic, if inRound then 0 else hubMusic:GetAttribute("Target") :: number)
 	end
 	player:GetAttributeChangedSignal("InRound"):Connect(refreshMusic)
-	ReplicatedStorage:GetAttributeChangedSignal("Raid"):Connect(refreshMusic)
 	refreshMusic()
-
-	-- Raids: the sky goes deep red -----------------------------------------------------------------
-	local raidTint = new("ColorCorrectionEffect", {
-		Name = "RaidTint",
-		TintColor = Color3.new(1, 1, 1),
-	}, Lighting)
-	local tintTween: Tween? = nil
-	local skyTween: Tween? = nil
-	local wasRaid = false
-	local function refreshSky()
-		local raid = ReplicatedStorage:GetAttribute("Raid") == true and not player:GetAttribute("InRound")
-		-- The sky is client/ZoneLighting's (biome moods, rounds): this only takes it over while the
-		-- moon is up and hands it back as it sets. Fading "back to the hub sky" on every round
-		-- teleport painted the last biome's haze over the round maps.
-		local touchSky = raid or wasRaid
-		wasRaid = raid
-		if tintTween then
-			tintTween:Cancel()
-		end
-		local nextTint = TweenService:Create(raidTint, TweenInfo.new(0.5), {
-			TintColor = if raid then Color3.fromRGB(255, 205, 195) else Color3.new(1, 1, 1),
-			Contrast = if raid then 0.05 else 0,
-			Saturation = if raid then 0.1 else 0,
-		})
-		tintTween = nextTint
-		nextTint:Play()
-		local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-		if atmosphere and touchSky then
-			if skyTween then
-				skyTween:Cancel()
-			end
-			if atmosphere:GetAttribute("HubGlare") == nil then
-				atmosphere:SetAttribute("HubGlare", atmosphere.Glare)
-				atmosphere:SetAttribute("HubHaze", atmosphere.Haze)
-			end
-			-- Same bright, glowing sky, just blood red: the sun's haze glows crimson everywhere
-			local nextSky = TweenService:Create(atmosphere, TweenInfo.new(1.2), {
-				Color = if raid
-					then Color3.fromRGB(255, 120, 105)
-					else atmosphere:GetAttribute("HubColor") or atmosphere.Color,
-				Decay = if raid
-					then Color3.fromRGB(255, 60, 50)
-					else atmosphere:GetAttribute("HubDecay") or atmosphere.Decay,
-				Glare = if raid then 5 else (atmosphere:GetAttribute("HubGlare") or atmosphere.Glare) :: number,
-				Haze = if raid then 2.4 else (atmosphere:GetAttribute("HubHaze") or atmosphere.Haze) :: number,
-			})
-			skyTween = nextSky
-			nextSky:Play()
-		end
-	end
-	ReplicatedStorage:GetAttributeChangedSignal("Raid"):Connect(refreshSky)
-	player:GetAttributeChangedSignal("InRound"):Connect(refreshSky)
-	refreshSky()
 
 	-- (the red "Murderer is close" vignette is gone: it showed even with the knife away, and the
 	-- round reads cleaner without it. This screen layer still carries the Flash white-out.)

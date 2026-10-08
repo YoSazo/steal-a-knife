@@ -268,31 +268,6 @@ local function flash(text: string?, strength: number, duration: number)
 	Debris:AddItem(gui, duration + 0.1)
 end
 
--- Chunks flying off something that broke (gates, barricades): real little parts, client-only
-local function debris(position: Vector3, color: Color3, material: Enum.Material, count: number)
-	for _ = 1, count do
-		local chunk = Instance.new("Part")
-		chunk.Size = Vector3.new(math.random(4, 10) / 10, math.random(4, 10) / 10, math.random(4, 14) / 10)
-		chunk.CFrame = CFrame.new(
-			position + Vector3.new(math.random(-20, 20) / 10, math.random(0, 30) / 10, math.random(-20, 20) / 10)
-		) * CFrame.Angles(math.random() * 6, math.random() * 6, math.random() * 6)
-		chunk.Color = color
-		chunk.Material = material
-		chunk.CanCollide = true
-		chunk.CanQuery = false
-		chunk.CanTouch = false
-		chunk.AssemblyLinearVelocity = Vector3.new(math.random(-30, 30), math.random(15, 40), math.random(-30, 30))
-		chunk.AssemblyAngularVelocity = Vector3.new(math.random(-10, 10), math.random(-10, 10), math.random(-10, 10))
-		chunk.Parent = workspace
-		Debris:AddItem(chunk, 3)
-		task.delay(2.2, function()
-			if chunk.Parent then
-				TweenService:Create(chunk, TweenInfo.new(0.7), { Transparency = 1 }):Play()
-			end
-		end)
-	end
-end
-
 -- A quick burst of light
 local function lightFlash(position: Vector3, color: Color3, brightness: number, range: number, duration: number)
 	local holder = anchorAt(position)
@@ -713,36 +688,6 @@ local handlers: { [string]: (...any) -> () } = {
 		Effects.Sound(Sounds.Unsheath, position, 1)
 	end,
 
-	-- Raids ----------------------------------------------------------------------------------------
-	GateHit = function(position: Vector3, amount: number)
-		Effects.Burst(position + Vector3.new(0, 2, 0), Color3.fromRGB(255, 170, 60), 18, 18, 0.5)
-		Effects.Sound(Sounds.GateHit, position, 0.6)
-		Effects.FloatText(
-			position + Vector3.new(math.random(-4, 4), 5, 0),
-			`-{math.floor(amount)}`,
-			Color3.fromRGB(255, 120, 80)
-		)
-	end,
-	GateBreak = function(position: Vector3, color: Color3)
-		Effects.Burst(position, color, 80, 35, 1.2)
-		debris(position, Color3.fromRGB(70, 66, 78), Enum.Material.Metal, 16)
-		lightFlash(position, color, 8, 40, 0.8)
-		Effects.Sound(Sounds.GateBreak, position, 1)
-		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if root and (root.Position - position).Magnitude < 60 then
-			Effects.Shake(5, 0.6)
-		end
-	end,
-	GateReforge = function(position: Vector3, color: Color3)
-		Effects.Burst(position, color, 40, 12, 0.8)
-		Effects.Sound(Sounds.Unsheath, position, 0.8)
-	end,
-	GateRepair = function(position: Vector3, color: Color3)
-		Effects.Burst(position, Color3.fromRGB(120, 255, 140), 30, 10, 0.6)
-		Effects.FloatText(position + Vector3.new(0, 6, 0), "REPAIRED!", Color3.fromRGB(120, 255, 140))
-		Effects.Sound(Sounds.GateHit, position, 0.4)
-		local _ = color
-	end,
 	-- A boss wakes up (GuardService sendChaser, before the chase): eyes glow red, a rising sting, and
 	-- a roar once they're on their feet
 	BossWake = function(model: Model, duration: number)
@@ -802,18 +747,6 @@ local handlers: { [string]: (...any) -> () } = {
 		Effects.Burst(position + Vector3.new(0, 3, 0), color, 40, 16, 0.7)
 		Effects.Sound(Sounds.Lunge, position, 1)
 	end,
-	Recovered = function(position: Vector3, color: Color3)
-		Effects.Burst(position + Vector3.new(0, 3, 0), color, 50, 20, 0.8)
-		Effects.Sound(Sounds.Cash, position, 0.8)
-	end,
-	Knockdown = function(position: Vector3)
-		Effects.Burst(position + Vector3.new(0, 2, 0), Color3.fromRGB(255, 230, 120), 30, 14, 0.6)
-		Effects.Sound(Sounds.Knockdown, position, 0.8)
-		Effects.FloatText(position + Vector3.new(0, 4, 0), "KO!", Color3.fromRGB(255, 230, 120))
-	end,
-	BurglarSpawn = function(position: Vector3)
-		smoke(position)
-	end,
 
 	-- Powers ---------------------------------------------------------------------------------------
 	Flash = function(origin: Vector3, look: Vector3)
@@ -843,10 +776,6 @@ local handlers: { [string]: (...any) -> () } = {
 			Effects.Sound(Sounds.Reveal, nil, 0.5)
 			flash("REBIRTH!", 0.3, 2)
 		end
-	end,
-	WallsUp = function(_who: Player, position: Vector3)
-		smoke(position)
-		Effects.Sound(Sounds.GateBreak, position, 0.6)
 	end,
 	CashBurst = function(at: Vector3?, cash: number, automatic: boolean?)
 		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?

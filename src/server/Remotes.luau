@@ -36,7 +36,6 @@ local Remotes = {
 	Charge = event("Charge"), -- client -> server: (charging: boolean) winding up a throw
 	Debug = func("Debug"), -- Studio-only client -> server test commands
 	Tutorial = event("Tutorial"), -- client -> server: (step) the first-minute guide moved on
-	RepairGate = event("RepairGate"), -- client -> server: () hold-to-repair your gate in a raid
 	ClaimIndex = func("ClaimIndex"), -- client -> server: (knifeName | "All") -> ok
 	Welcome = event("Welcome"), -- server -> client: ({ Offline, Away, Streak, DailyReady }) on join
 	ClaimDaily = func("ClaimDaily"), -- client -> server: () -> (ok, message) today's login-streak reward

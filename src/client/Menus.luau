@@ -680,7 +680,6 @@ function Menus.Init()
 		local specs: { Test } = {
 			{ Text = "Bot: Murd", Command = "BotRound", Arg = "Murderer", Color = Color3.fromRGB(200, 40, 50) },
 			{ Text = "Bot: Inno", Command = "BotRound", Arg = "Innocent", Color = Color3.fromRGB(70, 150, 240) },
-			{ Text = "Raid", Command = "Raid", Arg = nil, Color = Color3.fromRGB(230, 90, 40) },
 			{ Text = "Coffin", Command = "Coffin", Arg = "Epic", Color = Color3.fromRGB(170, 90, 255) },
 		}
 		for _, spec in specs do

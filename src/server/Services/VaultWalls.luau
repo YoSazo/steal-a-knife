@@ -1,13 +1,11 @@
 --!strict
--- A vault's clean block-built frame for its wall tier (GameConfig.Walls). VaultModel supplies
--- stepped pillars, panel roofs and themed hardware; this service preserves walls and raid state.
--- Everything is built in the vault's own frame (local +Z = the open side facing the plaza). The
--- gate's invisible "Blocker" is what raiders hit and what clients make solid for everyone but the
--- owner (see client/Raid, which also fades the "Pane" lasers as the gate loses health). Gate state
--- lives in attributes on the Blocker: Owner, Health, MaxHealth, Open, Tier.
+-- A vault's clean block-built frame for its wall look (GameConfig.Walls). VaultModel supplies
+-- stepped pillars, panel roofs and themed hardware. Everything is built in the vault's own frame
+-- (local +Z = the open side facing the plaza). The gate gap holds an invisible, walk-through
+-- "Blocker" (tag VaultGate) that marks the vault: attributes Owner, OwnerName, Tier, Floors
+-- (client/BaseMarkers, BaseService's rebuild checks).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local VaultModel = require(ReplicatedStorage.Shared.VaultModel)
@@ -49,7 +47,7 @@ local function block(
 end
 
 -- Builds (or rebuilds) a vault's frame into `folder`. `color` is the vault's own colour (the strip
--- along the base and the gate's health bar), `tierIndex` its wall tier.
+-- along the base), `tierIndex` its wall look.
 function VaultWalls.Build(folder: Folder, frame: CFrame, color: Color3, tierIndex: number, floors: number?): Built
 	folder:ClearAllChildren()
 	-- The frame rises with the vault: up past the top floor's railing
@@ -74,46 +72,17 @@ function VaultWalls.Build(folder: Folder, frame: CFrame, color: Color3, tierInde
 	end
 	VaultModel.BuildFrame(folder, frame, color, tier.Color, floorCount, tierIndex)
 
-	-- The open front keeps its existing invisible raid target and health UI.
+	-- The open front: an invisible, walk-through marker across the gate gap
 	local gate = Instance.new("Model")
 	gate.Name = "Gate"
 	local gateZ = HALF_D - T / 2
-	-- What actually blocks (on clients) and what raiders hit
 	local blocker =
 		block(gate, "Blocker", Vector3.new(GATE_HALF * 2, GATE_H, 1.2), at(0, GATE_H / 2, gateZ), Color3.new(), nil)
 	blocker.Transparency = 1
-	blocker.CanCollide = false -- each client decides (the owner walks through, everyone else bumps)
+	blocker.CanCollide = false
 	blocker.CanQuery = true
 	blocker.CanTouch = false
 	blocker:AddTag("VaultGate")
-	for _, d in gate:GetDescendants() do
-		if d:IsA("BasePart") then
-			d:SetAttribute("BaseTransparency", d.Transparency)
-		end
-	end
-	-- Physical raid board; only live title and health are SurfaceGui text.
-	local healthAnchor = Instance.new("Part")
-	healthAnchor.Name, healthAnchor.Size = "GateHealthFace", Vector3.new(10, 2.3, 0.2)
-	healthAnchor.CFrame = blocker.CFrame * CFrame.new(0, GATE_H / 2 + 2.6, 0)
-	healthAnchor.Anchored, healthAnchor.Transparency = true, 1
-	healthAnchor.CanCollide, healthAnchor.CanQuery, healthAnchor.CanTouch = false, false, false
-	healthAnchor:SetAttribute("Keep", true)
-	healthAnchor.Parent = blocker
-	local board, healthFace = WorldSignModel.Attach("GateHealth", healthAnchor, Enum.NormalId.Back)
-	WorldSignModel.SetVisible(board, false)
-	local gui = WorldSignModel.Surface(blocker, healthFace, "GateHealth", 120)
-	gui.Enabled = false
-	local name = WorldSignModel.LiveText(gui, "Title", tier.Name)
-	name.Size = UDim2.fromScale(1, 0.48)
-	local amount = WorldSignModel.LiveText(gui, "Health", tostring(tier.GateHealth))
-	amount.Position, amount.Size = UDim2.fromScale(0, 0.52), UDim2.fromScale(1, 0.45)
-	-- Keep the Fill path for callers, without drawing a flat GUI bar.
-	local back = Instance.new("Frame")
-	back.Name, back.BackgroundTransparency, back.Size = "Back", 1, UDim2.fromScale(1, 1)
-	back.Parent = gui
-	local fill = Instance.new("Frame")
-	fill.Name, fill.BackgroundTransparency, fill.Size = "Fill", 1, UDim2.fromScale(1, 1)
-	fill.Parent = back
 	gate.PrimaryPart = blocker
 	gate.Parent = folder
 
@@ -124,24 +93,8 @@ function VaultWalls.Build(folder: Folder, frame: CFrame, color: Color3, tierInde
 		end
 	end
 	blocker:SetAttribute("Tier", tierIndex)
-	blocker:SetAttribute("MaxHealth", tier.GateHealth)
-	blocker:SetAttribute("Health", tier.GateHealth)
 	blocker:SetAttribute("Floors", floorCount)
 	return { Gate = gate, Blocker = blocker, Height = FRAME_H, BackHeight = FRAME_H }
-end
-
--- Broken gates: the lasers switch off (and come back when it reforges); the posts stay
-function VaultWalls.SetOpen(gate: Model, open: boolean)
-	for _, d in gate:GetDescendants() do
-		if d:IsA("BasePart") and d.Name ~= "Blocker" and not d:GetAttribute("Keep") then
-			local base = d:GetAttribute("BaseTransparency")
-			d.Transparency = if open then 1 else (if type(base) == "number" then base else 0)
-		end
-	end
-	local blocker = gate:FindFirstChild("Blocker")
-	if blocker then
-		blocker:SetAttribute("Open", open or nil)
-	end
 end
 
 return VaultWalls

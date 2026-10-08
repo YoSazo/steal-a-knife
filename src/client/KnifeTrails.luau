@@ -267,7 +267,6 @@ function KnifeTrails.Init()
 		-- aiming a throw, or being pulled by a knife aura)
 		local camera = workspace.CurrentCamera
 		local busy = (character and character:GetAttribute("ChargeStart") ~= nil)
-			or player:GetAttribute("AuraSlow") ~= nil
 		if camera and not busy then
 			local target = BASE_FOV + MAX_EXTRA_FOV * rush
 			fovNow += (target - fovNow) * math.min(1, dt * 4)

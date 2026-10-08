@@ -114,11 +114,6 @@ local rackModels: { [Player]: Folder } = {}
 -- Set by InventoryService: called when the owner uses a prompt on one of their mounted knives
 BaseService.OnSellPrompt = nil :: ((Player, number) -> ())?
 BaseService.OnEquipPrompt = nil :: ((Player, string) -> ())?
--- Set by RaidService: someone held "Steal" on a knife on another player's plate (Blood Moon)
-BaseService.OnStealPrompt = nil :: ((thief: Player, owner: Player, item: string, coffinPlate: number?) -> ())?
--- Set by RaidService: a vault's walls were rebuilt (new tier, or the vault changed hands)
-BaseService.OnWallsBuilt = nil :: ((MapService.BaseSite, Player?) -> ())?
-BaseService.OnUpgradeWalls = nil :: ((Player) -> ())?
 -- Set by StealService: the owner pressed Place on their next empty plate while carrying a knife
 BaseService.OnPlacePrompt = nil :: ((Player, number) -> ())?
 -- Set by UpgradeService: the owner pressed Upgrade Base at the sign by their gate
@@ -327,9 +322,6 @@ function BaseService.RefreshWalls(base: MapService.BaseSite)
 	-- The vault's sign rides on top of its back wall
 	base.SignPart.CFrame = base.Frame * CFrame.new(0, built.BackHeight + 2.4, -22)
 	WorldSignModel.MoveAttached(base.SignPart)
-	if BaseService.OnWallsBuilt then
-		BaseService.OnWallsBuilt(base, owner)
-	end
 end
 
 -- A pen plate at the spot its owner tapped (profile.Spots), kept inside the pen's grass
@@ -471,13 +463,8 @@ function BaseService.RefreshWalkSpeed(player: Player)
 		if player:GetAttribute("Carrying") then
 			speed *= GameConfig.CarrySpeedMultiplier
 		end
-		-- Pushing through the aura of someone else's powerful knives
-		local aura = player:GetAttribute("AuraSlow")
-		if type(aura) == "number" then
-			speed *= aura
-		end
 	end
-	-- Caught in a bear trap
+	-- Stunned (a Murderer's Flash / Snare)
 	local stunnedUntil = player:GetAttribute("StunnedUntil")
 	if type(stunnedUntil) == "number" and workspace:GetServerTimeNow() < stunnedUntil then
 		speed = 0
@@ -788,21 +775,6 @@ function BaseService.RefreshRack(player: Player)
 			})
 			open:SetAttribute("Owner", player.UserId)
 			open:SetAttribute("CoffinPlate", slot)
-			-- Thief Moon: anyone else can grab the whole coffin (client/Raid lights this up for them)
-			local steal = makePrompt(pad, {
-				ActionText = "Steal coffin",
-				ObjectText = `{parsed.Knife.Rarity} Coffin`,
-				HoldDuration = GameConfig.Raid.StealTime,
-				KeyboardKeyCode = Enum.KeyCode.F,
-			})
-			steal:SetAttribute("Owner", player.UserId)
-			steal:SetAttribute("Steal", true)
-			steal.Enabled = false
-			steal.Triggered:Connect(function(who)
-				if who ~= player and BaseService.OnStealPrompt then
-					BaseService.OnStealPrompt(who, player, item, slot)
-				end
-			end)
 		elseif
 			unlocked
 			and index
@@ -831,24 +803,6 @@ function BaseService.RefreshRack(player: Player)
 			)
 			-- Steal an Egg's labels: the same small size on screen, shown only when you're close
 			tag.Size = UDim2.fromOffset(130, if perk then 62 else 52)
-			if item ~= BaseService.ProtectedItem(player) then
-				-- (on the knife's own feet, so the prompt hops with it; RaidService checks the thief
-				-- is really in this pen)
-				local steal = makePrompt(penModel.PrimaryPart or pad, {
-					ActionText = "Steal",
-					ObjectText = Items.DisplayName(item),
-					HoldDuration = GameConfig.Raid.StealTime,
-					KeyboardKeyCode = Enum.KeyCode.F,
-				})
-				steal:SetAttribute("Owner", player.UserId)
-				steal:SetAttribute("Steal", true)
-				steal.Enabled = false
-				steal.Triggered:Connect(function(who)
-					if who ~= player and BaseService.OnStealPrompt then
-						BaseService.OnStealPrompt(who, player, item)
-					end
-				end)
-			end
 		elseif unlocked and index and item and parsed and not PenMode.On() then
 			local model = KnifeModel.Build(item, true)
 			-- Bigger items float bigger (a Colossal towers over its pedestal)
@@ -885,24 +839,6 @@ function BaseService.RefreshRack(player: Player)
 				end
 			end)
 			sellSign(folder, base, player, slot, index, item)
-			-- Blood Moon: other players can steal it (client/Raid only lights this up for them, and only
-			-- while the moon is up; the knife you fight with can't be taken)
-			if item ~= BaseService.ProtectedItem(player) then
-				local steal = makePrompt(pad, {
-					ActionText = "Steal",
-					ObjectText = name,
-					HoldDuration = GameConfig.Raid.StealTime,
-					KeyboardKeyCode = Enum.KeyCode.F,
-				})
-				steal:SetAttribute("Owner", player.UserId)
-				steal:SetAttribute("Steal", true)
-				steal.Enabled = false
-				steal.Triggered:Connect(function(who)
-					if who ~= player and BaseService.OnStealPrompt then
-						BaseService.OnStealPrompt(who, player, item)
-					end
-				end)
-			end
 		elseif unlocked and not index and not PenMode.On() then
 			-- (a pen has no plates to aim for: walking in with a knife drops it in - StealService)
 			-- An empty plate takes the knife you're carrying (any of them, not just the next one)
@@ -1220,7 +1156,7 @@ function BaseService.Init()
 	Players.PlayerRemoving:Connect(releaseBase)
 	DataService.Changed:Connect(function(player: Player, profile: DataService.Profile)
 		BaseService.RefreshWalkSpeed(player)
-		-- New walls go up when the tier changes (upgrade, rebirth)
+		-- New walls go up when the tier changes
 		local base = baseOf[player]
 		if base then
 			MapService.SetWheelTier(base, profile.TreadmillLevel)
@@ -1333,7 +1269,7 @@ function BaseService.Init()
 				if boosted then
 					multiplier *= GameConfig.BoostMultiplier
 				end
-				-- The free 2x (survivor / Thief Moon) just ran out: that's when a Cash Potion feels best
+				-- The free 2x (survivor) just ran out: that's when a Cash Potion feels best
 				if hadBoost[player] and not boosted and not DataService.BoostActive(profile, "Cash") then
 					Offers.Show(
 						player,

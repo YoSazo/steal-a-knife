@@ -4,9 +4,7 @@
 -- biome's look over the last stretch of each zone (Roblox has one sun; this is how the concept art's glow is faked). The plaza / vaults and the
 -- Courtyard keep the base look the server sets up (MapService.buildLighting).
 --
--- This is the one place the mood lives. Rounds get their own flat indoor profile; the Blood Moon's red
--- sky (client/Atmosphere) takes the Atmosphere over while it's up and hands it back through the
--- Hub* attributes this keeps current.
+-- This is the one place the mood lives. Rounds get their own flat indoor profile.
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -250,21 +248,14 @@ local function apply(target: Mood)
 	end
 	local atmosphere = find("Atmosphere")
 	if atmosphere then
-		-- Where the Blood Moon's sky returns to when it sets
-		atmosphere:SetAttribute("HubColor", target.Color)
-		atmosphere:SetAttribute("HubDecay", target.Decay)
-		atmosphere:SetAttribute("HubGlare", target.Glare)
-		atmosphere:SetAttribute("HubHaze", target.Haze)
-		if not ReplicatedStorage:GetAttribute("Raid") or player:GetAttribute("InRound") then
-			set(atmosphere, {
-				Density = target.Density,
-				Offset = target.Offset,
-				Color = target.Color,
-				Decay = target.Decay,
-				Glare = target.Glare,
-				Haze = target.Haze,
-			})
-		end
+		set(atmosphere, {
+			Density = target.Density,
+			Offset = target.Offset,
+			Color = target.Color,
+			Decay = target.Decay,
+			Glare = target.Glare,
+			Haze = target.Haze,
+		})
 	end
 	set(find("BloomEffect"), target.Bloom)
 	set(find("SunRaysEffect"), target.Rays)
@@ -322,7 +313,7 @@ function ZoneLighting.Init()
 		local lastKey: number? = nil
 		RunService.RenderStepped:Connect(function()
 			local here, key = moodHere()
-			if key ~= lastKey or ReplicatedStorage:GetAttribute("Raid") == true then
+			if key ~= lastKey then
 				lastKey = key
 				apply(here)
 			end

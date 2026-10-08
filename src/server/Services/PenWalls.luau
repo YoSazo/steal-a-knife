@@ -1,9 +1,8 @@
 --!strict
 -- A pen's fence (Shared/PenMode): Steal an Egg's low orange X-rail fence with dark posts all round,
--- a gap in the front middle for the gate. Same contract as VaultWalls, so raids keep working: an
--- invisible "Blocker" across the gate gap (tag VaultGate; attributes Owner, Health, MaxHealth, Open,
--- Tier, Floors) that clients make solid for everyone but the owner (client/Raid), and invisible
--- walls above the fence so nobody hops over it. Built in the pen's frame (local +Z = the gate side).
+-- a gap in the front middle for the gate. Same contract as VaultWalls: an invisible, walk-through
+-- "Blocker" across the gate gap marks the pen (tag VaultGate; attributes Owner, Tier, Floors,
+-- PenDepth). Built in the pen's frame (local +Z = the gate side).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
@@ -69,7 +68,6 @@ end
 -- fence moves out as the pen grows. `frame` is the full-size pen's centre.
 function PenWalls.Build(folder: Folder, frame: CFrame, _color: Color3, tierIndex: number, depth: number?): Built
 	folder:ClearAllChildren()
-	local tier = GameConfig.Walls[math.clamp(tierIndex, 1, #GameConfig.Walls)]
 	local length = depth or GameConfig.Pens.Depth
 	local hx, hz = GameConfig.Pens.Width / 2, length / 2
 	local shift = GameConfig.Pens.Depth / 2 - hz -- (towards the gate side)
@@ -102,7 +100,7 @@ function PenWalls.Build(folder: Folder, frame: CFrame, _color: Color3, tierIndex
 		Toy.Dress(post, nil, 1)
 	end
 	-- (no invisible walls: hop the fence from any side, like Steal an Egg's pens)
-	-- the gate: the raid target, solid on clients for everyone but the owner
+	-- the gate: an invisible marker across the gap
 	local gate = Instance.new("Model")
 	gate.Name = "Gate"
 	local blocker = block(gate, "Blocker", Vector3.new(GATE_HALF * 2, GATE_H, 1.2), at(0, GATE_H / 2, hz), Color3.new())
@@ -114,8 +112,6 @@ function PenWalls.Build(folder: Folder, frame: CFrame, _color: Color3, tierIndex
 	gate.PrimaryPart = blocker
 	gate.Parent = folder
 	blocker:SetAttribute("Tier", tierIndex)
-	blocker:SetAttribute("MaxHealth", tier.GateHealth)
-	blocker:SetAttribute("Health", tier.GateHealth)
 	blocker:SetAttribute("Floors", 1)
 	blocker:SetAttribute("PenDepth", length)
 	return { Gate = gate, Blocker = blocker, Height = FENCE_H, BackHeight = FENCE_H }

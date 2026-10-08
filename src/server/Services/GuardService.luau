@@ -1456,7 +1456,7 @@ local function onSteal(player: Player, boss: Boss, slot: Slot)
 	slot.Item = nil
 	slot.Out = true
 	clearDisplay(slot)
-	StealService.StartCarry(player, "Knife", item, nil, { Zone = boss.Index, Slot = slot.Index })
+	StealService.StartCarry(player, "Knife", item, { Zone = boss.Index, Slot = slot.Index })
 	sendChaser(boss, player)
 end
 

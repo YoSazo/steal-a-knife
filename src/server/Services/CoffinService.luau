@@ -113,16 +113,16 @@ end
 -- boss's (the knife stays a secret till it opens). Vault servers: straight onto the wall.
 -- Returns the item, or nil when there's no free plate (the caller pays its worth instead).
 -- `source` names it in the toast ("a gift", "the Lucky Wheel") and in analytics; `quiet` skips the
--- toast (the round haul has its own card). `force` (paid for with Robux): with no free plate it
--- still arrives, unsealed, waiting in storage until there's room (DataService.AddKnife).
-function CoffinService.Give(player: Player, item: string, source: string, quiet: boolean?, force: boolean?): string?
+-- toast (the round haul has its own card). With no free plate the caller pays replacement value;
+-- paid coffins must not bypass their clock by arriving unsealed in storage.
+function CoffinService.Give(player: Player, item: string, source: string, quiet: boolean?): string?
 	local profile = DataService.Get(player)
 	local parsed = Items.Parse(item)
-	if not profile or not parsed or (not DataService.FreePlate(profile) and not force) then
+	if not profile or not parsed or not DataService.FreePlate(profile) then
 		return nil
 	end
 	local rarity = parsed.Knife.Rarity
-	if PenMode.Coffins() and DataService.FreePlate(profile) then
+	if PenMode.Coffins() then
 		local plate = 0
 		DataService.Update(player, function(p)
 			plate = DataService.AddKnife(p, item)
@@ -158,19 +158,13 @@ function CoffinService.Give(player: Player, item: string, source: string, quiet:
 end
 
 -- A mystery knife of this rarity (a 4% chance of one rarity up), rolled with the player's luck
-function CoffinService.GiveRarity(
-	player: Player,
-	rarity: string,
-	source: string,
-	quiet: boolean?,
-	force: boolean?
-): string?
+function CoffinService.GiveRarity(player: Player, rarity: string, source: string, quiet: boolean?): string?
 	local profile = DataService.Get(player)
 	if not profile then
 		return nil
 	end
 	local item = Items.RollKnife(rng, rarity, CoffinService.Luck(player, profile))
-	return CoffinService.Give(player, item, source, quiet, force)
+	return CoffinService.Give(player, item, source, quiet)
 end
 
 -- A coffin of this rarity, or its worth in cash (GameConfig.CoffinValue) when there's no room.

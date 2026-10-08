@@ -396,13 +396,11 @@ function Moves.Init()
 	CollectionService:GetInstanceAddedSignal("Guard"):Connect(function(guard)
 		track(guard)
 	end)
-	-- Round bots (Studio bot rounds) and raid burglars
-	for _, tag in { "RoundBot", "Burglar" } do
-		for _, model in CollectionService:GetTagged(tag) do
-			track(model)
-		end
-		CollectionService:GetInstanceAddedSignal(tag):Connect(track)
+	-- Round bots
+	for _, model in CollectionService:GetTagged("RoundBot") do
+		track(model)
 	end
+	CollectionService:GetInstanceAddedSignal("RoundBot"):Connect(track)
 
 	Remotes:WaitForChild("Anim").OnClientEvent:Connect(function(model: Model, name: string)
 		if model and model.Parent then

@@ -224,10 +224,6 @@ function Hud.Init()
 			}
 		end
 		prizeBadge.Visible = false
-		local raidEnds = ReplicatedStorage:GetAttribute("RaidEndsAt")
-		if type(raidEnds) == "number" then
-			return { Text = `<font color="#FF5050">🌕 BLOOD MOON</font> ends in {Ui.clock(raidEnds - now)}` }
-		end
 		if phase == "Results" then
 			return { Text = `<font color="#FFE678">{status}</font>` }
 		end
@@ -705,37 +701,6 @@ function Hud.Init()
 		end
 	end)
 
-	-- Thief Moon rewards: the case badge pops in mid-screen for a moment
-	Remotes.Effect.OnClientEvent:Connect(function(kind: string, rarity: any)
-		if kind ~= "MoonReward" then
-			return
-		end
-		local badge = new("ImageLabel", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.42),
-			Size = UDim2.fromOffset(150, 150),
-			BackgroundTransparency = 1,
-			Image = CartoonArt.CaseReward,
-			ScaleType = Enum.ScaleType.Fit,
-			ZIndex = 20,
-		}, gui)
-		local caption = Ui.label({
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.fromScale(0.5, 1),
-			Size = UDim2.fromOffset(240, 34),
-			Text = `{rarity} CASE!`,
-			ZIndex = 21,
-		}, badge)
-		Ui.textStroke(caption, 2)
-		local scale = new("UIScale", { Scale = 0.2 }, badge)
-		TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = Ui.phoneScale() }):Play()
-		task.delay(1.8, function()
-			TweenService:Create(badge, TweenInfo.new(0.3), { ImageTransparency = 1 }):Play()
-			task.wait(0.3)
-			badge:Destroy()
-		end)
-	end)
-
 	-- Results banner (big, centre) for the few seconds between a round and the next intermission
 	local banner = Ui.label({
 		Font = Ui.SPOOKY,
@@ -747,7 +712,7 @@ function Hud.Init()
 		Visible = false,
 	}, gui)
 
-	-- Announcements: big banners across the top for rare unboxes, raids, thefts, rebirths --------
+	-- Announcements: big banners across the top for rare coffins, rebirths -----------------------
 	local announceHolder = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 178),

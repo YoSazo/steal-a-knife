@@ -2,9 +2,9 @@
 -- Fighting in the hub. Everyone carries their equipped knife (or the free Rusty Shank) as a Tool:
 -- click to swing (stab / slash combo), hold right-click / Q / LT / the Throw button to crank back
 -- and release to throw - MM2 style. Clients animate instantly; damage lands on the clip's Impact
--- frame and thrown knives leave the hand on its Release frame. Guards take damage; so do whatever
--- RaidService registers in Targets (vault gates, burglars, and players - who only get knocked down,
--- never hurt). All hits are decided here from Tool.Activated and Remotes.Ability.
+-- frame and thrown knives leave the hand on its Release frame. Guards take damage; so does whatever
+-- registers in Targets (StealService: a carrier, whose knife gets knocked loose). All hits are
+-- decided here from Tool.Activated and Remotes.Ability.
 -- Also owns deaths: every character goes limp with a death cry and collapses (Mad Murderer style).
 
 local Players = game:GetService("Players")

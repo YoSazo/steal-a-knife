@@ -440,15 +440,6 @@ Monetization.Products = {
 		Icon = "⚡",
 		Color = rgb(80, 200, 255),
 	},
-	{
-		Key = "BloodMoon",
-		Id = 3716624594,
-		Price = 99,
-		Name = "Summon the Blood Moon",
-		Description = "Raise the Blood Moon for the whole server: the biomes close and everyone can steal from each other's vaults. Everyone sees who did it.",
-		Icon = "🌕",
-		Color = rgb(200, 40, 50),
-	},
 } :: { Product }
 
 -- Paid random items (Roblox policy): a coffin bought with Robux (the Starter Pack's). Refused for
@@ -484,6 +475,7 @@ Monetization.Retired = {
 	[3716624540] = 129, -- Gift: 10 Wheel Spins (gifts to a player)
 	[3716624541] = 39, -- Gift: Luck Potion (gifts to a player)
 	[3716624592] = 25, -- Refill Free Chest (the free chest)
+	[3716624594] = 99, -- Summon the Blood Moon (raids)
 } :: { [number]: number }
 
 Monetization.PassByKey = {} :: { [string]: Pass }

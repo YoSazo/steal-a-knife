@@ -3,8 +3,7 @@
 --   * passes: checked on join and on purchase, mirrored to the player as attribute Pass_<Key>
 --     (server-set, so it can't be faked). Other services just read the attribute:
 --       DoubleCash / VIP   BaseService.IncomeMultiplier      FastWheel  BaseService training
---       Fortified          BaseService.RefreshWalls          VIP        Rewards free chest, the tag
---       MurdererLuck       RoundService.pickMurderer
+--       VIP                the tag (client/Overheads)        Luck       CoffinService.Luck
 --   * products: MarketplaceService.ProcessReceipt. Every PurchaseId is granted once (kept in the
 --     profile) and the save is written before Roblox is told it's granted; if that save fails the
 --     receipt is retried later and the stored PurchaseId stops it being granted twice.
@@ -23,7 +22,6 @@ local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local Offers = require(script.Parent.Offers)
-local RaidService = require(script.Parent.RaidService)
 local Gamble = require(script.Parent.Gamble)
 local GuardService = require(script.Parent.GuardService)
 local Fuel = require(script.Parent.Fuel)
@@ -165,9 +163,13 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 			DataService.AddCash(player, value, "robux_coffin_value")
 			table.insert(got, Format.Cash(value))
 		else
-			-- (paid for: it always arrives - with no free plate it waits in storage, unsealed)
-			CoffinService.GiveRarity(player, product.Coffin, "the Starter Pack", true, true)
-			table.insert(got, `a {product.Coffin} {if PenMode.Coffins() then "Coffin" else "knife"}`)
+			if CoffinService.GiveRarity(player, product.Coffin, "the Starter Pack", true) then
+				table.insert(got, `a {product.Coffin} {if PenMode.Coffins() then "Coffin" else "knife"}`)
+			else
+				local value = coffinValue(product.Coffin)
+				DataService.AddCash(player, value, "robux_coffin_value")
+				table.insert(got, `{Format.Cash(value)} (no room for a coffin)`)
+			end
 		end
 	end
 	if product.Spins then
@@ -297,9 +299,6 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 			Gamble.AddSpins(player, 3) -- nothing to restore: never lose their Robux
 			table.insert(got, "3 wheel spins (your streak was fine)")
 		end
-	elseif key == "BloodMoon" then
-		RaidService.Summon(player)
-		table.insert(got, "the Blood Moon")
 	end
 	if product.OneTime then
 		DataService.Update(player, function(p)

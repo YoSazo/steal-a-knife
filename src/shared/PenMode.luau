@@ -2,7 +2,7 @@
 -- Pens instead of vaults (Steal an Egg): one flat fenced pen per player, knife characters hopping
 -- around inside, coffins waiting on the ground. GameConfig.Pens.Enabled switches it for real;
 -- in Studio, ReplicatedStorage attribute DebugPenLayout = true (read when the map is built).
--- What changes with pens (everything else - gate, raids, income, the guide - works as with vaults):
+-- What changes with pens (income and the guide work as with vaults):
 --   * MapService builds GameConfig.Pens.Count pens, bigger and flat (no storeys, no plates)
 --   * BaseService shows knives as hopping characters, sized by rarity (Pens.Scale)
 --   * walking into your pen with a knife drops it in (StealService), and collects your money

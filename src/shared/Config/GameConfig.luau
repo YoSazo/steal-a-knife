@@ -190,15 +190,12 @@ local GameConfig = {
 	-- The Robux trail (Monetization pass "PhantomTrail"): void knives and a x10 multiplier
 	PhantomTrail = { Name = "Phantom Trail", Knife = "VoidEdge", Multiplier = 10, Color = Color3.fromRGB(170, 70, 255) },
 
-	-- Vault walls: the better your walls, the taller and scarier your vault (everyone walks past
-	-- them on the plaza) and the longer its gate holds out in a raid. Raiders chip the gate with
-	-- knife hits and throws; it can always be broken, it just takes better knives or more friends.
+	-- Vault wall looks (profile.WallLevel; no longer sold: players keep the tier they bought while
+	-- raids existed). The frame, pillars and trim of a vault (VaultWalls / VaultModel).
 	Walls = {
 		{
 			Name = "Starter Lasers",
 			Height = 16,
-			GateHealth = 400,
-			Cost = 0,
 			Color = Color3.fromRGB(60, 64, 110),
 			Material = Enum.Material.WoodPlanks,
 			Trim = Color3.fromRGB(255, 170, 70),
@@ -206,8 +203,6 @@ local GameConfig = {
 		{
 			Name = "Twin Lasers",
 			Height = 21,
-			GateHealth = 1500,
-			Cost = 150000,
 			Color = Color3.fromRGB(60, 70, 120),
 			Material = Enum.Material.Cobblestone,
 			Trim = Color3.fromRGB(120, 200, 255),
@@ -215,8 +210,6 @@ local GameConfig = {
 		{
 			Name = "Iron Grid",
 			Height = 26,
-			GateHealth = 5000,
-			Cost = 2e6,
 			Color = Color3.fromRGB(70, 74, 96),
 			Material = Enum.Material.DiamondPlate,
 			Trim = Color3.fromRGB(220, 230, 240),
@@ -224,8 +217,6 @@ local GameConfig = {
 		{
 			Name = "Red Alert",
 			Height = 31,
-			GateHealth = 15000,
-			Cost = 25e6,
 			Color = Color3.fromRGB(80, 40, 70),
 			Material = Enum.Material.Limestone,
 			Trim = Color3.fromRGB(255, 70, 80),
@@ -233,8 +224,6 @@ local GameConfig = {
 		{
 			Name = "Plasma Wall",
 			Height = 36,
-			GateHealth = 40000,
-			Cost = 400e6,
 			Color = Color3.fromRGB(60, 30, 100),
 			Material = Enum.Material.Basalt,
 			Trim = Color3.fromRGB(190, 90, 255),
@@ -242,8 +231,6 @@ local GameConfig = {
 		{
 			Name = "Void Field",
 			Height = 41,
-			GateHealth = 100000,
-			Cost = 6e9,
 			Color = Color3.fromRGB(20, 30, 60),
 			Material = Enum.Material.Glass,
 			Trim = Color3.fromRGB(90, 255, 240),
@@ -251,8 +238,6 @@ local GameConfig = {
 		{
 			Name = "Golden Gate",
 			Height = 46,
-			GateHealth = 250000,
-			Cost = 100e9,
 			Color = Color3.fromRGB(90, 80, 60),
 			Material = Enum.Material.Marble,
 			Trim = Color3.fromRGB(255, 215, 90),
@@ -260,29 +245,14 @@ local GameConfig = {
 		{
 			Name = "Star Shield",
 			Height = 52,
-			GateHealth = 600000,
-			Cost = 1.5e12,
 			Color = Color3.fromRGB(40, 26, 90),
 			Material = Enum.Material.Glass,
 			Trim = Color3.fromRGB(255, 120, 240),
 		},
 	},
 
-	-- The Blood Moon (RaidService): the biomes close and vaults can be robbed for Duration seconds
-	Raid = {
-		-- OFF (2026-10-05): it came too often and players just used it to run on their wheels. The
-		-- moon never rises, can't be summoned, and isn't sold; the code stays for a future event.
-		Enabled = false,
-		Duration = 90,
-		Every = 3, -- every this many intermissions
-		StartBefore = 140, -- rises this many seconds before the murder round
-		MinPlayers = 2, -- someone to steal from
-		StealTime = 1.6, -- hold to lift a knife off someone's plate
-		StealsPerVault = 2, -- a vault loses at most this many knives per moon
-	},
-
-	-- Rebirth: start over (cash, knives, slots, Speed, wheel, walls) for a permanent multiplier on
-	-- income and Speed training, a title, and better luck in cases
+	-- Rebirth: start over (cash, knives, slots, Speed, wheel) for a permanent multiplier on
+	-- income and Speed training, a title, and better coffin luck
 	Rebirth = {
 		BaseCost = 2e9,
 		CostGrowth = 6,

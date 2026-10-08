@@ -95,22 +95,6 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			Net.Remotes.Effect:FireAllClients("Deposit", player, "Epic")
 		end
 		return true, `{nextTrail.Name}! Your wheel now trains Speed x{nextTrail.Multiplier}`
-	elseif kind == "Walls" then
-		local nextTier = GameConfig.Walls[profile.WallLevel + 1]
-		if not nextTier then
-			return false, "Your walls are as good as they get!"
-		end
-		if not DataService.TrySpend(player, nextTier.Cost, "upgrade_walls") then
-			return short(player, nextTier.Cost)
-		end
-		DataService.Update(player, function(p)
-			p.WallLevel += 1
-		end)
-		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if root then
-			Net.Remotes.Effect:FireAllClients("WallsUp", player, root.Position)
-		end
-		return true, `{nextTier.Name}! Your gate now holds {nextTier.GateHealth} damage`
 	elseif kind == "Rebirth" then
 		local cost = GameConfig.RebirthCost(profile.Rebirths)
 		if profile.Rebirths >= GameConfig.Rebirth.Max then
@@ -150,9 +134,8 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			p.Slots = GameConfig.StartingSlots
 			p.Speed = 0
 			p.TreadmillLevel = 1
-			p.WallLevel = 1
 		end)
-		BaseService.RefreshRack(player) -- (the walls rebuild themselves when WallLevel changes)
+		BaseService.RefreshRack(player)
 		local title = GameConfig.RebirthTitle(profile.Rebirths) or ""
 		Net.Announce(
 			`{player.DisplayName} REBIRTHED! They are now a {title} (x{1 + profile.Rebirths * GameConfig.Rebirth.IncomeBonus} income)`,
@@ -221,9 +204,6 @@ function UpgradeService.Init()
 		return ok, message
 	end
 	Net.Remotes.Purchase.OnServerInvoke = buy
-	BaseService.OnUpgradeWalls = function(player: Player)
-		buy(player, "Walls")
-	end
 	BaseService.OnUpgradeBase = function(player: Player)
 		buy(player, "Slot")
 	end

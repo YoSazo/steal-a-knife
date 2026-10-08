@@ -1,7 +1,6 @@
 --!strict
--- Things in the hub that hub knives can hit besides the watchmen: vault gates and burglars during
--- raids, and other players when knockdowns are allowed. CombatService asks here after it has
--- checked the guards; RaidService registers everything. Each target says whether a given attacker
+-- Hub targets besides bosses: StealService registers eligible carriers for knockdowns.
+-- CombatService asks here after checking the bosses. Each target says whether a given attacker
 -- may hit it right now and what happens when they do.
 
 local Targets = {}
