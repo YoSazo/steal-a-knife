@@ -100,8 +100,9 @@ the next boss you can't outrun yet; the win card + ~30 shoes flying into the Spe
   DataService.AddKnife / RemoveKnife (never table.insert/remove on Knives). Any empty plate takes a carried knife
   ("Place Knife" on every free plate). One owner prompt per knife (Equip); selling is the thin Tsunami-style
   "SELL" sign by each plate (BaseService.sellSign, ClickDetector, precious knives need a second tap).
-- Rule: a murder round never moves you in the hub. RoundService saves your spot (BaseService.SetReturnSpot) and
-  the next TeleportHome (surviving, or respawning after dying in the round) puts you back there.
+- The round is the night (Steal An Egg): GameConfig.NightWarning s before it, carriers are warned; at the start a
+  carried boss knife goes back to its wall (StealService.EndForRound); afterwards everyone comes home to their pen
+  (no saved spot) and every boss stash re-rolls at once (GuardService.RestockAll, "NEW COFFINS!" banner).
 - Boss hits throw you like a ragdoll (Ragdoll.Tumble: server goes limp + sets player TumblePush/Tumbling, the
   owning client applies the fling in client/Tumble; the carry speed check skips Tumbling). Bosses are
   GameConfig.BossScale big, grab and throw without stopping, and search (not quit) when you Mimic/Vanish

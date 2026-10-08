@@ -42,12 +42,12 @@ FLOOR_REBIRTHS = [0, 1, 3]  # rebirths needed for the 2nd, 3rd, 4th floor
 REBIRTH_BASE, REBIRTH_GROWTH = 2e9, 6
 REBIRTH_INCOME, REBIRTH_SPEED = 0.5, 0.3
 REBIRTH_NEEDS = ["Mythic", "Godly", "Godly", "Celestial", "Celestial", "Cosmic"]  # then Cosmic (was Legendary first)
-INTERMISSION, ROUND = 360, 150
+INTERMISSION, ROUND = 180, 120
 # A stolen knife's income doesn't count until its coffin's murder-round wait is over
 # (GameConfig.Coffins.Rounds; was 0/1/1/2/2/3/4/5).
-COFFIN_ROUNDS = {"Common": 0, "Rare": 1, "Epic": 2, "Legendary": 4, "Mythic": 8,
-                 "Godly": 14, "Celestial": 24, "Cosmic": 36}
-STEP_SHARE, MIN_SPEED_PRIZE = 0.05, 300  # RoundPrize.StepShare / MinSpeed (was 0.2: see GameConfig)
+COFFIN_ROUNDS = {"Common": 0, "Rare": 1, "Epic": 3, "Legendary": 7, "Mythic": 13,
+                 "Godly": 24, "Celestial": 40, "Cosmic": 60}
+STEP_SHARE, MIN_SPEED_PRIZE = 0.03, 300  # RoundPrize.StepShare / MinSpeed (was 0.2: see GameConfig)
 WIN_CHANCE = 0.65  # rough share of rounds a player ends up on the winning side
 ZONE_DEPTHS = [90, 130, 170, 210, 250, 290, 330, 370]
 FIRST_BOSS_Z = 50

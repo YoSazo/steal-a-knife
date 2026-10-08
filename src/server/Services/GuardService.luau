@@ -2015,6 +2015,24 @@ function GuardService.RestockNear(player: Player): string?
 	return if any then GameConfig.MonsterName(found.Boss.Index) else nil
 end
 
+-- The night reset (after every murder round, RoundService): every boss's stash is re-rolled at once
+-- - fresh coffins everywhere, Steal An Egg's egg reset - except a slot someone is still carrying
+-- off. Returns how many slots were refreshed.
+function GuardService.RestockAll(): number
+	local count = 0
+	for _, boss in bosses do
+		for _, slot in boss.Slots do
+			if not slot.Out then
+				local item = rollItem(boss)
+				setSlot(boss, slot, item)
+				announceIfRare(boss, item)
+				count += 1
+			end
+		end
+	end
+	return count
+end
+
 -- Studio tests (DebugService "BossSteal"): stand the player by a stocked slot of this boss's wall
 -- and steal it, exactly as the prompt would
 function GuardService.DebugSteal(player: Player, zone: number): boolean

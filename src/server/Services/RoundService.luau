@@ -47,6 +47,7 @@ local Disguises = require(script.Parent.Disguises)
 local Revolver = require(script.Parent.Revolver)
 local StuckKnives = require(script.Parent.StuckKnives)
 local StealService = require(script.Parent.StealService)
+local GuardService = require(script.Parent.GuardService)
 local RoundBots = require(script.Parent.RoundBots)
 local Analytics = require(script.Parent.Analytics)
 local CoffinService = require(script.Parent.CoffinService)
@@ -2123,7 +2124,8 @@ local function startRound(participants: { Player })
 			player:SetAttribute("RoundTeleport", nil)
 			continue
 		end
-		StealService.Suspend(player) -- handed back when they return to this spot
+		-- The night: a boss's knife you're carrying goes back to its wall (the 10 s warning said so)
+		StealService.EndForRound(player)
 		local isMurderer = round.Killers[player] == true
 		if not isMurderer then
 			table.insert(round.Innocents, player)
@@ -2136,13 +2138,9 @@ local function startRound(participants: { Player })
 			p.Luck = if isMurderer then 0 else p.Luck + GameConfig.MurdererMeter.PerRound
 		end)
 
-		-- Back to exactly this spot when the round is over (BaseService.TeleportHome)
-		local here = character:GetPivot()
-		local facing = here.LookVector * Vector3.new(1, 0, 1)
-		BaseService.SetReturnSpot(
-			player,
-			if facing.Magnitude > 0.1 then CFrame.lookAt(here.Position, here.Position + facing) else here
-		)
+		-- (no saved spot any more: after the round everyone comes home to their pen, like Steal An
+		-- Egg after the night - BaseService.TeleportHome)
+		BaseService.SetReturnSpot(player, nil)
 		local target = spawns[(i - 1) % #spawns + 1]
 		-- Off any seat first (a seat weld would hold you in the hub), and out of a boss tumble
 		humanoid.Sit = false
@@ -2505,6 +2503,12 @@ local function endRound(round: Round)
 	for player in round.Names do
 		Disguises.Forget(player)
 	end
+	-- The night is over: every monster has fresh coffins, and everyone's home to race out for them
+	if GuardService.RestockAll() > 0 then
+		task.delay(1.2, function()
+			Net.Announce("🔪 NEW COFFINS! Every monster has fresh ones!", Color3.fromRGB(255, 220, 90), 2)
+		end)
+	end
 
 	local murdererName = if murderer
 		then `{round.Names[murderer] or "?"} ({murderer.DisplayName})`
@@ -2610,6 +2614,7 @@ local function loop()
 		ReplicatedStorage:SetAttribute("PrizeSeed", seed)
 		local startedAt = os.clock()
 		local endsAt = startedAt + GameConfig.IntermissionTime
+		local warned = false
 		while os.clock() < endsAt do
 			task.wait(1)
 			if RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugSkip") then
@@ -2632,6 +2637,24 @@ local function loop()
 				setPhase("Intermission", endsAt - os.clock(), INTERMISSION_STATUS)
 			elseif ReplicatedStorage:GetAttribute("Status") ~= INTERMISSION_STATUS then
 				setPhase("Intermission", endsAt - os.clock(), INTERMISSION_STATUS)
+			end
+			-- The night is coming (Steal An Egg's 10 s warning): anyone carrying a boss's coffin hears
+			-- it goes back if it isn't home in time
+			local left = endsAt - os.clock()
+			if left > GameConfig.NightWarning + 2 then
+				warned = false
+			elseif not warned and left <= GameConfig.NightWarning then
+				warned = true
+				for _, player in Players:GetPlayers() do
+					if player:GetAttribute("InRound") then
+						continue
+					end
+					if StealService.BossCarry(player) then
+						Net.Notify(player, "🔪 Murder round in 10! Get it home or it goes back!", "bad")
+					else
+						Net.Notify(player, "🔪 Murder round in 10 seconds!", "info")
+					end
+				end
 			end
 		end
 

@@ -79,11 +79,13 @@ local GameConfig = {
 		-- Longer waits for the rarer ones (was 0/1/1/2/2/3/4/5: a Cosmic coffin opened in under
 		-- 45 minutes). At the ~8.5 min murder-round cycle: Epic ~17m, Legendary ~34m, Mythic ~1.1h,
 		-- Godly ~2h, Celestial ~3.4h, Cosmic ~5h - a real wait, the way Steal An Egg's top eggs are.
-		Rounds = { Common = 0, Rare = 1, Epic = 2, Legendary = 4, Mythic = 8, Godly = 14, Celestial = 24, Cosmic = 36 },
+		-- (x1.7 when rounds came 1.7x as often - IntermissionTime 360 -> 180, RoundTime 150 -> 120 -
+		-- so the waits stay about the same in real time; Rare stays 1 round, now ~5 min)
+		Rounds = { Common = 0, Rare = 1, Epic = 3, Legendary = 7, Mythic = 13, Godly = 24, Celestial = 40, Cosmic = 60 },
 		CommonSeconds = 20,
 		TutorialSeconds = 6, -- a new player's first coffins: a short countdown, then it opens
 		WinRounds = 2,
-		OfflineSecondsPerRound = 900,
+		OfflineSecondsPerRound = 540, -- (a round every ~5 min now: was 900)
 		AnnounceFrom = "Mythic", -- coffins of this rarity and up are announced to the server
 	},
 	Daily = DAILY,
@@ -312,7 +314,7 @@ local GameConfig = {
 		-- a boss outright, so the round prize alone carried a player through the whole game in a
 		-- couple of hours - a committed kid found it "too easy"; the wheel is the engine now,
 		-- tools/pacing_sim.py validates this against Steal An Egg-paced milestones)
-		StepShare = 0.05,
+		StepShare = 0.03, -- (0.05 at a round every ~8.5 min: rounds come 1.7x as often now)
 		PastLastShare = 0.03, -- past the last boss: of your Speed
 		MinSpeed = 300,
 		JackpotChance = 0.1, -- a JACKPOT round: x3
@@ -546,7 +548,12 @@ local GameConfig = {
 	-- Rounds
 	-- (was 180: the first real players reset out of 5 rounds within seconds - every ~3.5 min pulled
 	-- them off the steal/vault loop they were enjoying. The hub is where progress happens.)
-	IntermissionTime = 360,
+	-- The cycle is Steal An Egg's heartbeat now (their ~5 min day + night): the round IS the night -
+	-- carried boss knives go back, everyone comes home, every stash restocks - and rounds are pure
+	-- gain (they unlock coffins and pay Speed), so they can come often. (Was 360 / 150: a round
+	-- every ~8.5 min, back when a round could cost you a knife.)
+	IntermissionTime = 180,
+	NightWarning = 10, -- "Murder round in 10!" - a carried boss knife goes back when it starts
 	-- A first-time player's first knife home pulls the next round in to at most NewcomerRoundIn (s),
 	-- but never to a hub break shorter than NewcomerMinBreak (s) for everyone else. (Were 100 / 240:
 	-- new players landed their first knife ~1 min in and left ~2 min in, before any round - only 37%
@@ -554,9 +561,9 @@ local GameConfig = {
 	NewcomerRoundIn = 45,
 	FirstRoundMurdererUnder = 1200, -- a player's first round makes them the Murderer if they've played less than this (s)
 	NewcomerSheriffRounds = 2, -- then their next rounds (2nd..this+1th) make them the Sheriff
-	NewcomerMinBreak = 180,
+	NewcomerMinBreak = 90, -- (was 180: the whole break is 180 now)
 	RoundJoinGrace = 90, -- nobody is pulled into a round in their first this many seconds in a server
-	RoundTime = 150,
+	RoundTime = 120,
 	ResultsTime = 8,
 	MurdererGrace = 10, -- seconds before the Murderer gets their knife (same as the classic)
 	MinPlayers = 2,

@@ -786,6 +786,21 @@ function StealService.Suspend(player: Player)
 	}
 end
 
+-- A murder round is starting (the night, Steal An Egg style): a boss's knife you're still carrying
+-- goes back on its wall - you saw the timer - and that chase is over. Anything else you hold is
+-- kept for you (Suspend) and handed back once you're home.
+function StealService.EndForRound(player: Player)
+	local carry = carriers[player]
+	if not carry then
+		return
+	end
+	if carry.Boss then
+		endCarry(player, false, nil, "round_reset")
+	else
+		StealService.Suspend(player)
+	end
+end
+
 function StealService.Resume(player: Player)
 	local held = suspended[player]
 	if not held or player:GetAttribute("InRound") then

@@ -423,7 +423,9 @@ function BaseService.TeleportHome(player: Player)
 			task.wait(0.4)
 			local root = character:FindFirstChild("HumanoidRootPart") :: BasePart?
 			if not root or (root.Position - destination.Position).Magnitude < 30 then
-				if restored and BaseService.OnReturnedHome then
+				-- (hands back anything kept for them over a round - restored spot or their pen)
+				local _ = restored
+				if BaseService.OnReturnedHome then
 					BaseService.OnReturnedHome(player)
 				end
 				return
