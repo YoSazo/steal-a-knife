@@ -1141,6 +1141,39 @@ function Hud.Init()
 	Ui.SpeedIcon = speedArt -- (the round prize's shoes fly into it: client/Transitions)
 	local cashArt = Ui.art(stats, "Cash", { Image = CartoonArt.Cash })
 	Ui.CashIcon = cashArt
+	-- The ➕ (Steal An Egg / Steal from the Rich): tap the Speed or the Cash readout to open the shop
+	-- on that tab. (The Speed art has its + drawn in; Cash gets a badge.)
+	local cashPlus = Ui.label({
+		Name = "Plus",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.82, 0.82),
+		Size = UDim2.fromScale(0.5, 0.5),
+		Text = "+",
+		Font = Enum.Font.FredokaOne,
+		TextScaled = true,
+		TextColor3 = Color3.new(1, 1, 1),
+		BackgroundColor3 = Color3.fromRGB(40, 190, 70),
+		BackgroundTransparency = 0,
+		ZIndex = cashArt.ZIndex + 1,
+	}, cashArt)
+	Ui.new("UICorner", { CornerRadius = UDim.new(1, 0) }, cashPlus)
+	Ui.new("UIStroke", { Thickness = 2, Color = Color3.fromRGB(20, 60, 30) }, cashPlus)
+	local function opensShop(art: GuiObject, tab: string)
+		local tap = Ui.new("TextButton", {
+			Name = "OpenShop",
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			Text = "",
+			ZIndex = art.ZIndex + 2,
+		}, art) :: TextButton
+		tap.Activated:Connect(function()
+			if Ui.OpenShop then
+				Ui.OpenShop(tab)
+			end
+		end)
+	end
+	opensShop(cashArt, "Money")
+	opensShop(speedArt, "Speed")
 	for _, text in { speedLabel, cashLabel } do
 		text.TextScaled = false
 		text.Font = Enum.Font.LuckiestGuy
@@ -1154,14 +1187,15 @@ function Hud.Init()
 	speedLabel.TextColor3 = Color3.new(1, 1, 1)
 	local function placeStats()
 		-- rows: icon size, text size, row height
-		local icon, size, row = 46, 42, 54
+		-- (bigger than before - 46 / 42 / 54 - so a young kid reads them at a glance)
+		local icon, size, row = 60, 54, 68
 		local x = 12
 		if Ui.Phone then
 			local _, bounds = Ui.bounds()
 			local stick = if bounds.Y < 500 then 70 else 120
 			-- as big as the screen allows (Steal An Egg keeps them huge on phones too)
 			-- Steal An Egg keeps these small and tucked in: two short rows
-			size = math.clamp(math.floor(bounds.Y * 0.085), 26, 44) -- big and chunky, like theirs
+			size = math.clamp(math.floor(bounds.Y * 0.1), 30, 52) -- big and chunky, like theirs
 			icon, row = math.floor(size * 1.1), math.floor(size * 1.2)
 			x = 25 + stick + 12 -- just right of the thumbstick
 		end

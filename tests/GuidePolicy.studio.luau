@@ -10,38 +10,19 @@ return function(t)
 	t.test("first delivery remains coached", function()
 		t.expect.equal(visible(), true)
 	end)
-	t.test("three real deliveries retire the whole routine", function()
-		t.expect.equal(
-			visible(function(s)
-				s.Learned.delivery = 3
-			end),
-			false
-		)
+	t.test("the core loop stays coached however many deliveries", function()
+		-- (steal -> run home -> place it: the big line and the red trail never retire)
+		for _, count in { 1, 3, 50 } do
+			t.expect.equal(
+				visible(function(s)
+					s.Learned.delivery = count
+					s.Started = true
+					s.Age = 30
+				end),
+				true
+			)
+		end
 		t.expect.equal(Policy.Skill("carry_place"), "delivery")
-	end)
-	t.test("after one delivery, a familiar route is only a brief cue", function()
-		t.expect.equal(
-			visible(function(s)
-				s.Learned.delivery = 1
-			end),
-			false
-		)
-		t.expect.equal(
-			visible(function(s)
-				s.Learned.delivery = 1
-				s.Age = 2
-				s.Started = true
-			end),
-			true
-		)
-		t.expect.equal(
-			visible(function(s)
-				s.Learned.delivery = 1
-				s.Age = 4
-				s.Started = true
-			end),
-			false
-		)
 	end)
 	t.test("starting the correct action steps the words aside", function()
 		t.expect.equal(

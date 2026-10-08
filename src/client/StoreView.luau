@@ -307,6 +307,15 @@ function View.Build(actions: any): Frame
 	player:GetAttributeChangedSignal("InRound"):Connect(visibility)
 	visibility()
 	selectTab("Featured")
+	Ui.OpenShop = function(tab: string)
+		if player:GetAttribute("InRound") then
+			return
+		end
+		selectTab(if pages[tab] then tab else "Featured")
+		if not frame.Visible then
+			Ui.Menu.Toggle(frame)
+		end
+	end
 	return frame
 end
 return View

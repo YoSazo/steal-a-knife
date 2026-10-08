@@ -322,7 +322,8 @@ function Guide.Init()
 	local displayAction: NextAction.Action? = nil
 	local function fit()
 		local _, bounds = Ui.bounds()
-		label.TextSize = if Ui.Phone then 19 else 22
+		-- (the objective: big, the first thing a kid reads - was 19 / 22)
+		label.TextSize = if Ui.Phone then 28 else 36
 		local strip = Ui.topStrip()
 		local fade = if strip then 16 else FADE
 		local room = if strip then strip.W else math.min(900, bounds.X - 24)
@@ -336,11 +337,11 @@ function Guide.Init()
 			width = TextService:GetTextSize(plain, label.TextSize, label.Font, Vector2.new(4000, 100)).X
 		end
 		if width > lane then
-			-- shorter words first (down to 14), never two lines
-			label.TextSize = math.max(14, math.floor(label.TextSize * lane / width))
+			-- shorter words first (down to 20), never two lines
+			label.TextSize = math.max(20, math.floor(label.TextSize * lane / width))
 			width = TextService:GetTextSize(plain, label.TextSize, label.Font, Vector2.new(4000, 100)).X
 		end
-		local height = if Ui.Phone then 34 else 38
+		local height = if Ui.Phone then 44 else 54
 		if strip then
 			height = math.min(height, strip.H)
 			band.Position = UDim2.fromOffset(strip.X, strip.Y + (strip.H - height) / 2)
@@ -726,8 +727,12 @@ function Guide.Init()
 		end
 		local action = current
 		-- (the trail on the ground is for new players: after a few murder rounds the DO line is enough)
-		local beginner = ((player:GetAttribute("RoundsPlayed") or 0) :: number) < 3
-			and ((player:GetAttribute("Rebirths") or 0) :: number) == 0
+		-- (except the core loop - steal, run home, place it - whose red trail is always on, like
+		-- Steal An Egg / Steal from the Rich)
+		local coreLoop = skill == "delivery"
+		local beginner = coreLoop
+			or ((player:GetAttribute("RoundsPlayed") or 0) :: number) < 3
+				and ((player:GetAttribute("Rebirths") or 0) :: number) == 0
 		if not visible or not action or not beginner or Ui.gui:GetAttribute("GuideArrows") == false then
 			Arrows.Hide("Guide")
 			return

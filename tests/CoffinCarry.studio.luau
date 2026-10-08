@@ -14,7 +14,10 @@ return function()
 	task.wait(1.5)
 	local drop = workspace.Map.DroppedKnives:FindFirstChild("DroppedCoffin")
 	assert(drop and drop:GetAttribute("SealedDrop"), "Knockdown revealed an open knife")
-	assert(drop:FindFirstChildWhichIsA("ProximityPrompt", true).ObjectText == "Rare Coffin", "Drop exposed its hidden contents")
+	assert(
+		drop:FindFirstChildWhichIsA("ProximityPrompt", true).ObjectText == "Rare Coffin",
+		"Drop exposed its hidden contents"
+	)
 	p.Character:PivotTo(CFrame.new(drop.PrimaryPart.Position + Vector3.new(0, 2, 0)))
 	task.wait(0.2)
 	assert(rem.Debug:InvokeServer("Pickup", drop), "Registered pickup failed")

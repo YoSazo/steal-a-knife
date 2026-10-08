@@ -426,6 +426,8 @@ Ui.Panels = {} :: { [string]: GuiObject }
 -- The Speed shoe in the bottom-left readout (client/Hud), for the round prize's flying shoes
 Ui.SpeedIcon = nil :: GuiObject?
 Ui.CashIcon = nil :: GuiObject? -- (a cash prize flies into it)
+-- Opens the shop on a tab ("Featured" / "Speed" / "Money"): the ➕ on the Speed / Cash readouts
+Ui.OpenShop = nil :: ((tab: string) -> ())?
 Layout.bind(Ui.root)
 player:WaitForChild("PlayerGui").ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor
 -- Phones: the free strip of Roblox's top bar, between its buttons on the left and our shift-lock

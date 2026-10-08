@@ -79,15 +79,15 @@ function GuidePolicy.Visible(s: State): boolean
 	if s.Id == "new_tier" or s.Id == "gift" or s.Id == "murderer_grace" or s.Id == "round_stunned" then
 		return s.Age < 8
 	end
+	-- The core loop (steal -> run home -> place it) is always shown, however often you've done it:
+	-- the one big line and the red trail are how a young kid always knows what to do next
+	if s.Skill == "delivery" then
+		return true
+	end
 	local count = if s.Skill then s.Learned[s.Skill] or 0 else 0
 	local limit = s.Skill and GuidePolicy.Limit(s.Skill)
 	if limit and count >= limit then
 		return false
-	end
-	-- After the first delivery, familiar routes become brief cues. A new control remains coached
-	-- until demonstrated, but its words can step aside once the player starts the right action.
-	if s.Skill == "delivery" and count > 0 then
-		return s.Age < (if s.Started then 3 else 8)
 	end
 	if s.Started and s.Age >= 3 then
 		return false
