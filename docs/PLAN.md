@@ -9,6 +9,26 @@ faster → steal deeper. The round is also the stage where you flex your best kn
 
 Test every step in Studio before starting the next (nothing here was tested yet).
 
+## Status (cloud session, 2026-10-08: code done, NOT tested in Studio)
+
+Done, one commit each (type-checked and formatted, not played):
+- Item 2, the switch: pens + coffins everywhere, Pens.Count = 8, both A/B tests gone (prize_pick
+  removed). **Not done yet:** deleting the dormant vault code (VaultModel, VaultWalls, vault layout,
+  BaseService vault branches) and the pen upgrade costs still reading vault `FloorCosts`.
+- Item 3: no knife loot / AtRisk / Insurance (refund once), Classic and Double Trouble off (code
+  dormant), map vote gone.
+- Item 1: shells only for zones 1-2; deep biomes back to the dirt wall + ManorDecor props + floor
+  dressing; ~71k lines of shell data deleted.
+- Item 5: Zzz above the creature, speed sign clear of it. Item 8b: plaza knife monument gone.
+- Item 29: Monster names (GameConfig `Monster`, `GameConfig.MonsterName`) and every goal line.
+- Item 28: round moments shown in rounds, bigger top line / toasts, pen wording, rewrites. **Not
+  done yet:** the two-line prize layout + moving the x2 pill, shop descriptions (item 20).
+- Item 4: powers off at the source (`Items.Parse` Perk = nil), PowerShowcase gone. **Not done yet:**
+  deleting the dormant power code; the per-rarity kill effect.
+
+Check first in Studio: a deep biome (walls, props, lair), a creature lair (Zzz, speed sign), a
+solo bot round (no loot, no powers, round messages showing, the VS card), the 8-pen hub.
+
 ---
 
 ## 1. Fix the foundation
