@@ -556,7 +556,13 @@ local function setAsleep(guard: Guard, asleep: boolean)
 			-- (the round characters' little emoji sat hidden inside its head)
 			local scale = guard.Model:GetScale()
 			gui.Size = UDim2.fromScale(3 * scale, 4 * scale)
-			gui.StudsOffset = Vector3.new(1.5 * scale, 4 * scale, 0)
+			-- Above the whole sleeping body, not offset from the synthetic Head anchor: on a giant
+			-- creature that offset landed inside its head. (World space, so it never swings into the
+			-- body as the camera moves.)
+			local cf, size = guard.Model:GetBoundingBox()
+			local top = cf.Position.Y + size.Y / 2
+			gui.StudsOffset = Vector3.zero
+			gui.StudsOffsetWorldSpace = Vector3.new(0, top - (head :: BasePart).Position.Y + 2 * scale, 0)
 			gui.MaxDistance = 260
 			label.Font = Enum.Font.FredokaOne
 			label.RichText = true
@@ -923,25 +929,35 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 	-- this boss. Each player's own client turns it green with a tick once they have it (Hud).
 	do
 		local need = ((config :: any).SpeedNeeded or 0) :: number
-		-- on the side towards the middle of the runway, facing the way the boss faces
-		local towardMiddle = if (chairFrame * CFrame.new(7, 0, 0)).Position.X ^ 2
-				< (chairFrame * CFrame.new(-7, 0, 0)).Position.X ^ 2
-			then 7
-			else -7
+		-- On the side towards the middle of the runway, facing the way the boss faces. A chair boss is
+		-- person-sized: 7 studs to the side clears him. A giant creature lies right over that spot,
+		-- so its sign stands clear of its body (about its height out) and higher and bigger, so a kid
+		-- sees it before reaching the creature.
+		local creatureHeight = if config.Creature
+			then GameConfig.CreatureHeight.First
+				+ ((table.find(Knives.Rarities, config.Rarity) or 1) - 1) * GameConfig.CreatureHeight.Step
+			else nil
+		local side = if creatureHeight then creatureHeight * 0.7 + 4 else 7
+		local towardMiddle = if (chairFrame * CFrame.new(side, 0, 0)).Position.X ^ 2
+				< (chairFrame * CFrame.new(-side, 0, 0)).Position.X ^ 2
+			then side
+			else -side
 		local base = chairFrame * CFrame.new(towardMiddle, 0, -2.5)
+		local poleHeight = if creatureHeight then 9 else 5
+		local boardSize = if creatureHeight then Vector3.new(11, 5.3, 0.5) else Vector3.new(7, 3.4, 0.4)
 		local navy = Color3.fromRGB(22, 34, 70)
 		local pole = Instance.new("Part")
 		pole.Name = "SpeedSignPole"
 		pole.Anchored = true
-		pole.Size = Vector3.new(0.6, 5, 0.6)
-		pole.CFrame = base * CFrame.new(0, 2.5, 0)
+		pole.Size = Vector3.new(0.6, poleHeight, 0.6)
+		pole.CFrame = base * CFrame.new(0, poleHeight / 2, 0)
 		pole.Color = navy
 		pole.Parent = model
 		local board = Instance.new("Part")
 		board.Name = "SpeedSign"
 		board.Anchored = true
-		board.Size = Vector3.new(7, 3.4, 0.4)
-		board.CFrame = base * CFrame.new(0, 6, 0)
+		board.Size = boardSize
+		board.CFrame = base * CFrame.new(0, poleHeight + boardSize.Y / 2 - 1.5, 0)
 		board.Color = navy
 		board.Parent = model
 		board:SetAttribute("Need", need)

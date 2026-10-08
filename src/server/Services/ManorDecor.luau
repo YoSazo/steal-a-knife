@@ -17,7 +17,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Props = require(ReplicatedStorage.Shared.Props)
 local Toy = require(ReplicatedStorage.Shared.Toy)
-local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local ToyBlockModel = require(ReplicatedStorage.Shared.ToyBlockModel)
 local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 
@@ -1539,24 +1538,13 @@ function ManorDecor.Build(root: Instance, arena: Bounds, _hideaways: { Bounds })
 	-- The entrance: events board hanging over the start of the runway
 	eventBoard(-4, width)
 
-	-- The plaza: lamps along both sides, the giant Void Edge at the back, fireflies everywhere
+	-- The plaza: lamps along both sides, fireflies everywhere
 	fireflies(Vector3.new(0, 6, -95), Vector3.new(width - 6, 10, 170), Color3.fromRGB(255, 230, 140), 10)
 	for z = -10, -230, -32 do
 		streetLamp(Vector3.new(-half + 4, 0, z))
 		streetLamp(Vector3.new(half - 4, 0, z))
 	end
-	-- The knife monument stands in the middle of the plaza
-	local MONUMENT_Z = -105
-	local plinth = block("Plinth", Vector3.new(10, 6, 10), at(0, 3, MONUMENT_Z), DARK_STONE, Enum.Material.Slate)
-	glow(plinth, Color3.fromRGB(170, 70, 255), 30, 2)
-	local statueKnife = KnifeModel.Build("VoidEdge", true)
-	statueKnife:ScaleTo(7)
-	statueKnife:PivotTo(CFrame.new(0, 6 + 7 * 0.9, MONUMENT_Z) * CFrame.Angles(0, math.rad(90), 0))
-	statueKnife.Name = "Statue"
-	statueKnife.Parent = folder
-	for _, x in { -8, 8 } do
-		torch(Vector3.new(x, 0, MONUMENT_Z + 6))
-	end
+	-- (no knife monument in the plaza any more: it was clutter in the middle of the walk home)
 
 	manor(Vector3.new(0, 0, arena.MaxZ + 6))
 end
