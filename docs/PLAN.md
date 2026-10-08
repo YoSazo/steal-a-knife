@@ -7,12 +7,12 @@ murder round feed it. If it doesn't, cut it. Think 5-year-old: one obvious thing
 Speed - the only Speed, item 30 - give Winner's Luck, give a fuse charge) → it earns cash → cash
 buys pen upgrades → faster → steal deeper. The round is also the stage where you flex your best knife.
 
-Test every step in Studio before starting the next (nothing here was tested yet).
+Test every step in Studio before starting the next.
 
-## Status (cloud session, 2026-10-08): code done, NOT tested in Studio
+## Status (cloud session, 2026-10-08): code done, first Studio pass below
 
 Everything below was written in a cloud session with no Studio: it is type-checked (luau-lsp) and
-formatted (StyLua), never played. **Desktop session: go over each one in Studio, on desktop AND on
+formatted (StyLua). The first Studio pass is under "Studio test". **Desktop session: go over each one in Studio, on desktop AND on
 phone sizes (the owner will give the phone dimensions), and refine what doesn't look or feel
 right.** Each is its own commit on `main-eftg5w`, so a bad one can be reverted alone.
 
@@ -51,12 +51,40 @@ Done:
   instead of Roblox Fire. Every pen is the same full size (`PenMode.Depth` = `Pens.Depth`; the
   growing pen left a cut-off strip).
 
-**Test first in Studio (desktop + phone):** the hub (the 6 + 1 + 1 pens, wheels in front of each
-gate, walking out of your gate, the Lucky Wheel, nothing left inside pens); a deep biome; a creature lair (Z's, sign); a solo
-bot round (no loot, no powers, the round messages, the 10 s warning, coming home to your pen, the
-NEW COFFINS restock); the HUD (big objective line, the trail after several deliveries, tapping
-Speed / Cash); the sprite fires (sizes are guesses: torch 2.2, brazier 4, vent 6); early pacing
-(the 2nd wheel should take ~10 min of a new player's income).
+### Studio test (desktop session, phone at 640 x 320), 2026-10-08
+
+Tested and working:
+- **Hub:** all 8 pens at full size (6 along the back, 1 on each side), wheels and signs in front of
+  each gate, the Lucky Wheel in the middle, the entrance board. Console clean.
+- **The night:** a carried coffin goes back to its boss when the round starts, the role reveal
+  shows, everyone comes home to their pen after the round, all 40 boss slots restock. (The Studio
+  skip looked broken but wasn't: a test profile with no knife can't join a round, so it starts a
+  new intermission.)
+- **Sprite fire:** no Roblox Fire left in the deep biomes.
+- **Pacing:** pacing_sim matches (Rare 0.34 h, Epic 1.2 h, Legendary 4.0 h, Mythic 8.2 h).
+
+Fixed in Studio:
+- **Zone pop-up cut off on phones** ("The Inferno🔥 · home of..." lost the monster). Now just the
+  monster and the speed it needs: "🔥 LAVA SALAMANDER · Needs 950M 👟" (item 29).
+- **Guide DO line clipped on phones** ("Tap the screen to draw your gun!" overflowed Roblox's
+  ~280 px top bar). When it doesn't fit, it drops just below the bar at full screen width. The
+  phone status line does the same.
+- **Z's everywhere:** every sleeping monster down the runway showed screen-sized Z's out to
+  260 studs. Now visible within 110 studs, matching the client's animation range.
+- **Three messages at once on join:** the "Come back tomorrow" line is gone (not part of the loop).
+- An unused `info` in `showKill` (lint).
+
+Found, not fixed yet:
+- **Tapping Speed / Cash may not open the shop on phones:** the block sits inside the zone Roblox's
+  dynamic thumbstick claims, so touches there can turn into movement. Still checking with a
+  real tap; if it's blocked, move the block clear of the thumbstick or put the shop on its own
+  button.
+- **Round maps look dark on phones** (goes with the murder maps item).
+- **A ~9 hour gap between pen slots 16 and 17** in pacing_sim (look at `Pens.SlotCosts`).
+
+Still to test (needs real input): tapping Speed / Cash on a real phone, the chase glow ending at
+the safe line, the deeper-monster fling, the trail after several deliveries, a creature's speed
+sign up close.
 
 **Not started (next):** first **item 30** (rounds are the Speed: cut the Haunted Wheel, the
 survival ladder), since it changes the balance everything else sits on; then the hatch layer (items 13-17: see-through "x-ray" coffin - glass in the
