@@ -1112,6 +1112,255 @@ function ManorDecor.ClearArea(center: Vector3, halfX: number, halfZ: number)
 	end
 end
 
+-- Character on a plain floor (Steal An Egg): patches of raised studded tiles a shade lighter or
+-- darker than the floor (loose blobs and little checker crosses), clumps of grass tufts and a few
+-- flowers. Flat, walk-through, never in the way. `floor` is the floor part (its top and colour).
+local TILE = 4 -- one raised tile: 4x4 studs, on the floor's own 4-stud grid
+local FLOWER_COLORS = {
+	Color3.fromRGB(150, 200, 255),
+	Color3.fromRGB(255, 170, 70),
+	Color3.fromRGB(255, 240, 190),
+	Color3.fromRGB(255, 130, 190),
+}
+local function floorDressing(floor: BasePart, perArea: number, groundColor: Color3?, zone: number?)
+	local top = floor.Position.Y + floor.Size.Y / 2
+	local minX, maxX = floor.Position.X - floor.Size.X / 2 + 6, floor.Position.X + floor.Size.X / 2 - 6
+	local minZ, maxZ = floor.Position.Z - floor.Size.Z / 2 + 6, floor.Position.Z + floor.Size.Z / 2 - 6
+	if maxX <= minX or maxZ <= minZ then
+		return
+	end
+	local count = math.max(1, math.floor((maxX - minX) * (maxZ - minZ) / perArea))
+	local base = groundColor or floor.Color
+	-- (flowers only grow on grass; on stone, sand, lava and the rest the tufts read as pebbles)
+	local grassy = base.G > base.R * 1.3 and base.G > base.B * 1.3
+	-- (never on a boss's stage: built after the lairs clear their ground, so it keeps off by itself)
+	local lair = GameConfig.BossLair
+	local lairAt = if zone then GameConfig.BossLairCenter(zone) else nil
+	local function anywhere(): (number, number)
+		for _ = 1, 12 do
+			local x = math.floor(rng:NextNumber(minX, maxX) / TILE) * TILE + TILE / 2
+			local z = math.floor(rng:NextNumber(minZ, maxZ) / TILE) * TILE + TILE / 2
+			if
+				not lairAt
+				or math.abs(x - lairAt.X) > lair.Depth / 2 + 12
+				or math.abs(z - lairAt.Z) > lair.Width / 2 + 12
+			then
+				return x, z
+			end
+		end
+		return minX, minZ
+	end
+	local function tile(x: number, z: number, color: Color3)
+		local t = ghost(block("FloorTile", Vector3.new(TILE, 0.35, TILE), CFrame.new(x, top + 0.175, z), color))
+		t.CastShadow = false
+		Toy.Dress(t, { Enum.NormalId.Top }, 1, 0)
+	end
+	for _ = 1, count do
+		local x, z = anywhere()
+		local kind = rng:NextNumber()
+		if kind < 0.45 then
+			-- a loose blob of tiles, all one shade
+			local shade = if rng:NextNumber() < 0.5
+				then base:Lerp(Color3.new(1, 1, 1), 0.12)
+				else base:Lerp(Color3.new(0, 0, 0), 0.14)
+			local taken: { [string]: boolean } = {}
+			local cx, cz = 0, 0
+			for _ = 1, rng:NextInteger(5, 12) do
+				local key = `{cx},{cz}`
+				if not taken[key] then
+					taken[key] = true
+					tile(x + cx * TILE, z + cz * TILE, shade)
+				end
+				local dir = rng:NextInteger(1, 4)
+				cx += if dir == 1 then 1 elseif dir == 2 then -1 else 0
+				cz += if dir == 3 then 1 elseif dir == 4 then -1 else 0
+			end
+		elseif kind < 0.65 then
+			-- a little checker cross: two shades, diagonal
+			local a = base:Lerp(Color3.new(0, 0, 0), 0.12)
+			local b = base:Lerp(Color3.new(1, 1, 1), 0.1)
+			tile(x, z, a)
+			tile(x + TILE, z + TILE, a)
+			tile(x + TILE, z, b)
+			tile(x, z + TILE, b)
+		elseif kind < 0.88 or not grassy then
+			-- a clump of grass tufts
+			local green = base:Lerp(Color3.new(0, 0, 0), 0.25)
+			for _ = 1, rng:NextInteger(4, 8) do
+				local h = rng:NextNumber(0.6, 1.4)
+				local tuft = ghost(
+					block(
+						"GrassTuft",
+						Vector3.new(0.35, h, 0.35),
+						CFrame.new(x + rng:NextNumber(-2.5, 2.5), top + h / 2, z + rng:NextNumber(-2.5, 2.5)),
+						green
+					)
+				)
+				tuft.CastShadow = false
+			end
+		else
+			-- a few flowers: a stem, a cross of petals, a centre
+			for _ = 1, rng:NextInteger(2, 3) do
+				local fx, fz = x + rng:NextNumber(-2, 2), z + rng:NextNumber(-2, 2)
+				local h = rng:NextNumber(0.9, 1.6)
+				ghost(
+					block(
+						"FlowerStem",
+						Vector3.new(0.2, h, 0.2),
+						CFrame.new(fx, top + h / 2, fz),
+						base:Lerp(Color3.new(0, 0, 0), 0.3)
+					)
+				).CastShadow =
+					false
+				local petal = FLOWER_COLORS[rng:NextInteger(1, #FLOWER_COLORS)]
+				for _, size in { Vector3.new(1.4, 0.2, 0.5), Vector3.new(0.5, 0.2, 1.4) } do
+					ghost(block("FlowerPetal", size, CFrame.new(fx, top + h, fz), petal)).CastShadow = false
+				end
+				ghost(
+					block(
+						"FlowerCentre",
+						Vector3.new(0.45, 0.28, 0.45),
+						CFrame.new(fx, top + h + 0.05, fz),
+						Color3.fromRGB(255, 220, 60)
+					)
+				).CastShadow =
+					false
+			end
+		end
+	end
+end
+
+-- The same on a plain wall's inside face: raised studded tiles a shade off the wall colour (loose
+-- blobs and checker crosses) and a few vines hanging from its grass top. `toward` is a point on the
+-- side the face looks at (the plaza / runway middle).
+local function wallDressing(wall: BasePart, toward: Vector3, perArea: number)
+	local size = wall.Size
+	local alongX = size.X > size.Z -- the wall runs along X (thin in Z) or along Z (thin in X)
+	local length = if alongX then size.X else size.Z
+	local normal = if alongX
+		then Vector3.new(0, 0, if toward.Z > wall.Position.Z then 1 else -1)
+		else Vector3.new(if toward.X > wall.Position.X then 1 else -1, 0, 0)
+	local along = if alongX then Vector3.xAxis else Vector3.zAxis
+	local thick = if alongX then size.Z else size.X
+	local bottom, height = wall.Position.Y - size.Y / 2, size.Y
+	local face = wall.Position + normal * (thick / 2)
+	local count = math.max(1, math.floor(length * height / perArea))
+	local base = wall.Color
+	-- a raised tile at (u along the wall, v up it), standing proud of the face
+	local function tile(u: number, v: number, color: Color3)
+		if math.abs(u) > length / 2 - TILE / 2 or v < TILE / 2 or v > height - TILE then
+			return
+		end
+		local center = face + along * u + Vector3.new(0, bottom + v - wall.Position.Y, 0) + normal * 0.2
+		local t = ghost(
+			block(
+				"WallTile",
+				if alongX then Vector3.new(TILE, TILE, 0.4) else Vector3.new(0.4, TILE, TILE),
+				CFrame.new(center),
+				color
+			)
+		)
+		t.CastShadow = false
+		Toy.Dress(t, {
+			if alongX
+				then (if normal.Z > 0 then Enum.NormalId.Back else Enum.NormalId.Front)
+				else (if normal.X > 0 then Enum.NormalId.Right else Enum.NormalId.Left),
+		}, 1, 0)
+	end
+	local function snap(n: number): number
+		return math.floor(n / TILE) * TILE + TILE / 2
+	end
+	for _ = 1, count do
+		local u = snap(rng:NextNumber(-length / 2, length / 2))
+		local v = snap(rng:NextNumber(TILE, height - TILE * 2))
+		local kind = rng:NextNumber()
+		if kind < 0.6 then
+			local shade = if rng:NextNumber() < 0.5
+				then base:Lerp(Color3.new(1, 1, 1), 0.12)
+				else base:Lerp(Color3.new(0, 0, 0), 0.15)
+			local taken: { [string]: boolean } = {}
+			local cu, cv = 0, 0
+			for _ = 1, rng:NextInteger(4, 10) do
+				local key = `{cu},{cv}`
+				if not taken[key] then
+					taken[key] = true
+					tile(u + cu * TILE, v + cv * TILE, shade)
+				end
+				local dir = rng:NextInteger(1, 4)
+				cu += if dir == 1 then 1 elseif dir == 2 then -1 else 0
+				cv += if dir == 3 then 1 elseif dir == 4 then -1 else 0
+			end
+		elseif kind < 0.8 then
+			local a = base:Lerp(Color3.new(0, 0, 0), 0.14)
+			local b = base:Lerp(Color3.new(1, 1, 1), 0.1)
+			tile(u, v, a)
+			tile(u + TILE, v + TILE, a)
+			tile(u + TILE, v, b)
+			tile(u, v + TILE, b)
+		else
+			-- a vine hanging from the grass top, with a leaf or two off it
+			local drop = rng:NextNumber(6, math.min(18, height - 4))
+			local green = Toy.Grass:Lerp(Color3.new(0, 0, 0), 0.1)
+			local top = wall.Position.Y + size.Y / 2
+			local stem = face + along * u + normal * 0.35
+			ghost(
+				block(
+					"WallVine",
+					if alongX then Vector3.new(0.6, drop, 0.5) else Vector3.new(0.5, drop, 0.6),
+					CFrame.new(stem.X, top - drop / 2, stem.Z),
+					green
+				)
+			).CastShadow =
+				false
+			for _ = 1, rng:NextInteger(2, 4) do
+				local y = top - rng:NextNumber(1, drop)
+				local side = if rng:NextNumber() < 0.5 then -1 else 1
+				local leaf = stem + along * (side * 0.9)
+				ghost(
+					block(
+						"WallVine",
+						if alongX then Vector3.new(1.2, 0.5, 0.5) else Vector3.new(0.5, 0.5, 1.2),
+						CFrame.new(leaf.X, y, leaf.Z),
+						green:Lerp(Color3.new(1, 1, 1), 0.1)
+					)
+				).CastShadow =
+					false
+			end
+		end
+	end
+end
+
+-- A deep biome's floor, once its Codex shell is built (MapService.BuildBiomeShells): the patches take
+-- the colour of the shell's own ground (the plain floor under it is hidden), thinner than up front -
+-- the shells have floor patterns of their own, and the deep biomes are big.
+function ManorDecor.DressShellFloor(zone: number, shell: Model)
+	local floor: BasePart? = nil
+	local root = folder and folder.Parent
+	if root then
+		for _, d in root:GetDescendants() do
+			if d:IsA("BasePart") and d.Name == `Zone{zone}Floor` then
+				floor = d
+				break
+			end
+		end
+	end
+	if not floor then
+		return
+	end
+	-- the shell's ground: its biggest flat piece near the floor
+	local ground: BasePart? = nil
+	local best = 0
+	for _, d in shell:GetDescendants() do
+		if d:IsA("BasePart") and d.Transparency < 1 and d.Position.Y < 1.5 and d.Size.Y < 2 then
+			local area = d.Size.X * d.Size.Z
+			if area > best then
+				best, ground = area, d
+			end
+		end
+	end
+	floorDressing(floor, 1000, if ground then ground.Color else nil, zone)
+end
+
 -- Zones a Codex shell dresses instead (set by MapService before Build)
 ManorDecor.ShellZones = {} :: { [number]: string }
 
@@ -1121,6 +1370,31 @@ function ManorDecor.Build(root: Instance, arena: Bounds, _hideaways: { Bounds })
 	folder.Parent = root
 	local width = arena.MaxX - arena.MinX
 	local half = width / 2
+
+	-- Character on the plaza and the first two biomes' floors (the deeper ones: DressShellFloor)
+	for _, d in root:GetDescendants() do
+		if d:IsA("BasePart") then
+			local zone = tonumber(d.Name:match("^Zone(%d+)Floor$"))
+			if d.Name == "Plaza" or zone == 1 or zone == 2 then
+				floorDressing(d, 420)
+			end
+		end
+	end
+	-- ...and on the plain walls around them (the hub's and the runway's visible ones; the deeper
+	-- biomes' walls are hidden behind their shells)
+	local plazaMiddle = Vector3.new(0, 0, -60)
+	for _, d in root:GetDescendants() do
+		if d:IsA("BasePart") and d.Name == "Plaza" then
+			plazaMiddle = d.Position
+			break
+		end
+	end
+	for _, d in root:GetDescendants() do
+		if d:IsA("BasePart") and d.Transparency < 1 and (d.Name == "HubWall" or d.Name == "RunwayWall") then
+			local toward = if d.Name == "HubWall" then plazaMiddle else Vector3.new(0, 0, d.Position.Z)
+			wallDressing(d, toward, 260)
+		end
+	end
 
 	-- Every zone (its name pops up on screen as you walk in: client/Transitions): sconces down both walls, its own biome inside
 	for i, zone in GameConfig.Zones do

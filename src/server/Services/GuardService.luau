@@ -45,10 +45,27 @@ local Offers = require(script.Parent.Offers)
 local ManorDecor = require(script.Parent.ManorDecor)
 local Disguises = require(script.Parent.Disguises)
 local HedgeHound = require(ReplicatedStorage.Shared.Assets.HedgeHound)
+local Toy = require(ReplicatedStorage.Shared.Toy)
+local FlowerToad = require(ReplicatedStorage.Shared.Assets.FlowerToad)
+local BoneWolf = require(ReplicatedStorage.Shared.Assets.BoneWolf)
+local GoldScorpion = require(ReplicatedStorage.Shared.Assets.GoldScorpion)
+local LavaSalamander = require(ReplicatedStorage.Shared.Assets.LavaSalamander)
+local GoldenGriffin = require(ReplicatedStorage.Shared.Assets.GoldenGriffin)
+local SkyPegasus = require(ReplicatedStorage.Shared.Assets.SkyPegasus)
+local VoidBeast = require(ReplicatedStorage.Shared.Assets.VoidBeast)
 -- Zone bosses that are creatures instead of round characters (GameConfig.Zones[i].Creature).
 -- Only the Courtyard's hedge hound exists so far; the rest stay round characters until it's
 -- approved.
-local CREATURE_MODULES: { [string]: any } = { HedgeHound = HedgeHound }
+local CREATURE_MODULES: { [string]: any } = {
+	HedgeHound = HedgeHound,
+	FlowerToad = FlowerToad,
+	BoneWolf = BoneWolf,
+	GoldScorpion = GoldScorpion,
+	LavaSalamander = LavaSalamander,
+	GoldenGriffin = GoldenGriffin,
+	SkyPegasus = SkyPegasus,
+	VoidBeast = VoidBeast,
+}
 -- Each creature's joint data (Config/ToyGeometry/<Name>), for the real run cycle below: Codex's
 -- SetRunPhase is "a reference pose sampler, not a completed animation" by design - this is the
 local creatureGeometry: { [string]: any } = {}
@@ -272,11 +289,57 @@ end
 local function buildHoundRig(config: ZoneConfig, shadow: boolean): Model
 	local creature = CREATURE_MODULES[config.Creature :: string]
 	local model = creature.Build(nil, CFrame.identity, "Asleep")
+	-- Sized by zone (GameConfig.CreatureHeight): SetPose and the run cycle work at any scale
+	local rank = table.find(Knives.Rarities, config.Rarity) or 1
+	local height = GameConfig.CreatureHeight.First + (rank - 1) * GameConfig.CreatureHeight.Step
+	model:ScaleTo(height / ((model:GetAttribute("StandHeight") or height) :: number))
+	model:SetAttribute("BossHeight", height)
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") and part.Transparency < 1 then
+			if part.Name:match("^Nostril") then
+				-- (the griffin's and pegasus's nostrils read as a second pair of eyes on the beak tip:
+				-- a tiny extra head)
+				part:Destroy()
+			elseif part.Material ~= Enum.Material.Neon and math.min(part.Size.X, part.Size.Y, part.Size.Z) >= 0.8 then
+				-- The toy look, like every wall and floor: studs on its sides and top (after scaling,
+				-- so they're the same size as everywhere else). Eyes and tiny bits stay plain.
+				local material = part.Material
+				Toy.Dress(part, Toy.Sides, 1, 0)
+				part.Material = material
+			end
+		end
+	end
 	model.Name = if shadow then `{config.Boss}Shadow` else config.Boss
+	-- A menacing aura in its zone's colour while it hunts you (setAsleep switches it), like the big
+	-- games' bosses
+	local torso = model:FindFirstChild("Torso") :: BasePart?
+	if torso then
+		local aura = Instance.new("ParticleEmitter")
+		aura.Name = "HuntAura"
+		aura.Texture = "rbxasset://textures/particles/fire_main.dds"
+		aura.Color = ColorSequence.new(config.Color:Lerp(Color3.fromRGB(255, 40, 90), 0.5), config.Color)
+		aura.LightEmission = 0.8
+		aura.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 6),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		aura.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.4),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		aura.Lifetime = NumberRange.new(0.6, 1)
+		aura.Rate = 40
+		aura.Speed = NumberRange.new(4, 8)
+		aura.SpreadAngle = Vector2.new(60, 60)
+		aura.Acceleration = Vector3.new(0, 10, 0)
+		aura.Enabled = false
+		aura.Parent = torso
+	end
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	-- Idle breathing while asleep is purely cosmetic (client/CreatureIdle), the same way a
 	-- round character's chair fidget is - the server never ticks a guard at its post.
 	model:AddTag("CreatureBoss")
+	model:SetAttribute("Creature", config.Creature)
 	local headCore = model:FindFirstChild("HeadCore") :: BasePart
 	local head = Instance.new("Part")
 	head.Name = "Head"
@@ -453,6 +516,10 @@ end
 -- (client/Moves), and a 💤 floats over it. Waking = a thief took a knife.
 local function setAsleep(guard: Guard, asleep: boolean)
 	guard.Model:SetAttribute("Asleep", asleep)
+	local huntAura = guard.Model:FindFirstChild("HuntAura", true) :: ParticleEmitter?
+	if huntAura then
+		huntAura.Enabled = not asleep
+	end
 	if guard.Hound and asleep then
 		-- (waking is a gradual blend over the step() alert window, not an instant snap - see
 		-- the "t < guard.AlertUntil" branch below)
@@ -484,6 +551,29 @@ local function setAsleep(guard: Guard, asleep: boolean)
 		label.TextScaled = true
 		label.Text = "💤"
 		label.Parent = gui
+		if guard.Hound then
+			-- A giant creature: big stacked Z's floating up off its head, readable from down the runway
+			-- (the round characters' little emoji sat hidden inside its head)
+			local scale = guard.Model:GetScale()
+			gui.Size = UDim2.fromScale(3 * scale, 4 * scale)
+			gui.StudsOffset = Vector3.new(1.5 * scale, 4 * scale, 0)
+			gui.MaxDistance = 260
+			label.Font = Enum.Font.FredokaOne
+			label.RichText = true
+			label.Text = `<font size="60">Z</font><font size="44">z</font><font size="30">z</font>`
+			label.TextColor3 = Color3.new(1, 1, 1)
+			label.TextScaled = false
+			label.TextSize = 60
+			label.TextXAlignment = Enum.TextXAlignment.Left
+			label.Rotation = -12
+			local stroke = Instance.new("UIStroke")
+			stroke.Thickness = 4
+			stroke.Color = Color3.fromRGB(40, 50, 110)
+			stroke.Parent = label
+			local scaler = Instance.new("UITextSizeConstraint")
+			scaler.MaxTextSize = 60
+			scaler.Parent = label
+		end
 		gui.Parent = head
 	end
 end
@@ -824,8 +914,11 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 	-- are long: sat back against the backrest his shins went down through the seat, so he sits
 	-- forward on it, slouched back (client/Moves), knees over the front edge, feet on a footstool.
 	local chairFrame = post * CFrame.new(0, -4.9, 0.9)
-	mountChair(index, model, chairFrame)
-	buildFootstool(model, chairFrame, config.Color)
+	-- (a creature sleeps on the ground: no chair, no footstool)
+	if not config.Creature then
+		mountChair(index, model, chairFrame)
+		buildFootstool(model, chairFrame, config.Color)
+	end
 	-- The speed board beside the chair (like the wheel's sign): how much Speed you need to outrun
 	-- this boss. Each player's own client turns it green with a tick once they have it (Hud).
 	do
@@ -939,11 +1032,42 @@ local function buildLair(index: number, zone: MapService.Zone, config: ZoneConfi
 		end
 		table.insert(graves, chosen or Vector3.new(chairLocal.X, 0, chairLocal.Z - far - #graves * coffinLength))
 	end
+	-- A creature: its coffins lie in one tidy bunch beside it (on the side towards the middle of the
+	-- runway, where thieves come from) - rows of three, a hand's width apart, never touching
+	if config.Creature then
+		local rank = table.find(Knives.Rarities, config.Rarity) or 1
+		local height = GameConfig.CreatureHeight.First + (rank - 1) * GameConfig.CreatureHeight.Step
+		local body = height * 0.45 -- (about half its width, lying down)
+		local arena = MapService.Arena :: MapService.Bounds
+		local ground = CFrame.new(post.Position - Vector3.new(0, HEIGHT, 0)) * post.Rotation
+		local side = if (ground * CFrame.new(1, 0, 0)).Position.X ^ 2
+				< (ground * CFrame.new(-1, 0, 0)).Position.X ^ 2
+			then 1
+			else -1
+		local across = coffinWidth + 2.5 -- (side by side)
+		local along = coffinLength + 2.5 -- (end to end)
+		local perRow = 3
+		for i = 1, count do
+			local row = (i - 1) // perRow
+			local column = (i - 1) % perRow
+			local inRow = math.min(perRow, count - row * perRow)
+			local x = side * (body + 2 + coffinWidth / 2 + column * across)
+			local z = (row - (math.ceil(count / perRow) - 1) / 2) * along + (perRow - inRow) * across * 0.25
+			local spot = (ground * CFrame.new(x, 0, z)).Position
+			spot =
+				Vector3.new(math.clamp(spot.X, arena.MinX + coffinWidth + 2, arena.MaxX - coffinWidth - 2), 0, spot.Z)
+			local localSpot = frame:PointToObjectSpace(spot)
+			graves[i] = Vector3.new(localSpot.X, 0, localSpot.Z)
+		end
+	end
 	for i = 1, count do
 		local x = -span / 2 + (i - 1) * span / math.max(count - 1, 1)
 		if graveyard then
 			local grave = graves[i]
-			local turn = CFrame.Angles(0, math.rad(scatter:NextNumber(-TURN, TURN)), 0)
+			-- (a creature's bunch lines up with the creature, barely turned, so none touch)
+			local turn = if config.Creature
+				then frame.Rotation:Inverse() * post.Rotation * CFrame.Angles(0, math.rad(scatter:NextNumber(-5, 5)), 0)
+				else CFrame.Angles(0, math.rad(scatter:NextNumber(-TURN, TURN)), 0)
 			local pad: Part =
 				block(model, "Grave", Vector3.new(4.5, 0.3, 4.5), at(grave.X, 0.15, grave.Z) * turn, config.Color)
 			pad.Transparency = 1
@@ -1374,11 +1498,15 @@ end
 -- Assets.SetRunPhase's fixed small swing), a strong body bounce, a forward lean into the run, and
 -- a wagging tail - a sleeping lump turning into a bounding Steal An Egg creature should be obvious
 -- from across the runway, not a stiff board sliding along.
-local SWING = math.rad(55) -- hip swing, fore/aft (Codex's reference sampler used 22)
-local LIFT = 1.4 -- studs the forward-swinging paw lifts
-local BOUNCE = 0.85 -- studs the whole body bobs, twice per stride (one touchdown per diagonal pair)
-local LEAN = math.rad(11) -- forward pitch while running
+local SWING = math.rad(70) -- hip swing, fore/aft (Codex's reference sampler used 22)
+local LIFT = 1.4 -- studs the forward-swinging paw lifts (times the creature's scale)
+local BOUNCE = 1.1 -- studs the whole body bobs, twice per stride (times the creature's scale)
+local LEAN = math.rad(15) -- forward pitch while running
+local HEAD_BOB = math.rad(12) -- the head pumps up and down with every stride
 local TAIL_WAG = math.rad(30)
+local WING_FLAP = math.rad(38) -- griffin / pegasus wings beat, twice a stride
+local CLAW_SNAP = math.rad(22) -- the scorpion's pincers open and shut as it runs
+local BOB = 0.45 -- studs a halo / flower bobs (times the creature's scale)
 
 local function animateHoundRun(guard: Guard, dt: number, speed: number)
 	local hound = guard.Hound
@@ -1400,7 +1528,7 @@ local function animateHoundRun(guard: Guard, dt: number, speed: number)
 			local joint = (geometry.Joints :: any)[group].Awake :: CFrame
 			local sign = if group == "LegFrontLeft" or group == "LegBackRight" then 1 else -1
 			local swing = math.sin(phase) * sign
-			local lift = math.max(0, swing) * LIFT
+			local lift = math.max(0, swing) * LIFT * scale
 			local hinge = pivot * CFrame.new(joint.Position * scale)
 			p.CFrame = (hinge * CFrame.Angles(swing * SWING, 0, 0) * hinge:Inverse() * p.CFrame)
 				+ Vector3.new(0, lift, 0)
@@ -1409,10 +1537,28 @@ local function animateHoundRun(guard: Guard, dt: number, speed: number)
 			local hinge = pivot * CFrame.new(joint.Position * scale)
 			local wag = math.sin(phase * 2) * TAIL_WAG
 			p.CFrame = hinge * CFrame.Angles(0, wag, 0) * hinge:Inverse() * p.CFrame
+		elseif group == "Head" then
+			local joint = (geometry.Joints :: any).Head.Awake :: CFrame
+			local hinge = pivot * CFrame.new(joint.Position * scale)
+			local nod = math.sin(phase * 2 + 0.6) * HEAD_BOB
+			p.CFrame = hinge * CFrame.Angles(nod, 0, 0) * hinge:Inverse() * p.CFrame
+		elseif group == "WingLeft" or group == "WingRight" then
+			-- a beat around the body's long axis, both wings together (mirrored)
+			local joint = (geometry.Joints :: any)[group].Awake :: CFrame
+			local hinge = pivot * CFrame.new(joint.Position * scale)
+			local flap = math.sin(phase * 2) * WING_FLAP * (if group == "WingLeft" then 1 else -1)
+			p.CFrame = hinge * CFrame.Angles(0, 0, flap) * hinge:Inverse() * p.CFrame
+		elseif group == "ClawLeft" or group == "ClawRight" then
+			local joint = (geometry.Joints :: any)[group].Awake :: CFrame
+			local hinge = pivot * CFrame.new(joint.Position * scale)
+			local snap = math.max(0, math.sin(phase * 3)) * CLAW_SNAP * (if group == "ClawLeft" then 1 else -1)
+			p.CFrame = hinge * CFrame.Angles(0, snap, 0) * hinge:Inverse() * p.CFrame
+		elseif group == "Halo" or group == "Bloom" then
+			p.CFrame += Vector3.new(0, math.sin(phase * 2 + 1) * BOB * scale, 0)
 		end
 	end
 	-- the whole body bounces twice a stride and leans into the run
-	local bounce = (1 - math.cos(phase * 2)) * 0.5 * BOUNCE
+	local bounce = (1 - math.cos(phase * 2)) * 0.5 * BOUNCE * scale
 	guard.Model:PivotTo((pivot * CFrame.Angles(LEAN, 0, 0)) + Vector3.new(0, bounce, 0))
 end
 
@@ -1522,6 +1668,9 @@ local function step(guard: Guard, dt: number)
 			local span = math.max(guard.WakeUntil - guard.WakeStart, 0.1)
 			local blend = math.clamp((t - guard.WakeStart) / span, 0, 1)
 			guard.Hound.SetPose(guard.Model, "Waking", blend)
+			-- (springing up: a hop as it stands, a big creature's whole body leaving the ground)
+			local spring = math.sin(math.pi * blend) * guard.Model:GetScale() * 2.2
+			guard.Model:PivotTo(guard.Boss.Post.Rotation + restSpot(guard, guard.Boss.Post) + Vector3.new(0, spring, 0))
 			if t >= guard.WakeUntil then
 				face(guard, targetRoot.Position)
 			end
@@ -1569,7 +1718,11 @@ local function step(guard: Guard, dt: number)
 	end
 
 	local distance = ((targetRoot.Position - guard.Position) * Vector3.new(1, 0, 1)).Magnitude
-	if distance <= GameConfig.CatchRadius then
+	-- (a giant creature's head reaches well past its middle)
+	local reachRadius = if guard.Hound
+		then GameConfig.CatchRadius * ((guard.Model:GetAttribute("BossHeight") or 13) :: number) / 13
+		else GameConfig.CatchRadius
+	if distance <= reachRadius then
 		-- Grab! They swing without stopping (stopping let a runner slip away every time) and it
 		-- counts if you're still within arm's reach when the blow lands
 		if t - guard.LastAttack >= GameConfig.GuardAttackCooldown * 0.6 then
@@ -1585,7 +1738,7 @@ local function step(guard: Guard, dt: number)
 				local reach = if root
 					then ((root.Position - guard.Position) * Vector3.new(1, 0, 1)).Magnitude
 					else math.huge
-				if root and reach <= GameConfig.CatchRadius + 4 then
+				if root and reach <= reachRadius + 4 then
 					snatch(guard, thief)
 				end
 			end)

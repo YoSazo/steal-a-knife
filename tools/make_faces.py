@@ -12,7 +12,7 @@ below the top third so hair fringes (which stop at the eyebrows) never cover the
 import math
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "blender" / "textures" / "clothing"
@@ -27,6 +27,18 @@ TEETH = (250, 250, 245, 255)
 TONGUE = (235, 90, 105, 255)
 MOUTH = (70, 18, 30, 255)
 LIP = (200, 90, 100, 255)
+
+# Keep the boss names/awake expressions explicit; the sleeping guides use the SAME design
+# coordinates and final crop as make(), including Angry's +1 and Determined's +0.5 eye offset.
+BOSS_AWAKE = {
+    "Frank": "Angry", "Ivy": "Smile", "Sam": "Surprised", "Leo": "Smirk",
+    "Ruby": "Determined", "Kate": "Smirk", "Zoe": "Happy", "Nick": "Determined",
+}
+BOSS_SKIN = {
+    "Frank": (234, 184, 146), "Ivy": (204, 142, 105), "Sam": (255, 204, 153),
+    "Leo": (204, 142, 105), "Ruby": (234, 184, 146), "Kate": (234, 184, 146),
+    "Zoe": (124, 92, 70), "Nick": (245, 205, 48),
+}
 
 
 def P(x, y):
@@ -133,6 +145,68 @@ def open_mouth(d, cx, cy, width=18, depth=11, teeth=True, tongue=True):
         d.ellipse(box(cx - width * 0.28, top + depth * 0.55, cx + width * 0.28, top + depth * 1.1), fill=TONGUE)
 
 
+def sleeping_eye(d, cx, cy, width=2.4, lashes=False, mirror=1):
+    """Relaxed downward lid, centred where the awake eye is; never a happy ^ or a letter."""
+    thick_curve(d, [(cx - 6.5, cy - 1.2), (cx, cy + 3.2), (cx + 6.5, cy - 1.2)], width, INK)
+    if lashes:
+        for i in range(3):
+            x = cx + mirror * (6.3 - i * 1.8)
+            thick_curve(d, [(x, cy - .7), (x + mirror * 1.2, cy - 1.6),
+                            (x + mirror * 2.3, cy - 2.0)], 1.0, INK)
+
+
+def drool(d, cx, cy, scale=1):
+    """A tiny teardrop, not a stream; separate from the mouth so its slack shape stays clear."""
+    left = bezier([(cx, cy), (cx - 1.8 * scale, cy + 2.3 * scale),
+                   (cx - 1.8 * scale, cy + 4.5 * scale), (cx, cy + 4.8 * scale)])
+    right = bezier([(cx, cy + 4.8 * scale), (cx + 1.8 * scale, cy + 4.5 * scale),
+                    (cx + 1.8 * scale, cy + 2.3 * scale), (cx, cy)])
+    points = left + right
+    d.polygon(points, fill=(130, 211, 244, 235))
+    d.line(points, fill=(48, 129, 175, 235), width=w(.5), joint="curve")
+    thick_curve(d, [(cx - .45 * scale, cy + 2.9 * scale),
+                    (cx - .45 * scale, cy + 3.5 * scale)], .48 * scale, (231, 250, 255, 225))
+
+
+def sleeping_face(d, boss, lx, rx, ey, by, mx, my):
+    awake = BOSS_AWAKE[boss]
+    eye_y = ey + (1 if awake == "Angry" else .5 if awake == "Determined" else 0)
+    brow_width = 3.0 if awake == "Angry" else 2.8 if awake == "Determined" else 2.4
+    lid_width = 2.7 if awake == "Angry" else 2.5 if awake == "Determined" else 2.2
+    for x, mirror in ((lx, -1), (rx, 1)):
+        sleeping_eye(d, x, eye_y, lid_width, lashes=awake == "Lashes", mirror=mirror)
+        # Angry/Determined retain their thick brows, with their inward frown removed.
+        # Smirk retains the raised-brow asymmetry, softened and lowered on both sides.
+        brow_y = by + (1.5 if awake == "Smirk" and mirror < 0 else 1.0)
+        arch = .40 if awake == "Smirk" and mirror < 0 else .75 if awake in ("Smirk", "Surprised", "Happy") else .45
+        brow(d, x, brow_y, tilt=.25, arch=arch, width=brow_width, mirror=mirror)
+
+    if boss == "Frank":
+        thick_curve(d, [(mx - 4.5, my + .8), (mx, my + 1.4), (mx + 4.5, my + .8)], 2.2, INK)
+        drool(d, mx + 4.5, my + 2.0, .80)
+    elif boss == "Ivy":
+        thick_curve(d, [(mx - 4.5, my), (mx, my + 2.2), (mx + 4.5, my)], 1.8, INK)
+        for x in (lx - 3, rx + 3):
+            d.ellipse(box(x - 4.8, ey + 9.3, x + 4.8, ey + 13.2), fill=(255, 128, 149, 42))
+    elif boss == "Sam":
+        d.ellipse(box(mx - 2.6, my - 1.4, mx + 2.6, my + 4.4), fill=MOUTH, outline=INK, width=w(1.15))
+    elif boss == "Leo":
+        thick_curve(d, [(mx - 4.2, my + 1.1), (mx + 1, my + 1.7), (mx + 5, my + .3)], 1.9, INK)
+        drool(d, mx + 4.3, my + 1.8, .64)
+    elif boss == "Ruby":
+        thick_curve(d, [(mx - 4, my + 1), (mx, my + 1.35), (mx + 4, my + 1)], 2.0, INK)
+        drool(d, mx - 3.7, my + 2.1, .70)
+    elif boss == "Kate":
+        thick_curve(d, [(mx - 4.5, my + .3), (mx, my + 1.8), (mx + 4.5, my + 1)], 1.8, INK)
+        drool(d, mx - 4.1, my + 1.8, .58)
+    elif boss == "Zoe":
+        for x, mirror in ((lx, -1), (rx, 1)):
+            d.ellipse(box(x - mirror * 4 - 5.2, ey + 8.8, x - mirror * 4 + 5.2, ey + 13.2), fill=(255, 110, 130, 55))
+        d.ellipse(box(mx - 2, my - 2, mx + 2, my + 2.8), fill=MOUTH, outline=INK, width=w(1.1))
+    elif boss == "Nick":
+        d.ellipse(box(mx - 2.25, my - 1.1, mx + 2.25, my + 4.0), fill=MOUTH, outline=INK, width=w(1.2))
+
+
 def make(name):
     img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -141,7 +215,9 @@ def make(name):
     mx, my = 50, 70  # mouth
     brown, blue, green, hazel = (110, 70, 40), (60, 130, 220), (70, 160, 90), (150, 110, 50)
 
-    if name == "Smile":
+    if name.startswith("Sleep"):
+        sleeping_face(d, name[5:], lx, rx, ey, by, mx, my)
+    elif name == "Smile":
         for x, m in ((lx, -1), (rx, 1)):
             eye(d, x, ey, brown)
             brow(d, x, by, mirror=m)
@@ -240,7 +316,26 @@ def main():
         small = img.resize((tile, tile), Image.LANCZOS)
         sheet.paste(small, ((i % 6) * tile, (i // 6) * tile), small)
     sheet.save(ROOT / "blender" / "previews" / "faces_sheet.png")
+    sleep_sheet = Image.new("RGBA", (1152, 1456), (22, 29, 40, 255))
+    sd = ImageDraw.Draw(sleep_sheet)
+    title = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 32)
+    label = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", 23)
+    sd.text((24, 18), "BOSS FACES / AWAKE AND ASLEEP", font=title, fill=WHITE)
+    sd.text((24, 62), "Same eye centres and crop / 512px transparent faces / 4x supersampling", font=label, fill=(214, 224, 235, 255))
+    for i, (boss, awake) in enumerate(BOSS_AWAKE.items()):
+        img = make("Sleep" + boss)
+        img.save(OUT / f"face_Sleep{boss}.png")
+        x, y = 24 + i % 2 * 564, 114 + i // 2 * 332
+        sd.text((x, y), f"{boss} / {awake}", font=label, fill=WHITE)
+        for offset, face_img in ((0, make(awake)), (268, img)):
+            tile_img = Image.new("RGBA", (256, 256), BOSS_SKIN[boss] + (255,))
+            tile_img.alpha_composite(face_img.resize((256, 256), Image.LANCZOS))
+            sleep_sheet.alpha_composite(tile_img, (x + offset, y + 36))
+        sd.text((x, y + 298), "AWAKE", font=label, fill=(214, 224, 235, 255))
+        sd.text((x + 268, y + 298), "SLEEPING", font=label, fill=(214, 224, 235, 255))
+    sleep_sheet.save(ROOT / "blender" / "previews" / "faces_sleep_sheet.png")
     print("faces:", ", ".join(FACES))
+    print("sleeping bosses:", ", ".join(BOSS_AWAKE))
 
 
 if __name__ == "__main__":
