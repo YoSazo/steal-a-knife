@@ -456,10 +456,6 @@ local handlers: { [string]: (...any) -> () } = {
 			Effects.Sound(Sounds.Throw, from, 0.9)
 		end
 	end,
-	-- Your map vote landed
-	MapVoted = function(_name: string)
-		Effects.Sound(Sounds.Coin, nil, 0.5)
-	end,
 	-- Equipping a knife: it flies off its plate into your hand, a ring of light, a big banner
 	Equipped = function(who: Player, item: string, from: Vector3?)
 		local character = who.Character

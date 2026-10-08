@@ -12,8 +12,8 @@ K/M/B/T/Qd/Qn/Sx/...). Audience ~9-15, low-poly.
 Look: dark murder-mystery theme. The hub is "Blackwood Manor" at night (fences, lamps, dead trees,
 the Manor behind the arena); rounds are The Mad Murderer-style indoor maps (Office, Mansion) with
 disguises (named pre-made characters), bodies that stay, and a Revolver innocents can grab.
-The loop feeds itself: the equipped knife = the Murderer's perk; kills loot a random knife off the
-victim's rack (returned if the Innocents win or the Murderer is shot); survivors get 2x vault income for a while.
+The loop feeds itself: the equipped knife = the Murderer's perk; rounds are gain-or-no-gain (no knife loot,
+no insurance); survivors get 2x vault income for a while.
 Round prize (`Shared/RoundPrize`): ONE promise for every winner, "Win the round: +X Speed" (a share of the way to
 the next boss you can't outrun yet; the win card + ~30 shoes flying into the Speed readout).
 
@@ -67,7 +67,7 @@ the next boss you can't outrun yet; the win card + ~30 shoes flying into the Spe
   levels, XP, rerolls and Sheriff power steals were cut. Old 4-field items ("Name|Mut|Size|Power") keep a saved power.
 - Hotbar knives show an icon (Tool.TextureId from Config/KnifeIcons, rendered by blender/scripts/render_knife_icons.py).
 - Rounds (MM2 style: innocents hide, run and grab the gun - Innocent Powers were cut); Spam Knife is always on (passive: click = throw all round, giveWeapon sets SpamUntil);
-  ~20% CLASSIC rounds (no perks, ClassicPay); the
+  Classic and Double Trouble rounds are off (ClassicChance 0, DoubleTrouble.Chance 0); the
   Murderer's speed boost only applies with the knife out; HUD shows "Your chance to be the Murderer" (MurdererChance);
   end-of-round VS card (Effect "RoundCard" -> client/Transitions).
 - `CombatService` the hub knife Tool (equipped or best owned, else the Rusty Shank): swing (Tool.Activated) and throw
@@ -79,7 +79,7 @@ the next boss you can't outrun yet; the win card + ~30 shoes flying into the Spe
   a knife ("BossSteal" prompt); then they chase you (a ForceField shadow clone if they're busy) at GuardSpeed to
   the plaza. Caught = StealService.ReturnToBoss puts it back + Damage x2; delivered = slot restocks after Restock s
   (rare mutations announced). Hub hits stagger a chaser (damage / zone Health, with immunity); Epic+ throw knives. StealService carries a `Boss` slot ref; OnBossCarryEnded hook.
-- `InventoryService` equip / sell (vault wall prompts: E equip, hold F sell; also the Knives menu). `UpgradeService` also sells one-round items (Shield, Sneakers, Smoke).
+- `InventoryService` equip / sell (vault wall prompts: E equip, hold F sell; also the Knives menu).
 - `Disguises` round outfits: classic Shirt/Pants templates (`tools/make_clothing.py`) + face decals
   (`tools/make_faces.py`, 12 faces, 4x supersampled) and Blender hair/hats/glasses from PropMeshes (part fallbacks).
   Hair is sculpted by `blender/scripts/hair.py` (a cap fitted to the R15 head down to a hairline that stays above the
@@ -87,8 +87,7 @@ the next boss you can't outrun yet; the win card + ~30 shoes flying into the Spe
 - Rounds: maps are built at 1x then scaled 1.5x (MapService.BuildRoundMap, ROUND_SCALE); doors are solid. A random
   innocent (player or bot) is the Sheriff from the start (giveRevolver / giveRevolverToBot); the floor Revolver only
   appears if nobody holds it. Bot Sheriffs aim + shoot once the Murderer's knife is out (botShoot, distance-based
-  aim), other bots grab a dropped Revolver, the Murderer bot goes for the Sheriff first. Each innocent is shown the
-  knife they'd lose (round.AtRisk, Effect "AtRisk" -> client/Transitions reel); lootKnife takes that one.
+  aim), other bots grab a dropped Revolver, the Murderer bot goes for the Sheriff first. The map is random (the map vote was cut).
   Thrown knives start at CombatService.HandPosition (led by speed x ping).
 - New players are told about both halves: top timer status "🔪 MURDER ROUND in" (RoundService.IntermissionStatus), first-visit welcome card "STEAL KNIVES ➜ BECOME THE MURDERER", a tutorial step on rounds,
   client/RoundIntro (10 s countdown card before your first round of the session), and a first-time player (attribute

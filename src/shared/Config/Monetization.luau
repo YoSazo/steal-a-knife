@@ -311,26 +311,6 @@ Monetization.Products = {
 		Charge = { Name = "Escape", Count = 10 },
 	},
 	{
-		Key = "Insurance3",
-		Id = 3716624566,
-		Price = 39,
-		Name = "Knife Insurance x3",
-		Description = "The Murderer can't take your knife, for 3 rounds.",
-		Icon = "🛡️",
-		Color = rgb(60, 170, 255),
-		Charge = { Name = "Insurance", Count = 3 },
-	},
-	{
-		Key = "Insurance10",
-		Id = 3716624568,
-		Price = 99,
-		Name = "Knife Insurance x10",
-		Description = "The Murderer can't take your knife, for 10 rounds.",
-		Icon = "🛡️",
-		Color = rgb(30, 130, 230),
-		Charge = { Name = "Insurance", Count = 10 },
-	},
-	{
 		Key = "BossRestock",
 		Id = 3716624574,
 		Price = 35,
@@ -429,6 +409,8 @@ Monetization.Retired = {
 	[3716624527] = 39, -- Luck Potion 15 min (luck potions)
 	[3716624530] = 119, -- Luck Potion 1 hour (luck potions)
 	[3716624588] = 249, -- 2x Server Luck (server luck)
+	[3716624566] = 39, -- Knife Insurance x3 (round knife loot)
+	[3716624568] = 99, -- Knife Insurance x10 (round knife loot)
 } :: { [number]: number }
 
 Monetization.PassByKey = {} :: { [string]: Pass }

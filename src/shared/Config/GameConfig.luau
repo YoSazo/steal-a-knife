@@ -544,7 +544,6 @@ local GameConfig = {
 	-- new players landed their first knife ~1 min in and left ~2 min in, before any round - only 37%
 	-- ever saw the murder half.)
 	NewcomerRoundIn = 45,
-	MapVoteWindow = 150, -- the vote card and the "vote for the map" line show this many seconds before a round
 	FirstRoundMurdererUnder = 1200, -- a player's first round makes them the Murderer if they've played less than this (s)
 	NewcomerSheriffRounds = 2, -- then their next rounds (2nd..this+1th) make them the Sheriff
 	NewcomerMinBreak = 180,
@@ -579,10 +578,6 @@ local GameConfig = {
 	-- Live servers: bots top every round up to this many people, so a round can start as soon as one
 	-- real player is around. With one real player, a bot is sometimes the Murderer.
 	BotFill = { Size = 8, MinHumans = 1 }, -- quiet servers still get a busy round (16-player servers fill up with people)
-
-	-- Murderer loot: every kill takes one random knife off the victim's rack. The Murderer keeps
-	-- the loot unless an innocent shoots them with the Revolver, which sends it all back.
-	LootPerKill = 1,
 
 	-- The Revolver drops somewhere in the building partway through the round. Any innocent can
 	-- grab it; shooting an innocent by mistake costs the shooter their life too.
@@ -682,11 +677,11 @@ local GameConfig = {
 		Cap = 3, -- nobody's chance can be more than 3x the server average
 	},
 
-	-- Every so often a CLASSIC round: no Murderer power, just a knife and a Revolver - and
-	-- everyone earns extra for it
-	-- DOUBLE TROUBLE: two Murderers, two Sheriffs (always with this many players, else a chance)
-	DoubleTrouble = { Always = 10, Chance = 0.2 },
-	ClassicChance = 0.2,
+	-- CLASSIC rounds (no Murderer power, ClassicPay) and DOUBLE TROUBLE (two Murderers, two
+	-- Sheriffs) are cut: one Murderer, one Sheriff, every round - the MM2 rules kids already know.
+	-- (Two Murderers is kept for an admin event later: docs/PLAN.md item 25.)
+	DoubleTrouble = { Always = math.huge, Chance = 0 },
+	ClassicChance = 0,
 	ClassicPay = 1.5,
 
 	-- The Murderer's thrown knife (everyone's, whatever the perk)

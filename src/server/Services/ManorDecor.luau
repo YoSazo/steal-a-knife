@@ -1573,8 +1573,7 @@ function ManorDecor.Build(root: Instance, arena: Bounds, _hideaways: { Bounds })
 		streetLamp(Vector3.new(-half + 4, 0, z))
 		streetLamp(Vector3.new(half - 4, 0, z))
 	end
-	-- The knife monument stands in the middle of the plaza (the map vote boards have its old spot
-	-- at the back: server MapVote)
+	-- The knife monument stands in the middle of the plaza
 	local MONUMENT_Z = -105
 	local plinth = block("Plinth", Vector3.new(10, 6, 10), at(0, 3, MONUMENT_Z), DARK_STONE, Enum.Material.Slate)
 	glow(plinth, Color3.fromRGB(170, 70, 255), 30, 2)

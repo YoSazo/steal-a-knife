@@ -43,7 +43,6 @@ local Remotes = {
 	OfferShown = event("OfferShown"), -- client -> server: (key, token) acknowledge a pending offer
 	SellSign = event("SellSign"), -- client -> server: (sign: BasePart) tapped a Sell sign with a tool in hand
 	SlowMode = event("SlowMode"), -- client -> server: (on: boolean) walk at normal speed in the hub
-	MapVote = event("MapVote"), -- client -> server: (mapName) vote for the next murder map (the vote card)
 	PlaceAt = event("PlaceAt"), -- client -> server: (position) put what you carry down here in your pen
 	CoffinTarget = event("CoffinTarget"), -- client -> server: (plate) the coffin "Open now" (Robux) is for
 	NotifyAsked = event("NotifyAsked"), -- client -> server: () Roblox's notifications opt-in was shown

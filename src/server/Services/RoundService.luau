@@ -37,7 +37,6 @@ local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local CombatService = require(script.Parent.CombatService)
 local DataService = require(script.Parent.DataService)
-local Offers = require(script.Parent.Offers)
 local ChanceMeter = require(script.Parent.ChanceMeter)
 local MapService = require(script.Parent.MapService)
 local Decoy = require(script.Parent.Decoy)
@@ -50,7 +49,6 @@ local StealService = require(script.Parent.StealService)
 local RoundBots = require(script.Parent.RoundBots)
 local Analytics = require(script.Parent.Analytics)
 local CoffinService = require(script.Parent.CoffinService)
-local MapVote = require(script.Parent.MapVote)
 local Gamble = require(script.Parent.Gamble)
 local SurpriseGifts = require(script.Parent.SurpriseGifts)
 
@@ -84,7 +82,6 @@ type Round = {
 	PerkReadyAt: number,
 	Coins: Folder,
 	Bodies: Folder,
-	Loot: { { Owner: Player, Knife: string, Killer: Player? } },
 	Names: { [Player]: string },
 	Revolver: Model?, -- the pickup while it's lying somewhere
 	Gunner: Player?, -- whoever holds it
@@ -104,7 +101,6 @@ type Round = {
 	ShotByBot: boolean, -- a bot shot the (player) Murderer: loot goes home like a hero's shot
 	Newcomer: boolean, -- a brand-new player's first round as the Murderer: the bots let them win
 	HeroBot: Bot?, -- that bot (its face goes on the VS card)
-	AtRisk: { [Player]: string }, -- the knife each innocent loses if the Murderer gets them (shown at the start)
 	Classic: boolean, -- no powers, no perks, extra pay
 	Double: boolean, -- DOUBLE TROUBLE: two Murderers, two Sheriffs
 	Killers: { [Player]: boolean }, -- every Murderer this round (one, or two in Double Trouble)
@@ -444,81 +440,6 @@ local function leaveBody(round: Round, player: Player)
 	end)
 end
 
--- The Murderer takes a random knife off the victim's rack. It's held in the round's loot until
--- the round ends, so leaving or dying can't duplicate or lose it.
--- What the Murderer took off each victim (for their death card: killCard)
-local deathLoss: { [Player]: { Lost: string?, Insured: boolean } } = {}
-
-local function lootKnife(round: Round, victim: Player)
-	deathLoss[victim] = { Lost = nil, Insured = false }
-	local profile = DataService.Get(victim)
-	if not profile then
-		return
-	end
-	if DataService.IsNewPlayer(victim, profile) then
-		return
-	end
-	-- Knife Insurance (Robux charge): the Murderer gets nothing
-	local hasLoot = false
-	for _, item in profile.Knives do
-		if item ~= BaseService.ProtectedItem(victim) then
-			hasLoot = true
-			break
-		end
-	end
-	if hasLoot and DataService.UseCharge(victim, "Insurance") then
-		deathLoss[victim] = { Lost = nil, Insured = true }
-		round.AtRisk[victim] = nil
-		Analytics.Track(victim, "round.insured_save", roundProps(round, victim))
-		return
-	end
-	for _ = 1, GameConfig.LootPerKill do
-		-- Anything but the knife they fight with
-		local choices = {}
-		local protected = BaseService.ProtectedItem(victim)
-		for index, item in profile.Knives do
-			if item ~= protected then
-				table.insert(choices, index)
-			end
-		end
-		if #choices == 0 then
-			break
-		end
-		local index = choices[rng:NextInteger(1, #choices)]
-		-- The knife they were shown at the start of the round goes first
-		local promised = round.AtRisk[victim]
-		local promisedAt = promised and table.find(profile.Knives, promised)
-		if promisedAt and promised ~= protected then
-			index = promisedAt
-			round.AtRisk[victim] = nil
-		end
-		local name = profile.Knives[index]
-		DataService.Update(victim, function(p)
-			DataService.RemoveKnife(p, index)
-		end)
-		BaseService.RefreshRack(victim)
-		table.insert(round.Loot, { Owner = victim, Knife = name, Killer = round.Murderer })
-		local parsed = Items.Parse(name) :: Items.Item
-		local lootProps = {
-			knife = parsed.Name,
-			rarity = parsed.Knife.Rarity,
-			mutation = parsed.Mutation.Id,
-			value = Items.Income(name),
-			promised = promisedAt ~= nil,
-		}
-		Analytics.Track(victim, "round.knife_lost", roundProps(round, victim, lootProps))
-		if round.Murderer then
-			Analytics.Track(round.Murderer, "round.knife_looted", roundProps(round, round.Murderer, lootProps))
-		end
-		-- (the victim's death card shows it, with the insurance offer: killCard)
-		deathLoss[victim] = { Lost = name, Insured = false }
-		if round.Murderer then
-			Net.Notify(round.Murderer, `You took their {Items.DisplayName(name)}!`, "good")
-		end
-		ReplicatedStorage:SetAttribute("Loot", #round.Loot)
-	end
-end
-
 -- Puts a knife on a rack, or pays its sell value if the rack is full
 local function giveKnife(player: Player, item: string)
 	local profile = DataService.Get(player)
@@ -672,7 +593,6 @@ local function eliminate(round: Round, victim: Player, killer: Player?, fatal: b
 		if isKiller(round, killer) then
 			round.Kills += 1
 			round.HumanKills += 1
-			lootKnife(round, victim)
 			onMurderKill(round, if root then root.Position else Vector3.zero)
 		end
 		local amount = pay(round, killer, GameConfig.RoundPay.Kill)
@@ -942,13 +862,9 @@ end
 -- that knife comes from (client/Transitions "KillCard")
 killCard = function(round: Round, victim: Player)
 	local id, perk = perkOf(round)
-	local loss = deathLoss[victim]
-	deathLoss[victim] = nil
 	-- A free gift a minute later: dying isn't the end of your fun
 	SurpriseGifts.Soon(victim, 60)
 	Net.Remotes.Effect:FireClient(victim, "KillCard", {
-		Lost = loss and loss.Lost,
-		Insured = loss ~= nil and loss.Insured,
 		New = DataService.IsNewPlayer(victim),
 		Name = if round.Murderer
 			then round.Names[round.Murderer] or "The Murderer"
@@ -2043,7 +1959,7 @@ giveWeapon = function(round: Round)
 end
 
 local function startRound(participants: { Player })
-	local built = MapService.BuildRoundMap(MapVote.TakeWinner())
+	local built = MapService.BuildRoundMap() -- (a random map: the vote was cut)
 	ReplicatedStorage:SetAttribute("MapName", built.Name)
 	RoundBots.SetMap(built.Folder)
 	-- A Studio bot round: the person who asked picks their side; bots fill in the rest
@@ -2117,7 +2033,6 @@ local function startRound(participants: { Player })
 		PerkReadyAt = 0,
 		Coins = coins,
 		Bodies = bodies,
-		Loot = {},
 		PrizeStats = {},
 		Names = {},
 		Revolver = nil,
@@ -2143,7 +2058,6 @@ local function startRound(participants: { Player })
 		HeroBot = nil,
 		-- (never for a Studio bot round: those are for testing perks and powers)
 		Classic = plan == nil and rng:NextNumber() < GameConfig.ClassicChance,
-		AtRisk = {},
 		PayScale = if #participants >= 2 then 1 else GameConfig.BotRoundPay,
 		HumanKills = 0,
 		Connections = {},
@@ -2164,7 +2078,6 @@ local function startRound(participants: { Player })
 		round.PayScale *= GameConfig.ClassicPay
 	end
 	ReplicatedStorage:SetAttribute("Revolver", nil)
-	ReplicatedStorage:SetAttribute("Loot", nil)
 
 	-- Everyone becomes a named character (yields while outfits apply)
 	round.Names = Disguises.Assign(participants)
@@ -2396,30 +2309,6 @@ local function startRound(participants: { Player })
 		end
 	end
 
-	-- Everyone sees the knife they'd lose to the Murderer (client/Transitions spins a reel onto it).
-	-- Only when a real player has the knife: bot Murderers never loot, and the card promised a loss
-	-- that couldn't happen (then the death card said "your knives are safe")
-	local atRisk: { Player } = if next(round.Killers) ~= nil then round.Innocents else {}
-	for _, player in atRisk do
-		local profile = DataService.Get(player)
-		if not profile or DataService.IsNewPlayer(player, profile) then
-			continue
-		end
-		local protected = BaseService.ProtectedItem(player)
-		local choices = {}
-		for _, item in profile.Knives do
-			if item ~= protected then
-				table.insert(choices, item)
-			end
-		end
-		-- (insured players aren't shown a knife at risk: there isn't one)
-		if #choices > 0 and (profile.Charges.Insurance or 0) == 0 then
-			local chosen = choices[rng:NextInteger(1, #choices)]
-			round.AtRisk[player] = chosen
-			Net.Remotes.Effect:FireClient(player, "AtRisk", choices, chosen)
-		end
-	end
-
 	-- Nobody took the Revolver (or it dropped): it turns up somewhere later
 	task.delay(GameConfig.RevolverTime, function()
 		if current == round and not round.Gunner and not round.GunnerBot and not round.Revolver then
@@ -2491,7 +2380,6 @@ local function endRound(round: Round)
 					kills = if role == "murderer" then round.Kills else nil,
 					hero = round.Hero == player,
 					knife_out_s = if round.KnifeShownAt then math.floor(round.KnifeShownAt - round.StartedAt) else nil,
-					loot = #round.Loot,
 				})
 			)
 			if round.Alive[player] and role ~= "murderer" then
@@ -2503,48 +2391,7 @@ local function endRound(round: Round)
 		end
 	end
 
-	-- Loot goes back to its owners if the Innocents won, or the Murderer was shot (or quit);
-	-- the Murderer keeps it only when they win. ("You won!" and then a missing knife spoiled it.)
 	local hero = round.Hero
-	local kept: { [Player]: { string } } = {}
-	for _, entry in round.Loot do
-		local killer = entry.Killer or murderer
-		local returned = innocentsWon
-			or round.ShotByBot
-			or not killer
-			or not killer.Parent
-			or round.ShotKillers[killer]
-			or (not round.Double and (hero ~= nil or not murdererPresent))
-		if returned or not killer then
-			if entry.Owner.Parent then
-				giveKnife(entry.Owner, entry.Knife)
-				Net.Notify(entry.Owner, `Your {Items.DisplayName(entry.Knife)} is back!`, "good")
-			end
-		else
-			-- (coffin servers: the haul lands in the Murderer's pen sealed, like any mystery knife)
-			if not CoffinService.On(killer) or not CoffinService.Give(killer, entry.Knife, "your haul", true) then
-				giveKnife(killer, entry.Knife)
-			end
-			kept[killer] = kept[killer] or {}
-			table.insert(kept[killer], entry.Knife)
-		end
-	end
-	-- The haul, once everyone's back in the hub (after the VS card): the Murderer sees every knife
-	-- they took, and the whole server hears about it
-	for killer, items in kept do
-		task.delay(GameConfig.ResultsTime + 1, function()
-			if not killer.Parent then
-				return
-			end
-			Net.Remotes.Effect:FireClient(killer, "LootHaul", items, CoffinService.On(killer))
-			local count = #items
-			Net.Announce(
-				`🔪 {killer.DisplayName} the Murderer stole {count} {if count == 1 then "knife" else "knives"}!`,
-				Color3.fromRGB(255, 90, 90),
-				2
-			)
-		end)
-	end
 	-- Coffins: the murder rounds are their clock - one round off everyone's, two for the winners
 	local coffinWinners: { [Player]: boolean } = {}
 	for player in round.Names do
@@ -2579,7 +2426,6 @@ local function endRound(round: Round)
 		local amount = pay(round, hero, GameConfig.RoundPay.Hero)
 		Net.Notify(hero, `HERO! +{Format.Cash(amount)}`, "good")
 	end
-	ReplicatedStorage:SetAttribute("Loot", nil)
 	local fewLeft = #survivors <= math.max(1, math.ceil(#round.Innocents * GameConfig.LastAliveFraction))
 
 	-- The innocents' side won: everyone on it gets something, even the ones who didn't make it
@@ -2768,7 +2614,6 @@ local function loop()
 		ReplicatedStorage:SetAttribute("PrizeSeed", seed)
 		local startedAt = os.clock()
 		local endsAt = startedAt + GameConfig.IntermissionTime
-		local insuranceOffered = false
 		while os.clock() < endsAt do
 			task.wait(1)
 			if RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugSkip") then
@@ -2791,26 +2636,6 @@ local function loop()
 				setPhase("Intermission", endsAt - os.clock(), INTERMISSION_STATUS)
 			elseif ReplicatedStorage:GetAttribute("Status") ~= INTERMISSION_STATUS then
 				setPhase("Intermission", endsAt - os.clock(), INTERMISSION_STATUS)
-			end
-			-- Just before the round: anyone with knives to lose and no insurance gets the offer once
-			local left = endsAt - os.clock()
-			if left <= 25 and not insuranceOffered then
-				insuranceOffered = true
-				for _, player in Players:GetPlayers() do
-					local profile = DataService.Get(player)
-					if
-						profile
-						and #profile.Knives >= 3
-						and (profile.Charges.Insurance or 0) == 0
-						and not DataService.IsNewPlayer(player, profile)
-					then
-						Offers.Show(
-							player,
-							"Insurance3",
-							"Murder round soon! Insure your knives so the Murderer can't take one."
-						)
-					end
-				end
 			end
 		end
 
@@ -2837,7 +2662,6 @@ local function loop()
 				"round.start",
 				roundProps(round, player, {
 					chance = player:GetAttribute("MurdererChance"),
-					at_risk = round.AtRisk[player] ~= nil,
 				})
 			)
 			Analytics.Milestone(player, "round_played")
