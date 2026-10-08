@@ -48,7 +48,8 @@ Done:
   the Lucky Wheel in the middle (`MapService.LuckyWheelAt`). About 432 x 188 studs.
 - **Other fixes:** the red chase glow ends at the safe line; deeper monsters throw you further
   (x1 -> ~x2.3); torches / braziers / lava vents use the cartoon flame sprite (`Shared/SpriteFire`)
-  instead of Roblox Fire.
+  instead of Roblox Fire. Every pen is the same full size (`PenMode.Depth` = `Pens.Depth`: the
+  growing pen left a cut-off strip).
 
 **Test first in Studio (desktop + phone):** the hub (the 6 + 1 + 1 pens, wheels in front of each
 gate, walking out of your gate, the Lucky Wheel, nothing left inside pens); a deep biome; a creature lair (Z's, sign); a solo
