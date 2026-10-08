@@ -19,7 +19,7 @@ variant. Fixed Murderer perks, the tutorial showcase and the Speed prize tuning 
 - [x] Retired paid products/pass ownership receive compatible, once-only replacement value (Retired, RetiredPasses, LegacyProgress).
 - [x] Receipt retries, save failure and duplicate requests: re-save before acknowledging, in-flight lock, 200 ids, passes wait for the profile (tested in Studio).
 - [x] Final HUD/menu/config/source sweep; CLAUDE.md rewritten for the cut game.
-- [ ] Lint, formatting, types, regression tests, clean Studio boots and both coffin/vault variants.
+- [x] Lint, formatting, types, clean Studio boots of both pen/coffin and vault servers, HUD button check, receipt + migration tests.
 
 Historical save fields and retired purchase IDs may remain for compatibility. They must not expose
 or reactivate removed systems. Decorative asset names (for example a trophy case or Fire.Heat)
