@@ -19,7 +19,6 @@ local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local MapService = require(script.Parent.MapService)
 local DataService = require(script.Parent.DataService)
-local PowerService = require(script.Parent.PowerService)
 local StealService = require(script.Parent.StealService)
 local Analytics = require(script.Parent.Analytics)
 local Ragdoll = require(script.Parent.Ragdoll)
@@ -296,7 +295,6 @@ end
 
 function RaidService.Init()
 	BaseService.OnStealPrompt = steal
-	PowerService.CanRaidPlayer = RaidService.CanAttackPlayer
 	-- Everyone out and about is a hub-knife target (knocked over, never hurt)
 	Targets.AddProvider(function()
 		local list = {}

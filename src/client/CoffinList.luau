@@ -3,12 +3,14 @@
 -- badge) opens a list of your waiting coffins - each one's rarity, a progress bar and what's left
 -- ("1 murder round left", "12s"), and an "Open" button (Robux product CoffinOpen for that coffin).
 -- Reads the player attribute CoffinList (BaseService: "plate,rarity,roundsLeft,opensAt;...").
--- Only shown while you have coffins waiting (and in the hub, no menu open).
+-- The top button on the right on coffin servers (in the hub, no menu open); empty, it says where
+-- coffins come from.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local PenMode = require(ReplicatedStorage.Shared.PenMode)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local Format = require(ReplicatedStorage.Shared.Format)
 local VoxelUi = require(ReplicatedStorage.Shared.Config.VoxelUi)
@@ -128,11 +130,21 @@ function CoffinList.Init()
 		return made
 	end
 
-	-- the button on the right, under Powers, with a count badge
+	-- Nothing waiting: where coffins come from
+	local empty = SimpleUi.text(body, "No coffins yet!\nSteal one from a boss and bring it home.", {
+		Name = "Empty",
+		Size = UDim2.fromScale(1, 0.5),
+		Position = UDim2.fromScale(0, 0.2),
+		Max = 30,
+		ZIndex = 7,
+	})
+	empty.Visible = false
+
+	-- the top button on the right (Knives sits under it: client/QuickBar), with a count badge
 	local button = Theme.button(Ui.gui, "⚰️ Coffins", PURPLE, {
 		AnchorPoint = Vector2.new(1, 0),
 		Name = "CoffinsButton",
-		Position = UDim2.new(1, -12, 0, 160),
+		Position = UDim2.new(1, -12, 0, 56),
 		Size = UDim2.fromOffset(120, 44),
 		MaximumTextSize = 20,
 		Visible = false,
@@ -160,7 +172,7 @@ function CoffinList.Init()
 		end
 		last = os.clock()
 		entries = parse()
-		button.Visible = #entries > 0 and Ui.inHub() and not Ui.menuOpen()
+		button.Visible = PenMode.Coffins() and Ui.inHub() and not Ui.menuOpen()
 		badge.Visible = #entries > 0
 		badge.Text = tostring(#entries)
 		if not frame.Visible then
@@ -191,9 +203,7 @@ function CoffinList.Init()
 		for i = #entries + 1, #rows do
 			rows[i].Frame.Visible = false
 		end
-		if #entries == 0 then
-			frame.Visible = false
-		end
+		empty.Visible = #entries == 0
 	end)
 end
 

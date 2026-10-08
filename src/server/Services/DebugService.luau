@@ -14,6 +14,7 @@ local ServerStorage = game:GetService("ServerStorage")
 
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
+local InventoryService = require(script.Parent.InventoryService)
 local Analytics = require(script.Parent.Analytics)
 local Net = require(script.Parent.Parent.Remotes)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
@@ -22,7 +23,6 @@ local RoundService = require(script.Parent.RoundService)
 local StealService = require(script.Parent.StealService)
 local RaidService = require(script.Parent.RaidService)
 local GuardService = require(script.Parent.GuardService)
-local PowerService = require(script.Parent.PowerService)
 
 local DebugService = {}
 
@@ -107,18 +107,10 @@ local commands: { [string]: (Player, ...any) -> any } = {
 				table.remove(p.Bought, index)
 			end
 		end)
-		PowerService.DebugMigrate(player)
-		return true
-	end,
-	-- Use a power as if the client pressed it (tests every power in one round)
-	UsePower = function(player: Player, id: string)
-		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
-		PowerService.DebugUse(player, id, if root then root.CFrame.LookVector else nil)
-		return true
-	end,
-	-- Fill a round's Energy (tests powers without collecting coins)
-	Energy = function(player: Player, amount: number?)
-		PowerService.AddEnergy(player, amount or 20)
+		local profile = DataService.Get(player)
+		if profile then
+			InventoryService.DebugRefund(player, profile)
+		end
 		return true
 	end,
 	-- Offer tests reach the real pending-token/cooldown state, rather than a command-bar module copy.

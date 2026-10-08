@@ -231,12 +231,15 @@ function NextAction.Pick(s: State): Action?
 	if s.PendingCash > 0 and not s.AutoCollect then
 		return { Id = "collect_all", Text = "Grab your <b>money</b>!", Target = "Pad" }
 	end
-	return {
-		Id = "powers",
-		Text = "Choose a knife power for your next round!",
-		Short = "Choose your next round power!",
-		Ui = "Powers",
-	}
+	if s.CanRebirth then
+		return {
+			Id = "rebirth",
+			Text = "More → Rebirth: see what starting over gives you",
+			Short = "More → Rebirth: your rewards",
+			Ui = "Rebirth",
+		}
+	end
+	return { Id = "train", Text = `Run in your <b>wheel</b> to get faster!`, Target = "Wheel" }
 end
 
 return NextAction

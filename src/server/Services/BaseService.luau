@@ -464,7 +464,6 @@ function BaseService.RefreshWalkSpeed(player: Player)
 		-- Sneakers and knife perks (both set by RoundService, cleared when the round ends)
 		speed += (player:GetAttribute("RoundSpeedBonus") or 0) :: number
 		speed += (player:GetAttribute("PerkSpeed") or 0) :: number
-		speed += (player:GetAttribute("PowerSpeed") or 0) :: number -- Rush (an Innocent power)
 	else
 		-- Speed Potion (Robux consumable): hub only, never in rounds
 		if profile and DataService.BoostActive(profile, "Speed") and not player:GetAttribute("SlowMode") then

@@ -1,8 +1,8 @@
 --!strict
 -- The right side of the HUD, Steal An Egg style: only the two things you use all the time.
+--   Coffins: your waiting coffins (client/CoffinList, on top)
 --   Knives: your wall as Tsunami-simple rows (icon, name, $/s, Sell and Equip), "Equip Best", and
 --           the next floor ("+10 slots") - Steal An Egg's "9/12 Active, +1 EQUIP, Equip Best" panel
---   Powers: the Power Mystic panel (client/PowersView, registered by Menus as Ui.Panels.Powers)
 -- Everything else moved into the world: Upgrade Wheel sign by your Haunted Wheel, the Lucky Wheel
 -- and the Mystery Merchant on the plaza, the free chest on the plaza.
 local Players = game:GetService("Players")
@@ -203,17 +203,18 @@ end
 function QuickBar.Init()
 	local knivesFrame = buildKnivesPanel()
 	Ui.Panels.QuickKnives = knivesFrame
-	local knivesButton = sideButton("KnivesButton", "Knives", GOLD, "Knives", 56, function()
-		Ui.Menu.Toggle(knivesFrame)
-	end)
-	local powersButton = sideButton("PowersButton", "Powers", Color3.fromRGB(255, 148, 28), "Powers", 108, function()
-		local powers = Ui.Panels.Powers
-		if powers then
-			Ui.Menu.Toggle(powers)
+	-- (under the Coffins button on coffin servers, client/CoffinList)
+	local knivesButton = sideButton(
+		"KnivesButton",
+		"Knives",
+		GOLD,
+		"Knives",
+		if PenMode.Coffins() then 108 else 56,
+		function()
+			Ui.Menu.Toggle(knivesFrame)
 		end
-	end)
+	)
 	Ui.GuideTargets.Knives = knivesButton
-	Ui.GuideTargets.Powers = powersButton
 	-- A "!" on Knives when you're not holding your best knife (Steal An Egg's "+1 EQUIP")
 	local badge = Theme.badge(knivesButton)
 	local function refreshBadge()
@@ -226,7 +227,6 @@ function QuickBar.Init()
 	RunService.Heartbeat:Connect(function()
 		local show = Ui.inHub() and not Ui.menuOpen()
 		knivesButton.Visible = show
-		powersButton.Visible = show
 	end)
 end
 

@@ -40,16 +40,14 @@ local DataService = require(script.Parent.DataService)
 local Offers = require(script.Parent.Offers)
 local Fuel = require(script.Parent.Fuel)
 local MapService = require(script.Parent.MapService)
-local PowerService = require(script.Parent.PowerService)
+local Decoy = require(script.Parent.Decoy)
 local Stealth = require(script.Parent.Stealth)
 local Sounds = require(ReplicatedStorage.Shared.Config.Sounds)
 local Disguises = require(script.Parent.Disguises)
-local Obstacles = require(script.Parent.Obstacles)
 local Revolver = require(script.Parent.Revolver)
 local StuckKnives = require(script.Parent.StuckKnives)
 local StealService = require(script.Parent.StealService)
 local RoundBots = require(script.Parent.RoundBots)
-local Ragdoll = require(script.Parent.Ragdoll)
 local Analytics = require(script.Parent.Analytics)
 local CoffinService = require(script.Parent.CoffinService)
 local MapVote = require(script.Parent.MapVote)
@@ -75,7 +73,6 @@ type Round = {
 	PowerRevealed: boolean?, -- this Murderer's power has been announced (first use)
 	PowerLevel: number?, -- this Murderer's power level (their PowerXP for the knife's power)
 	PerkTuned: any?, -- the knife's Murderer perk with this Murderer's level applied (tunePerk)
-	SecondLifeUsed: { [Player]: boolean }?, -- Spam Knife's Innocent side, once each per round
 	Snares: { { Part: BasePart, Stun: number } }?, -- the Murderer's hidden snares (Snare power)
 	Bots: { Bot },
 	BotFolder: Folder,
@@ -404,6 +401,8 @@ local function leaveRound(player: Player)
 	end
 	player:SetAttribute("InRound", nil)
 	player:SetAttribute("Role", nil)
+	player:SetAttribute("StunnedUntil", nil) -- (a Flash / Snare perk caught them)
+	Stealth.Reveal(player) -- (a Shadow Murderer leaves visible)
 	player:SetAttribute("SpamUntil", nil)
 	player:SetAttribute("Perk", nil)
 	player:SetAttribute("RoundSpeedBonus", nil)
@@ -706,55 +705,13 @@ end
 local revealPower: (Round) -> ()
 local killCard: (Round, Player) -> ()
 
--- Every way the Murderer can hurt someone ends here, so the Shield works against all of them
+-- Every way the Murderer can hurt someone ends here
 local function strike(round: Round, victim: Player)
 	if not round.Alive[victim] or isKiller(round, victim) then
 		return -- (no friendly fire between Murderers)
 	end
-	Stealth.Reveal(victim) -- getting stabbed blows any Vanish / Mimic cover
-	local character = victim.Character
-	local shieldUntil = character and character:GetAttribute("ShieldUntil")
-	if character and type(shieldUntil) == "number" and workspace:GetServerTimeNow() < shieldUntil then
-		character:SetAttribute("ShieldUntil", nil)
-		local root = rootOf(victim)
-		if root then
-			Net.Remotes.Effect:FireAllClients("Shield", root.Position)
-		end
-		Net.Notify(victim, "Your shield saved you! RUN!", "good")
-		if round.Murderer then
-			Net.Notify(round.Murderer, "They had a shield!", "bad")
-		end
-		return
-	end
 	if not round.Murderer then
 		round.Kills += 1 -- a Murderer bot: no credit or loot, but it still kills
-	end
-	-- Second Life (Spam Knife's Innocent side): once a round a killing hit knocks you down instead,
-	-- and you get back up invisible for a moment
-	if victim:GetAttribute("RoundPower") == "SecondLife" and not round.Classic then
-		local used = round.SecondLifeUsed or {}
-		round.SecondLifeUsed = used
-		if not used[victim] then
-			used[victim] = true
-			victim:SetAttribute("SecondLifeUsed", true)
-			local root = rootOf(victim)
-			if root then
-				Ragdoll.Tumble(victim, -root.CFrame.LookVector * 30 + Vector3.new(0, 35, 0), 1)
-				Net.Remotes.Effect:FireAllClients("Shield", root.Position)
-			end
-			local level = (victim:GetAttribute("PowerLevel") or 1) :: number
-			task.delay(1, function()
-				if round.Alive[victim] then
-					Stealth.Vanish(victim, 1.5 * (1 + 0.2 * GameConfig.PowerProgress(level)))
-				end
-			end)
-			Net.Notify(victim, "Second life! You got back up - RUN!", "good")
-			if round.Murderer then
-				Net.Notify(round.Murderer, "They got back up!", "bad")
-			end
-			revealPower(round)
-			return
-		end
 	end
 	revealPower(round)
 	eliminate(round, victim, round.Murderer, true)
@@ -828,7 +785,7 @@ local function botAt(round: Round, instance: Instance): Bot?
 end
 
 -- Server-side melee check: range, facing, cooldown, and the victim must still be alive in this round
--- Flashed or caught in a Bear Trap: no stabbing, throwing or perks until it wears off
+-- Stunned (StunnedUntil): no stabbing, throwing or perks until it wears off
 local function isStunned(player: Player): boolean
 	local until_ = player:GetAttribute("StunnedUntil")
 	return type(until_) == "number" and workspace:GetServerTimeNow() < until_
@@ -866,7 +823,6 @@ local function onAttack(round: Round)
 		sound:Play()
 	end
 	Net.Remotes.Effect:FireAllClients("Swing", murdererRoot.Position)
-	PowerService.PopDecoyNear(murdererRoot.Position + murdererRoot.CFrame.LookVector * 3, GameConfig.AttackRange)
 
 	-- Who can this swing reach? Distance is measured flat (no missing someone on a step), the
 	-- facing check is loose (the server's view of the Murderer's turn lags), and a wall in between
@@ -938,15 +894,6 @@ local function onAttack(round: Round)
 			if dist and dist < closestDist then
 				closest, closestBot, closestDist = nil, bot, dist
 			end
-		end
-	end
-	-- A Barricade in the way takes the hit instead
-	local obstacle = Obstacles.Near(murdererRoot.Position, GameConfig.AttackRange, murdererRoot.CFrame.LookVector)
-	if obstacle then
-		local point = obstacle.Part.Position
-		if (point - murdererRoot.Position).Magnitude < closestDist + 1 then
-			obstacle.Hit("Murderer")
-			return
 		end
 	end
 	if closestBot then
@@ -1206,11 +1153,6 @@ local function throwKnife(
 			end
 		end
 		if hit then
-			-- A Barricade takes the knife
-			local obstacle = Obstacles.Near(hit.Position, 1.5, nil)
-			if obstacle then
-				obstacle.Hit("Murderer")
-			end
 			-- Stays stuck in the wall / door for the rest of the round (round.Bodies goes at the end)
 			StuckKnives.Stick(model, hit.Position, direction, 0, round.Bodies)
 			finish(true)
@@ -1361,7 +1303,7 @@ local function usePerk(round: Round, direction: Vector3)
 		table.insert(snares, { Part = snare, Stun = perk.Duration })
 		Net.Notify(murderer, "Trap set!", "good")
 	elseif perkId == "DecoyKnife" then
-		PowerService.Decoy(murderer, perk.Duration)
+		Decoy.Run(murderer, perk.Duration)
 		Net.Notify(murderer, "A fake you runs off!", "good")
 	elseif perkId == "FlashKnife" then
 		local look = Vector3.new(direction.X, 0, direction.Z)
@@ -1615,7 +1557,6 @@ local function spawnCoin(round: Round)
 		coin:Destroy()
 		local amount = pay(round, player, GameConfig.RoundPay.Coin)
 		Analytics.Count(player, "coins")
-		PowerService.AddEnergy(player, GameConfig.EnergyPerCoin)
 		Net.Remotes.Effect:FireClient(player, "Coin", position, amount)
 		task.delay(GameConfig.CoinRespawn, function()
 			if current == round then
@@ -1853,13 +1794,6 @@ local function onShoot(player: Player, aim: unknown)
 			Net.Notify(other, `{round.Names[player] or "Someone"} shot the Murderer!`, "good")
 		end
 		eliminate(round, victim, player, true)
-	elseif
-		victim.Character
-		and type(victim.Character:GetAttribute("ShieldUntil")) == "number"
-		and workspace:GetServerTimeNow() < victim.Character:GetAttribute("ShieldUntil") :: number
-	then
-		victim.Character:SetAttribute("ShieldUntil", nil)
-		Net.Notify(victim, "Your shield stopped a bullet!", "good")
 	else
 		-- Shot an innocent: both go down, and the Revolver drops where the shooter stood
 		Net.Remotes.Effect:FireClient(
@@ -1891,7 +1825,6 @@ local function murdererThreat(round: Round): BasePart?
 			and round.Alive[killer]
 			and weapon.Parent == killer.Character
 			and not killer:GetAttribute("Invisible")
-			and not killer:GetAttribute("Mimic")
 		then
 			return rootOf(killer)
 		end
@@ -2059,35 +1992,14 @@ local function murdererBrain(round: Round, bot: Bot, now: number)
 		wander(bot, now) -- the grace period: blend in
 		return
 	end
-	-- Bear traps catch a Murderer bot too
-	local stun = PowerService.SpringRoundTrap(bot.Root.Position)
-	if stun then
-		bot.StunnedUntil = workspace:GetServerTimeNow() + stun
-		Net.Animate(bot.Model, "Hurt")
-	end
-	-- Stuck at a Barricade: smash it
-	local obstacle = Obstacles.Near(bot.Root.Position, 4.5, bot.Root.CFrame.LookVector)
-	if obstacle and now >= bot.NextStab then
-		bot.NextStab = now + 1
-		RoundBots.Face(bot, obstacle.Part.Position)
-		Net.Animate(bot.Model, "Stab")
-		obstacle.Hit("Murderer")
-		return
-	end
-
-	-- Hunt the closest person it can see (Vanish / Mimic hide you)
+	-- Hunt the closest person
 	local target: BasePart?, targetPlayer: Player?, targetBot: Bot? = nil, nil, nil
 	local bestDist = math.huge
 	for player in round.Alive do
 		local root = rootOf(player)
 		local dist = if root then (root.Position - bot.Root.Position).Magnitude else math.huge
-		-- (a walking Mimic disguise fools them from a distance, not up close)
-		local hidden = player:GetAttribute("Invisible")
-			or (player:GetAttribute("Mimic") and dist > GameConfig.MimicSpotRange)
-		if root and not hidden then
-			if dist < bestDist then
-				target, targetPlayer, targetBot, bestDist = root, player, nil, dist
-			end
+		if root and dist < bestDist then
+			target, targetPlayer, targetBot, bestDist = root, player, nil, dist
 		end
 	end
 	for _, other in round.Bots do
@@ -2120,7 +2032,6 @@ local function murdererBrain(round: Round, bot: Bot, now: number)
 		RoundBots.Face(bot, target.Position)
 		Net.Animate(bot.Model, "Stab")
 		Net.Remotes.Effect:FireAllClients("Swing", bot.Root.Position)
-		PowerService.PopDecoyNear(bot.Root.Position + bot.Root.CFrame.LookVector * 3, GameConfig.AttackRange)
 		local victimRoot = target
 		task.delay(AnimLibrary.Clips.Stab.Impact or 0.15, function()
 			-- Still in reach when the blade lands? (you can dodge it)
@@ -2392,7 +2303,7 @@ local function startRound(participants: { Player })
 			`🔪 {ReplicatedStorage:GetAttribute("MapName") or "The Murder"}{if round.Double
 				then "\nDOUBLE TROUBLE - 2 Murderers, 2 Sheriffs!"
 				else ""}{if round.Classic
-				then "\nCLASSIC ROUND - no powers, no perks, x" .. GameConfig.ClassicPay .. " pay!"
+				then "\nCLASSIC ROUND - no Murderer power, x" .. GameConfig.ClassicPay .. " pay!"
 				else ""}`
 		)
 	end
@@ -2910,13 +2821,6 @@ local function endRound(round: Round)
 		elseif sheriffBot then `{sheriffBot.Name} (bot)`
 		else nil
 	local sheriffId = if sheriff then sheriff.UserId else 0
-	local sheriffPower: string? = nil
-	if sheriff and not round.Classic then
-		local name = sheriff:GetAttribute("RoundPowerName")
-		if type(name) == "string" then
-			sheriffPower = `{name} Lv {sheriff:GetAttribute("PowerLevel") or 1}`
-		end
-	end
 	local sheriffStatus = if hero or round.HeroBot
 		then "shot the Murderer!"
 		elseif sheriff and round.Alive[sheriff] then "survived"
@@ -2941,12 +2845,10 @@ local function endRound(round: Round)
 		HeroFace = heroBotFace,
 		Kills = round.Kills,
 		Classic = round.Classic,
-		-- Both powers on show: everyone sees where these two are at (Murderer: the knife's power;
-		-- Sheriff: their Innocent power)
+		-- The Murderer's knife power on show
 		MurdererPower = murdererPower,
 		SheriffName = sheriffName,
 		SheriffId = sheriffId,
-		SheriffPower = sheriffPower,
 		SheriffStatus = sheriffStatus,
 	}
 	for player in round.Names do
@@ -3142,41 +3044,6 @@ function RoundService.Init()
 		while true do
 			publishChances()
 			task.wait(2)
-		end
-	end)
-	-- Smoke Burst throws the Murderer back (a player tumbles, a bot is shoved and dazed)
-	PowerService.OnSmoke(function(_user: Player, origin: Vector3, range: number, push: number)
-		local round = current
-		if not round then
-			return
-		end
-		for player in round.Killers do
-			local r = rootOf(player)
-			if r and (r.Position - origin).Magnitude < range then
-				local away = Vector3.new(r.Position.X - origin.X, 0, r.Position.Z - origin.Z)
-				local dir = if away.Magnitude > 0.1 then away.Unit else Vector3.zAxis
-				Ragdoll.Tumble(player, dir * (25 + push * 6) + Vector3.new(0, 30, 0), 0.9)
-			end
-		end
-		local bot = round.MurdererBot
-		if bot and bot.Alive and (bot.Root.Position - origin).Magnitude < range then
-			bot.StunnedUntil = workspace:GetServerTimeNow() + 1
-			local away = Vector3.new(bot.Root.Position.X - origin.X, 0, bot.Root.Position.Z - origin.Z)
-			if away.Magnitude > 0.1 then
-				bot.Root.CFrame += away.Unit * push
-			end
-		end
-	end)
-	-- Flash blinds a Murderer bot too
-	PowerService.OnFlash(function(_flasher, origin, look, range, duration, burst)
-		local round = current
-		local bot = round and round.MurdererBot
-		if bot and bot.Alive then
-			local offset = bot.Root.Position - origin
-			if offset.Magnitude < range and (offset.Magnitude <= burst or look:Dot(offset.Unit) > 0.57) then
-				bot.StunnedUntil = workspace:GetServerTimeNow() + duration
-				Net.Animate(bot.Model, "Hurt")
-			end
 		end
 	end)
 	Players.PlayerRemoving:Connect(function(player)

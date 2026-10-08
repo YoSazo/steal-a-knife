@@ -45,7 +45,6 @@ local Offers = require(script.Parent.Offers)
 local ManorDecor = require(script.Parent.ManorDecor)
 local Disguises = require(script.Parent.Disguises)
 local MapService = require(script.Parent.MapService)
-local Obstacles = require(script.Parent.Obstacles)
 local Ragdoll = require(script.Parent.Ragdoll)
 local StealService = require(script.Parent.StealService)
 local Analytics = require(script.Parent.Analytics)
@@ -114,9 +113,6 @@ export type Guard = {
 	StaggerImmuneUntil: number,
 	Tracks: { [string]: AnimationTrack },
 	Playing: string?,
-	Lure: BasePart?,
-	LureUntil: number,
-	OnLureReached: (() -> ())?,
 }
 
 type Projectile = {
@@ -431,9 +427,6 @@ local function newGuard(boss: Boss, shadow: boolean, at: CFrame): Guard
 		StaggerImmuneUntil = 0,
 		Tracks = loadTracks(model),
 		Playing = nil,
-		Lure = nil,
-		LureUntil = 0,
-		OnLureReached = nil,
 	}
 	guardByModel[model] = guard
 	animate(guard, "Idle")
@@ -1072,12 +1065,6 @@ local function hurt(player: Player, amount: number, from: Vector3): boolean
 	if not character or not humanoid or not root then
 		return false
 	end
-	local shieldUntil = character:GetAttribute("ShieldUntil")
-	if type(shieldUntil) == "number" and workspace:GetServerTimeNow() < shieldUntil then
-		character:SetAttribute("ShieldUntil", nil)
-		Net.Remotes.Effect:FireAllClients("Shield", root.Position)
-		return false
-	end
 	-- Bosses knock you about, they never kill you: the hit stops at 1 health (the tumble that follows
 	-- is the punishment), and health comes back while you get up
 	humanoid.Health = math.max(1, humanoid.Health - amount)
@@ -1291,24 +1278,6 @@ local function moveTowards(guard: Guard, destination: Vector3, speed: number, dt
 		y,
 		math.clamp(nextPos.Z, arena.MinZ - 4, arena.MaxZ - 2)
 	)
-	-- A Barricade in the way: stop and smash it
-	local obstacle = Obstacles.Blocks(guard.Position, nextPos, 1.5)
-	if obstacle then
-		face(guard, obstacle.Part.Position)
-		animate(guard, "Idle")
-		local t = now()
-		if t - guard.LastAttack >= GameConfig.GuardAttackCooldown then
-			guard.LastAttack = t
-			Net.Animate(guard.Model, "GuardStab")
-			guard.BusyUntil = t + 0.6
-			task.delay(AnimLibrary.Clips.GuardStab.Impact or 0.3, function()
-				if obstacle.Part.Parent then
-					obstacle.Hit("Guard")
-				end
-			end)
-		end
-		return false
-	end
 	guard.Position = nextPos
 	guard.Model:PivotTo(CFrame.lookAt(nextPos, nextPos + offset))
 	if speed > GameConfig.GuardPatrolSpeed then
@@ -1371,42 +1340,10 @@ local function step(guard: Guard, dt: number)
 		return
 	end
 
-	-- A Decoy pulls them off course until it's caught
-	local lure = guard.Lure
-	if lure and (t > guard.LureUntil or not lure.Parent) then
-		guard.Lure = nil
-		lure = nil
-	end
-	if lure then
-		if (lure.Position - guard.Position).Magnitude <= GameConfig.GuardAttackRange then
-			guard.Lure = nil
-			Net.Animate(guard.Model, "GuardStab")
-			guard.BusyUntil = t + 0.5
-			local reached = guard.OnLureReached
-			guard.OnLureReached = nil
-			if reached then
-				reached()
-			end
-		else
-			moveTowards(guard, lure.Position, guard.Config.GuardSpeed, dt)
-		end
-		return
-	end
-
 	local thief = guard.Target
 	local targetRoot = chaseTarget(guard)
 	if not thief or not targetRoot then
 		stopChase(guard, thief ~= nil and thief.Parent ~= nil and StealService.BossCarry(thief) == nil)
-		return
-	end
-
-	-- Vanished: they've lost sight of you and stand there searching until you reappear. Disguised
-	-- as furniture (Mimic) works the same, unless you come close enough for them to see through it.
-	local gap = ((targetRoot.Position - guard.Position) * Vector3.new(1, 0, 1)).Magnitude
-	if thief:GetAttribute("Invisible") or (thief:GetAttribute("Mimic") and gap > GameConfig.MimicSpotRange) then
-		guard.Alert.Enabled = false
-		showTag(guard, false)
-		animate(guard, "Idle")
 		return
 	end
 
@@ -1570,7 +1507,7 @@ function GuardService.All(): { Guard }
 	return list
 end
 
--- Bear Trap / Flash: frozen in place for a while (only matters mid-chase)
+-- Frozen in place for a while (only matters mid-chase): the Escape consumable
 function GuardService.Stun(guard: Guard, seconds: number)
 	if guard.Dead or not guard.Target then
 		return
@@ -1579,17 +1516,6 @@ function GuardService.Stun(guard: Guard, seconds: number)
 	guard.WindupUntil = 0
 	guard.Model:SetAttribute("ChargeStart", nil)
 	Net.Animate(guard.Model, "GuardHurt")
-end
-
--- Decoy: whoever is chasing `owner` chases the decoy instead until it's caught
-function GuardService.Lure(owner: Player, part: BasePart, duration: number, onReached: () -> ())
-	for _, guard in chasers do
-		if guard.Target == owner and not guard.Dead then
-			guard.Lure = part
-			guard.LureUntil = now() + duration
-			guard.OnLureReached = onReached
-		end
-	end
 end
 
 function GuardService.FromPart(part: Instance): Guard?

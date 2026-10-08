@@ -12,13 +12,6 @@ local FINISHES: { [string]: Finish } = {
 		Shoe = rgb(30, 26, 30),
 		Sole = rgb(15, 15, 18),
 	},
-	["Madame Vesper"] = {
-		Style = "Buttons",
-		Cloth = rgb(70, 40, 120),
-		Accent = rgb(200, 160, 70),
-		Shoe = rgb(40, 24, 70),
-		Sole = rgb(25, 18, 40),
-	},
 	Nick = {
 		Style = "Zip",
 		Cloth = rgb(20, 190, 200),

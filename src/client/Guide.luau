@@ -191,15 +191,11 @@ local function roundAction(): NextAction.Action
 		WeaponWait = math.max(0, ((player:GetAttribute("WeaponAt") or now) :: number) - now),
 		Reload = math.max(0, ((player:GetAttribute("RevolverReadyAt") or 0) :: number) - now),
 		Classic = ReplicatedStorage:GetAttribute("Classic") == true,
-		Energy = (player:GetAttribute("Energy") or 0) :: number,
-		UsesLeft = player:GetAttribute("PowerUsesLeft") :: number?,
-		Power = player:GetAttribute("RoundPower") :: string?,
 		Perk = player:GetAttribute("PowerId") :: string?,
 		PerkPassive = player:GetAttribute("PerkPassive") == true,
 		PerkUsesLeft = player:GetAttribute("PerkUsesLeft") :: number?,
 		PerkWait = math.max(0, ((player:GetAttribute("PerkReadyAt") or 0) :: number) - now),
 		Spam = ((player:GetAttribute("SpamUntil") or 0) :: number) > now,
-		SecondLifeUsed = player:GetAttribute("SecondLifeUsed") == true,
 		GunNearby = not murderer and not gun and visibleRoundTarget("RoundGunPickup", 45) ~= nil,
 		Input = input,
 		Stunned = math.max(0, ((player:GetAttribute("StunnedUntil") or 0) :: number) - now),
@@ -421,21 +417,18 @@ function Guide.Init()
 			completed()
 		end
 	end)
-	ReplicatedStorage.Remotes.Effect.OnClientEvent:Connect(function(kind: string, id: unknown)
+	ReplicatedStorage.Remotes.Effect.OnClientEvent:Connect(function(kind: string)
 		if kind == "CashBurst" then
 			learn("collect")
 		elseif kind == "IndexClaim" then
 			learn("index")
-		elseif kind == "PowerUsed" and type(id) == "string" then
-			learn(`power:{id}`)
+		elseif kind == "Coin" and player:GetAttribute("InRound") then
+			learn("coins")
+			started = true
 		end
 		if
 			current
-			and (
-				(kind == "CashBurst" and current.Id == "collect")
-				or (kind == "IndexClaim" and current.Id == "index")
-				or (kind == "PowerUsed" and current.Id == "power_ready")
-			)
+			and ((kind == "CashBurst" and current.Id == "collect") or (kind == "IndexClaim" and current.Id == "index"))
 		then
 			completed()
 		end
@@ -456,20 +449,6 @@ function Guide.Init()
 			end
 		end)
 	end
-	local lastEnergy = player:GetAttribute("Energy")
-	player:GetAttributeChangedSignal("Energy"):Connect(function()
-		local energy = player:GetAttribute("Energy")
-		if
-			player:GetAttribute("InRound")
-			and type(lastEnergy) == "number"
-			and type(energy) == "number"
-			and energy > lastEnergy
-		then
-			learn("coins")
-			started = true
-		end
-		lastEnergy = energy
-	end)
 	for _, name in { "RevolverReadyAt", "PerkReadyAt" } do
 		player:GetAttributeChangedSignal(name):Connect(function()
 			local ready = player:GetAttribute(name)
@@ -694,12 +673,7 @@ function Guide.Init()
 		elseif idleHelp and root and helpMovement and (root.Position - helpMovement).Magnitude > 6 then
 			idleHelp = false
 		end
-		local skill = current
-			and GuidePolicy.Skill(
-				current.Id,
-				player:GetAttribute("RoundPower") :: string?,
-				player:GetAttribute("PowerId") :: string?
-			)
+		local skill = current and GuidePolicy.Skill(current.Id, player:GetAttribute("PowerId") :: string?)
 		local visible = current ~= nil
 			and not blocked
 			and GuidePolicy.Visible({

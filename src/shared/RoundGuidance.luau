@@ -1,6 +1,5 @@
 --!strict
 -- One immediate round action, using server availability and the player's actual tools.
-local GameConfig = require(script.Parent.Config.GameConfig)
 local KnifePowers = require(script.Parent.Config.KnifePowers)
 
 local RoundGuidance = {}
@@ -13,35 +12,16 @@ export type State = {
 	WeaponWait: number,
 	Reload: number,
 	Classic: boolean,
-	Energy: number,
-	UsesLeft: number?,
-	Power: string?,
 	Perk: string?,
 	PerkPassive: boolean,
 	PerkUsesLeft: number?,
 	PerkWait: number,
 	Spam: boolean,
-	SecondLifeUsed: boolean,
 	GunNearby: boolean,
 	Input: string,
 	Stunned: number,
 }
 export type Action = { Id: string, Text: string, Short: string?, Ui: string?, Target: string?, Zone: number? }
-
-local BENEFITS = {
-	Vanish = "turn invisible",
-	Radar = "find the Murderer",
-	Trap = "set a trap",
-	Shield = "block a stab",
-	Decoy = "send out a fake you",
-	Mimic = "hide as furniture",
-	Flash = "blind the Murderer",
-	Barricade = "block the way",
-	Rush = "run super fast",
-	Dash = "blink forward",
-	SmokeBurst = "push the Murderer back",
-	PhoenixWall = "make a wall of fire",
-}
 
 function RoundGuidance.Pick(s: State): Action
 	local touch, pad = s.Input == "Touch", s.Input == "Gamepad"
@@ -131,55 +111,10 @@ function RoundGuidance.Pick(s: State): Action
 	if s.GunNearby then
 		return { Id = "gun_pickup", Text = "Grab the gun to stop the Murderer!", Target = "RoundGun" }
 	end
-	if s.Classic then
-		return {
-			Id = "classic_coins",
-			Text = "Collect coins and stay safe - no powers this round!",
-			Short = "Collect coins and stay safe!",
-			Target = "RoundCoin",
-		}
-	end
-	if s.Power == "SecondLife" then
-		return {
-			Id = "second_life",
-			Text = if s.SecondLifeUsed
-				then "Second Life used - collect coins and stay safe!"
-				else "Collect coins - your knife saves you from one stab!",
-			Short = if s.SecondLifeUsed then "Second Life used - stay safe!" else "One extra life - collect coins!",
-			Target = "RoundCoin",
-		}
-	end
-	local power: any = nil
-	for _, entry in GameConfig.Powers do
-		if entry.Id == s.Power then
-			power = entry
-			break
-		end
-	end
-	if not power or s.UsesLeft == 0 then
-		return {
-			Id = "innocent_coins",
-			Text = if power then "Power used up - collect coins and stay safe!" else "Collect coins and stay safe!",
-			Short = "Collect coins and stay safe!",
-			Target = "RoundCoin",
-		}
-	end
-	local cost = power.Energy[math.clamp(GameConfig.RoundPowerLevel, 1, #power.Energy)]
-	local benefit = BENEFITS[power.Id] or string.lower(power.DisplayName)
-	if s.Energy < cost then
-		local coins = math.ceil((cost - s.Energy) / GameConfig.EnergyPerCoin)
-		return {
-			Id = "power_coins",
-			Text = `Grab {coins} {if coins == 1 then "coin" else "coins"} to {benefit}!`,
-			Target = "RoundCoin",
-		}
-	end
-	local input = if touch then "Tap your power" else if pad then "D-pad Left" else "Press Z"
 	return {
-		Id = "power_ready",
-		Text = `{input} to {benefit}!`,
-		Short = `{if touch then "Tap power" else if pad then "D-pad Left" else "Z"}: {benefit}!`,
-		Ui = "Power1",
+		Id = if s.Classic then "classic_coins" else "innocent_coins",
+		Text = "Collect coins and stay safe!",
+		Target = "RoundCoin",
 	}
 end
 

@@ -17,8 +17,7 @@ GuidePolicy.Thresholds = {
 } :: { [string]: number }
 
 function GuidePolicy.Limit(skill: string): number?
-	return GuidePolicy.Thresholds[skill]
-		or (if skill:match("^power:[%w_]+$") or skill:match("^perk:[%w_]+$") then 1 else nil)
+	return GuidePolicy.Thresholds[skill] or (if skill:match("^perk:[%w_]+$") then 1 else nil)
 end
 
 function GuidePolicy.Parse(encoded: string): { [string]: number }
@@ -32,7 +31,7 @@ function GuidePolicy.Parse(encoded: string): { [string]: number }
 	return learned
 end
 
-function GuidePolicy.Skill(id: string, power: string?, perk: string?): string?
+function GuidePolicy.Skill(id: string, perk: string?): string?
 	if id == "steal" or id == "carry_home" or id == "carry_place" or id == "carry_case" then
 		return "delivery"
 	elseif id == "collect" or id == "collect_all" then
@@ -49,13 +48,11 @@ function GuidePolicy.Skill(id: string, power: string?, perk: string?): string?
 		return "gun_draw"
 	elseif id == "sheriff_shoot" or id == "sheriff_reload" then
 		return "gun_shoot"
-	elseif id == "power_ready" or id == "power_coins" then
-		return if power then `power:{power}` else "coins"
 	elseif id == "murderer_perk" then
 		return if perk then `perk:{perk}` else "knife_fight"
 	elseif id == "murderer_spam" or id == "murderer_fight" or id == "murderer_passive" then
 		return "knife_fight"
-	elseif id == "innocent_coins" or id == "classic_coins" or id == "second_life" then
+	elseif id == "innocent_coins" or id == "classic_coins" then
 		return "coins"
 	elseif id == "index" or id == "train" then
 		return id

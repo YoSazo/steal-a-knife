@@ -1,8 +1,8 @@
 --!strict
 -- "Your knife's power" - shown once at the end of the tutorial, so a new player gets the value of
--- their knife straight away: the power's picture and name, its Murderer power and Innocent power
--- in plain words, and a "Show me!" button that demos it on the spot (Shadow: you vanish for a few
--- seconds - on your own screen; it's a demo). Same look as the Powers menu (SimpleUi).
+-- their knife straight away: the power's picture and name, what it does for the Murderer in plain
+-- words, and a "Show me!" button that demos it on the spot (Shadow: you vanish for a few
+-- seconds - on your own screen; it's a demo). SimpleUi look.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -19,7 +19,6 @@ local PowerShowcase = {}
 local PURPLE = Color3.fromRGB(150, 70, 235)
 local GREEN = Color3.fromRGB(80, 210, 50)
 local MURDERER = Color3.fromRGB(255, 130, 130)
-local INNOCENT = Color3.fromRGB(140, 215, 255)
 
 -- Demos that work anywhere, on this screen only. Powers without one just get the card.
 local DEMOS: { [string]: () -> () } = {
@@ -134,13 +133,6 @@ function PowerShowcase.Show()
 		Position = UDim2.fromOffset(20, 226),
 		Size = UDim2.new(1, -40, 0, 32),
 		TextColor3 = MURDERER,
-		Max = 26,
-		ZIndex = 61,
-	})
-	SimpleUi.text(card, `Innocent power: {short[2]}`, {
-		Position = UDim2.fromOffset(20, 262),
-		Size = UDim2.new(1, -40, 0, 32),
-		TextColor3 = INNOCENT,
 		Max = 26,
 		ZIndex = 61,
 	})

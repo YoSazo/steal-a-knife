@@ -5,7 +5,6 @@
 --   Rebirth  start over for a permanent multiplier
 -- and the shopkeepers' panels, opened by standing on the ring at their stall (server ShopNPCs):
 --   Mortimer the Knife Merchant  sealed cases and cash Lucky Blocks, with the odds of everything inside
---   Madame Vesper the Mystic     buy, upgrade and equip Innocent Powers
 -- Knife cards show a live 3D model in a ViewportFrame built from the same KnifeModel as the game.
 
 local ContextActionService = game:GetService("ContextActionService")
@@ -19,7 +18,6 @@ local Ui = require(script.Parent.Ui)
 local Theme = require(script.Parent.MenuTheme)
 local IndexView = require(script.Parent.IndexView)
 local RebirthView = require(script.Parent.RebirthView)
-local PowersView = require(script.Parent.PowersView)
 local CaseShowcase = require(script.Parent.CaseShowcase)
 local CaseOdds = require(script.Parent.CaseOdds)
 local LuckyBlockView = require(script.Parent.LuckyBlockView)
@@ -318,8 +316,6 @@ function Menus.Init()
 	local rackGrid = scrollGrid(knivesBody, Vector2.new(150, 254))
 
 	-- POWERS ---------------------------------------------------------------------------------------
-	local powersFrame, refreshPowersView = PowersView.Build()
-	table.insert(panels, powersFrame)
 
 	-- REBIRTH --------------------------------------------------------------------------------------
 	local rebirthFrame, refreshRebirth = RebirthView.Build()
@@ -415,17 +411,7 @@ function Menus.Init()
 		end
 	end
 
-	local function refreshPowers()
-		refreshPowersView()
-	end
-	-- The right side's Powers button (client/QuickBar) opens the same Power Mystic panel
-	Ui.Panels.Powers = powersFrame
 	Ui.Panels.Index = indexFrame
-	powersFrame:GetPropertyChangedSignal("Visible"):Connect(function()
-		if powersFrame.Visible then
-			refreshPowers()
-		end
-	end)
 
 	-- RebirthView owns its live requirement and bonus displays.
 
@@ -436,9 +422,6 @@ function Menus.Init()
 			Equipped = refreshRack,
 			Discovered = refreshIndex,
 			IndexClaimed = refreshIndex,
-			Powers = refreshPowers,
-			Loadout = refreshPowers,
-			PowerSlots = refreshPowers,
 			Rebirths = refreshRebirth,
 		} :: { [string]: () -> () }
 	do
@@ -481,20 +464,16 @@ function Menus.Init()
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
 		SortOrder = Enum.SortOrder.LayoutOrder,
 	}, moreList)
-	local moreOrder = { Knives = 1, Invite = 2, Powers = 3, Rebirth = 4, Stats = 5 }
+	local moreOrder = { Knives = 1, Invite = 2, Rebirth = 3, Stats = 4 }
 	local moreColors = {
 		Knives = Theme.Gold,
 		Invite = Theme.Cyan,
-		Powers = Color3.fromRGB(255, 148, 28),
 		Rebirth = Theme.Purple,
 		Stats = Theme.Green,
 	}
+	-- (a 2x2 of Knives, Invite, Rebirth, Stats; Guidance and How to play along the bottom)
 	local function moreButton(name: string, icon: string, frame: Frame, refresh: () -> ())
-		local wide = name == "Stats" -- the fifth: a full-width bar under the 2x2
-		local tile = Theme.button(if wide then moreBody else moreList, name, moreColors[name], {
-			AnchorPoint = if wide then Vector2.new(0, 1) else nil,
-			Position = if wide then UDim2.fromScale(0, 1) else nil,
-			Size = if wide then UDim2.new(0.32, -8, 0.24, 0) else nil,
+		local tile = Theme.button(moreList, name, moreColors[name], {
 			Name = name,
 			LayoutOrder = moreOrder[name],
 			ZIndex = 8,
@@ -507,18 +486,17 @@ function Menus.Init()
 		Ui.GuideTargets[name] = tile
 		for _, child in tile:GetChildren() do
 			if child:IsA("ImageLabel") and child.Name ~= "Studs" then
-				child.Position = UDim2.fromScale(if wide then 0.3 else 0.04, 0.1)
-				child.Size = UDim2.fromScale(if wide then 0.16 else 0.36, 0.8)
+				child.Position = UDim2.fromScale(0.04, 0.1)
+				child.Size = UDim2.fromScale(0.36, 0.8)
 			end
 		end
 		local word = tile:FindFirstChild("Label") :: TextLabel?
 		if word then
-			word.Position = UDim2.fromScale(if wide then 0.46 else 0.4, 0.15)
-			word.Size = UDim2.fromScale(if wide then 0.3 else 0.56, 0.7)
+			word.Position = UDim2.fromScale(0.4, 0.15)
+			word.Size = UDim2.fromScale(0.56, 0.7)
 		end
 	end
 	moreButton("Knives", "Katana", knivesFrame, refreshRack)
-	moreButton("Powers", "Powers", powersFrame, refreshPowers)
 	moreButton("Rebirth", "Rebirth", rebirthFrame, refreshRebirth)
 
 	-- Invite friends (friends here = more cash: Social): Roblox's own invite, one tap
@@ -629,10 +607,10 @@ function Menus.Init()
 	guidanceButton = Theme.button(moreBody, "Guidance: AUTO", Theme.Cyan, {
 		Name = "GuidanceMode",
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.fromScale(0.32, 1),
-		Size = UDim2.new(0.32, -8, 0.24, 0),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(0.5, -8, 0.24, 0),
 		ZIndex = 8,
-		MaximumTextSize = 28,
+		MaximumTextSize = 34,
 	}, function()
 		local current = Ui.gui:GetAttribute("GuidanceMode") or player:GetAttribute("GuidanceMode") or "Auto"
 		local mode = if current == "Auto" then "On" else if current == "On" then "Off" else "Auto"
@@ -654,7 +632,7 @@ function Menus.Init()
 		Name = "HowToPlay",
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.fromScale(1, 1),
-		Size = UDim2.fromScale(0.36, 0.24),
+		Size = UDim2.new(0.5, -8, 0.24, 0),
 		ZIndex = 8,
 		MaximumTextSize = 34,
 	}, function()
@@ -800,7 +778,6 @@ function Menus.Init()
 
 	refreshRack()
 	refreshIndex()
-	refreshPowers()
 	refreshRebirth()
 
 	-- The left buttons only in the hub (Ui.inHub: alive, not in or still watching a round)
@@ -816,7 +793,7 @@ function Menus.Init()
 		end
 	end)
 
-	-- Keyboard / gamepad shortcuts: K = knives, B = powers (gamepad: L1 / R1)
+	-- Keyboard / gamepad shortcut: K = knives (gamepad: L1)
 	ContextActionService:BindAction("ToggleKnives", function(_, state)
 		if state == Enum.UserInputState.Begin and column.Visible then
 			refreshRack()
@@ -860,14 +837,8 @@ function Menus.Init()
 		onRing = standing
 		if standing then
 			local which = standing:GetAttribute("ShopPanel")
-			local frame: Frame? = if which == "Shop"
-				then shopFrame
-				elseif which == "Powers" then powersFrame
-				else Ui.Panels[tostring(which)] :: any -- the Lucky Wheel / Mystery Merchant (client/GambleUi)
+			local frame: Frame? = if which == "Shop" then shopFrame else Ui.Panels[tostring(which)] :: any -- the Lucky Wheel / Mystery Merchant (client/GambleUi)
 			if frame then
-				if which == "Powers" then
-					refreshPowers()
-				end
 				if not frame.Visible then
 					toggle(frame)
 				end

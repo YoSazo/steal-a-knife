@@ -412,12 +412,6 @@ local GameConfig = {
 	-- max health, so guards, raiders' defenders and the Murderer's helpers need more hits on you.
 	Health = { Base = 100, PerLevel = 25, MaxLevel = 20, BaseCost = 25000, CostGrowth = 2.6 },
 
-	-- Rounds: innocents power their abilities with coins. Each power costs Energy; you start every
-	-- round with a little and every coin you grab adds more.
-	StartEnergy = 1,
-	MaxEnergy = 6,
-	EnergyPerCoin = 1,
-
 	RoundWalkSpeed = 16, -- upgrades don't carry into rounds so new players can still win
 	MurdererWalkSpeed = 18.5,
 
@@ -428,7 +422,6 @@ local GameConfig = {
 	ArenaWidth = 160,
 	CatchRadius = 5.5, -- (bosses are BossScale big: longer arms)
 	BossScale = 1.6, -- bosses tower over players so they're easy to spot, phones included
-	MimicSpotRange = 10, -- a chaser this close sees through a Mimic disguise
 	-- Each zone has one boss: a round character standing in front of a wall of knives. They leave you
 	-- alone until you steal one; then they (or, if they're already busy, a shadow of them) chase you
 	-- at GuardSpeed all the way to the plaza. Caught = they take the knife back (and Damage hurts).
@@ -694,145 +687,6 @@ local GameConfig = {
 	-- Selling a knife from the rack pays this many seconds of its income
 	SellSeconds = 40,
 
-	-- Innocent Powers: bought for good with cash (your knives' income), upgraded to level 3, and
-	-- equipped in a loadout. They work in the hub against guards (on a cooldown) and in rounds
-	-- against the Murderer (a few uses per round; the Murderer can't use them). Per-level values
-	-- are indexed by power level 1..3.
-	PowerSlots = 2,
-	MaxPowerSlots = 3,
-	PowerSlotCost = 25000000, -- the third slot
-	Powers = {
-		{
-			Id = "Vanish",
-			DisplayName = "Vanish",
-			Description = "Turn invisible for a moment. The Murderer loses sight of you.",
-			Cost = 150000,
-			Color = Color3.fromRGB(150, 120, 255),
-			Duration = { 4, 5, 6 }, -- (rounds use RoundDuration)
-			RoundDuration = { 2, 2.5, 3 }, -- short in rounds, and the Murderer still sees a shimmer
-			Energy = { 5, 5, 4 }, -- round cost per level (coins refill Energy)
-			RoundUses = 1, -- once per round
-			Cooldown = 20,
-		},
-		{
-			Id = "Radar",
-			DisplayName = "Radar",
-			Description = "See the Murderer through walls (once their knife is out).",
-			Cost = 25000,
-			Color = Color3.fromRGB(80, 220, 160),
-			Duration = { 3, 4, 5 },
-			Energy = { 2, 2, 1 }, -- round cost per level (coins refill Energy)
-			Cooldown = 12,
-		},
-		{
-			Id = "Trap",
-			DisplayName = "Bear Trap",
-			Description = "Drop a trap. If the Murderer steps in, they're stuck.",
-			Cost = 900000,
-			Color = Color3.fromRGB(170, 170, 180),
-			Duration = { 2, 2.5, 3 }, -- how long it holds them
-			Energy = { 2, 2, 1 }, -- round cost per level (coins refill Energy)
-			Cooldown = 15,
-		},
-		{
-			Id = "Shield",
-			DisplayName = "Shield",
-			Description = "Blocks the next stab that would hit you.",
-			Cost = 6000000,
-			Color = Color3.fromRGB(90, 180, 255),
-			Duration = { 8, 10, 12 }, -- how long the bubble lasts in the arena
-			RoundDuration = { 6, 6, 6 },
-			Energy = { 4, 3, 3 }, -- round cost per level (coins refill Energy)
-			RoundUses = 1, -- once per round
-			Cooldown = 30,
-		},
-		{
-			Id = "Decoy",
-			DisplayName = "Decoy",
-			Description = "A fake you runs off. The Murderer chases it instead.",
-			Cost = 250000000,
-			Color = Color3.fromRGB(255, 190, 90),
-			Duration = { 5, 6, 8 },
-			Energy = { 3, 2, 2 }, -- round cost per level (coins refill Energy)
-			Cooldown = 18,
-		},
-		{
-			Id = "Flash",
-			DisplayName = "Flash",
-			Description = "A blinding camera flash. Whoever's in front of you can't see or move for a moment.",
-			Cost = 40000000,
-			Color = Color3.fromRGB(255, 250, 200),
-			Duration = { 1.6, 2.1, 2.7 }, -- how long they're blinded
-			Energy = { 3, 3, 2 },
-			Cooldown = 16,
-		},
-		{
-			Id = "Barricade",
-			DisplayName = "Barricade",
-			Description = "Slam down a wooden barricade. Blocks the Murderer until it's smashed.",
-			Cost = 2000000000,
-			Color = Color3.fromRGB(200, 140, 80),
-			Duration = { 10, 13, 16 }, -- how long it stands (if nobody smashes it)
-			Energy = { 2, 2, 2 },
-			Hits = { 2, 3, 4 }, -- stabs it takes to smash
-			Cooldown = 18,
-		},
-		{
-			Id = "Mimic",
-			DisplayName = "Mimic",
-			Description = "Become furniture you can walk around in! The Murderer loses you (unless they get close).",
-			Cost = 15000000000,
-			Color = Color3.fromRGB(255, 120, 180),
-			Duration = { 8, 12, 16 },
-			Energy = { 3, 3, 2 }, -- round cost per level (coins refill Energy)
-			Cooldown = 25,
-		},
-		-- Innocent sides that only come on knives (docs/POWERS.md)
-		{
-			Id = "Rush",
-			DisplayName = "Rush",
-			Description = "A burst of speed: get away!",
-			Cost = 0,
-			Color = Color3.fromRGB(255, 150, 60),
-			Duration = { 3, 3, 3 },
-			Energy = { 3, 3, 3 },
-			Speed = 10, -- extra walk speed while it lasts
-			Cooldown = 15,
-		},
-		{
-			Id = "Dash",
-			DisplayName = "Dash",
-			Description = "Blink a few studs forward (not through walls).",
-			Cost = 0,
-			Color = Color3.fromRGB(90, 220, 255),
-			Duration = { 8, 8, 8 }, -- studs
-			Energy = { 2, 2, 2 },
-			Cooldown = 8,
-		},
-		{
-			Id = "SmokeBurst",
-			DisplayName = "Smoke Burst",
-			Description = "A puff of smoke that throws the Murderer back if they're close.",
-			Cost = 0,
-			Color = Color3.fromRGB(170, 170, 190),
-			Duration = { 4, 4, 4 }, -- push strength (studs-ish)
-			Energy = { 3, 3, 3 },
-			Range = 12,
-			Cooldown = 15,
-		},
-		{
-			Id = "PhoenixWall",
-			DisplayName = "Phoenix Wall",
-			Description = "A wall of fire the Murderer can't break through.",
-			Cost = 0,
-			Color = Color3.fromRGB(255, 110, 40),
-			Duration = { 2.5, 2.5, 2.5 },
-			Energy = { 4, 4, 4 },
-			RoundUses = 1,
-			Cooldown = 20,
-		},
-	} :: { any },
-	PowerMaxLevel = 3,
 	-- Robux consumables (Config/Monetization): each one takes away a friction you feel every session,
 	-- so it's bought again. Timed boosts live in profile.Boosts (os.time until), charges in
 	-- profile.Charges (counts). Hub only: nothing here helps win a murder round.
@@ -858,10 +712,7 @@ local GameConfig = {
 		MeterCap = 3, -- nobody's chance can be more than 3x the server average
 	},
 
-	-- Rounds stay fair (MM2 style): an innocent brings ONE power - the first in their loadout - and
-	-- it works at level 1 for everyone. Levels only matter in the hub, against bosses.
-	RoundPowerLevel = 1,
-	-- Every so often a CLASSIC round: no powers, no knife perks, just a knife and a Revolver - and
+	-- Every so often a CLASSIC round: no Murderer power, just a knife and a Revolver - and
 	-- everyone earns extra for it
 	-- DOUBLE TROUBLE: two Murderers, two Sheriffs (always with this many players, else a chance)
 	DoubleTrouble = { Always = 10, Chance = 0.2 },
@@ -966,9 +817,6 @@ local GameConfig = {
 		},
 	} :: { [string]: any },
 
-	-- The Enchanter (Madame Vesper): re-roll the power on the knife you fight with. Cash cost =
-	-- that knife's income for CostSeconds (at least MinCost); or one Reroll Token (Robux, a charge)
-	Enchant = { CostSeconds = 900, MinCost = 5000 },
 	-- Power levels (docs/POWERS.md): XP goes to the power on the knife you fight with. Lv 100 takes
 	-- about 3 months of daily play. Never sold for Robux.
 	PowerXP = {
@@ -1098,13 +946,6 @@ end
 function GameConfig.HealthCost(level: number): number
 	local h = GameConfig.Health
 	return math.floor(h.BaseCost * h.CostGrowth ^ level)
-end
-
--- Unlock costs the power's Cost; each upgrade after that doubles
--- Powers are spread over the whole climb (Radar in the first minutes, Mimic around a rebirth),
--- and each level costs 8x the last, so maxing one is a real goal
-function GameConfig.PowerCost(cost: number, currentLevel: number): number
-	return cost * 8 ^ currentLevel
 end
 
 -- Speed stat -> walk speed. Every doubling of Speed is worth +4.4 walk speed (16 at 0, ~30 at 4K,

@@ -1,7 +1,7 @@
 --!strict
--- Hiding characters: Vanish (invisible for a while) and the body-hiding half of Mimic. Sets the
--- player attributes guards and the HUD look at ("Invisible", "Mimic"), and puts everything back
--- exactly as it was afterwards - including if it gets cut short.
+-- Hiding characters: the Murderer's Shadow power (invisible for a while after a kill). Sets the
+-- player attribute "Invisible" (bot innocents can't spot an invisible Murderer), and puts everything
+-- back exactly as it was afterwards - including if it gets cut short.
 
 local Net = require(script.Parent.Parent.Remotes)
 
@@ -50,7 +50,7 @@ function Stealth.Hide(player: Player): (() -> ())?
 	end
 end
 
--- Invisible for `duration` seconds (or until Reveal). Guards drop you as a target.
+-- Invisible for `duration` seconds (or until Reveal).
 function Stealth.Vanish(player: Player, duration: number)
 	Stealth.Reveal(player)
 	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -73,23 +73,11 @@ function Stealth.Vanish(player: Player, duration: number)
 	task.delay(duration, finish)
 end
 
--- Ends any hiding early (hit by the Murderer, used another power, round ended...)
+-- Ends any hiding early (the round ended...)
 function Stealth.Reveal(player: Player)
 	local restore = restores[player]
 	if restore then
 		restore()
-	end
-end
-
--- For other hiding effects (Mimic) that want Reveal to end them too
-function Stealth.Register(player: Player, finish: () -> ())
-	Stealth.Reveal(player)
-	restores[player] = finish
-end
-
-function Stealth.Unregister(player: Player, finish: () -> ())
-	if restores[player] == finish then
-		restores[player] = nil
 	end
 end
 

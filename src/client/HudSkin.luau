@@ -121,7 +121,6 @@ function HudSkin.Init()
 	end
 	local right: { [string]: { Icon: string, Color: Color3 } } = {
 		KnivesButton = { Icon = hud.Knives, Color = Color3.fromRGB(255, 190, 40) },
-		PowersButton = { Icon = hud.Powers, Color = Color3.fromRGB(255, 148, 28) },
 	}
 	for name, look in right do
 		local button = root:FindFirstChild(name, true)

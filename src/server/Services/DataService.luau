@@ -32,8 +32,9 @@ export type Profile = {
 	Sealed: { { Plate: number, ReadyAt: number, Rounds: number? } },
 	Equipped: string, -- item you fight with / bring into rounds as the Murderer; "" = best owned
 	Discovered: { string }, -- every catalog knife ever owned (plain names), for the collection book
-	Powers: { [string]: number }, -- Innocent Power id -> level (1..3)
-	Loadout: { string }, -- equipped power ids, at most PowerSlots
+	-- (old saves: the cut Innocent Powers, kept only so InventoryService can refund them once)
+	Powers: { [string]: number },
+	Loadout: { string },
 	PowerSlots: number,
 	Speed: number, -- trained on the vault treadmill; turned into walk speed by GameConfig.WalkSpeedFor
 	TreadmillLevel: number,
@@ -120,7 +121,7 @@ local function defaultProfile(): Profile
 		Discovered = {},
 		Powers = {},
 		Loadout = {},
-		PowerSlots = GameConfig.PowerSlots,
+		PowerSlots = 2,
 		Speed = 0,
 		TreadmillLevel = 1,
 		WallLevel = 1,
@@ -309,23 +310,15 @@ local function reconcile(data: any): Profile
 	if profile.Equipped ~= "" and not table.find(profile.Knives, profile.Equipped) then
 		profile.Equipped = ""
 	end
-	-- Powers: known ids, sane levels; loadout only holds owned powers, once each, within the slots
+	-- Old Innocent Powers (refunded once by InventoryService): plain numbers only
 	local powers: { [string]: number } = {}
-	for _, power in GameConfig.Powers do
-		local level = profile.Powers[power.Id]
-		if type(level) == "number" and level >= 1 then
-			powers[power.Id] = math.clamp(math.floor(level), 1, GameConfig.PowerMaxLevel)
+	for id, level in profile.Powers do
+		if type(id) == "string" and type(level) == "number" and level >= 1 then
+			powers[id] = math.clamp(math.floor(level), 1, 3)
 		end
 	end
 	profile.Powers = powers
-	profile.PowerSlots = math.clamp(profile.PowerSlots, GameConfig.PowerSlots, GameConfig.MaxPowerSlots)
-	local loadout = {}
-	for _, id in profile.Loadout do
-		if type(id) == "string" and powers[id] and not table.find(loadout, id) and #loadout < profile.PowerSlots then
-			table.insert(loadout, id)
-		end
-	end
-	profile.Loadout = loadout
+	profile.PowerSlots = math.clamp(profile.PowerSlots, 2, 3)
 	return profile
 end
 
@@ -588,14 +581,6 @@ local function publish(player: Player, profile: Profile)
 	player:SetAttribute("Equipped", profile.Equipped)
 	player:SetAttribute("Discovered", table.concat(profile.Discovered, ","))
 	player:SetAttribute("Kills", profile.TotalKills)
-	local powers = {}
-	for id, level in profile.Powers do
-		table.insert(powers, `{id}:{level}`)
-	end
-	table.sort(powers)
-	player:SetAttribute("Powers", table.concat(powers, ","))
-	player:SetAttribute("Loadout", table.concat(profile.Loadout, ","))
-	player:SetAttribute("PowerSlots", profile.PowerSlots)
 	player:SetAttribute("Wins", profile.RoundsWon)
 	player:SetAttribute("RoundsPlayed", profile.RoundsPlayed)
 	player:SetAttribute("WallLevel", profile.WallLevel)

@@ -1,7 +1,6 @@
 --!strict
 -- The plaza's shopkeepers. Instead of a Shop button, you walk up and talk to someone:
 --   Mortimer, the Knife Merchant: sealed knife cases (the Case Shop) and cash Lucky Blocks
---   Madame Vesper, the Enchanter: knife powers (see yours and every power, re-roll a knife's power)
 --   Silas, the Mystery Merchant: the rotating half-price deals (was a HUD button)
 -- plus the Lucky Wheel standing between them (also was a HUD button)
 -- Each stands at a little stall with a glowing ring on the floor in front: step onto it and the
@@ -61,30 +60,12 @@ local SPECS: { Spec } = {
 		},
 	},
 	{
-		Name = "Madame Vesper",
-		Title = "Power Shop",
-		Panel = "Powers",
-		Position = Vector3.new(45, 0, -26), -- across the entrance from Mortimer
-		Facing = 50,
-		Color = rgb(170, 90, 255),
-		Skin = rgb(204, 142, 105),
-		Coat = rgb(70, 40, 120),
-		Pants = rgb(40, 24, 70),
-		Wear = { { Prop = "HairLong", Color = rgb(30, 20, 40) }, { Prop = "RoundGlasses", Color = rgb(200, 160, 70) } },
-		Lines = {
-			"The spirits whisper... you need a power.",
-			"Vanish, Flash, Shield... the Murderer fears them all.",
-			"Coins in the round fuel your powers, child.",
-			"Equip your powers wisely. The night is long.",
-		},
-	},
-	{
 		-- The Mystery Merchant used to be a HUD button; now he's a stall on the plaza (less is more:
 		-- Steal An Egg's right side only has what you use all the time)
 		Name = "Silas",
 		Title = "Deals",
 		Panel = "Merchant",
-		-- The far end of the plaza, mirroring Madame Vesper: the four stalls face in like an X
+		-- The far end of the plaza: the stalls face in like an X
 		Position = Vector3.new(45, 0, -198),
 		Facing = 130,
 		Color = rgb(150, 80, 255),
@@ -271,10 +252,7 @@ local function buildKeeper(folder: Instance, spec: Spec, frame: CFrame)
 	-- Stands behind the counter (local +Z), facing the customers (-Z)
 	rig:PivotTo(frame * CFrame.new(0, height + 0.45, 0.2))
 	local head = rig:FindFirstChild("Head") :: BasePart
-	head = CharacterFaces.Apply(
-		head,
-		if spec.Panel == "Powers" then "rbxassetid://137483136763270" else "rbxassetid://93391310013128"
-	)
+	head = CharacterFaces.Apply(head, "rbxassetid://93391310013128")
 	Disguises.AddAccessories(head, spec.Wear)
 	CharacterDetails.Apply(rig, spec.Name)
 	rig:AddTag("ShopNPC") -- clients fidget them (Moves) on top of the idle animation

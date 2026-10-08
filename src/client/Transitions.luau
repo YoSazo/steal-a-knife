@@ -358,7 +358,7 @@ function Transitions.Init()
 			hDetail.Text = if murdererWon then "" else "The innocents made it"
 			setPhoto(hPhoto, tonumber(info.HeroId) or 0, info.HeroFace)
 		end
-		hPower.Text = if type(info.SheriffPower) == "string" then `✨ {info.SheriffPower}` else ""
+		hPower.Text = ""
 		card.Visible = true
 		local scale = card:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
 		scale.Parent = card

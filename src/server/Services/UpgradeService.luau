@@ -1,7 +1,7 @@
 --!strict
 -- Cash purchases (Haunted Wheel tiers, vault walls, rack slots, Murderer tickets, Rebirth). Clients only send the name of what they
 -- want; price and limits come from GameConfig on the server. Tickets are in-game cash only, never
--- Robux. Innocent Powers are bought through PowerService.
+-- Robux.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 

@@ -1,18 +1,15 @@
 --!strict
--- One power system (docs/POWERS.md): every knife carries a power with two sides. As the Murderer you
--- use the Murderer side (GameConfig.Perks[Id]); as an Innocent or the Sheriff, the Innocent side
--- (GameConfig.Powers[Innocent]). Rarity (Tier) decides which power a knife rolls; power level
--- (GameConfig.PowerLevelFor, profile.PowerXP) decides how strong it is.
+-- Knife powers: every knife carries a Murderer power (GameConfig.Perks[Id]), used when you're the
+-- Murderer. Rarity (Tier) decides which power a knife rolls; power level (GameConfig.PowerLevelFor,
+-- profile.PowerXP) decides how strong it is.
 --
 -- Ids are the old Murderer perk ids so existing knives ("Name|Mut|Size|Power") keep working; Name is
--- what players see. Ready = both sides exist in the game (only Ready powers are rolled).
+-- what players see. Ready = it works in the game (only Ready powers are rolled).
 
 export type KnifePower = {
 	Id: string,
 	Name: string,
 	Tier: string, -- Common, Rare, Epic, Legendary, Mythic
-	Innocent: string, -- GameConfig.Powers id (or "SecondLife", handled in RoundService)
-	InnocentName: string,
 	Ready: boolean,
 }
 
@@ -31,82 +28,68 @@ KnifePowers.List = {
 		Id = "Invisiknife",
 		Name = "Shadow",
 		Tier = "Common",
-		Innocent = "Vanish",
-		InnocentName = "Vanish",
 		Ready = true,
 	},
-	{ Id = "Identifier", Name = "Sense", Tier = "Common", Innocent = "Radar", InnocentName = "Radar", Ready = true },
-	{ Id = "Snare", Name = "Snare", Tier = "Common", Innocent = "Trap", InnocentName = "Bear Trap", Ready = true },
-	{ Id = "ShapeShifter", Name = "Disguise", Tier = "Rare", Innocent = "Mimic", InnocentName = "Mimic", Ready = true },
-	{ Id = "DecoyKnife", Name = "Decoy", Tier = "Rare", Innocent = "Decoy", InnocentName = "Decoy", Ready = true },
-	{ Id = "FlashKnife", Name = "Flash", Tier = "Rare", Innocent = "Flash", InnocentName = "Flash", Ready = true },
-	{ Id = "Bulletproof", Name = "Bulwark", Tier = "Epic", Innocent = "Shield", InnocentName = "Shield", Ready = true },
+	{ Id = "Identifier", Name = "Sense", Tier = "Common", Ready = true },
+	{ Id = "Snare", Name = "Snare", Tier = "Common", Ready = true },
+	{ Id = "ShapeShifter", Name = "Disguise", Tier = "Rare", Ready = true },
+	{ Id = "DecoyKnife", Name = "Decoy", Tier = "Rare", Ready = true },
+	{ Id = "FlashKnife", Name = "Flash", Tier = "Rare", Ready = true },
+	{ Id = "Bulletproof", Name = "Bulwark", Tier = "Epic", Ready = true },
 	{
 		Id = "GhostKnife",
 		Name = "Phantom",
 		Tier = "Epic",
-		Innocent = "Barricade",
-		InnocentName = "Barricade",
 		Ready = true,
 	},
 	{
 		Id = "Fury",
 		Name = "Fury",
 		Tier = "Epic",
-		Innocent = "Rush",
-		InnocentName = "Rush",
 		Ready = true,
 	},
 	{
 		Id = "LaserKnife",
 		Name = "Laser",
 		Tier = "Legendary",
-		Innocent = "Dash",
-		InnocentName = "Dash",
 		Ready = true,
 	},
 	{
 		Id = "ExplodingKnife",
 		Name = "Blast",
 		Tier = "Legendary",
-		Innocent = "SmokeBurst",
-		InnocentName = "Smoke Burst",
 		Ready = true,
 	},
 	{
 		Id = "SpamKnife",
 		Name = "Spam Knife",
 		Tier = "Mythic",
-		Innocent = "SecondLife",
-		InnocentName = "Second Life",
 		Ready = true,
 	},
 	{
 		Id = "Hellfire",
 		Name = "Hellfire",
 		Tier = "Mythic",
-		Innocent = "PhoenixWall",
-		InnocentName = "Phoenix Wall",
 		Ready = true,
 	},
 } :: { KnifePower }
 
--- A few kid-simple words each: { Murderer power, Innocent power } (menus, the tutorial showcase;
--- the long descriptions live in GameConfig)
+-- A few kid-simple words each: { what it does for the Murderer } (menus, the tutorial showcase;
+-- the long descriptions live in GameConfig.Perks)
 KnifePowers.Short = {
-	Invisiknife = { "Vanish after every kill", "Turn invisible!" },
-	Identifier = { "See who has the gun", "See the Murderer through walls" },
-	Snare = { "Hide a trap", "Trap the Murderer" },
-	ShapeShifter = { "Look like someone else", "Turn into furniture" },
-	DecoyKnife = { "A fake you runs off", "A fake you runs off" },
-	FlashKnife = { "Blind them!", "Blind the Murderer!" },
-	Bulletproof = { "Survive one shot", "Block one stab" },
-	GhostKnife = { "Knives fly through people", "Block the way" },
-	Fury = { "Faster throws every kill", "Run super fast!" },
-	LaserKnife = { "Lightning-fast throws", "Blink forward" },
-	ExplodingKnife = { "Kills explode!", "Smoke pushes them back" },
-	SpamKnife = { "Throw knives nonstop!", "Survive one hit" },
-	Hellfire = { "Flaming knives!", "A wall of fire" },
+	Invisiknife = { "Vanish after every kill" },
+	Identifier = { "See who has the gun" },
+	Snare = { "Hide a trap" },
+	ShapeShifter = { "Look like someone else" },
+	DecoyKnife = { "A fake you runs off" },
+	FlashKnife = { "Blind them!" },
+	Bulletproof = { "Survive one shot" },
+	GhostKnife = { "Knives fly through people" },
+	Fury = { "Faster throws every kill" },
+	LaserKnife = { "Lightning-fast throws" },
+	ExplodingKnife = { "Kills explode!" },
+	SpamKnife = { "Throw knives nonstop!" },
+	Hellfire = { "Flaming knives!" },
 }
 
 -- The power every new player's first (tutorial) knife gets: simple and fair for everyone

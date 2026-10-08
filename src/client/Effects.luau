@@ -449,9 +449,6 @@ local handlers: { [string]: (...any) -> () } = {
 		if perk then
 			table.insert(words, `Murderer: {if short then short[1] else perk.Description}`)
 		end
-		if short then
-			table.insert(words, `Innocent: {short[2]}`)
-		end
 		for i, text in words do
 			local label = Ui.label({
 				Name = `Line{i}`,
@@ -705,21 +702,6 @@ local handlers: { [string]: (...any) -> () } = {
 		Effects.Sound(if kind == "Case" then Sounds.Reveal else Sounds.Cash, at, 0.8)
 		Effects.FloatText(at + Vector3.new(0, 4, 0), `🎁 {what}`, Color3.fromRGB(255, 230, 120))
 	end,
-	-- (Murderer only) a vanished innocent still leaves a faint shimmer
-	Shimmer = function(character: Model?, duration: number)
-		if not character or not character.Parent then
-			return
-		end
-		local highlight = Instance.new("Highlight")
-		highlight.FillColor = Color3.fromRGB(200, 220, 255)
-		highlight.FillTransparency = 0.88
-		highlight.OutlineColor = Color3.fromRGB(220, 235, 255)
-		highlight.OutlineTransparency = 0.65
-		highlight.DepthMode = Enum.HighlightDepthMode.Occluded
-		highlight.Adornee = character
-		highlight.Parent = character
-		Debris:AddItem(highlight, duration)
-	end,
 	-- Bought a Health level: a green burst over them
 	Heal = function(position: Vector3)
 		Effects.FloatText(position + Vector3.new(0, 4, 0), "+MAX HEALTH", Color3.fromRGB(110, 255, 140))
@@ -758,14 +740,6 @@ local handlers: { [string]: (...any) -> () } = {
 			tint
 		)
 	end,
-	TrapSnap = function(position: Vector3)
-		Effects.Burst(position + Vector3.new(0, 1, 0), Color3.fromRGB(200, 200, 210), 25, 12, 0.5)
-		Effects.Sound(Sounds.Slash, position, 1)
-		Effects.FloatText(position + Vector3.new(0, 4, 0), "SNAP!", Color3.fromRGB(255, 200, 80))
-	end,
-	PowerUsed = function(_id: string, position: Vector3)
-		Effects.Burst(position, Color3.fromRGB(200, 170, 255), 15, 8, 0.4)
-	end,
 	Died = function()
 		flash(nil, 0.5, 0.6) -- (no words: the death card says what happened)
 	end,
@@ -795,11 +769,6 @@ local handlers: { [string]: (...any) -> () } = {
 	Dash = function(position: Vector3)
 		Effects.Burst(position, Color3.fromRGB(255, 255, 255), 20, 14, 0.5)
 		Effects.Sound(Sounds.Lunge, position, 0.8)
-	end,
-	Blink = function(from: Vector3, to: Vector3)
-		Effects.Burst(from, Color3.fromRGB(170, 70, 255), 30, 12, 0.8)
-		Effects.Burst(to, Color3.fromRGB(170, 70, 255), 30, 12, 0.8)
-		Effects.Sound(Sounds.Lunge, to, 0.8)
 	end,
 	Shot = function(from: Vector3, to: Vector3)
 		tracer(from, to)
@@ -954,19 +923,6 @@ local handlers: { [string]: (...any) -> () } = {
 		lightFlash(origin + look * 2, Color3.fromRGB(255, 255, 230), 40, 45, 0.5)
 		Effects.Burst(origin + look * 2, Color3.new(1, 1, 1), 40, 30, 0.8)
 		Effects.Sound(Sounds.Flash, origin, 1)
-	end,
-	Barricade = function(position: Vector3)
-		smoke(position)
-		Effects.Sound(Sounds.GateHit, position, 0.7)
-		Effects.Shake(1.5, 0.2)
-	end,
-	Smash = function(position: Vector3)
-		debris(position, Color3.fromRGB(150, 98, 54), Enum.Material.WoodPlanks, 14)
-		Effects.Sound(Sounds.WoodBreak, position, 1)
-	end,
-	NoEnergy = function(_id: string)
-		Effects.Sound(Sounds.Tick, nil, 0.6)
-		Effects.Shake(0.8, 0.15)
 	end,
 
 	-- Progress -------------------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 --   * right: upgrade buttons (Haunted Wheel, vault walls, mounts, Murderer tickets)
 --   * bottom right: event timers (next raid, next murder round, the plaza's free chest)
 --   * top: the phase / round timer, raid banner, and big server-wide announcements
---   * rounds: the Energy meter that powers your Innocent Powers, the role reveal, results
+--   * rounds: the role reveal, results
 --   * toasts, the zone title when you cross into a new part of the runway
 -- Pure display; every number comes from attributes the server sets.
 
@@ -20,7 +20,6 @@ local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 local Theme = require(script.Parent.MenuTheme)
 local CartoonArt = require(ReplicatedStorage.Shared.Config.CartoonArt)
 local VoxelUi = require(ReplicatedStorage.Shared.Config.VoxelUi)
-local CoinIcon = require(ReplicatedStorage.Shared.Config.CoinIcon)
 local RoundPrize = require(ReplicatedStorage.Shared.RoundPrize)
 local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
@@ -878,108 +877,6 @@ function Hud.Init()
 		TopLine.Show(`<font color="#{tint:ToHex()}">{text}</font>`, 2.4 + (hype or 1) * 0.4)
 	end)
 
-	-- Energy (rounds): the charge your Innocent Powers spend; coins fill it -----------------------
-	-- A pill that sizes itself to its contents: "⚡ ENERGY", one cell per point, then "3/8"
-	local ENERGY_ON = Color3.fromRGB(255, 214, 60)
-	local ENERGY_OFF = Color3.fromRGB(58, 52, 70)
-	local energyFrame = new("Frame", {
-		AnchorPoint = Vector2.new(0.5, 1),
-		Name = "EnergyBar",
-		Position = UDim2.new(0.5, 0, 1, if Ui.Phone then -130 else -204), -- above the power buttons
-		Size = UDim2.fromOffset(0, 36),
-		AutomaticSize = Enum.AutomaticSize.X,
-		BackgroundColor3 = Color3.fromRGB(24, 19, 34),
-		BackgroundTransparency = 0.15,
-		Visible = false,
-	}, gui)
-	Ui.corner(energyFrame, 18)
-	new("UIStroke", { Thickness = 2.5, Color = Color3.fromRGB(14, 10, 20) }, energyFrame)
-	new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, energyFrame)
-	new("UIListLayout", {
-		FillDirection = Enum.FillDirection.Horizontal,
-		VerticalAlignment = Enum.VerticalAlignment.Center,
-		Padding = UDim.new(0, 5),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-	}, energyFrame)
-	local function energyText(text: string, layoutOrder: number, color: Color3): TextLabel
-		local label = Ui.label({
-			Size = UDim2.fromOffset(0, 26),
-			AutomaticSize = Enum.AutomaticSize.X,
-			TextScaled = false,
-			TextSize = 20,
-			LayoutOrder = layoutOrder,
-			TextColor3 = color,
-			Text = text,
-		}, energyFrame)
-		Ui.textStroke(label, 2)
-		return label
-	end
-	-- Plain words instead of an abstract meter: [skull coin] 2/3 to use VANISH -> VANISH READY!
-	-- (the coins on the floor are what fill it; the goal is the power you actually have)
-	local coin = new("ImageLabel", {
-		Size = UDim2.fromOffset(26, 26),
-		BackgroundTransparency = 1,
-		Image = CoinIcon.Image, -- the real round coin, rendered (Config/CoinIcon)
-		ScaleType = Enum.ScaleType.Fit,
-		LayoutOrder = 0,
-	}, energyFrame)
-	local countLabel = energyText("0/0", 1, ENERGY_ON)
-	local powerGoal = energyText("", 2, Color3.fromRGB(235, 230, 245))
-	local _ = ENERGY_OFF
-	local lastEnergy = 0
-	local function costOfRoundPower(): (number?, string?)
-		local id = player:GetAttribute("RoundPower")
-		for _, power in GameConfig.Powers do
-			if power.Id == id then
-				local energy = (power :: any).Energy :: { number }
-				local name = player:GetAttribute("RoundPowerName")
-				return energy[math.clamp(GameConfig.RoundPowerLevel, 1, #energy)],
-					if type(name) == "string" then name else power.DisplayName
-			end
-		end
-		return nil, nil
-	end
-	local function refreshEnergy()
-		local energy = player:GetAttribute("Energy")
-		local cost, name = costOfRoundPower()
-		-- (not in a no-powers round, and not for the Murderer: same rules as the power button,
-		-- client/PowerBar - it said "MIMIC READY" in a Classic round)
-		local noPowers = ReplicatedStorage:GetAttribute("Classic") == true or player:GetAttribute("Role") == "Murderer"
-		energyFrame.Visible = type(energy) == "number" and cost ~= nil and not Ui.menuOpen() and not noPowers
-		if type(energy) ~= "number" or not cost or not name then
-			return
-		end
-		local upper = string.upper(name :: string)
-		if player:GetAttribute("PowerUsesLeft") == 0 then
-			coin.Visible = false
-			countLabel.Text = ""
-			powerGoal.Text = `{upper} USED`
-			powerGoal.TextColor3 = Color3.fromRGB(160, 160, 175)
-		elseif energy >= cost then
-			coin.Visible = false
-			countLabel.Text = ""
-			powerGoal.Text = `{upper} READY!`
-			powerGoal.TextColor3 = Color3.fromRGB(120, 255, 140)
-		else
-			coin.Visible = true
-			countLabel.Text = `{math.floor(energy)}/{cost}`
-			powerGoal.Text = `to use {upper}`
-			powerGoal.TextColor3 = Color3.fromRGB(235, 230, 245)
-		end
-		if energy > lastEnergy then
-			local scale = energyFrame:FindFirstChildOfClass("UIScale") or new("UIScale", {}, energyFrame)
-			scale.Scale = 1.12
-			TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-		end
-		lastEnergy = energy
-	end
-	player:GetAttributeChangedSignal("RoundPower"):Connect(refreshEnergy)
-	player:GetAttributeChangedSignal("Energy"):Connect(refreshEnergy)
-	player:GetAttributeChangedSignal("PowerUsesLeft"):Connect(refreshEnergy)
-	player:GetAttributeChangedSignal("Role"):Connect(refreshEnergy)
-	ReplicatedStorage:GetAttributeChangedSignal("Classic"):Connect(refreshEnergy)
-	refreshEnergy()
-
 	-- The events board over the runway entrance: live countdowns, filled in on this client ------
 	task.spawn(function()
 		local board: Instance? = nil
@@ -1531,19 +1428,6 @@ function Hud.Init()
 	chestIcon.Size, chestIcon.Position = UDim2.fromOffset(26, 32), UDim2.fromOffset(2, 6)
 	chestText.Position, chestText.Size = UDim2.fromOffset(36, 4), UDim2.fromOffset(80, 36)
 	chestText.TextScaled, chestText.TextWrapped = true, false
-	-- The coin pill (rounds): a slim line just above the health bar, sized to its words
-	energyFrame.AnchorPoint, energyFrame.Position, energyFrame.Size =
-		Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -38), UDim2.fromOffset(0, 26)
-	energyFrame.AutomaticSize = Enum.AutomaticSize.X
-	for _, child in energyFrame:GetChildren() do
-		if child:IsA("TextLabel") then
-			child.TextSize = 16
-			child.Size = UDim2.fromOffset(0, 22)
-			child.AutomaticSize = Enum.AutomaticSize.X
-		elseif child:IsA("ImageLabel") then
-			child.Size = UDim2.fromOffset(22, 22)
-		end
-	end
 	healthFrame.AnchorPoint, healthFrame.Position, healthFrame.Size =
 		Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -12), UDim2.fromOffset(180, 20)
 	for _, text in { healthText, chanceLabel, subLabel } do
@@ -1561,7 +1445,6 @@ function Hud.Init()
 			local healthWidth = math.min(180, math.max(80, right - left))
 			-- bottom centre, clear of the thumbstick and the knife / jump buttons
 			healthFrame.Position = UDim2.new(0, math.min(center, right - healthWidth / 2), 1, -12)
-			energyFrame.Position = UDim2.new(0, math.min(center, right - healthWidth / 2), 1, -38)
 			healthFrame.Size = UDim2.fromOffset(healthWidth, 20)
 		end
 		-- The Murderer chance sits above the timer, so the timer is the lowest line up there and the
@@ -1634,14 +1517,12 @@ function Hud.Init()
 		-- (toasts and announcements stay up with a menu open: they're how a click answers you)
 		if Ui.menuOpen() then
 			healthFrame.Visible = false
-			energyFrame.Visible = false
 		else
 			local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 			healthFrame.Visible = hum ~= nil
 				and hum.Health > 0
 				and hum.Health < hum.MaxHealth
 				and not player:GetAttribute("InRound")
-			refreshEnergy()
 		end
 	end)
 end
