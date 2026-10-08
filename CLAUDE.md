@@ -37,9 +37,9 @@ the next boss you can't outrun yet; the win card + ~30 shoes flying into the Spe
 - Round coins: the Blender "Coin" prop + invisible Hitbox (RoundService.spawnCoin); the client predicts the
   pickup (fly-in, streak chime) and the server pays.
 - Hub layout (MapService): one long, wide runway (ArenaWidth 160 x ZoneDepth per zone, 8 zones, solid walls - the
-  old hideaway nooks were removed because people farmed guards from them), pens (the hub) carry on from the runway at its
-  own width as one straight lane ("]" shape): 4 pens down each side, gates facing the lane, each pen's wheel in
-  the gap beside it, the Lucky Wheel at the far end (MapService.buildBases, MapService.LuckyWheelAt), events board over the entrance, round maps far away at x = 3000. ManorDecor dresses each
+  old hideaway nooks were removed because people farmed guards from them), the pens wrap an open plaza in a "]" at the runway's
+  end (Steal from the Rich): 6 across the back wall facing the way in, 1 on each side wall facing the middle,
+  wheels + signs in front of each gate, the Lucky Wheel in the middle (MapService.buildBases, LuckyWheelAt), events board over the entrance, round maps far away at x = 3000. ManorDecor dresses each
   zone as its own biome (Courtyard, Gardens, Crypts, Catacombs, Inferno, Mount Olympus, Heavens, Outer Space).
 - Vaults grow a floor at a time (Tsunami style, FLOOR_HEIGHT 16): each floor = a walkway down the middle, a ladder
   at the back middle (invisible TrussPart + drawn rails/rungs) up through a slot cut in the deck above, with a small

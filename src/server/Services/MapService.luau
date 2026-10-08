@@ -307,7 +307,7 @@ local function buildArena()
 	line.CanCollide = false
 	line.CanQuery = false
 	-- SAFE ZONE painted on the plaza floor: bosses give up the chase past the line
-	local paint = block("SafeZone", Vector3.new(34, 0.05, 6), CFrame.new(0, 0.23, -12), Color3.new(), arena)
+	local paint = block("SafeZone", Vector3.new(60, 0.05, 10), CFrame.new(0, 0.23, -12), Color3.new(), arena)
 	paint.Transparency = 1
 	paint.CanCollide = false
 	paint.CanQuery = false
@@ -380,38 +380,40 @@ local function buildBases()
 	local penWidth = GameConfig.Pens.Width
 	-- (a pen's full length, or a vault's depth: everything below is laid out from it)
 	local DEPTH = if pens then GameConfig.Pens.Depth else VAULT_DEPTH
-	-- Pens line both sides of one straight lane that carries on from the runway at the runway's own
-	-- width (Steal from the Rich's "]" hub: no square plaza, just the last stretch of the corridor),
-	-- turned so their gates face the lane, shoulder to shoulder from right behind the safe line. Each
-	-- pen's Haunted Wheel stands in the gap beside it (the lane stays clear), and the hub ends just
-	-- past the last pen and the Lucky Wheel - no more space than that. Numbered nearest-first.
+	-- Pens wrap an open plaza in a "]" (Steal from the Rich): a row across the back wall facing the
+	-- way in, and one on each side wall facing the middle (8 pens: 6 + 1 + 1). The middle stays open
+	-- (the Lucky Wheel stands in it); each pen's Haunted Wheel and signs stand in front of its gate.
+	-- The hub is just big enough for that. Numbered nearest-first, so players get the closest pen.
 	local penCentres: { Vector3 } = {}
 	local penFrames: { [Vector3]: CFrame } = {}
-	local penWheelSide: { [Vector3]: number } = {} -- (+1 / -1: the pen-local X side its gap is on)
-	local PEN_GAP = 14 -- (between neighbours along the lane: the wheel's spot)
-	local LANE = half - DEPTH - 1 -- (half-width: the pens' backs sit against the hub wall)
 	if pens then
-		local perSide = math.ceil(GameConfig.Pens.Count / 2)
-		local front = 4 -- (the first pens start just behind the safe line)
-		for k = 0, perSide - 1 do
-			for _, side in { -1, 1 } do
-				local centre =
-					Vector3.new(side * (LANE + DEPTH / 2), 0, -(front + penWidth / 2 + k * (penWidth + PEN_GAP)))
-				table.insert(penCentres, centre)
-				-- (local +Z, the gate, faces the lane: left side +X, right side -X. The wheel's gap is on
-				-- the side deeper into the hub: local +X on the left, local -X on the right)
-				penFrames[centre] = CFrame.new(centre) * CFrame.Angles(0, math.rad(if side < 0 then 90 else -90), 0)
-				penWheelSide[centre] = if side < 0 then 1 else -1
-			end
+		local PEN_GAP = 8 -- (between neighbouring pens)
+		local FRONT = 22 -- (the strip behind the safe line, before the side pens start)
+		local PLAZA = 40 -- (open ground between the side pens and the back row: wheels, signs)
+		local sideCount = math.min(2, GameConfig.Pens.Count)
+		local backCount = GameConfig.Pens.Count - sideCount
+		local rowWidth = backCount * penWidth + (backCount - 1) * PEN_GAP
+		HUB_HALF = math.max(half, rowWidth / 2 + 4)
+		local backZ = FRONT + penWidth + PLAZA + DEPTH / 2
+		for k = 0, backCount - 1 do
+			local centre = Vector3.new(-rowWidth / 2 + penWidth / 2 + k * (penWidth + PEN_GAP), 0, -backZ)
+			table.insert(penCentres, centre)
+			penFrames[centre] = CFrame.new(centre) -- (local +Z, the gate, faces the way in)
+		end
+		for k = 1, sideCount do
+			local side = if k == 1 then -1 else 1
+			local centre = Vector3.new(side * (HUB_HALF - 1 - DEPTH / 2), 0, -(FRONT + penWidth / 2))
+			table.insert(penCentres, centre)
+			-- (turned to face the middle: the left one +X, the right one -X)
+			penFrames[centre] = CFrame.new(centre) * CFrame.Angles(0, math.rad(if side < 0 then 90 else -90), 0)
 		end
 		table.sort(penCentres, function(a, b)
 			return a.Magnitude < b.Magnitude
 		end)
-		HUB_HALF = half
-		local pensEnd = front + perSide * (penWidth + PEN_GAP)
-		MapService.LuckyWheelAt = Vector3.new(0, 0, -(pensEnd + 10))
-		HUB_BACK = pensEnd + 22
-		MapService.LobbySpawn = CFrame.new(0, 4, -30)
+		HUB_BACK = backZ + DEPTH / 2 + 2
+		-- (the Lucky Wheel in the open middle, facing the way in)
+		MapService.LuckyWheelAt = Vector3.new(0, 0, -(FRONT + penWidth * 0.6))
+		MapService.LobbySpawn = CFrame.new(0, 4, -14)
 	end
 	if pens then
 		MapService.MaxBases = GameConfig.Pens.Count
@@ -628,11 +630,7 @@ local function buildBases()
 		-- The Haunted Wheel: a giant iron wheel you run inside to train Speed (the plate at the bottom
 		-- is what counts as "on it"). Clients spin it while its owner is training. It stands just
 		-- outside the vault's gate, so the inside is nothing but knives.
-		-- (pens: in the gap beside the pen, near the lane end, so the lane stays clear)
-		local wheelSide = if pens then penWheelSide[center] else -1
-		local wheelCenter = if pens
-			then Vector3.new(wheelSide * (penWidth / 2 + PEN_GAP / 2), 6.6, DEPTH / 2 - 9)
-			else Vector3.new(-13, 6.6, DEPTH / 2 + 7.5)
+		local wheelCenter = Vector3.new(-13, 6.6, DEPTH / 2 + 7.5)
 		-- Tsunami / Steal An Egg signs (client/Hud fills them in for their owner): Upgrade Base on the
 		-- other side of the gate (the next floor), Upgrade Wheel in front of the Haunted Wheel (the next
 		-- wheel or trail, with a small Robux board under it: RobuxBoard)
@@ -708,12 +706,8 @@ local function buildBases()
 			upgradeSign.Parent = folder
 			return upgradeSign
 		end
-		-- (pens: the Upgrade Base sign just out in the lane by the gate, the Upgrade Wheel sign in the
-		-- wheel's gap at the lane end - nothing stands out in the middle of the lane)
-		local baseSignX, baseSignZ = -wheelSide * 13, DEPTH / 2 + (if pens then 3 else 6)
-		local wheelSignX = if pens then wheelCenter.X else -13
-		local wheelSignZ = if pens then DEPTH / 2 + 1 else DEPTH / 2 + 15.5
-		upgradeSignAt("UpgradeSign", baseSignX, baseSignZ, "Upgrade Base")
+		local wheelSignX, wheelSignZ = -13, DEPTH / 2 + 15.5
+		upgradeSignAt("UpgradeSign", 13, DEPTH / 2 + 6, "Upgrade Base")
 		local wheelUpgrade = upgradeSignAt("WheelUpgradeSign", wheelSignX, wheelSignZ, "Upgrade Wheel")
 		local robuxBoard = block(
 			"RobuxBoard",
@@ -800,9 +794,11 @@ local function buildBases()
 			Center = center,
 			Frame = frame,
 			-- Rotated 90 degrees, so the world footprint swaps width and depth
-			-- (pens are turned too: their depth runs along world X)
+			-- (a turned pen's depth runs along world X)
 			Bounds = if pens
-				then bounds(center, DEPTH, penWidth)
+				then (if math.abs(frame.LookVector.X) > 0.5
+					then bounds(center, DEPTH, penWidth)
+					else bounds(center, penWidth, DEPTH))
 				elseif sideways then bounds(center, DEPTH, VAULT_WIDTH)
 				else bounds(center, VAULT_WIDTH, DEPTH),
 			Spawn = CFrame.lookAt(spawnPos, spawnPos + frame:VectorToWorldSpace(Vector3.zAxis)),

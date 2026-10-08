@@ -43,15 +43,15 @@ Done:
   the start; pens grow one slot at a time from a $1K first upgrade (`Pens.SlotCosts`,
   `PenMode.RoomUpgrade`; fixes Extra Room going past a pen's max); Epic coffins 2 rounds.
   pacing_sim (now models pens): Rare 0.34 h, Epic 1.2 h, Legendary 4.0 h, Mythic 8.2 h.
-- **Hub ("]" shape):** the hub is the runway's last stretch at its own 160 width: 4 pens down each
-  side of a 38-stud lane, gates facing it, each pen's wheel + Upgrade Wheel sign in the gap beside
-  it, the Lucky Wheel at the far end (`MapService.LuckyWheelAt`), SAFE ZONE paint fits the lane.
+- **Hub ("]" shape, Steal from the Rich):** the pens wrap an open plaza: 6 across the back wall
+  facing the way in, 1 on each side wall facing the middle; wheels and signs in front of each gate;
+  the Lucky Wheel in the middle (`MapService.LuckyWheelAt`). About 432 x 188 studs.
 - **Other fixes:** the red chase glow ends at the safe line; deeper monsters throw you further
   (x1 -> ~x2.3); torches / braziers / lava vents use the cartoon flame sprite (`Shared/SpriteFire`)
   instead of Roblox Fire.
 
-**Test first in Studio (desktop + phone):** the hub (pens, wheels in the gaps, walking out of your
-gate, the Lucky Wheel, nothing left inside pens); a deep biome; a creature lair (Z's, sign); a solo
+**Test first in Studio (desktop + phone):** the hub (the 6 + 1 + 1 pens, wheels in front of each
+gate, walking out of your gate, the Lucky Wheel, nothing left inside pens); a deep biome; a creature lair (Z's, sign); a solo
 bot round (no loot, no powers, the round messages, the 10 s warning, coming home to your pen, the
 NEW COFFINS restock); the HUD (big objective line, the trail after several deliveries, tapping
 Speed / Cash); the sprite fires (sizes are guesses: torch 2.2, brazier 4, vent 6); early pacing
