@@ -15,6 +15,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PenMode = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PenMode"))
+local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("GameConfig"))
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local TextService = game:GetService("TextService")
@@ -116,9 +117,7 @@ local function run(startAt: number, replay: boolean)
 	local trainingSince: number? = nil
 	local steps: { Step } = {
 		{
-			Text = if PenMode.Coffins()
-				then "Follow the arrows to Frank's coffins!"
-				else "Follow the arrows to Frank's knife!",
+			Text = `Follow the arrows to the {string.upper(GameConfig.MonsterName(1))}'s coffins!`,
 			Target = function(): Vector3?
 				local prompt = chosenPad and chosenPad:FindFirstChildOfClass("ProximityPrompt")
 				if

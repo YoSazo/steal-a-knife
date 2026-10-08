@@ -75,6 +75,7 @@ function Transitions.Init()
 			`<font color="#{tint:ToHex()}"><b>{zone.Title or zone.Rarity} {ZONE_EMOJI[zone.Rarity] or ""}</b></font>`
 		local need = zone.SpeedNeeded or 0
 		local speed = (player:GetAttribute("Speed") or 0) :: number
+		text ..= ` · home of the {string.upper(GameConfig.MonsterName(index))}`
 		if need > speed then
 			text ..= `  <font color="#FF6E6E">Needs {Format.Short(need)} speed</font>`
 		end

@@ -698,7 +698,7 @@ function Guide.Init()
 				else if mode == "Auto"
 						and current.Id == "new_tier"
 						and current.Zone
-					then `{string.upper(GameConfig.Zones[current.Zone].Rarity)} knives unlocked!`
+					then `You can outrun the {string.upper(GameConfig.MonsterName(current.Zone))}!`
 					else current.Text
 			if words ~= shownText then
 				shownText, label.Text = words, words

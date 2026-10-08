@@ -492,11 +492,11 @@ local function payPrize(
 	elseif prize.Kind == "Spins" then
 		Gamble.AddSpins(player, prize.Amount)
 	end
-	-- (knives you can see, not a boss's name you don't know)
-	local rarity = if prize.Rarity then string.upper(prize.Rarity) else nil
-	local text = if rarity and prize.Reaches
-		then `{prize.Text}\nNow you can steal {rarity} knives!`
-		elseif rarity then `{prize.Text}\n{Format.Short(prize.Left)} more for {rarity} knives`
+	-- (the monster you can see down the runway, not a knife category)
+	local monster = if prize.Zone then string.upper(GameConfig.MonsterName(prize.Zone)) else nil
+	local text = if monster and prize.Reaches
+		then `{prize.Text}\nYou can outrun the {monster}!`
+		elseif monster then `{prize.Text}\n{Format.Short(prize.Left)} more Speed to outrun the {monster}`
 		else prize.Text
 	-- Did the Speed get used? StealService tracks the next steal from that boss (prize.followup)
 	if prize.Kind == "Speed" and prize.Zone then

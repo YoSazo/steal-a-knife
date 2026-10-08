@@ -61,10 +61,11 @@ function NextAction.Reachable(speed: number): number
 	return best
 end
 
-local function rarity(zone: number): string
+-- A goal is a monster you can see ("the FLOWER TOAD"), never a knife category ("RARE knives")
+local function monster(zone: number): string
 	local z = (GameConfig.Zones :: any)[zone]
 	local tint = (z.Color :: Color3):Lerp(Color3.new(1, 1, 1), 0.3):ToHex()
-	return `<font color="#{tint}"><b>{string.upper(z.Rarity)}</b></font>`
+	return `<font color="#{tint}"><b>{string.upper(GameConfig.MonsterName(zone))}</b></font>`
 end
 
 local function floorAffordable(s: State): boolean
@@ -142,8 +143,8 @@ function NextAction.Pick(s: State): Action?
 	if not full and freshTier and freshTier <= reach and stockedAt(freshTier) then
 		return {
 			Id = "new_tier",
-			Text = `Fast enough! Steal a {rarity(freshTier)} {if PenMode.Coffins() then "coffin" else "knife"}!`,
-			Short = `Steal a {rarity(freshTier)} knife!`,
+			Text = `Fast enough! Steal from the {monster(freshTier)}!`,
+			Short = `Steal from the {monster(freshTier)}!`,
 			Target = "Lair",
 			Zone = freshTier,
 		}
@@ -199,7 +200,7 @@ function NextAction.Pick(s: State): Action?
 		local left = math.max(0, (nextZone.SpeedNeeded or 0) - s.Speed)
 		return {
 			Id = "train",
-			Text = `Keep running! <b>{Format.Short(left)}</b> Speed to {rarity(reach + 1)} knives`,
+			Text = `Keep running! <b>{Format.Short(left)}</b> Speed to outrun the {monster(reach + 1)}`,
 			Target = "Wheel",
 		}
 	end
@@ -214,7 +215,7 @@ function NextAction.Pick(s: State): Action?
 		if stockedAt(zone) then
 			return {
 				Id = "steal",
-				Text = `Steal another {rarity(zone)} {if PenMode.Coffins() then "coffin" else "knife"}!`,
+				Text = `Steal another coffin from the {monster(zone)}!`,
 				Target = "Lair",
 				Zone = zone,
 			}

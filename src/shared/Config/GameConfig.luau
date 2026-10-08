@@ -398,6 +398,7 @@ local GameConfig = {
 			Boss = "Frank", -- the name on the boss's tag (and this zone's round outfit)
 			-- The first thing a new player meets is a giant monster (what the thumbnail promises)
 			Creature = "HedgeHound" :: string?,
+			Monster = "Hedge Hound", -- what players see: its tag, the goals ("outrun the HEDGE HOUND")
 			Depth = 90,
 			BossAt = 50 / 90,
 			BossTitle = "The Groundskeeper",
@@ -414,6 +415,7 @@ local GameConfig = {
 			Rarity = "Rare",
 			Boss = "Ivy", -- the name on the boss's tag (and this zone's round outfit)
 			Creature = "FlowerToad" :: string?, -- the giant creature guarding this biome
+			Monster = "Flower Toad", -- what players see: its tag, the goals ("outrun the FLOWER TOAD")
 			Depth = 130,
 			BossAt = 0.6,
 			BossTitle = "The Gardener",
@@ -430,6 +432,7 @@ local GameConfig = {
 			Rarity = "Epic",
 			Boss = "Sam", -- the name on the boss's tag (and this zone's round outfit)
 			Creature = "BoneWolf" :: string?, -- the giant creature guarding this biome
+			Monster = "Bone Wolf", -- what players see: its tag, the goals ("outrun the BONE WOLF")
 			Depth = 170,
 			BossAt = 0.6,
 			BossTitle = "The Gravedigger",
@@ -447,6 +450,7 @@ local GameConfig = {
 			Rarity = "Legendary",
 			Boss = "Leo", -- the name on the boss's tag (and this zone's round outfit)
 			Creature = "GoldScorpion" :: string?, -- the giant creature guarding this biome
+			Monster = "Gold Scorpion", -- what players see: its tag, the goals ("outrun the GOLD SCORPION")
 			Depth = 210,
 			BossAt = 0.6,
 			BossTitle = "The Collector",
@@ -464,6 +468,7 @@ local GameConfig = {
 			Rarity = "Mythic",
 			Boss = "Ruby", -- the name on the boss's tag (and this zone's round outfit)
 			Creature = "LavaSalamander" :: string?, -- the giant creature guarding this biome
+			Monster = "Lava Salamander", -- what players see: its tag, the goals ("outrun the LAVA SALAMANDER")
 			Depth = 250,
 			BossAt = 0.6,
 			BossTitle = "The Firestarter",
@@ -481,6 +486,7 @@ local GameConfig = {
 			Rarity = "Godly",
 			Boss = "Kate", -- the name on the boss's tag (and this zone's round outfit)
 			Creature = "GoldenGriffin" :: string?, -- the giant creature guarding this biome
+			Monster = "Golden Griffin", -- what players see: its tag, the goals ("outrun the GOLDEN GRIFFIN")
 			Depth = 290,
 			BossAt = 0.6,
 			BossTitle = "The Queen",
@@ -498,6 +504,7 @@ local GameConfig = {
 			Rarity = "Celestial",
 			Boss = "Zoe", -- the name on the boss's tag (and this zone's round outfit)
 			Creature = "SkyPegasus" :: string?, -- the giant creature guarding this biome
+			Monster = "Sky Pegasus", -- what players see: its tag, the goals ("outrun the SKY PEGASUS")
 			Depth = 330,
 			BossAt = 0.6,
 			BossTitle = "The Angel",
@@ -515,6 +522,7 @@ local GameConfig = {
 			Rarity = "Cosmic",
 			Boss = "Nick", -- the name on the boss's tag (and this zone's round outfit)
 			Creature = "VoidBeast" :: string?, -- the giant creature guarding this biome
+			Monster = "Void Beast", -- what players see: its tag, the goals ("outrun the VOID BEAST")
 			Depth = 370,
 			BossAt = 0.6,
 			BossTitle = "The Void Walker",
@@ -806,6 +814,12 @@ function GameConfig.RebirthTitle(rebirths: number): string?
 end
 
 -- Shared cumulative layout. Interior ranges are [start, end); the final edge stays in the last zone.
+-- The name players see for zone `index`'s boss: the creature ("Hedge Hound"), else the person
+function GameConfig.MonsterName(index: number): string
+	local zone = (GameConfig.Zones :: any)[index]
+	return if zone then (zone.Monster or zone.Boss) :: string else "boss"
+end
+
 function GameConfig.ZoneDepthFor(index: number): number
 	local zone = GameConfig.Zones[index]
 	assert(zone, `Invalid biome index {index}`)

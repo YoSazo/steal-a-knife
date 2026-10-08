@@ -265,8 +265,8 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 	elseif key == "BossRestock" then
 		local boss = GuardService.RestockNear(player)
 		if boss then
-			Net.Announce(`🔄 {player.DisplayName} restocked {boss}'s wall!`, Color3.fromRGB(255, 140, 90), 2)
-			table.insert(got, `{boss}'s wall restocked`)
+			Net.Announce(`🔄 {player.DisplayName} restocked the {boss}!`, Color3.fromRGB(255, 140, 90), 2)
+			table.insert(got, `the {boss} restocked`)
 		else
 			-- Nothing was waiting there: a Mythic Lucky Block's worth of cash instead of nothing
 			local value = GameConfig.Pay({ Min = 5000, Seconds = 600 }, BaseService.RackIncome(player))

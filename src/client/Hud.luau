@@ -246,16 +246,21 @@ function Hud.Init()
 			local stats = RoundPrize.Stats(player)
 			local star = if jackpot then "⭐ JACKPOT! " else ""
 			local done = if doubled then '  <font color="#78FF8C">✓ x2</font>' else ""
-			-- One promise for everyone: "Win the round: +1.9K Speed" (+ "outrun Ivy!" when it gets you
-			-- there). No sides to work out - whoever wins gets it.
+			-- One promise for everyone: "Win the round: +1.9K Speed" (+ "-> outrun the FLOWER TOAD!" when
+			-- it gets you there). No sides to work out - whoever wins gets it.
 			local prize = RoundPrize.For(kind, "", jackpot, seed, stats, doubled)
-			-- (always says what the Speed is for: the next boss you can't outrun yet)
-			-- what it's FOR, in things you can see: the next knives ("RARE knives"), never a boss's name
+			-- (always says what the Speed is for: the next monster you can't outrun yet - the giant
+			-- creature a kid can see down the runway, not a knife category like "RARE knives")
 			local zoneColor = if prize.Zone then (GameConfig.Zones :: any)[prize.Zone].Color :: Color3 else nil
-			local knives = if prize.Rarity and zoneColor
-				then `<font color="#{zoneColor:Lerp(Color3.new(1, 1, 1), 0.3):ToHex()}">{string.upper(prize.Rarity)} knives</font>`
+			local target = if prize.Zone and zoneColor
+				then `<font color="#{zoneColor:Lerp(Color3.new(1, 1, 1), 0.3):ToHex()}">{string.upper(
+					GameConfig.MonsterName(prize.Zone)
+				)}</font>`
 				else nil
-			local outrun = if knives and prize.Reaches then ` = {knives}!` elseif knives then ` for {knives}` else ""
+			local outrun = if target and prize.Reaches
+				then ` → outrun the {target}!`
+				elseif target then ` toward the {target}`
+				else ""
 			return {
 				Text = `{star}Win the round: <font color="#8CFF96"><b>{prize.Text}</b></font>{outrun}{done}`,
 				Short = `{clock} · Win <font color="#8CFF96"><b>{prize.Text}</b></font>{done}`,

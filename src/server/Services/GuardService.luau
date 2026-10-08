@@ -361,14 +361,17 @@ local function buildHoundRig(config: ZoneConfig, shadow: boolean): Model
 	local tag = billboard(head, UDim2.fromScale(6, 1.6), Vector3.new(0, 4.4, 0), 60)
 	tag.Name = "BossTag"
 	tag.Enabled = shadow == true
+	-- A creature is called what it is ("HEDGE HOUND"), with its biome under it - not the old
+	-- person's name and job ("FRANK / The Groundskeeper") from when bosses were people
+	local monster = ((config :: any).Monster or config.Boss) :: string
 	text(
 		tag,
-		if shadow then `{config.Boss:upper()}'S SHADOW` else config.Boss:upper(),
+		if shadow then `{monster:upper()}'S SHADOW` else monster:upper(),
 		config.Color:Lerp(Color3.new(1, 1, 1), 0.2),
 		UDim2.fromScale(0, 0),
 		UDim2.fromScale(1, 0.58)
 	)
-	text(tag, config.BossTitle, Color3.fromRGB(235, 230, 240), UDim2.fromScale(0, 0.58), UDim2.fromScale(1, 0.42))
+	text(tag, config.Title, Color3.fromRGB(235, 230, 240), UDim2.fromScale(0, 0.58), UDim2.fromScale(1, 0.42))
 	local alert = billboard(head, UDim2.fromScale(3, 3), Vector3.new(0, 6.6, 0), 200)
 	alert.Name = "Alert"
 	alert.Enabled = false
@@ -740,7 +743,7 @@ local function announceIfRare(boss: Boss, item: string)
 	local parsed = Items.Parse(item)
 	if parsed and (parsed.Mutation.Rank >= 2 or parsed.Size.Rank >= 3) then
 		Net.Announce(
-			`💎 A {Items.DisplayName(item)} just appeared on {boss.Name}'s wall in {boss.Config.Title}!`,
+			`💎 A {Items.DisplayName(item)} just appeared at the {GameConfig.MonsterName(boss.Index)} in {boss.Config.Title}!`,
 			Items.Color(item),
 			2
 		)
@@ -1305,7 +1308,7 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 		boss_speed = guard.Config.GuardSpeed,
 	})
 	Net.Remotes.Effect:FireClient(thief, "Alarm")
-	Net.Notify(thief, "THE BOSS IS COMING! RUN HOME!", "bad")
+	Net.Notify(thief, `THE {string.upper(GameConfig.MonsterName(guard.Boss.Index))} IS COMING! RUN HOME!`, "bad")
 end
 
 -- Hurt a thief (throws, and the snatch). Shields block it.
@@ -1348,7 +1351,7 @@ local function snatch(guard: Guard, thief: Player)
 	-- (and then gives up: a 1.5 s stun had them caught-and-saved ~3 times a run, and 23 of 34 such
 	-- players quit mid-carry)
 	if profileNow and not profileNow.TutorialDone and #profileNow.Knives == 0 then
-		Net.Notify(thief, "The boss tripped! RUN HOME!", "good")
+		Net.Notify(thief, `The {GameConfig.MonsterName(guard.Boss.Index)} tripped! RUN HOME!`, "good")
 		Analytics.Track(thief, "boss.first_steal_saved", { zone = guard.Boss.Index })
 		Net.Remotes.Effect:FireAllClients("Smoke", guard.Position)
 		stopChase(guard, false)
@@ -1992,7 +1995,7 @@ function GuardService.RestockNear(player: Player): string?
 			any = true
 		end
 	end
-	return if any then found.Boss.Name else nil
+	return if any then GameConfig.MonsterName(found.Boss.Index) else nil
 end
 
 -- Studio tests (DebugService "BossSteal"): stand the player by a stocked slot of this boss's wall
