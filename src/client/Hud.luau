@@ -1190,6 +1190,7 @@ function Hud.Init()
 		-- rows: icon size, text size, row height
 		-- (bigger than before - 46 / 42 / 54 - so a young kid reads them at a glance)
 		local icon, size, row = 60, 54, 68
+		local textWidth = size * 6
 		local x = 12
 		if Ui.Phone then
 			local _, bounds = Ui.bounds()
@@ -1199,21 +1200,22 @@ function Hud.Init()
 			icon, row = math.floor(size * 1.1), math.max(44, math.floor(size * 1.2))
 			-- The dynamic thumbstick owns the lower-left 40% of the viewport, far beyond
 			-- its visible circle. Put both complete tap targets outside that rectangle.
-			x = math.floor(bounds.X * 0.4) + 12
+			textWidth = math.ceil(size * 4.5)
+			x = math.max(math.floor(bounds.X * 0.4) + 12, bounds.X - (icon + 8 + textWidth) - 80)
 		end
 		-- Speed over Cash. Phones keep both rows above the backpack's bottom touch area too.
 		local small = 0
 		stats.AnchorPoint = if Ui.Phone then Vector2.zero else Vector2.new(0, 1)
 		stats.Position = if Ui.Phone then UDim2.fromOffset(x, 46) else UDim2.new(0, x, 1, -12)
-		stats.Size = UDim2.fromOffset(icon + 8 + size * 6, small + row * 2)
+		stats.Size = UDim2.fromOffset(icon + 8 + textWidth, small + row * 2)
 		speedArt.Position, speedArt.Size = UDim2.fromOffset(0, small + (row - icon) / 2), UDim2.fromOffset(icon, icon)
 		cashArt.Position, cashArt.Size =
 			UDim2.fromOffset(0, small + row + (row - icon) / 2), UDim2.fromOffset(icon, icon)
-		speedLabel.Position, speedLabel.Size = UDim2.fromOffset(icon + 8, small), UDim2.fromOffset(size * 6, row)
-		cashLabel.Position, cashLabel.Size = UDim2.fromOffset(icon + 8, small + row), UDim2.fromOffset(size * 6, row)
+		speedLabel.Position, speedLabel.Size = UDim2.fromOffset(icon + 8, small), UDim2.fromOffset(textWidth, row)
+		cashLabel.Position, cashLabel.Size = UDim2.fromOffset(icon + 8, small + row), UDim2.fromOffset(textWidth, row)
 		for _, tap in { speedTap, cashTap } do
 			tap.Position = UDim2.fromOffset(0, -(row - icon) / 2)
-			tap.Size = UDim2.fromOffset(icon + 8 + size * 6, row)
+			tap.Size = UDim2.fromOffset(icon + 8 + textWidth, row)
 		end
 		speedLabel.TextSize, cashLabel.TextSize = math.floor(size * 0.9), size
 	end
