@@ -135,6 +135,51 @@ Test every step in Studio before starting the next (nothing here was tested yet)
 27. **PvP check.** Knock-loose hits (`Targets`, `pvp.knocked_loose`) can't land in the safe zone;
     "Can't attack in the safe zone!".
 
+28. **Text pass (every string a player sees).** Rules: at most ~6 words, no %, no jargon, one
+    message per line, big. Then:
+    - **Round messages never show.** `client/Hud.luau` ~914 drops every `Net.Notify` while you're in
+      a round. Lost: "A gun dropped somewhere. Find it!", "You got the gun!", "X shot the Murderer!",
+      "You shot someone who WASN'T the Murderer...". Let the few that matter through as big centre
+      text (the gun drop, the gun pickup, the Murderer shot).
+    - **Sizes.** The top line is 20 px (18 on phones) and shrinks to 14 px to fit
+      (`client/TopLine.luau` ~93-130); toasts are 21 px (`Hud.luau` ~834). Objective / top line 32+ px,
+      toasts 28+ px, never shrink below ~22: split a long line into two instead.
+    - **"Vault" and "plate" everywhere on a pen game.** `PenMode.Words` only rewrites notifications;
+      HUD, menus and the store still say vault / plate / Wall: "Bigger Vault" (Hud), "{n}/{slots} in
+      your vault", "Vault is max size" (QuickBar), "Your vault earned..." (Welcome), "Put your knife on
+      the glowing plate!" / "Walk to a glowing plate" (NextAction / StealService), "Press E on the
+      glowing plate" (Tutorial), "Wall 3/10 · Luck 4" (Hud ~588), shop descriptions ("your vault's
+      income"), "Empty Vault", "Upgrade Base". Goes away with item 2 if every string is reworded.
+    - **One name everywhere.** The loading screen says "STEAL AND MURDER", the welcome card
+      "WELCOME TO BLACKWOOD!". Both say the item-24 name.
+    - **Cut or reword:**
+      - "Murderer chance: 42%" -> drop, or "🔪 You could be the Murderer!".
+      - "Win the round: +26.4K Speed for EPIC knives" + an "x2 R$25" button in the same line -> line 1
+        "WIN = +26K SPEED 👟", line 2 "unlocks EPIC knives"; the x2 button goes elsewhere.
+      - Two speed numbers ("Speed" and "{n} walk speed", Hud ~586): show Speed only.
+      - "Dmg 30" (knife preview), "Damage 30 · $110/s" (dropped knives): show $/s only.
+      - "Best power: auto" / "Your pick: ON" (QuickBar): gone with item 4.
+      - "🛡️ New-player shield: nobody can steal your knives for your first 5 minutes" (Welcome) and
+        "Your safe time is over. Protect your vault!" (DataService ~738): cut (no loot any more).
+      - "More → Rebirth: see what starting over gives you" -> "Rebirth = earn more forever!".
+      - "Make room for a better knife - sell a spare!" -> "Pen full! Sell a knife!".
+      - "Finish your run first" (Rebirth) -> "Get home first!".
+      - "This isn't available where you are." (Store) -> "Can't buy that here!".
+      - "+25% Speed, right now." (Speed Pack) -> "+25% SPEED"; shop descriptions shrink to the number
+        (item 20).
+      - "Your pen is full! {name} is waiting in your bag - sell one or get a bigger pen." -> "Pen full!
+        It's in your bag."
+      - "Caught at the last second? An Escape Token breaks you free WITH the knife." -> cut with
+        Escape tokens, or "Escape with the knife!".
+    - **Make bigger:** "THE BOSS IS COMING! RUN HOME!", "You got away!", "Caught! Your knife went
+      back.", the "SPEED NEEDED / ✓ YOU'RE FAST ENOUGH" signs, the role reveal's one-line job
+      ("GET EVERYONE!" / "SHOOT THE MURDERER!" / "SURVIVE!").
+    - **Knife names exist already.** `shared/Config/KnifeCharacters.luau` names every knife (Rusty
+      Steve, Chef Choppy, Pocket Pete, Bony Tony, Goldie Locks, Lava Lenny, Galaxy Gary...) but it's
+      art metadata only: labels still say "Rusty Shank". Item 14 can use these (or their first names:
+      "Steve", "Pete") instead of writing new ones. Watch the doubles with the rarity prefix
+      ("Cosmic Cosmic Carl").
+
 Later, once likes and retention are healthy: stealing from other players' pens (the biggest
 remaining difference from Steal An Egg / Steal a Brainrot; kept out while rounds are gain-only).
 
