@@ -388,6 +388,10 @@ local GameConfig = {
 	ArenaWidth = 160,
 	CatchRadius = 5.5, -- (bosses are BossScale big: longer arms)
 	BossScale = 1.6, -- bosses tower over players so they're easy to spot, phones included
+	-- Creature bosses are GIANT (the thumbnail's monster): zone 1's stands CreatureHeight.First studs
+	-- tall (a player is ~5), each zone deeper Step more, the deepest just under the 36-stud walls.
+	-- Their reach grows with them (GuardService).
+	CreatureHeight = { First = 24, Step = 1.5 },
 	-- Each zone has one boss: a round character standing in front of a wall of knives. They leave you
 	-- alone until you steal one; then they (or, if they're already busy, a shadow of them) chase you
 	-- at GuardSpeed all the way to the plaza. Caught = they take the knife back (and Damage hurts).
@@ -396,8 +400,9 @@ local GameConfig = {
 	Zones = {
 		{
 			Rarity = "Common",
-			Boss = "Frank", -- the name everyone sees the knife wall (and this zone's round outfit) tagged with
-			Creature = "HedgeHound" :: string?, -- the hedge hound guards it in person (GuardService.CREATURE_MODULES)
+			Boss = "Frank", -- the name on the boss's tag (and this zone's round outfit)
+			-- The first thing a new player meets is a giant monster (what the thumbnail promises)
+			Creature = "HedgeHound" :: string?,
 			Depth = 90,
 			BossAt = 50 / 90,
 			BossTitle = "The Groundskeeper",
@@ -412,8 +417,8 @@ local GameConfig = {
 		},
 		{
 			Rarity = "Rare",
-			Boss = "Ivy", -- a round character (Disguises) guarding this biome's knife wall
-			Creature = nil :: string?, -- a round character guards this zone for now
+			Boss = "Ivy", -- the name on the boss's tag (and this zone's round outfit)
+			Creature = "FlowerToad" :: string?, -- the giant creature guarding this biome
 			Depth = 130,
 			BossAt = 0.6,
 			BossTitle = "The Gardener",
@@ -428,8 +433,8 @@ local GameConfig = {
 		},
 		{
 			Rarity = "Epic",
-			Boss = "Sam", -- a round character (Disguises) guarding this biome's knife wall
-			Creature = nil :: string?, -- a round character guards this zone for now
+			Boss = "Sam", -- the name on the boss's tag (and this zone's round outfit)
+			Creature = "BoneWolf" :: string?, -- the giant creature guarding this biome
 			Depth = 170,
 			BossAt = 0.6,
 			BossTitle = "The Gravedigger",
@@ -445,8 +450,8 @@ local GameConfig = {
 		},
 		{
 			Rarity = "Legendary",
-			Boss = "Leo", -- a round character (Disguises) guarding this biome's knife wall
-			Creature = nil :: string?, -- a round character guards this zone for now
+			Boss = "Leo", -- the name on the boss's tag (and this zone's round outfit)
+			Creature = "GoldScorpion" :: string?, -- the giant creature guarding this biome
 			Depth = 210,
 			BossAt = 0.6,
 			BossTitle = "The Collector",
@@ -462,8 +467,8 @@ local GameConfig = {
 		},
 		{
 			Rarity = "Mythic",
-			Boss = "Ruby", -- a round character (Disguises) guarding this biome's knife wall
-			Creature = nil :: string?, -- a round character guards this zone for now
+			Boss = "Ruby", -- the name on the boss's tag (and this zone's round outfit)
+			Creature = "LavaSalamander" :: string?, -- the giant creature guarding this biome
 			Depth = 250,
 			BossAt = 0.6,
 			BossTitle = "The Firestarter",
@@ -479,8 +484,8 @@ local GameConfig = {
 		},
 		{
 			Rarity = "Godly",
-			Boss = "Kate", -- a round character (Disguises) guarding this biome's knife wall
-			Creature = nil :: string?, -- a round character guards this zone for now
+			Boss = "Kate", -- the name on the boss's tag (and this zone's round outfit)
+			Creature = "GoldenGriffin" :: string?, -- the giant creature guarding this biome
 			Depth = 290,
 			BossAt = 0.6,
 			BossTitle = "The Queen",
@@ -496,8 +501,8 @@ local GameConfig = {
 		},
 		{
 			Rarity = "Celestial",
-			Boss = "Zoe", -- a round character (Disguises) guarding this biome's knife wall
-			Creature = nil :: string?, -- a round character guards this zone for now
+			Boss = "Zoe", -- the name on the boss's tag (and this zone's round outfit)
+			Creature = "SkyPegasus" :: string?, -- the giant creature guarding this biome
 			Depth = 330,
 			BossAt = 0.6,
 			BossTitle = "The Angel",
@@ -513,8 +518,8 @@ local GameConfig = {
 		},
 		{
 			Rarity = "Cosmic",
-			Boss = "Nick", -- a round character (Disguises) guarding this biome's knife wall
-			Creature = nil :: string?, -- a round character guards this zone for now
+			Boss = "Nick", -- the name on the boss's tag (and this zone's round outfit)
+			Creature = "VoidBeast" :: string?, -- the giant creature guarding this biome
 			Depth = 370,
 			BossAt = 0.6,
 			BossTitle = "The Void Walker",
@@ -604,13 +609,13 @@ local GameConfig = {
 	-- Egg's chicken). With the boss next to the stash and only the 0.45 s "!", 66% of first steals
 	-- were caught, half of them within a second - before the player had even turned round.
 	BossWake = {
-		Time = 1.3,
-		Newcomer = 2.2, -- until you own NewcomerKnives knives
+		-- Steal An Egg: the guardian is up and running almost the instant you grab one - no long
+		-- get-up to wait through. How fair a chase is comes from the boss's run speed, not a head start.
+		Time = 0.4,
+		Newcomer = 0.4, -- (same for everyone now)
 		NewcomerKnives = 3,
-		-- A creature boss has no chair to climb out of - its "getting up" IS the pose blend, with no
-		-- separate stand-and-face beat after it, so it needs much less total time to still read fair.
-		HoundTime = 0.45,
-		HoundNewcomer = 0.8,
+		HoundTime = 0.25,
+		HoundNewcomer = 0.25,
 	},
 	-- How a boss gets out of / back into his chair: he hops out forward over his footstool and hops
 	-- back in backwards. Shares of the wake time (client/Moves poses, GuardService flies the body):

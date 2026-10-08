@@ -628,5 +628,110 @@
     "assetId": "111222461252498",
     "file": "assets/boss-titles/models/vertex-probe.fbx",
     "uploaded": "2026-10-03 21:38"
+  },
+  "Boss Chairs Palette v1": {
+    "assetId": "90298674642676",
+    "file": "assets/boss-chairs/textures/BossChairPalette.png",
+    "uploaded": "2026-10-05 22:42"
+  },
+  "Boss Chair Frank v1": {
+    "assetId": "83165562260065",
+    "file": "assets/boss-chairs/models/Frank.fbx",
+    "uploaded": "2026-10-05 22:45"
+  },
+  "Boss Chairs Palette v2": {
+    "assetId": "98673457009677",
+    "file": "assets/boss-chairs/textures/BossChairPalette.png",
+    "uploaded": "2026-10-05 23:09"
+  },
+  "Boss Chair Frank v2": {
+    "assetId": "139985477326016",
+    "file": "assets/boss-chairs/models/Frank.fbx",
+    "uploaded": "2026-10-05 23:09"
+  },
+  "Boss Chair Frank v3": {
+    "assetId": "134109667399930",
+    "file": "assets/boss-chairs/models/Frank.fbx",
+    "uploaded": "2026-10-05 23:18"
+  },
+  "Boss Chair Ivy v1": {
+    "assetId": "92759820286372",
+    "file": "assets/boss-chairs/models/Ivy.fbx",
+    "uploaded": "2026-10-05 23:30"
+  },
+  "Boss Chair Sam v1": {
+    "assetId": "82295057481840",
+    "file": "assets/boss-chairs/models/Sam.fbx",
+    "uploaded": "2026-10-05 23:30"
+  },
+  "Boss Chair Leo v1": {
+    "assetId": "117245205007448",
+    "file": "assets/boss-chairs/models/Leo.fbx",
+    "uploaded": "2026-10-05 23:30"
+  },
+  "Boss Chair Ruby v1": {
+    "assetId": "133156909305538",
+    "file": "assets/boss-chairs/models/Ruby.fbx",
+    "uploaded": "2026-10-05 23:30"
+  },
+  "Boss Chair Kate v1": {
+    "assetId": "92125291218128",
+    "file": "assets/boss-chairs/models/Kate.fbx",
+    "uploaded": "2026-10-05 23:30"
+  },
+  "Boss Chair Zoe v1": {
+    "assetId": "132490437099824",
+    "file": "assets/boss-chairs/models/Zoe.fbx",
+    "uploaded": "2026-10-05 23:31"
+  },
+  "Boss Chair Nick v1": {
+    "assetId": "125479760241944",
+    "file": "assets/boss-chairs/models/Nick.fbx",
+    "uploaded": "2026-10-05 23:31"
+  },
+  "Boss Chair Zoe v2": {
+    "assetId": "72522027468801",
+    "file": "assets/boss-chairs/models/Zoe.fbx",
+    "uploaded": "2026-10-05 23:41"
+  },
+  "RoundMap_OfficeStairs": {
+    "assetId": "93782231220180",
+    "file": "assets/round-map-art/models/OfficeStairs.fbx",
+    "uploaded": "2026-10-06 13:19"
+  },
+  "RoundMap_MansionStairs": {
+    "assetId": "122703709070393",
+    "file": "assets/round-map-art/models/MansionStairs.fbx",
+    "uploaded": "2026-10-06 13:19"
+  },
+  "RoundMap_OfficeBalustrade": {
+    "assetId": "107077352853490",
+    "file": "assets/round-map-art/models/OfficeBalustrade.fbx",
+    "uploaded": "2026-10-06 13:19"
+  },
+  "RoundMap_MansionBalustrade": {
+    "assetId": "74548422958197",
+    "file": "assets/round-map-art/models/MansionBalustrade.fbx",
+    "uploaded": "2026-10-06 13:19"
+  },
+  "RoundMap_Photo_office": {
+    "assetId": "77617794151872",
+    "file": "assets/map-shots/map_office.png",
+    "uploaded": "2026-10-06 13:30"
+  },
+  "RoundMap_Photo_mansion": {
+    "assetId": "74761371919674",
+    "file": "assets/map-shots/map_mansion.png",
+    "uploaded": "2026-10-06 13:30"
+  },
+  "Rusty Steve Painted Eyes": {
+    "assetId": "79884656424257",
+    "file": "assets/knife-characters/eye-styles/RustyShank.png",
+    "uploaded": "2026-10-07 12:15"
+  },
+  "Sir Slicealot Smug Golden Eyes": {
+    "assetId": "138493039190721",
+    "file": "assets/knife-characters/eye-styles-v2/Katana.png",
+    "uploaded": "2026-10-07 12:40"
   }
 }

@@ -35,7 +35,6 @@ local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 local Toy = require(ReplicatedStorage.Shared.Toy)
 local WheelModel = require(ReplicatedStorage.Shared.WheelModel)
 local VaultModel = require(ReplicatedStorage.Shared.VaultModel)
-local Textures = require(ReplicatedStorage.Shared.Config.Textures)
 
 export type Bounds = { MinX: number, MaxX: number, MinZ: number, MaxZ: number }
 export type BaseSite = {
@@ -156,97 +155,48 @@ local function buildLighting()
 	-- The tall boundary walls don't cast (Toy.DirtWall), or they'd shade half the arena.
 	Lighting.ClockTime = 13.5
 	Lighting.GeographicLatitude = 3
-	-- Bright on purpose (above even the original flat-look value) - see the Ambient comment below,
-	-- same reasoning: the world needs to read rich on its own, not rely on a flattering sun angle.
-	Lighting.Brightness = 3.8
+	-- Bright, colourful simulator light (picked side by side with Steal An Egg): a soft purple
+	-- ambient, warm highlights from the sun, a little of the sky's own fill and reflection, and a
+	-- saturation lift. The same everywhere in the hub (client/ZoneLighting keeps it on every biome).
+	Lighting.Ambient = Color3.fromRGB(200, 160, 225)
+	Lighting.OutdoorAmbient = Color3.fromRGB(125, 100, 150)
+	Lighting.Brightness = 2.5
 	Lighting.ExposureCompensation = 0
-	-- Strong ambient on purpose: the world needs to read richly coloured on its own, not just on
-	-- whichever face happens to catch the sun. Proven by Egg's own event screenshot - their sky went
-	-- full gold-fire, no sun in sight, and the ground/buildings never dimmed or lost colour; that
-	-- only works if the base (non-directional) light is strong enough to carry the world by itself.
-	-- Checked live on the shadow side of a wall: at the old 110/115 it went visibly duller than the
-	-- lit side; at this level both sides stay rich.
-	-- The round maps' warm, neutral fill (rounds read clean and even), with the sun on top
-	Lighting.Ambient = Color3.fromRGB(225, 218, 208)
-	Lighting.OutdoorAmbient = Color3.fromRGB(230, 223, 213)
-	Lighting.ColorShift_Top = Color3.fromRGB(255, 252, 245)
+	Lighting.ColorShift_Top = Color3.fromRGB(215, 190, 135)
 	Lighting.ColorShift_Bottom = Color3.fromRGB(0, 0, 0)
-	Lighting.EnvironmentDiffuseScale = 0
-	Lighting.EnvironmentSpecularScale = 0
+	Lighting.EnvironmentDiffuseScale = 0.4
+	Lighting.EnvironmentSpecularScale = 0.5
+	Lighting.GlobalShadows = true
+	Lighting.ShadowSoftness = 0.2
+	-- A faint lavender fog far away instead of an Atmosphere
+	Lighting.FogColor = Color3.fromRGB(200, 170, 250)
+	Lighting.FogStart = 0
+	Lighting.FogEnd = 2500
 	-- Clients restore these after a round (client/Effects)
 	Lighting:SetAttribute("HubAmbient", Lighting.Ambient)
 	Lighting:SetAttribute("HubOutdoor", Lighting.OutdoorAmbient)
-	-- Real shadows (with the sun overhead, just a small one under each character)
-	Lighting.GlobalShadows = true
-	Lighting.ShadowSoftness = 0.15 -- crisp enough to read
 	for _, child in Lighting:GetChildren() do
 		if child:IsA("Atmosphere") or child:IsA("PostEffect") or child:IsA("Sky") then
 			child:Destroy()
 		end
 	end
-	-- A soft, pale haze with distance (things far below or far away go lighter, close up stays crisp)
-	local atmosphere = Instance.new("Atmosphere")
-	-- Steal An Egg's sky: a natural warm-white sun haze, not a colour filter - it should look like
-	-- real atmosphere, not like the whole world is underwater. (The old cyan version, kept until
-	-- now, tinted every distant surface teal; every OTHER zone already had to hand-correct for it -
-	-- see ZoneLighting's "fixes it reading cold under the cyan" comment on Inferno. This is that fix
-	-- for the Courtyard/base look itself, not another zone papering over it.)
-	atmosphere.Density = 0.1
-	atmosphere.Offset = 0.3
-	atmosphere.Color = Color3.fromRGB(255, 248, 235)
-	atmosphere.Decay = Color3.fromRGB(220, 208, 192)
-	atmosphere:SetAttribute("HubColor", atmosphere.Color)
-	atmosphere:SetAttribute("HubDecay", atmosphere.Decay)
-	-- Glare maxed out once (10) to chase Egg's sun - wrong read: sampling a FRESH reference where
-	-- their sun sits mid-frame (not near the top edge, which was hiding how contained their halo
-	-- actually is) showed it falls back to clear sky within ~20-25% of frame width, not edge to
-	-- edge. Our max-Glare version never recovered to baseline across the WHOLE frame (checked with
-	-- the same horizontal-scan method). The custom skybox now carries the vivid sky on its own, so
-	-- Glare only has to do the sun's own halo - a much smaller job than before.
-	atmosphere.Glare = 2.5
-	atmosphere.Haze = 0.3 -- a light veil, not a wash - the skybox itself supplies the vivid colour now
-	atmosphere.Parent = Lighting
+	-- "Sunless Blue Sky" (Creator Store asset 591067775 by Yourius: just a Sky, its six pictures)
 	local sky = Instance.new("Sky")
-	-- A flat painted sky (tools/make_sky_day.py), not Roblox's own realistic scattering - that read
-	-- deep blue and flat next to Brainrot's, and separately can't be pushed to Egg's fully-saturated
-	-- G/B~255 clear-sky colour without a global Saturation push that cooks skin and walls along with
-	-- it. CelestialBodiesShown still draws the real sun on top of this, matching the shadows.
-	sky.SkyboxFt = Textures.Day.Ft
-	sky.SkyboxBk = Textures.Day.Bk
-	sky.SkyboxLf = Textures.Day.Lf
-	sky.SkyboxRt = Textures.Day.Rt
-	sky.SkyboxUp = Textures.Day.Up
-	sky.SkyboxDn = Textures.Day.Dn
+	sky.SkyboxBk = "rbxassetid://591058823"
+	sky.SkyboxDn = "rbxassetid://591059876"
+	sky.SkyboxFt = "rbxassetid://591058104"
+	sky.SkyboxLf = "rbxassetid://591057861"
+	sky.SkyboxRt = "rbxassetid://591057625"
+	sky.SkyboxUp = "rbxassetid://591059642"
 	sky.StarCount = 0
-	sky.CelestialBodiesShown = true -- the real sun, matching the shadows
-	sky.SunAngularSize = 21
 	sky.MoonAngularSize = 0
 	sky.Parent = Lighting
-	local bloom = Instance.new("BloomEffect")
-	-- A contained halo around the sun, not a wash over the whole sky (see the Glare comment above -
-	-- same correction, the same way). Smaller and tighter than the original too: Size/Intensity down,
-	-- Threshold up, so only the sun itself blooms.
-	bloom.Intensity = 0.5
-	bloom.Size = 40
-	bloom.Threshold = 1.9
-	local rays = Instance.new("SunRaysEffect")
-	-- Light streaming out of the sun (that lifelike glow you see looking up at it)
-	rays.Intensity = 0.2
-	rays.Spread = 0.7
-	rays.Parent = Lighting
-	bloom.Parent = Lighting
 	local grade = Instance.new("ColorCorrectionEffect")
-	-- Punchy and bright, like Tsunami. (History: tried pushing this to 1.3 to chase Egg's sky before
-	-- the custom skybox existed - it blew out skin/walls orange instead, confirmed by sampling that
-	-- screenshot too. 0.3 was the safe compromise at the time. Now the skybox texture itself carries
-	-- the sky's vividness, so this doesn't need to - checked live, 0.15 looks identical to 0.3 since
-	-- the sky's colour no longer depends on this slider, and it's a lower-risk number to carry.)
-	grade.Contrast = 0.12
+	grade.Brightness = 0.05
+	grade.Contrast = 0.1
 	grade.Saturation = 0.15
-	grade.TintColor = Color3.fromRGB(255, 253, 248)
-	grade.Brightness = 0
+	grade.TintColor = Color3.fromRGB(255, 255, 255)
 	grade.Parent = Lighting
-	-- A clear sky (the few clouds are painted into the skybox)
 	local clouds = workspace.Terrain:FindFirstChildOfClass("Clouds")
 	if clouds then
 		clouds:Destroy()
@@ -276,11 +226,12 @@ local ZONE_WALLS: { [string]: Color3 } = {
 	Cosmic = Color3.fromRGB(48, 36, 84), -- void
 }
 
-local WALL_HEIGHT = 120 -- tall walls (Tsunami): a full 4-floor vault (~96) stays under; the sun stays in view
--- The runway's walls have no vault to clear (that's only the hub/plaza), so they don't need the
--- hub's full height - at 120 they read as a huge empty slab towering over everything in it
--- (Steal An Egg's own walls sit closer to a few building-storeys tall, not a skyscraper).
-local RUNWAY_WALL_HEIGHT = 48
+-- One wall height everywhere - the hub, the plain biomes and the far end - level with where the
+-- Codex biome shells' walls top out (their spires reach SHELL_HEIGHT; most of each wall stops
+-- around 35-40)
+local WALL_HEIGHT = 36
+local RUNWAY_WALL_HEIGHT = WALL_HEIGHT
+local SHELL_HEIGHT = 48
 local WALL_THICK = 6
 local STONE = Color3.fromRGB(98, 92, 150)
 -- Tsunami's walls are a vivid orange-red brick, not dull dirt
@@ -1251,6 +1202,47 @@ end
 
 -- The biome shells: built after the boss lairs (GuardService) so nothing clears them, as cosmetic
 -- siblings of the arena (never inside ManorDecor's Decor folder). Origin = the runway entrance.
+-- The Codex shells stand 150-175 studs tall: squashes one down to SHELL_HEIGHT, keeping everything at ground level (its
+-- floor patterns, under SHELL_GROUND) exactly where it was and its silhouette (towers, arches) intact.
+local SHELL_GROUND = 4
+local function fitShellHeight(shell: Model)
+	local top = 0
+	for _, part in shell:GetDescendants() do
+		if part:IsA("BasePart") then
+			top = math.max(top, part.Position.Y + part.Size.Y / 2)
+		end
+	end
+	if top <= SHELL_HEIGHT then
+		return
+	end
+	local k = (SHELL_HEIGHT - SHELL_GROUND) / (top - SHELL_GROUND)
+	local function squash(y: number): number
+		return if y <= SHELL_GROUND then y else SHELL_GROUND + (y - SHELL_GROUND) * k
+	end
+	for _, part in shell:GetDescendants() do
+		if part:IsA("BasePart") then
+			local position = part.Position
+			local bottom, ceiling = position.Y - part.Size.Y / 2, position.Y + part.Size.Y / 2
+			local newBottom, newCeiling = squash(bottom), squash(ceiling)
+			if newBottom ~= bottom or newCeiling ~= ceiling then
+				local rotation = part.CFrame - position
+				part.Size = Vector3.new(part.Size.X, math.max(0.05, newCeiling - newBottom), part.Size.Z)
+				part.CFrame = CFrame.new(position.X, (newBottom + newCeiling) / 2, position.Z) * rotation
+			end
+		end
+	end
+end
+
+-- The gate arches over the runway between biomes: gone (they read as a ceiling). Anything above
+-- head height over the middle of the runway; the walls either side stay.
+local function removeArches(shell: Model)
+	for _, part in shell:GetDescendants() do
+		if part:IsA("BasePart") and part.Position.Y - part.Size.Y / 2 > 7 and math.abs(part.Position.X) < 55 then
+			part:Destroy()
+		end
+	end
+end
+
 function MapService.BuildBiomeShells()
 	local map = workspace:FindFirstChild("Map") or workspace
 	local folder = Instance.new("Folder")
@@ -1262,6 +1254,11 @@ function MapService.BuildBiomeShells()
 			local ok, err = pcall(function()
 				local shell = (require(module) :: any).Build(folder, CFrame.new(0, 0, GameConfig.ZoneStart(index)))
 				shell:SetAttribute("Zone", index)
+				fitShellHeight(shell)
+				removeArches(shell)
+				if index >= 3 then
+					ManorDecor.DressShellFloor(index, shell)
+				end
 				BiomeSprites.Dress(shell) -- (sparkles on water, embers off lava, twinkles on lights...)
 			end)
 			if not ok then
