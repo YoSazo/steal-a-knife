@@ -156,16 +156,19 @@ local function buildLighting()
 	-- The tall boundary walls don't cast (Toy.DirtWall), or they'd shade half the arena.
 	Lighting.ClockTime = 13.5
 	Lighting.GeographicLatitude = 3
-	-- Bright but not blown out: toned down a touch from the original flat look now that shadows and
-	-- a correct haze colour are doing some of the work the raw brightness used to carry alone.
-	Lighting.Brightness = 2.7
+	-- Bright on purpose (above even the original flat-look value) - see the Ambient comment below,
+	-- same reasoning: the world needs to read rich on its own, not rely on a flattering sun angle.
+	Lighting.Brightness = 3.8
 	Lighting.ExposureCompensation = 0
-	-- Warm, and a notch below the old near-white flat fill: the walls are back to getting no direct
-	-- light (the sun's overhead again), but the lower Brightness plus the now-correct warm haze
-	-- colour (below) keep them reading warm instead of needing ambient to carry the whole look.
+	-- Strong ambient on purpose: the world needs to read richly coloured on its own, not just on
+	-- whichever face happens to catch the sun. Proven by Egg's own event screenshot - their sky went
+	-- full gold-fire, no sun in sight, and the ground/buildings never dimmed or lost colour; that
+	-- only works if the base (non-directional) light is strong enough to carry the world by itself.
+	-- Checked live on the shadow side of a wall: at the old 110/115 it went visibly duller than the
+	-- lit side; at this level both sides stay rich.
 	-- The round maps' warm, neutral fill (rounds read clean and even), with the sun on top
-	Lighting.Ambient = Color3.fromRGB(110, 105, 100)
-	Lighting.OutdoorAmbient = Color3.fromRGB(115, 110, 105)
+	Lighting.Ambient = Color3.fromRGB(225, 218, 208)
+	Lighting.OutdoorAmbient = Color3.fromRGB(230, 223, 213)
 	Lighting.ColorShift_Top = Color3.fromRGB(255, 252, 245)
 	Lighting.ColorShift_Bottom = Color3.fromRGB(0, 0, 0)
 	Lighting.EnvironmentDiffuseScale = 0
