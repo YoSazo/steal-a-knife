@@ -30,7 +30,13 @@ local CoffinService = require(script.Parent.CoffinService)
 
 local MonetizationService = {}
 
-local MAX_RECEIPTS = 60
+-- PurchaseIds kept per profile. Roblox only re-sends a receipt until it's acknowledged, and we only
+-- acknowledge once the id is saved, so this just has to outlast a burst of purchases between
+-- saves - 200 is plenty and stays small in the save.
+local MAX_RECEIPTS = 200
+-- Receipts being handled right now: Roblox can call ProcessReceipt again for the same purchase
+-- while the first call is still yielding (a save, a grant); the second one must not grant too
+local inFlight: { [string]: boolean } = {}
 
 local passById: { [number]: Monetization.Pass } = {}
 local productById: { [number]: Monetization.Product } = {}
@@ -298,6 +304,8 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 	return true
 end
 
+local handleReceipt: (info: { [string]: any }, player: Player, profile: any, purchaseId: string) -> Enum.ProductPurchaseDecision
+
 local function processReceipt(info: { [string]: any }): Enum.ProductPurchaseDecision
 	local player = Players:GetPlayerByUserId(info.PlayerId)
 	local profile = player and DataService.Get(player)
@@ -305,8 +313,26 @@ local function processReceipt(info: { [string]: any }): Enum.ProductPurchaseDeci
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 	local purchaseId = tostring(info.PurchaseId)
+	if inFlight[purchaseId] then
+		return Enum.ProductPurchaseDecision.NotProcessedYet -- (the other call finishes it)
+	end
+	inFlight[purchaseId] = true
+	local ok, decision = pcall(handleReceipt, info, player, profile, purchaseId)
+	inFlight[purchaseId] = nil
+	if not ok then
+		warn(`[Monetization] receipt {purchaseId} failed: {decision}`)
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	return decision
+end
+
+handleReceipt = function(info, player, profile, purchaseId): Enum.ProductPurchaseDecision
 	if table.find(profile.Receipts, purchaseId) then
-		return Enum.ProductPurchaseDecision.PurchaseGranted
+		-- Granted before, but maybe never saved (that save failed): never grant again, only
+		-- acknowledge once the record is really saved
+		return if DataService.SaveNow(player)
+			then Enum.ProductPurchaseDecision.PurchaseGranted
+			else Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 	local product = productById[info.ProductId]
 	local retired = Monetization.Retired[info.ProductId]
@@ -369,6 +395,7 @@ end
 
 function MonetizationService.Init()
 	MarketplaceService.ProcessReceipt = processReceipt
+	MonetizationService.ProcessReceipt = processReceipt -- (tests: Roblox's callback can't be read back)
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(
 		function(player: Player, passId: number, purchased: boolean)
 			local pass = passById[passId]

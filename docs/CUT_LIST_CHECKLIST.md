@@ -16,8 +16,8 @@ variant. Fixed Murderer perks, the tutorial showcase and the Speed prize tuning 
 - [x] Remove health progression, Titan/health products (refunded once). The hurt-only health bar stays as feedback.
 - [x] Remove Heat state effects, income multiplier, offers and displays; Murderer chance meter kept (ChanceMeter).
 - [x] Remove luck potions/server luck and their store/UI/runtime hooks; rebirth + Luck pass mutation/size luck kept.
-- [ ] Retired paid products/pass ownership receive compatible, once-only replacement value.
-- [ ] Audit receipt retries, save failure and duplicate requests.
+- [x] Retired paid products/pass ownership receive compatible, once-only replacement value (Retired, RetiredPasses, LegacyProgress).
+- [x] Receipt retries, save failure and duplicate requests: re-save before acknowledging, in-flight lock, 200 ids, passes wait for the profile (tested in Studio).
 - [ ] Final HUD/menu/config/source sweep; update obsolete architecture documentation.
 - [ ] Lint, formatting, types, regression tests, clean Studio boots and both coffin/vault variants.
 
