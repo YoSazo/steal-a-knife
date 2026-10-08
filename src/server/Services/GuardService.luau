@@ -160,6 +160,7 @@ type Projectile = {
 	Damage: number,
 	Target: Player,
 	Speed: number?, -- studs/s (faster than the target runs)
+	Zone: number, -- the throwing boss's zone (deeper = a bigger knock)
 }
 
 local GuardService = {}
@@ -558,7 +559,9 @@ local function setAsleep(guard: Guard, asleep: boolean)
 			-- A giant creature: big stacked Z's floating up off its head, readable from down the runway
 			-- (the round characters' little emoji sat hidden inside its head)
 			local scale = guard.Model:GetScale()
-			gui.Size = UDim2.fromScale(3 * scale, 4 * scale)
+			-- A fixed, small size on screen (pixels, not studs): sized in studs it grew huge as you
+			-- walked up and swamped the view from afar
+			gui.Size = UDim2.fromOffset(70, 92)
 			-- Above the whole sleeping body, not offset from the synthetic Head anchor: on a giant
 			-- creature that offset landed inside its head. (World space, so it never swings into the
 			-- body as the camera moves.)
@@ -569,18 +572,18 @@ local function setAsleep(guard: Guard, asleep: boolean)
 			gui.MaxDistance = 260
 			label.Font = Enum.Font.FredokaOne
 			label.RichText = true
-			label.Text = `<font size="60">Z</font><font size="44">z</font><font size="30">z</font>`
+			label.Text = `<font size="34">Z</font><font size="26">z</font><font size="18">z</font>`
 			label.TextColor3 = Color3.new(1, 1, 1)
 			label.TextScaled = false
-			label.TextSize = 60
+			label.TextSize = 34
 			label.TextXAlignment = Enum.TextXAlignment.Left
 			label.Rotation = -12
 			local stroke = Instance.new("UIStroke")
-			stroke.Thickness = 4
+			stroke.Thickness = 2.5
 			stroke.Color = Color3.fromRGB(40, 50, 110)
 			stroke.Parent = label
 			local scaler = Instance.new("UITextSizeConstraint")
-			scaler.MaxTextSize = 60
+			scaler.MaxTextSize = 34
 			scaler.Parent = label
 		end
 		gui.Parent = head
@@ -1312,6 +1315,12 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 end
 
 -- Hurt a thief (throws, and the snatch). Shields block it.
+-- How hard a boss throws you: the deeper (scarier) the monster, the further you fly - the Hedge
+-- Hound tosses you, the Void Beast launches you (x1 in zone 1 up to ~x2.3 in the last zone)
+local function throwPower(zone: number): number
+	return 1 + (math.max(zone, 1) - 1) * 0.19
+end
+
 local function hurt(player: Player, amount: number, from: Vector3): boolean
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -1405,8 +1414,10 @@ local function snatch(guard: Guard, thief: Player)
 	end
 	-- Thrown through the air like a rag doll (Steal An Egg style)
 	local away = (root.Position - guard.Position) * Vector3.new(1, 0, 1)
-	local push = (if away.Magnitude > 0.1 then away.Unit else -root.CFrame.LookVector) * 50 + Vector3.new(0, 50, 0)
-	Ragdoll.Tumble(thief, push, 1.6)
+	local power = throwPower(guard.Boss.Index)
+	local push = (if away.Magnitude > 0.1 then away.Unit else -root.CFrame.LookVector) * (50 * power)
+		+ Vector3.new(0, 50 * math.sqrt(power), 0)
+	Ragdoll.Tumble(thief, push, 1.6 + (power - 1) * 0.5)
 	stopChase(guard, false)
 end
 
@@ -1449,6 +1460,7 @@ local function throwAt(guard: Guard, aim: Vector3, target: Player)
 		Damage = guard.Config.Damage,
 		Target = target,
 		Speed = speed,
+		Zone = guard.Boss.Index,
 	})
 	Net.Remotes.Effect:FireAllClients("Dash", origin)
 end
@@ -1491,7 +1503,8 @@ local function stepProjectiles(dt: number)
 			if (root.Position - (p.Position + ab * t)).Magnitude < config.HitRadius + 1 then
 				-- A knife in the back knocks you flying (and costs you ground, not the knife)
 				if hurt(p.Target, p.Damage, p.Position) then
-					Ragdoll.Tumble(p.Target, p.Direction * 45 + Vector3.new(0, 40, 0), 1)
+					local power = throwPower(p.Zone)
+					Ragdoll.Tumble(p.Target, p.Direction * (45 * power) + Vector3.new(0, 40 * math.sqrt(power), 0), 1)
 				end
 				done = true
 			end

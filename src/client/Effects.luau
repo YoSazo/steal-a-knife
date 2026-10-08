@@ -890,13 +890,28 @@ function Effects.Init()
 		edge(UDim2.fromScale(1, 0.16), UDim2.fromScale(0, 0.84), 270) -- bottom
 		edge(UDim2.fromScale(0.1, 1), UDim2.fromScale(0, 0), 0) -- left
 		edge(UDim2.fromScale(0.1, 1), UDim2.fromScale(0.9, 0), 180) -- right
-		local target = 0
+		local target = -1
+		-- (only while you're still out on the runway: once you're past the safe line - the plaza,
+		-- your pen - the boss has given up, so the "not safe yet" glow goes)
 		local function refresh()
-			target = if player:GetAttribute("BossCarry") ~= nil then 0.55 else 1
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			local safe = root ~= nil and root.Position.Z < -2
+			local want = if player:GetAttribute("BossCarry") ~= nil and not safe then 0.55 else 1
+			if want == target then
+				return
+			end
+			target = want
 			for _, frame in edges do
 				TweenService:Create(frame, TweenInfo.new(0.4), { BackgroundTransparency = target }):Play()
 			end
 		end
+		task.spawn(function()
+			while true do
+				task.wait(0.25)
+				refresh()
+			end
+		end)
 		player:GetAttributeChangedSignal("BossCarry"):Connect(refresh)
 		refresh()
 	end
