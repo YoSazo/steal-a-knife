@@ -78,15 +78,12 @@ MapService.RoundStorey = 15 -- floor-to-floor height in the current round map (s
 MapService.LobbySpawn = CFrame.new(0, 4, -110)
 -- Biomes dressed by a Codex-built shell (src/shared/Assets/<Name>Shell): zone index -> module name.
 -- Their old wall looks and ManorDecor's random props are switched off (ManorDecor reads this too).
+-- The first two biomes keep their Codex shell (low studded borders, shrubs, a pond). The deeper
+-- ones were custom architecture that hid the runway walls and read as a different game: every biome
+-- is now the same dirt wall in its own colour (ZONE_WALLS) with its own floor and props (ManorDecor).
 local BIOME_SHELLS: { [number]: string } = {
 	[1] = "CourtyardShell",
 	[2] = "GardensShell",
-	[3] = "CryptsShell",
-	[4] = "CatacombsShell",
-	[5] = "InfernoShell",
-	[6] = "OlympusShell",
-	[7] = "HeavensShell",
-	[8] = "OuterSpaceShell",
 }
 MapService.BiomeShells = BIOME_SHELLS
 
@@ -285,19 +282,7 @@ local function buildArena()
 				zoneTint(z0 + depth / 2),
 				arena
 			)
-			local cap = Toy.DirtWall(wall, ZONE_WALLS[GameConfig.Zones[i].Rarity])
-			-- Biomes with a Codex shell (MapService.BuildBiomeShells) wear it instead: the wall stays
-			-- (same size, place and collision), only its looks go. Early lawns keep plain visible walls.
-			if BIOME_SHELLS[i] and i >= 3 then
-				for _, part in { wall, cap } do
-					part.Transparency = 1
-					for _, d in part:GetDescendants() do
-						if d:IsA("Decal") then -- (a Texture is a Decal too)
-							(d :: Decal).Transparency = 1
-						end
-					end
-				end
-			end
+			Toy.DirtWall(wall, ZONE_WALLS[GameConfig.Zones[i].Rarity])
 		end
 	end
 	-- The far end, in the last zone's wall colour (it closes off that biome)
@@ -1256,9 +1241,6 @@ function MapService.BuildBiomeShells()
 				shell:SetAttribute("Zone", index)
 				fitShellHeight(shell)
 				removeArches(shell)
-				if index >= 3 then
-					ManorDecor.DressShellFloor(index, shell)
-				end
 				BiomeSprites.Dress(shell) -- (sparkles on water, embers off lava, twinkles on lights...)
 			end)
 			if not ok then

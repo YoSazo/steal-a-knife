@@ -1330,37 +1330,6 @@ local function wallDressing(wall: BasePart, toward: Vector3, perArea: number)
 	end
 end
 
--- A deep biome's floor, once its Codex shell is built (MapService.BuildBiomeShells): the patches take
--- the colour of the shell's own ground (the plain floor under it is hidden), thinner than up front -
--- the shells have floor patterns of their own, and the deep biomes are big.
-function ManorDecor.DressShellFloor(zone: number, shell: Model)
-	local floor: BasePart? = nil
-	local root = folder and folder.Parent
-	if root then
-		for _, d in root:GetDescendants() do
-			if d:IsA("BasePart") and d.Name == `Zone{zone}Floor` then
-				floor = d
-				break
-			end
-		end
-	end
-	if not floor then
-		return
-	end
-	-- the shell's ground: its biggest flat piece near the floor
-	local ground: BasePart? = nil
-	local best = 0
-	for _, d in shell:GetDescendants() do
-		if d:IsA("BasePart") and d.Transparency < 1 and d.Position.Y < 1.5 and d.Size.Y < 2 then
-			local area = d.Size.X * d.Size.Z
-			if area > best then
-				best, ground = area, d
-			end
-		end
-	end
-	floorDressing(floor, 1000, if ground then ground.Color else nil, zone)
-end
-
 -- Zones a Codex shell dresses instead (set by MapService before Build)
 ManorDecor.ShellZones = {} :: { [number]: string }
 
@@ -1371,12 +1340,15 @@ function ManorDecor.Build(root: Instance, arena: Bounds, _hideaways: { Bounds })
 	local width = arena.MaxX - arena.MinX
 	local half = width / 2
 
-	-- Character on the plaza and the first two biomes' floors (the deeper ones: DressShellFloor)
+	-- Character on the plaza and every biome's floor: the same patches, tufts and flowers in each
+	-- floor's own colour (the deep biomes are long, so a little thinner there to keep the part count down)
 	for _, d in root:GetDescendants() do
 		if d:IsA("BasePart") then
 			local zone = tonumber(d.Name:match("^Zone(%d+)Floor$"))
 			if d.Name == "Plaza" or zone == 1 or zone == 2 then
 				floorDressing(d, 420)
+			elseif zone then
+				floorDressing(d, 700, nil, zone)
 			end
 		end
 	end
