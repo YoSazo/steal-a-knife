@@ -31,6 +31,7 @@ local Items = require(ReplicatedStorage.Shared.Items)
 local RoundPrize = require(ReplicatedStorage.Shared.RoundPrize)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
+local SpriteFire = require(ReplicatedStorage.Shared.SpriteFire)
 local Props = require(ReplicatedStorage.Shared.Props)
 local Textures = require(ReplicatedStorage.Shared.Config.Textures)
 local Net = require(script.Parent.Parent.Remotes)
@@ -929,12 +930,7 @@ local function throwKnife(
 	end
 	local primary = model.PrimaryPart :: BasePart
 	if flaming then
-		local fire = Instance.new("Fire")
-		fire.Size = 3
-		fire.Heat = 8
-		fire.Color = Color3.fromRGB(255, 120, 30)
-		fire.SecondaryColor = Color3.fromRGB(255, 40, 10)
-		fire.Parent = primary
+		SpriteFire.Add(primary, 1.6)
 	end
 	model.Parent = workspace
 	Net.Remotes.Effect:FireAllClients("KnifeThrow", origin)

@@ -17,6 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Props = require(ReplicatedStorage.Shared.Props)
 local Toy = require(ReplicatedStorage.Shared.Toy)
+local SpriteFire = require(ReplicatedStorage.Shared.SpriteFire)
 local ToyBlockModel = require(ReplicatedStorage.Shared.ToyBlockModel)
 local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 
@@ -146,12 +147,7 @@ local function torch(position: Vector3, color: Color3?)
 			Enum.Material.Metal
 		)
 	)
-	local fire = Instance.new("Fire")
-	fire.Size = 3
-	fire.Heat = 6
-	fire.Color = color or Color3.fromRGB(255, 140, 40)
-	fire.SecondaryColor = Color3.fromRGB(255, 60, 20)
-	fire.Parent = head
+	SpriteFire.Add(head, 2.2, color)
 	glow(head, color or Color3.fromRGB(255, 150, 70), 20, 1.5)
 end
 
@@ -507,12 +503,7 @@ local function brazier(position: Vector3)
 		IRON,
 		Enum.Material.Metal
 	)
-	local fire = Instance.new("Fire")
-	fire.Size = 6
-	fire.Heat = 9
-	fire.Color = Color3.fromRGB(255, 70, 40)
-	fire.SecondaryColor = Color3.fromRGB(255, 30, 60)
-	fire.Parent = bowl
+	SpriteFire.Add(bowl, 4)
 	glow(bowl, Color3.fromRGB(255, 70, 60), 30, 2)
 end
 
@@ -590,12 +581,7 @@ local function fireVent(position: Vector3)
 		Enum.Material.DiamondPlate
 	)
 	grate.CanCollide = false
-	local fire = Instance.new("Fire")
-	fire.Size = 8
-	fire.Heat = 18
-	fire.Color = Color3.fromRGB(255, 120, 30)
-	fire.SecondaryColor = Color3.fromRGB(255, 40, 10)
-	fire.Parent = grate
+	SpriteFire.Add(grate, 6)
 	glow(grate, Color3.fromRGB(255, 100, 40), 26, 2)
 end
 
