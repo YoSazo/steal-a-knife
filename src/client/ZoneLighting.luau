@@ -34,20 +34,21 @@ type Mood = {
 
 local rgb = Color3.fromRGB
 
--- The base: what the server sets (MapService.buildLighting). The cyan haze everything grew from.
+-- The base: what the server sets (MapService.buildLighting) - keep these in sync by hand, this
+-- table reapplies every frame in zone 1 / the plaza and will stomp any server-side change otherwise.
 local BASE: Mood = {
-	Density = 0.32,
-	Offset = 0.25,
-	Color = rgb(199, 236, 255),
-	Decay = rgb(92, 196, 230),
+	Density = 0.22,
+	Offset = 0.3,
+	Color = rgb(255, 248, 235),
+	Decay = rgb(220, 208, 192),
 	Glare = 4,
-	Haze = 2,
+	Haze = 1.2,
 	Bloom = { Intensity = 1, Size = 56, Threshold = 1.6 },
 	Rays = { Intensity = 0.28, Spread = 0.85 },
 	Grade = { Brightness = 0, Contrast = 0.1, Saturation = 0.12, Tint = rgb(255, 253, 248) },
 	Exposure = 0,
-	Clock = 13.5,
-	Latitude = 3,
+	Clock = 15,
+	Latitude = 60,
 	Stars = 0,
 	Moon = 0,
 }

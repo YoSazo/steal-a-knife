@@ -179,15 +179,19 @@ local function buildLighting()
 	end
 	-- A soft, pale haze with distance (things far below or far away go lighter, close up stays crisp)
 	local atmosphere = Instance.new("Atmosphere")
-	-- Steal a Brainrot's sky: a big soft glow round the sun, pale blue haze toward the horizon
-	atmosphere.Density = 0.32
-	atmosphere.Offset = 0.25
-	atmosphere.Color = Color3.fromRGB(199, 236, 255)
-	atmosphere.Decay = Color3.fromRGB(92, 196, 230)
+	-- Steal An Egg's sky: a natural warm-white sun haze, not a colour filter - it should look like
+	-- real atmosphere, not like the whole world is underwater. (The old cyan version, kept until
+	-- now, tinted every distant surface teal; every OTHER zone already had to hand-correct for it -
+	-- see ZoneLighting's "fixes it reading cold under the cyan" comment on Inferno. This is that fix
+	-- for the Courtyard/base look itself, not another zone papering over it.)
+	atmosphere.Density = 0.22
+	atmosphere.Offset = 0.3
+	atmosphere.Color = Color3.fromRGB(255, 248, 235)
+	atmosphere.Decay = Color3.fromRGB(220, 208, 192)
 	atmosphere:SetAttribute("HubColor", atmosphere.Color)
 	atmosphere:SetAttribute("HubDecay", atmosphere.Decay)
 	atmosphere.Glare = 4 -- the big soft bloom of light around the sun
-	atmosphere.Haze = 2 -- pale cyan sky and soft distance haze (Steal a Brainrot)
+	atmosphere.Haze = 1.2 -- natural sun haze, not a cyan wash
 	atmosphere.Parent = Lighting
 	local sky = Instance.new("Sky")
 	-- Roblox's own soft sky (the painted Textures.Day box read deep blue and flat next to Brainrot's)
