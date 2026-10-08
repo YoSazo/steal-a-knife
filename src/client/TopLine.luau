@@ -93,6 +93,15 @@ local function fit(text: string, withPill: boolean)
 	-- (big enough for a 5-year-old to read at a glance: was 18 / 20)
 	words.TextSize = if Ui.Phone then 24 else 28
 	local compactStrip = Ui.topStrip("Status")
+	-- (a line that won't fit Roblox's narrow phone top bar even at 14 goes under it, full width,
+	-- instead of being cut off: "⚡ GOLDEN GRIFFIN · ...")
+	if compactStrip then
+		local plainText = text:gsub("<[^>]->", "")
+		local need = TextService:GetTextSize(plainText, 14, words.Font, Vector2.new(4000, 1000)).X
+		if need > compactStrip.W - 32 then
+			compactStrip = nil
+		end
+	end
 	local iconSize = if compactStrip then math.min(baseHeight() - 2, compactStrip.H - 2) else baseHeight() - 2
 	local iconWidth = if shownIcon then iconSize + 4 else 0
 	local pillWidth = (

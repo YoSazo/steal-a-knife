@@ -325,17 +325,26 @@ function Guide.Init()
 		-- (the objective: big, the first thing a kid reads - was 19 / 22)
 		label.TextSize = if Ui.Phone then 28 else 36
 		local strip = Ui.topStrip()
-		local fade = if strip then 16 else FADE
-		local room = if strip then strip.W else math.min(900, bounds.X - 24)
 		local plain = shownText:gsub("<[^>]->", "")
 		local width = TextService:GetTextSize(plain, label.TextSize, label.Font, Vector2.new(4000, 100)).X
-		local lane = room - 2 * fade
-		if width > lane and displayAction and displayAction.Short then
+		if width > (if strip then strip.W else math.huge) - 32 and displayAction and displayAction.Short then
 			shownText = displayAction.Short
 			label.Text = shownText
 			plain = shownText:gsub("<[^>]->", "")
 			width = TextService:GetTextSize(plain, label.TextSize, label.Font, Vector2.new(4000, 100)).X
 		end
+		-- Roblox's top bar is narrow on a phone (~280 px at 640 wide): a line that won't fit there even
+		-- at the smallest size (20) goes just under it instead, across the whole screen (it overflowed
+		-- the bar, cut off at both ends: "the screen to draw your")
+		if strip then
+			local smallest = TextService:GetTextSize(plain, 20, label.Font, Vector2.new(4000, 100)).X
+			if smallest > strip.W - 32 then
+				strip = nil
+			end
+		end
+		local fade = if strip then 16 else FADE
+		local room = if strip then strip.W else math.min(900, bounds.X - 24)
+		local lane = room - 2 * fade
 		if width > lane then
 			-- shorter words first (down to 20), never two lines
 			label.TextSize = math.max(20, math.floor(label.TextSize * lane / width))
