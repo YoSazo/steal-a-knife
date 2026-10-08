@@ -625,10 +625,10 @@ local GameConfig = {
 		-- Steal An Egg: the guardian is up and running almost the instant you grab one - no long
 		-- get-up to wait through. How fair a chase is comes from the boss's run speed, not a head start.
 		Time = 0.4,
-		Newcomer = 0.4, -- (same for everyone now)
+		Newcomer = 1.5, -- let the first three deliveries clear the creature before its chase
 		NewcomerKnives = 3,
 		HoundTime = 0.25,
-		HoundNewcomer = 0.25,
+		HoundNewcomer = 1.5,
 	},
 	-- How a boss gets out of / back into his chair: he hops out forward over his footstool and hops
 	-- back in backwards. Shares of the wake time (client/Moves poses, GuardService flies the body):

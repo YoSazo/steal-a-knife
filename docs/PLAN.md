@@ -74,14 +74,16 @@ Fixed in Studio:
 - **Three messages at once on join:** the "Come back tomorrow" line is gone (not part of the loop).
 - An unused `info` in `showKill` (lint).
 
-Found, not fixed yet:
-- **Minimum-Speed getaway:** timed zone 2 / 3 round trips at their advertised minimum Speed
-  took 22.6 / 19.2 s, but both coffins were snatched within 0.8 s of stealing. The creature wake
-  is only 0.25 s; the new-player getaway still needs a successful delivery test before item 30.
+Found and fixed in the continuation:
+- **Minimum-Speed getaway:** creatures caught newcomers within 0.8 s of stealing. Their first
+  three deliveries now get a 1.5 s wake-up instead of 0.25 s. At the advertised minimum Speed,
+  zone 2 / 3 round trips brought coffins home with full health in 24.4 / 21.9 s on phone; a
+  desktop zone 2 steal and placement completed in 24.9 s. Keep the owner's 70 s intermission.
 
-Still to test (needs real input): tapping Speed / Cash on physical hardware, the chase glow ending at
-the safe line, the deeper-monster fling, the trail after several deliveries, a creature's speed
-sign up close.
+Still to test on physical hardware: tapping Speed / Cash. Studio checks: chase glow reaches
+transparency 1 at the safe line while still carrying; zone 1 / 8 fling velocity magnitudes
+70.7 / 139.3; four deliveries cap learned delivery at 3 and still show all 44 red chevron parts.
+The creature's speed sign is readable up close at 640 x 320.
 
 ### Codex Studio continuation, 2026-10-08
 
@@ -104,6 +106,13 @@ sign up close.
   tenth of full survival, with the same flying shoes. Rescale coffin round counts and offline
   seconds to preserve hatch minutes. Tune shares for Rare ~0.34 h, Epic ~1.2 h, Legendary ~4 h;
   preserve the cycle unless a zone 2-3 run cannot fit the ~60 s stealing window (then 80-90 s).
+- **Owner choices for later:** paid featured coffin after items 13-17: fixed Mythic Inferno knife,
+  weights None/Gold/Diamond/Rainbow/Void = 60/25/10/4/1, 1/3/10 bundles = 99/249/699 R$,
+  immediately READY, a real weekly expiry, permanently retired old feature. Godly+ stay earned.
+  Roblox title "[MURDER] Steal a Knife"; internal title "Steal a Knife".
+  Owner-only admin events, automatic Saturday 15:00 America/New_York for one hour; cycle Golden
+  Round (2x ladder), Luck Storm (boosted opening odds), Speed Rush (2x delivery Speed). One event
+  and banner at a time; admin may start an extra event. Friday countdown on the events board.
 
 **Not started (next):** first **item 30** (rounds are the Speed: cut the Haunted Wheel, the
 survival ladder), since it changes the balance everything else sits on; then the hatch layer (items 13-17: see-through "x-ray" coffin - glass in the
