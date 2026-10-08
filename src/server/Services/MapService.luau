@@ -76,6 +76,7 @@ MapService.RoundMapSize = Vector2.new(150, 110)
 MapService.RoundLevels = 1 -- storeys in the current round map
 MapService.RoundStorey = 15 -- floor-to-floor height in the current round map (scaled)
 MapService.LobbySpawn = CFrame.new(0, 4, -110)
+MapService.LuckyWheelAt = nil :: Vector3? -- (pens: the far end of the hub lane, set by buildBases)
 -- Biomes dressed by a Codex-built shell (src/shared/Assets/<Name>Shell): zone index -> module name.
 -- Their old wall looks and ManorDecor's random props are switched off (ManorDecor reads this too).
 -- The first two biomes keep their Codex shell (low studded borders, shrubs, a pond). The deeper
@@ -306,7 +307,7 @@ local function buildArena()
 	line.CanCollide = false
 	line.CanQuery = false
 	-- SAFE ZONE painted on the plaza floor: bosses give up the chase past the line
-	local paint = block("SafeZone", Vector3.new(60, 0.05, 10), CFrame.new(0, 0.23, -12), Color3.new(), arena)
+	local paint = block("SafeZone", Vector3.new(34, 0.05, 6), CFrame.new(0, 0.23, -12), Color3.new(), arena)
 	paint.Transparency = 1
 	paint.CanCollide = false
 	paint.CanQuery = false
@@ -379,35 +380,37 @@ local function buildBases()
 	local penWidth = GameConfig.Pens.Width
 	-- (a pen's full length, or a vault's depth: everything below is laid out from it)
 	local DEPTH = if pens then GameConfig.Pens.Depth else VAULT_DEPTH
-	-- Pens sit in a compact block right behind the safe zone (Steal an Egg: home is a few steps
-	-- from the runway): 3 columns each side of the central walkway (monument, map vote, merchant),
-	-- 2 rows deep, gates facing the runway. Numbered nearest-first, so players get the closest pen.
+	-- Pens line both sides of one straight lane that carries on from the runway at the runway's own
+	-- width (Steal from the Rich's "]" hub: no square plaza, just the last stretch of the corridor),
+	-- turned so their gates face the lane, shoulder to shoulder from right behind the safe line. Each
+	-- pen's Haunted Wheel stands in the gap beside it (the lane stays clear), and the hub ends just
+	-- past the last pen and the Lucky Wheel - no more space than that. Numbered nearest-first.
 	local penCentres: { Vector3 } = {}
+	local penFrames: { [Vector3]: CFrame } = {}
+	local penWheelSide: { [Vector3]: number } = {} -- (+1 / -1: the pen-local X side its gap is on)
+	local PEN_GAP = 14 -- (between neighbours along the lane: the wheel's spot)
+	local LANE = half - DEPTH - 1 -- (half-width: the pens' backs sit against the hub wall)
 	if pens then
-		local walkway = 24 -- (half-width: the vote boards and monument stand in it)
-		local front = 48 -- (the strip behind the safe zone: shops, chest, the first row's wheels)
-		local aisle = 24 -- (between the rows: the second row's wheels and signs)
-		local cols = math.ceil(GameConfig.Pens.Count / 4)
-		for row = 0, 1 do
-			for col = 0, cols - 1 do
-				for _, side in { -1, 1 } do
-					local x = side * (walkway + 5 + penWidth / 2 + col * (penWidth + 10))
-					local z = -(front + DEPTH / 2 + row * (DEPTH + aisle))
-					table.insert(penCentres, Vector3.new(x, 0, z))
-				end
+		local perSide = math.ceil(GameConfig.Pens.Count / 2)
+		local front = 4 -- (the first pens start just behind the safe line)
+		for k = 0, perSide - 1 do
+			for _, side in { -1, 1 } do
+				local centre =
+					Vector3.new(side * (LANE + DEPTH / 2), 0, -(front + penWidth / 2 + k * (penWidth + PEN_GAP)))
+				table.insert(penCentres, centre)
+				-- (local +Z, the gate, faces the lane: left side +X, right side -X. The wheel's gap is on
+				-- the side deeper into the hub: local +X on the left, local -X on the right)
+				penFrames[centre] = CFrame.new(centre) * CFrame.Angles(0, math.rad(if side < 0 then 90 else -90), 0)
+				penWheelSide[centre] = if side < 0 then 1 else -1
 			end
 		end
 		table.sort(penCentres, function(a, b)
 			return a.Magnitude < b.Magnitude
 		end)
-		HUB_HALF = walkway + 5 + cols * (penWidth + 10)
-		-- (just behind the back row: the merchant and the map vote stand in the walkway)
-		HUB_BACK = front + 2 * DEPTH + aisle + 26
-		-- the pens actually used (nearest first): the back row may not fill every column
-		local backCols = math.ceil(math.max(0, GameConfig.Pens.Count - 2 * cols) / 2)
-		if backCols < cols then
-			HUB_STEP = { X = walkway + 5 + backCols * (penWidth + 10), Z = front + DEPTH + aisle / 2 }
-		end
+		HUB_HALF = half
+		local pensEnd = front + perSide * (penWidth + PEN_GAP)
+		MapService.LuckyWheelAt = Vector3.new(0, 0, -(pensEnd + 10))
+		HUB_BACK = pensEnd + 22
 		MapService.LobbySpawn = CFrame.new(0, 4, -30)
 	end
 	if pens then
@@ -421,7 +424,7 @@ local function buildBases()
 		local sideways = not pens and i <= COLUMN * 2
 		if pens then
 			center = penCentres[i]
-			frame = CFrame.new(center) -- (local +Z, the gate side, faces the runway)
+			frame = penFrames[center]
 		elseif sideways then
 			local side = if i <= COLUMN then -1 else 1
 			local row = (i - 1) % COLUMN
@@ -625,7 +628,11 @@ local function buildBases()
 		-- The Haunted Wheel: a giant iron wheel you run inside to train Speed (the plate at the bottom
 		-- is what counts as "on it"). Clients spin it while its owner is training. It stands just
 		-- outside the vault's gate, so the inside is nothing but knives.
-		local wheelCenter = Vector3.new(-13, 6.6, DEPTH / 2 + 7.5)
+		-- (pens: in the gap beside the pen, near the lane end, so the lane stays clear)
+		local wheelSide = if pens then penWheelSide[center] else -1
+		local wheelCenter = if pens
+			then Vector3.new(wheelSide * (penWidth / 2 + PEN_GAP / 2), 6.6, DEPTH / 2 - 9)
+			else Vector3.new(-13, 6.6, DEPTH / 2 + 7.5)
 		-- Tsunami / Steal An Egg signs (client/Hud fills them in for their owner): Upgrade Base on the
 		-- other side of the gate (the next floor), Upgrade Wheel in front of the Haunted Wheel (the next
 		-- wheel or trail, with a small Robux board under it: RobuxBoard)
@@ -701,12 +708,17 @@ local function buildBases()
 			upgradeSign.Parent = folder
 			return upgradeSign
 		end
-		upgradeSignAt("UpgradeSign", 13, DEPTH / 2 + 6, "Upgrade Base")
-		local wheelUpgrade = upgradeSignAt("WheelUpgradeSign", -13, DEPTH / 2 + 15.5, "Upgrade Wheel")
+		-- (pens: the Upgrade Base sign just out in the lane by the gate, the Upgrade Wheel sign in the
+		-- wheel's gap at the lane end - nothing stands out in the middle of the lane)
+		local baseSignX, baseSignZ = -wheelSide * 13, DEPTH / 2 + (if pens then 3 else 6)
+		local wheelSignX = if pens then wheelCenter.X else -13
+		local wheelSignZ = if pens then DEPTH / 2 + 1 else DEPTH / 2 + 15.5
+		upgradeSignAt("UpgradeSign", baseSignX, baseSignZ, "Upgrade Base")
+		local wheelUpgrade = upgradeSignAt("WheelUpgradeSign", wheelSignX, wheelSignZ, "Upgrade Wheel")
 		local robuxBoard = block(
 			"RobuxBoard",
 			Vector3.new(3.2, 1.2, 0.35),
-			at(-13, 2.3, DEPTH / 2 + 16.1) * CFrame.Angles(0, math.pi, 0),
+			at(wheelSignX, 2.3, wheelSignZ + 0.6) * CFrame.Angles(0, math.pi, 0),
 			Color3.fromRGB(0, 176, 111),
 			wheelUpgrade
 		)
@@ -788,8 +800,9 @@ local function buildBases()
 			Center = center,
 			Frame = frame,
 			-- Rotated 90 degrees, so the world footprint swaps width and depth
+			-- (pens are turned too: their depth runs along world X)
 			Bounds = if pens
-				then bounds(center, penWidth, DEPTH)
+				then bounds(center, DEPTH, penWidth)
 				elseif sideways then bounds(center, DEPTH, VAULT_WIDTH)
 				else bounds(center, VAULT_WIDTH, DEPTH),
 			Spawn = CFrame.lookAt(spawnPos, spawnPos + frame:VectorToWorldSpace(Vector3.zAxis)),
@@ -1176,7 +1189,8 @@ function MapService.Init()
 		ManorDecor.ClearArea((base.Wheel.PrimaryPart :: BasePart).Position, 9, 9)
 		if PenMode.On() then
 			-- (and nothing of the old plaza's lamps and props inside a pen)
-			ManorDecor.ClearArea(base.Center, GameConfig.Pens.Width / 2 + 2, GameConfig.Pens.Depth / 2 + 2)
+			local b = base.Bounds
+			ManorDecor.ClearArea(base.Center, (b.MaxX - b.MinX) / 2 + 2, (b.MaxZ - b.MinZ) / 2 + 2)
 		end
 		MapService.SetFloors(base, 1)
 	end

@@ -6,6 +6,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local MapService = require(script.Parent.MapService)
 
 local PlazaWheel = {}
 
@@ -75,7 +76,11 @@ end
 -- a glowing ring in front (ShopPanel "Spin") and a free-spins badge over it (LuckyWheelBadge)
 local function buildLuckyWheel(folder: Instance)
 	local spec = LUCKY_WHEEL
-	local frame = CFrame.new(spec.Position) * CFrame.Angles(0, math.rad(spec.Facing), 0)
+	-- (the pen hub: at the far end of the lane, facing back down it towards the safe line)
+	local laneEnd = MapService.LuckyWheelAt
+	local frame = if laneEnd
+		then CFrame.new(laneEnd) * CFrame.Angles(0, math.rad(180), 0)
+		else CFrame.new(spec.Position) * CFrame.Angles(0, math.rad(spec.Facing), 0)
 	local function at(x: number, y: number, z: number): CFrame
 		return frame * CFrame.new(x, y, z)
 	end
