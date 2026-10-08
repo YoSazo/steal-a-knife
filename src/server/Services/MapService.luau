@@ -251,6 +251,10 @@ local ZONE_WALLS: { [string]: Color3 } = {
 }
 
 local WALL_HEIGHT = 120 -- tall walls (Tsunami): a full 4-floor vault (~96) stays under; the sun stays in view
+-- The runway's walls have no vault to clear (that's only the hub/plaza), so they don't need the
+-- hub's full height - at 120 they read as a huge empty slab towering over everything in it
+-- (Steal An Egg's own walls sit closer to a few building-storeys tall, not a skyscraper).
+local RUNWAY_WALL_HEIGHT = 48
 local WALL_THICK = 6
 local STONE = Color3.fromRGB(98, 92, 150)
 -- Tsunami's walls are a vivid orange-red brick, not dull dirt
@@ -299,8 +303,8 @@ local function buildArena()
 			local z0, depth = GameConfig.ZoneStart(i), GameConfig.ZoneDepthFor(i)
 			local wall = block(
 				"RunwayWall",
-				Vector3.new(WALL_THICK, WALL_HEIGHT, depth),
-				CFrame.new(x, WALL_HEIGHT / 2, z0 + depth / 2),
+				Vector3.new(WALL_THICK, RUNWAY_WALL_HEIGHT, depth),
+				CFrame.new(x, RUNWAY_WALL_HEIGHT / 2, z0 + depth / 2),
 				zoneTint(z0 + depth / 2),
 				arena
 			)
@@ -322,8 +326,8 @@ local function buildArena()
 	-- The far end, in the last zone's wall colour (it closes off that biome)
 	local farWall = block(
 		"RunwayEnd",
-		Vector3.new(width + WALL_THICK * 2, WALL_HEIGHT, WALL_THICK),
-		CFrame.new(0, WALL_HEIGHT / 2, totalDepth + WALL_THICK / 2),
+		Vector3.new(width + WALL_THICK * 2, RUNWAY_WALL_HEIGHT, WALL_THICK),
+		CFrame.new(0, RUNWAY_WALL_HEIGHT / 2, totalDepth + WALL_THICK / 2),
 		STONE,
 		arena
 	)
