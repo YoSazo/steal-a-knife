@@ -2,7 +2,6 @@
 -- The Lucky Wheel and luck, odds shown and earnable for free:
 --   * Lucky Wheel: one free spin a day + one per GameConfig.Spin.EarnEvery of play; Robux spin packs.
 --     Knife prizes are coffins (CoffinService.GiveRarity).
---   * Luck potions: 2x coffin luck for a while (profile.LuckUntil, player attr LuckUntil)
 -- Remotes.Gamble("Spin") -> (ok, message, prizeIndex)
 
 local Players = game:GetService("Players")
@@ -20,31 +19,9 @@ local Gamble = {}
 
 local rng = Random.new()
 
--- Luck --------------------------------------------------------------------------------------------
-
--- Extra coffin luck from potions (CoffinService.Luck multiplies it in, with the Luck pass)
-function Gamble.LuckMultiplier(_player: Player, profile: DataService.Profile): number
-	local luck = 1
-	if profile.LuckUntil > os.time() then
-		luck *= GameConfig.LuckPotion.Multiplier
-	end
-	return luck
-end
-
-function Gamble.AddLuck(player: Player, seconds: number)
-	DataService.Update(player, function(p)
-		p.LuckUntil = math.max(p.LuckUntil, os.time()) + seconds
-	end)
-	local profile = DataService.Get(player)
-	if profile then
-		player:SetAttribute("LuckUntil", profile.LuckUntil)
-	end
-end
-
 local function syncSpins(player: Player, profile: DataService.Profile)
 	player:SetAttribute("Spins", profile.Spins)
 	player:SetAttribute("FreeSpinDay", profile.FreeSpinDay)
-	player:SetAttribute("LuckUntil", profile.LuckUntil)
 end
 
 function Gamble.AddSpins(player: Player, count: number)
@@ -108,9 +85,6 @@ local function spin(player: Player): (boolean, string, number?)
 			DataService.AddCash(player, cash, "wheel")
 			Net.Remotes.Effect:FireClient(player, "CashBurst", nil, cash)
 			Net.Notify(player, `Lucky Wheel: +{Format.Cash(cash)}!`, "good")
-		elseif prize.Kind == "Luck" then
-			Gamble.AddLuck(player, prize.Seconds)
-			Net.Notify(player, `Lucky Wheel: better coffins for {prize.Seconds // 60} minutes!`, "good")
 		elseif prize.Kind == "Spin" then
 			Gamble.AddSpins(player, prize.Count)
 			Net.Notify(player, `Lucky Wheel: +{prize.Count} spins!`, "good")
@@ -133,7 +107,6 @@ end
 -- Setup -------------------------------------------------------------------------------------------
 
 function Gamble.Init()
-	CoffinService.LuckMultiplier = Gamble.LuckMultiplier
 	local handle: (Player, unknown, unknown) -> (any, any, any)
 	Net.Remotes.Gamble.OnServerInvoke = Analytics.Remote(
 		"Gamble",

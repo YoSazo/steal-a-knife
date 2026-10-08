@@ -245,7 +245,6 @@ local function buildLuckTimer()
 	pill.RichText = true
 	-- Every running boost, one line each, so you can see it ticking down (and top it up)
 	local BOOSTS = {
-		{ "LuckUntil", "🍀 2x Luck", "#78FF82" },
 		{ "Boost_Speed", "⚡ Speed", "#FFDC3C" },
 		{ "Boost_Cash", "💵 2x Cash", "#78FF82" },
 		{ "Boost_Training", "🎡 3x Training", "#78C8FF" },

@@ -327,7 +327,7 @@ local GameConfig = {
 			{ Kind = "Cash", Seconds = 600, Weight = 8 },
 			{ Kind = "Spin", Count = 1, Weight = 16 },
 			{ Kind = "Spin", Count = 3, Weight = 4 },
-			{ Kind = "Luck", Seconds = 300, Weight = 8 },
+			{ Kind = "Cash", Seconds = 300, Weight = 8 },
 			{ Kind = "Coffin", Rarity = "Rare", Weight = 8 },
 			{ Kind = "Coffin", Rarity = "Epic", Weight = 4 },
 			{ Kind = "Coffin", Rarity = "Legendary", Weight = 1.5, Announce = true },
@@ -341,7 +341,7 @@ local GameConfig = {
 			{ Kind = "Cash", Seconds = 60, Weight = 26, Label = "$ Cash" },
 			{ Kind = "Spin", Count = 1, Weight = 14, Label = "+1 Spin" },
 			{ Kind = "Cash", Seconds = 300, Weight = 18, Label = "$$ Cash" },
-			{ Kind = "Luck", Seconds = 900, Weight = 12, Label = "Lucky Coffins" },
+			{ Kind = "Cash", Seconds = 900, Weight = 12, Label = "$$ Cash" },
 			{ Kind = "Coffin", Tier = "Rare", Weight = 12, Label = "Rare Coffin" },
 			{ Kind = "Cash", Seconds = 1800, Weight = 7, Label = "$$$ CASH" },
 			{ Kind = "Coffin", Tier = "Epic", Weight = 6, Label = "Epic Coffin" },
@@ -349,7 +349,6 @@ local GameConfig = {
 			{ Kind = "Coffin", Tier = "Mythic", Weight = 0.5, Label = "MYTHIC COFFIN" },
 		} :: { any },
 	},
-	LuckPotion = { Multiplier = 2 },
 	-- The Index pays out once for every knife you've ever owned
 	IndexRewards = {
 		Common = { Cash = 10000, Speed = 500 },

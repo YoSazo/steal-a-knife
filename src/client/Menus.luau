@@ -486,7 +486,6 @@ function Menus.Init()
 	tile("Friends", 10, "👥", "Friend boost", Color3.fromRGB(120, 230, 200))
 	tile("Shield", 12, "🛡️", "Knives safe for", Color3.fromRGB(140, 220, 255))
 	tile("Boost", 13, "⚡", "Cash boost", Color3.fromRGB(120, 255, 140))
-	tile("Luck", 14, "🍀", "Better cases", Color3.fromRGB(150, 255, 150))
 	local function refreshDetails()
 		local function set(key: string, text: string, show: boolean?)
 			tiles[key].Value.Text = text
@@ -506,12 +505,6 @@ function Menus.Init()
 			"Boost",
 			if type(boost) == "number" and boost > now then Ui.clock(boost - now) else "",
 			type(boost) == "number" and boost > now
-		)
-		local luck = ReplicatedStorage:GetAttribute("ServerLuckUntil")
-		set(
-			"Luck",
-			if type(luck) == "number" and luck > now then Ui.clock(luck - now) else "",
-			type(luck) == "number" and luck > now
 		)
 	end
 	moreButton("Stats", "Trophy", statsFrame, refreshDetails)

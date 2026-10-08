@@ -100,9 +100,6 @@ local function give(player: Player, prize: Prize): string
 	elseif prize.Kind == "Spin" then
 		Gamble.AddSpins(player, prize.Count or 1)
 		return if (prize.Count or 1) > 1 then `{prize.Count} free spins` else "a free spin"
-	elseif prize.Kind == "Luck" then
-		Gamble.AddLuck(player, prize.Seconds or 300)
-		return `2x luck for {math.floor((prize.Seconds or 300) / 60)} min`
 	elseif prize.Kind == "Coffin" then
 		local rarity = prize.Rarity or "Rare"
 		if CoffinService.GiveRarity(player, rarity, "a gift") then

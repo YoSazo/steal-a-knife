@@ -38,22 +38,11 @@ function CoffinService.On(_player: Player): boolean
 	return PenMode.Coffins()
 end
 
--- Set by Gamble: luck potions (CoffinService.Luck multiplies it in)
-CoffinService.LuckMultiplier = nil :: ((Player, DataService.Profile) -> number)?
-
--- Mutation / size luck for a knife rolled for this player: rebirths, the 2x Luck pass, potions and
--- Server Luck
+-- Mutation / size luck for a knife rolled for this player: rebirths and the 2x Luck pass
 function CoffinService.Luck(player: Player, profile: DataService.Profile): number
 	local luck = 1 + profile.Rebirths * GameConfig.Rebirth.LuckBonus
 	if player:GetAttribute("Pass_Luck") == true then
 		luck *= 2
-	end
-	if CoffinService.LuckMultiplier then
-		luck *= CoffinService.LuckMultiplier(player, profile)
-	end
-	local until_ = ReplicatedStorage:GetAttribute("ServerLuckUntil")
-	if type(until_) == "number" and workspace:GetServerTimeNow() < until_ then
-		luck *= (ReplicatedStorage:GetAttribute("ServerLuckMultiplier") or 2) :: number
 	end
 	return luck
 end

@@ -94,7 +94,6 @@ function View.Build(actions: any): Frame
 		OfflinePlus = "Rebirth",
 		ExtraFloor = "Upgrades",
 		Spins10 = "Spin",
-		LuckPotion = "Luck",
 		SpeedPotion = "Speed",
 		SpeedPotionBig = "Speed",
 		CollectSession = "Cash",
@@ -194,7 +193,6 @@ function View.Build(actions: any): Frame
 	end
 	title(featured, "LUCK", 30)
 	product(featured, "Spins10", 31)
-	product(featured, "LuckPotion", 32)
 
 	-- SPEED: the wheel's next level, Speed packs scaled to you, then the Speed passes and potions
 	local speed = pages.Speed

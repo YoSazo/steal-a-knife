@@ -200,10 +200,6 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 		Gamble.AddSpins(player, product.Spins)
 		table.insert(got, `{product.Spins} wheel spins`)
 	end
-	if product.Luck then
-		Gamble.AddLuck(player, product.Luck)
-		table.insert(got, `{product.Luck // 60} min of 2x Luck`)
-	end
 	if product.Boost then
 		local boost = product.Boost
 		DataService.AddBoost(player, boost.Name, boost.Seconds)
@@ -248,19 +244,6 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 			DataService.AddCash(player, value, "robux_product")
 			table.insert(got, `{Format.Cash(value)} (your vault was already maxed)`)
 		end
-	elseif key == "ServerLuck" then
-		local config = Monetization.ServerLuck
-		local now = workspace:GetServerTimeNow()
-		local current = ReplicatedStorage:GetAttribute("ServerLuckUntil")
-		local from = if type(current) == "number" and current > now then current else now
-		ReplicatedStorage:SetAttribute("ServerLuckMultiplier", config.Multiplier)
-		ReplicatedStorage:SetAttribute("ServerLuckUntil", from + config.Minutes * 60)
-		Net.Announce(
-			`🍀 {player.DisplayName} activated {config.Multiplier}x SERVER LUCK for everyone!`,
-			Color3.fromRGB(90, 230, 120),
-			3
-		)
-		table.insert(got, "Server Luck")
 	elseif key == "CoffinOpen" then
 		if CoffinService.OpenNow(player) then
 			table.insert(got, "your coffin, open")

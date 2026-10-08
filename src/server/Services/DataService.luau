@@ -56,7 +56,7 @@ export type Profile = {
 	Heat: number, -- 0-10, boosts income and power luck (server Fuel)
 	Spins: number, -- Lucky Wheel spins banked (Gamble)
 	FreeSpinDay: number, -- UTC day number the free daily spin was used
-	LuckUntil: number, -- os.time() until which a luck potion doubles coffin luck
+	LuckUntil: number, -- (retired: luck potions were cut; LegacyProgress zeroes it)
 	MerchantBought: { string }, -- "rotation:slot" bought from the Mystery Merchant this rotation
 	Boosts: { [string]: number }, -- Robux timed boosts: name (Speed/Cash/Training) -> os.time() it ends
 	Charges: { [string]: number }, -- Robux charges: name (Escape/Insurance) -> how many left

@@ -29,7 +29,6 @@ export type Product = {
 	Speed: { Share: number, Min: number }?, -- Speed: this share of the buyer's Speed, at least Min
 	Coffin: string?, -- a coffin of this rarity (CoffinService.GiveRarity)
 	Spins: number?, -- Lucky Wheel spins
-	Luck: number?, -- seconds of 2x luck (potion)
 	Hidden: boolean?, -- not listed in the Store grid
 	Tickets: number?,
 	OneTime: boolean?,
@@ -199,8 +198,7 @@ Monetization.Products = {
 		Color = rgb(40, 120, 255),
 		Speed = { Share = 4, Min = 120000 },
 	},
-	-- Lucky Blocks (Steal a Brainrot style): wide odds, every knife's chance shown in the Store
-	-- Lucky Wheel spins and luck potions
+	-- Lucky Wheel spins
 	{
 		Key = "Spins3",
 		Id = 3716624520,
@@ -220,26 +218,6 @@ Monetization.Products = {
 		Icon = "🎡",
 		Color = rgb(255, 80, 170),
 		Spins = 10,
-	},
-	{
-		Key = "LuckPotion",
-		Id = 3716624527,
-		Price = 39,
-		Name = "Luck Potion (15 min)",
-		Description = "Better knives from cases, Lucky Blocks and the wheel for 15 minutes.",
-		Icon = "🧪",
-		Color = rgb(80, 220, 90),
-		Luck = 900,
-	},
-	{
-		Key = "LuckPotionBig",
-		Id = 3716624530,
-		Price = 119,
-		Name = "Luck Potion (1 hour)",
-		Description = "Better knives from cases, Lucky Blocks and the wheel for a whole hour.",
-		Icon = "🧪",
-		Color = rgb(40, 190, 70),
-		Luck = 3600,
 	},
 	-- Gifts (bought from the gift picker for another player in the server)
 	-- Consumables: each fixes a friction you run into every session (GameConfig.Consumables)
@@ -391,15 +369,6 @@ Monetization.Products = {
 		Color = rgb(255, 165, 50),
 	},
 	{
-		Key = "ServerLuck",
-		Id = 3716624588,
-		Price = 249,
-		Name = "2x Server Luck",
-		Description = "Double mutation and size luck on every case opened in this server for 15 minutes. Everyone gets it, and everyone sees who bought it. Buying again adds time.",
-		Icon = "🍀",
-		Color = rgb(80, 220, 120),
-	},
-	{
 		Key = "DoublePrize",
 		Id = 3716821469,
 		Price = 25,
@@ -457,6 +426,9 @@ Monetization.Retired = {
 	[3716624594] = 99, -- Summon the Blood Moon (raids)
 	[3716624573] = 25, -- Full Heat (Heat)
 	[3716624585] = 49, -- +3 Health Levels (health levels)
+	[3716624527] = 39, -- Luck Potion 15 min (luck potions)
+	[3716624530] = 119, -- Luck Potion 1 hour (luck potions)
+	[3716624588] = 249, -- 2x Server Luck (server luck)
 } :: { [number]: number }
 
 Monetization.PassByKey = {} :: { [string]: Pass }
@@ -470,8 +442,6 @@ end
 
 -- Contextual offers: at most one every OfferGap seconds, the same one at most every
 -- SameOfferGap, none in a player's first FirstOfferAfter seconds, and never during a round
-Monetization.ServerLuck = { Multiplier = 2, Minutes = 15 }
-
 Monetization.OfferGap = 180
 Monetization.SameOfferGap = 900
 Monetization.FirstOfferAfter = 150

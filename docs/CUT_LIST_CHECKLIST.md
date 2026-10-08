@@ -15,7 +15,7 @@ variant. Fixed Murderer perks, the tutorial showcase and the Speed prize tuning 
 - [x] Close full-pen/paid-reward routes that bypass the coffin clock.
 - [x] Remove health progression, Titan/health products (refunded once). The hurt-only health bar stays as feedback.
 - [x] Remove Heat state effects, income multiplier, offers and displays; Murderer chance meter kept (ChanceMeter).
-- [ ] Remove luck potions/server luck and their store/UI/runtime hooks; preserve rebirth mutation/size progression.
+- [x] Remove luck potions/server luck and their store/UI/runtime hooks; rebirth + Luck pass mutation/size luck kept.
 - [ ] Retired paid products/pass ownership receive compatible, once-only replacement value.
 - [ ] Audit receipt retries, save failure and duplicate requests.
 - [ ] Final HUD/menu/config/source sweep; update obsolete architecture documentation.
