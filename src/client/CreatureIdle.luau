@@ -136,7 +136,7 @@ function CreatureIdle.Init()
 			if #sleeper.Zs == 0 then
 				findZs(model, sleeper)
 			end
-			if #sleeper.Zs > 0 and Lod.Near(sleeper.Rest.Position, 260) then
+			if #sleeper.Zs > 0 and Lod.Near(sleeper.Rest.Position, 110) then
 				animateZs(sleeper.Zs, now, sleeper.Seed)
 			end
 			if not Lod.Near(sleeper.Rest.Position, 120) then

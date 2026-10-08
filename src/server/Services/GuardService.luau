@@ -567,7 +567,8 @@ local function setAsleep(guard: Guard, asleep: boolean)
 			gui.StudsOffset = Vector3.zero
 			gui.StudsOffsetWorldSpace =
 				Vector3.new(0, top - (head :: BasePart).Position.Y - 0.6 * guard.Model:GetScale(), 0)
-			gui.MaxDistance = 260
+			-- (only near: at a fixed screen size, far monsters' Z's scattered across the whole sky)
+			gui.MaxDistance = 110
 			gui.ClipsDescendants = false
 			for i = 1, 3 do
 				local z = Instance.new("TextLabel")

@@ -71,13 +71,15 @@ function Transitions.Init()
 		end
 		local zone = GameConfig.Zones[index] :: any
 		local tint = (zone.Color :: Color3):Lerp(Color3.new(1, 1, 1), 0.35)
-		local text =
-			`<font color="#{tint:ToHex()}"><b>{zone.Title or zone.Rarity} {ZONE_EMOJI[zone.Rarity] or ""}</b></font>`
+		-- The monster, not the biome (a kid is after the monster; the biome name cut the line off at
+		-- phone width): "🔥 LAVA SALAMANDER · Needs 950M 👟"
+		local text = `<font color="#{tint:ToHex()}"><b>{ZONE_EMOJI[zone.Rarity] or ""} {string.upper(
+			GameConfig.MonsterName(index)
+		)}</b></font>`
 		local need = zone.SpeedNeeded or 0
 		local speed = (player:GetAttribute("Speed") or 0) :: number
-		text ..= ` · home of the {string.upper(GameConfig.MonsterName(index))}`
 		if need > speed then
-			text ..= `  <font color="#FF6E6E">Needs {Format.Short(need)} speed</font>`
+			text ..= ` · <font color="#FF6E6E">Needs {Format.Short(need)} 👟</font>`
 		end
 		TopLine.Show(text, 2.2, "Zone")
 	end
@@ -519,7 +521,7 @@ function Transitions.Init()
 	end
 
 	local killToken = 0
-	local function showKill(info: { [string]: any })
+	local function showKill()
 		killToken += 1
 		local token = killToken
 		killTitle.Text = "The Murderer got you!"
@@ -551,9 +553,7 @@ function Transitions.Init()
 			return
 		end
 		if kind == "KillCard" then
-			if type(text) == "table" then
-				showKill(text)
-			end
+			showKill()
 			return
 		end
 		if kind == "RoundCard" then
