@@ -49,6 +49,16 @@ local HedgeHound = require(ReplicatedStorage.Shared.Assets.HedgeHound)
 -- Only the Courtyard's hedge hound exists so far; the rest stay round characters until it's
 -- approved.
 local CREATURE_MODULES: { [string]: any } = { HedgeHound = HedgeHound }
+-- Each creature's joint data (Config/ToyGeometry/<Name>), for the real run cycle below: Codex's
+-- SetRunPhase is "a reference pose sampler, not a completed animation" by design - this is the
+local creatureGeometry: { [string]: any } = {}
+local function geometryFor(name: string): any
+	if creatureGeometry[name] == nil then
+		local source = ReplicatedStorage.Shared.Config.ToyGeometry:FindFirstChild(name)
+		creatureGeometry[name] = if source and source:IsA("ModuleScript") then require(source) :: any else false
+	end
+	return creatureGeometry[name] or nil
+end
 local MapService = require(script.Parent.MapService)
 local Ragdoll = require(script.Parent.Ragdoll)
 local StealService = require(script.Parent.StealService)
@@ -1348,6 +1358,52 @@ local function stepProjectiles(dt: number)
 end
 
 -- One step towards `destination`; true once there
+-- A real trot, not Codex's bare reference swing (big hip swing + foot lift, replacing
+-- Assets.SetRunPhase's fixed small swing), a strong body bounce, a forward lean into the run, and
+-- a wagging tail - a sleeping lump turning into a bounding Steal An Egg creature should be obvious
+-- from across the runway, not a stiff board sliding along.
+local SWING = math.rad(55) -- hip swing, fore/aft (Codex's reference sampler used 22)
+local LIFT = 1.4 -- studs the forward-swinging paw lifts
+local BOUNCE = 0.85 -- studs the whole body bobs, twice per stride (one touchdown per diagonal pair)
+local LEAN = math.rad(11) -- forward pitch while running
+local TAIL_WAG = math.rad(30)
+
+local function animateHoundRun(guard: Guard, dt: number, speed: number)
+	local hound = guard.Hound
+	local geometry = geometryFor(guard.Config.Creature :: string)
+	hound.SetPose(guard.Model, "Awake") -- the rest pose; legs/tail are then overridden below
+	guard.HoundPhase += dt * speed * 1.1
+	local phase = guard.HoundPhase
+	local scale = guard.Model:GetScale()
+	local pivot = guard.Model:GetPivot()
+	for _, p in guard.Model:GetDescendants() do
+		if not p:IsA("BasePart") then
+			continue
+		end
+		local group = p:GetAttribute("JointGroup")
+		if typeof(group) ~= "string" then
+			continue
+		end
+		if group:sub(1, 3) == "Leg" then
+			local joint = (geometry.Joints :: any)[group].Awake :: CFrame
+			local sign = if group == "LegFrontLeft" or group == "LegBackRight" then 1 else -1
+			local swing = math.sin(phase) * sign
+			local lift = math.max(0, swing) * LIFT
+			local hinge = pivot * CFrame.new(joint.Position * scale)
+			p.CFrame = (hinge * CFrame.Angles(swing * SWING, 0, 0) * hinge:Inverse() * p.CFrame)
+				+ Vector3.new(0, lift, 0)
+		elseif group == "Tail" then
+			local joint = (geometry.Joints :: any).Tail.Awake :: CFrame
+			local hinge = pivot * CFrame.new(joint.Position * scale)
+			local wag = math.sin(phase * 2) * TAIL_WAG
+			p.CFrame = hinge * CFrame.Angles(0, wag, 0) * hinge:Inverse() * p.CFrame
+		end
+	end
+	-- the whole body bounces twice a stride and leans into the run
+	local bounce = (1 - math.cos(phase * 2)) * 0.5 * BOUNCE
+	guard.Model:PivotTo((pivot * CFrame.Angles(LEAN, 0, 0)) + Vector3.new(0, bounce, 0))
+end
+
 local function moveTowards(guard: Guard, destination: Vector3, speed: number, dt: number): boolean
 	local offset = Vector3.new(destination.X - guard.Position.X, 0, destination.Z - guard.Position.Z)
 	local distance = offset.Magnitude
@@ -1370,8 +1426,7 @@ local function moveTowards(guard: Guard, destination: Vector3, speed: number, dt
 	guard.Position = nextPos
 	guard.Model:PivotTo(CFrame.lookAt(nextPos, nextPos + offset))
 	if guard.Hound then
-		guard.HoundPhase += dt * speed * 0.3
-		guard.Hound.SetRunPhase(guard.Model, guard.HoundPhase)
+		animateHoundRun(guard, dt, speed)
 	end
 	if speed > GameConfig.GuardPatrolSpeed then
 		animate(guard, "Run", speed / 16)
