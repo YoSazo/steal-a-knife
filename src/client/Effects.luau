@@ -268,6 +268,52 @@ local function flash(text: string?, strength: number, duration: number)
 	Debris:AddItem(gui, duration + 0.1)
 end
 
+-- "THE BOSS IS COMING!" is a small toast today; Steal An Egg slams a huge red "RUN!!" banner on
+-- screen the instant a guardian wakes for you. This is that banner, just for the thief (server:
+-- GuardService sendChaser fires "Alarm" to them alone).
+local function runBanner()
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "RunBanner"
+	gui.IgnoreGuiInset = true
+	gui.DisplayOrder = 25
+	gui.Parent = player:WaitForChild("PlayerGui")
+	local box = Instance.new("Frame")
+	box.AnchorPoint = Vector2.new(0.5, 0)
+	box.Position = UDim2.new(0.5, 0, 0, 90)
+	box.Size = UDim2.fromOffset(0, 74) -- (pops open from 0 width)
+	box.BackgroundColor3 = Color3.fromRGB(120, 15, 15)
+	box.BorderSizePixel = 0
+	box.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 16)
+	corner.Parent = box
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(255, 70, 70)
+	stroke.Thickness = 3
+	stroke.Parent = box
+	local label = Instance.new("TextLabel")
+	label.AnchorPoint = Vector2.new(0.5, 0.5)
+	label.Position = UDim2.fromScale(0.5, 0.5)
+	label.Size = UDim2.fromOffset(300, 54)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextStrokeTransparency = 0
+	label.Text = "RUN!!"
+	label.TextTransparency = 1
+	label.Parent = box
+	local open = TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	TweenService:Create(box, open, { Size = UDim2.fromOffset(260, 74) }):Play()
+	TweenService:Create(label, TweenInfo.new(0.15), { TextTransparency = 0 }):Play()
+	task.delay(1.1, function()
+		local close = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		TweenService:Create(box, close, { Size = UDim2.fromOffset(0, 74) }):Play()
+		TweenService:Create(label, TweenInfo.new(0.2), { TextTransparency = 1 }):Play()
+	end)
+	Debris:AddItem(gui, 1.6)
+end
+
 -- A quick burst of light
 local function lightFlash(position: Vector3, color: Color3, brightness: number, range: number, duration: number)
 	local holder = anchorAt(position)
@@ -732,6 +778,7 @@ local handlers: { [string]: (...any) -> () } = {
 	-- A boss is coming for you: a quick red flash (the alarm bell rang on every steal - too much)
 	Alarm = function()
 		flash(nil, 0.25, 0.8)
+		runBanner()
 		-- One quick siren whoop, faded out after a second (no ringing: the old bell rang on and on)
 		local siren = Instance.new("Sound")
 		siren.SoundId = Sounds.StealSiren
@@ -814,6 +861,49 @@ function Effects.Init()
 			handler(...)
 		end
 	end)
+
+	-- A red glow at the screen's edges the whole time you're carrying a boss's coffin (BossCarry):
+	-- Steal An Egg keeps this up the entire run home, not just a one-off flash - a constant "you are
+	-- not safe yet" the Alarm's single banner can't carry on its own.
+	do
+		local gui = Instance.new("ScreenGui")
+		gui.Name = "ChaseVignette"
+		gui.IgnoreGuiInset = true
+		gui.DisplayOrder = 15
+		gui.ResetOnSpawn = false
+		gui.Parent = player:WaitForChild("PlayerGui")
+		local edges = {}
+		local function edge(size: UDim2, position: UDim2, rotation: number)
+			local frame = Instance.new("Frame")
+			frame.Size = size
+			frame.Position = position
+			frame.BackgroundColor3 = Color3.fromRGB(200, 20, 20)
+			frame.BackgroundTransparency = 1
+			frame.BorderSizePixel = 0
+			local gradient = Instance.new("UIGradient")
+			gradient.Rotation = rotation
+			gradient.Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0),
+				NumberSequenceKeypoint.new(1, 1),
+			})
+			gradient.Parent = frame
+			frame.Parent = gui
+			table.insert(edges, frame)
+		end
+		edge(UDim2.fromScale(1, 0.16), UDim2.fromScale(0, 0), 90) -- top
+		edge(UDim2.fromScale(1, 0.16), UDim2.fromScale(0, 0.84), 270) -- bottom
+		edge(UDim2.fromScale(0.1, 1), UDim2.fromScale(0, 0), 0) -- left
+		edge(UDim2.fromScale(0.1, 1), UDim2.fromScale(0.9, 0), 180) -- right
+		local target = 0
+		local function refresh()
+			target = if player:GetAttribute("BossCarry") ~= nil then 0.55 else 1
+			for _, frame in edges do
+				TweenService:Create(frame, TweenInfo.new(0.4), { BackgroundTransparency = target }):Play()
+			end
+		end
+		player:GetAttributeChangedSignal("BossCarry"):Connect(refresh)
+		refresh()
+	end
 
 	-- Surprise gifts are for one player: everyone else's are hidden on this screen
 	-- (the server builds them invisible: the owner's screen shows its own, everyone else's stays
