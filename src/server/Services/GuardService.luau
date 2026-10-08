@@ -44,6 +44,11 @@ local DataService = require(script.Parent.DataService)
 local Offers = require(script.Parent.Offers)
 local ManorDecor = require(script.Parent.ManorDecor)
 local Disguises = require(script.Parent.Disguises)
+local HedgeHound = require(ReplicatedStorage.Shared.Assets.HedgeHound)
+-- Zone bosses that are creatures instead of round characters (GameConfig.Zones[i].Creature).
+-- Only the Courtyard's hedge hound exists so far; the rest stay round characters until it's
+-- approved.
+local CREATURE_MODULES: { [string]: any } = { HedgeHound = HedgeHound }
 local MapService = require(script.Parent.MapService)
 local Ragdoll = require(script.Parent.Ragdoll)
 local StealService = require(script.Parent.StealService)
@@ -52,6 +57,7 @@ local StuckKnives = require(script.Parent.StuckKnives)
 
 type ZoneConfig = {
 	Rarity: string,
+	Creature: string?, -- a creature boss instead of a round character (CREATURE_MODULES)
 	Title: string,
 	Boss: string,
 	BossTitle: string,
@@ -113,6 +119,10 @@ export type Guard = {
 	StaggerImmuneUntil: number,
 	Tracks: { [string]: AnimationTrack },
 	Playing: string?,
+	Hound: any?, -- the creature module (Assets/HedgeHound), nil for a round-character boss
+	FootOffset: number, -- added to Y when moving freely: 0 for a creature (its Root is already
+	-- at floor level), HEIGHT for a round character (whose root is mid-body)
+	HoundPhase: number, -- accumulated run-cycle phase (Assets.SetRunPhase)
 }
 
 type Projectile = {
@@ -245,6 +255,69 @@ local function animate(guard: Guard, key: string, speed: number?)
 	end
 end
 
+-- A creature boss (Steal An Egg style): Codex's model, plus the same name tag / "!" alert every
+-- round character gets, built around a synthetic "Head" anchor (the creature has no part literally
+-- named "Head" - its head parts share JointGroup "Head" instead) so the shared tag/alert/Zzz code
+-- keeps working unchanged.
+local function buildHoundRig(config: ZoneConfig, shadow: boolean): Model
+	local creature = CREATURE_MODULES[config.Creature :: string]
+	local model = creature.Build(nil, CFrame.identity, "Asleep")
+	model.Name = if shadow then `{config.Boss}Shadow` else config.Boss
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+	local headCore = model:FindFirstChild("HeadCore") :: BasePart
+	local head = Instance.new("Part")
+	head.Name = "Head"
+	head.Size = Vector3.one * 0.05
+	head.Transparency = 1
+	head.Anchored = true
+	head.CanCollide, head.CanQuery, head.CanTouch, head.CastShadow = false, false, false, false
+	head.CFrame = headCore.CFrame
+	-- A real (if tiny) member of the "Head" joint group: Assets.SetPose then poses it with the
+	-- rest of the head automatically, instead of it being an unposed stray part.
+	head:SetAttribute("JointGroup", "Head")
+	head:SetAttribute("RestOffset", Vector3.zero)
+	head:SetAttribute("RestSize", Vector3.one * 0.05)
+	head:SetAttribute("RestAngle", 0)
+	head:SetAttribute("PoseVisibility", "Both")
+	head.Parent = model
+	local pool = Knives.ByRarity[config.Rarity]
+	model:SetAttribute("KnifeName", pool[#pool].Name)
+	local tag = billboard(head, UDim2.fromScale(6, 1.6), Vector3.new(0, 4.4, 0), 60)
+	tag.Name = "BossTag"
+	tag.Enabled = shadow == true
+	text(
+		tag,
+		if shadow then `{config.Boss:upper()}'S SHADOW` else config.Boss:upper(),
+		config.Color:Lerp(Color3.new(1, 1, 1), 0.2),
+		UDim2.fromScale(0, 0),
+		UDim2.fromScale(1, 0.58)
+	)
+	text(tag, config.BossTitle, Color3.fromRGB(235, 230, 240), UDim2.fromScale(0, 0.58), UDim2.fromScale(1, 0.42))
+	local alert = billboard(head, UDim2.fromScale(3, 3), Vector3.new(0, 6.6, 0), 200)
+	alert.Name = "Alert"
+	alert.Enabled = false
+	text(alert, "!", Color3.fromRGB(255, 60, 60), UDim2.fromScale(0, 0), UDim2.fromScale(1, 1))
+	if shadow then
+		-- A shadow: a dark, nearly solid silhouette in the zone's colour (eyes stay bright - a
+		-- glow in the dark reads better than darkening them)
+		local dark = config.Color:Lerp(Color3.new(0, 0, 0), 0.55)
+		for _, d in model:GetDescendants() do
+			if d:IsA("BasePart") and d.Transparency < 1 and d.Material ~= Enum.Material.Neon then
+				d.Color = dark
+			end
+		end
+		local glow = Instance.new("Highlight")
+		glow.Name = "ShadowGlow"
+		glow.FillColor = config.Color
+		glow.FillTransparency = 0.7
+		glow.OutlineColor = config.Color:Lerp(Color3.new(1, 1, 1), 0.3)
+		glow.OutlineTransparency = 0
+		glow.DepthMode = Enum.HighlightDepthMode.Occluded
+		glow.Parent = model
+	end
+	return model
+end
+
 -- A boss character: their round outfit plus their signature pieces, the zone's best knife in hand,
 -- a glow in the zone's colour, and their name over their head
 local function buildRig(config: ZoneConfig, shadow: boolean): Model
@@ -367,6 +440,9 @@ end
 -- (client/Moves), and a 💤 floats over it. Waking = a thief took a knife.
 local function setAsleep(guard: Guard, asleep: boolean)
 	guard.Model:SetAttribute("Asleep", asleep)
+	if guard.Hound then
+		guard.Hound.SetPose(guard.Model, if asleep then "Asleep" else "Awake")
+	end
 	local head = guard.Model:FindFirstChild("Head")
 	-- Eyes shut while dozing (Config/BossSleepFaces), their own face back when they wake
 	local face = head and head:FindFirstChild("face") :: Decal?
@@ -398,8 +474,12 @@ local function setAsleep(guard: Guard, asleep: boolean)
 end
 
 local function newGuard(boss: Boss, shadow: boolean, at: CFrame): Guard
-	local model = buildRig(boss.Config, shadow)
-	model:PivotTo(at)
+	local creature = CREATURE_MODULES[boss.Config.Creature :: string]
+	local model = if creature then buildHoundRig(boss.Config, shadow) else buildRig(boss.Config, shadow)
+	-- A creature's Root is already at floor level; the shared spawn CFrame (boss.Post / a chase
+	-- hand-off) is calibrated to a round character's mid-body root, HEIGHT studs higher.
+	local spawnAt = if creature then at.Rotation + (at.Position - Vector3.new(0, HEIGHT, 0)) else at
+	model:PivotTo(spawnAt)
 	model.Parent = folder
 	local head = model:FindFirstChild("Head") :: BasePart
 	local guard: Guard = {
@@ -408,7 +488,7 @@ local function newGuard(boss: Boss, shadow: boolean, at: CFrame): Guard
 		Config = boss.Config,
 		Boss = boss,
 		IsShadow = shadow,
-		Position = at.Position,
+		Position = spawnAt.Position,
 		Target = nil,
 		Returning = false,
 		AlertUntil = 0,
@@ -425,8 +505,11 @@ local function newGuard(boss: Boss, shadow: boolean, at: CFrame): Guard
 		WindupUntil = 0,
 		BusyUntil = 0,
 		StaggerImmuneUntil = 0,
-		Tracks = loadTracks(model),
+		Tracks = if creature then {} else loadTracks(model),
 		Playing = nil,
+		Hound = creature,
+		FootOffset = if creature then 0 else HEIGHT,
+		HoundPhase = 0,
 	}
 	guardByModel[model] = guard
 	animate(guard, "Idle")
@@ -562,6 +645,13 @@ local CHAIR_SCALE = 1.25
 local CHAIR_EXIT = 7
 
 local chairPosition = BossChairMotion.Position
+
+-- Where a creature boss (Root at floor level) actually rests, vs. the shared Post/chairPosition
+-- data (calibrated to a round character's mid-body root, Y = HEIGHT): the same spot, HEIGHT lower.
+local function restSpot(guard: Guard, post: CFrame, p: number?): Vector3
+	local pos = if p then chairPosition(post, p) else post.Position
+	return if guard.Hound then pos - Vector3.new(0, HEIGHT, 0) else pos
+end
 local function mountChair(zone: number, parent: Instance, frame: CFrame)
 	local spec = BossChairs[zone]
 	if not spec then
@@ -1271,7 +1361,7 @@ local function moveTowards(guard: Guard, destination: Vector3, speed: number, dt
 	local lair = GameConfig.BossLairCenter(guard.Boss.Index)
 	local onStage = math.abs(nextPos.X - lair.X) < GameConfig.BossLair.Depth / 2
 		and math.abs(nextPos.Z - lair.Z) < GameConfig.BossLair.Width / 2
-	local y = HEIGHT + (if onStage then PLATFORM else 0)
+	local y = guard.FootOffset + (if onStage then PLATFORM else 0)
 	nextPos = Vector3.new(
 		math.clamp(nextPos.X, arena.MinX + 2, arena.MaxX - 2),
 		y,
@@ -1279,6 +1369,10 @@ local function moveTowards(guard: Guard, destination: Vector3, speed: number, dt
 	)
 	guard.Position = nextPos
 	guard.Model:PivotTo(CFrame.lookAt(nextPos, nextPos + offset))
+	if guard.Hound then
+		guard.HoundPhase += dt * speed * 0.3
+		guard.Hound.SetRunPhase(guard.Model, guard.HoundPhase)
+	end
 	if speed > GameConfig.GuardPatrolSpeed then
 		animate(guard, "Run", speed / 16)
 	else
@@ -1299,7 +1393,7 @@ local function step(guard: Guard, dt: number)
 		-- Walk back round to the front, turn around and settle into the chair without jumping.
 		local hop = GameConfig.BossHop
 		local post = guard.Boss.Post
-		local front = chairPosition(post, 1)
+		local front = restSpot(guard, post, 1)
 		local sitStart = guard.SitStart
 		if not sitStart then
 			local approach = post.Position + post.LookVector * CHAIR_EXIT
@@ -1323,13 +1417,14 @@ local function step(guard: Guard, dt: number)
 			return
 		end
 		local x = math.clamp((t - sitStart) / BossChairMotion.SitDuration(), 0, 1)
-		guard.Position = chairPosition(post, hop.Done - x * (hop.Done - hop.Crouch))
+		guard.Position = restSpot(guard, post, hop.Done - x * (hop.Done - hop.Crouch))
 		guard.Model:PivotTo(post.Rotation + guard.Position)
 		if x >= 1 then
 			guard.Returning = false
 			guard.SitStart = nil
-			guard.Position = post.Position
-			guard.Model:PivotTo(post)
+			local seat = restSpot(guard, post)
+			guard.Position = seat
+			guard.Model:PivotTo(post.Rotation + seat)
 			setAsleep(guard, true)
 			local i = table.find(chasers, guard)
 			if i then

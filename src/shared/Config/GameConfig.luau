@@ -396,7 +396,8 @@ local GameConfig = {
 	Zones = {
 		{
 			Rarity = "Common",
-			Boss = "Frank", -- a round character (Disguises) guarding this biome's knife wall
+			Boss = "Frank", -- the name everyone sees the knife wall (and this zone's round outfit) tagged with
+			Creature = "HedgeHound" :: string?, -- the hedge hound guards it in person (GuardService.CREATURE_MODULES)
 			Depth = 90,
 			BossAt = 50 / 90,
 			BossTitle = "The Groundskeeper",
@@ -412,6 +413,7 @@ local GameConfig = {
 		{
 			Rarity = "Rare",
 			Boss = "Ivy", -- a round character (Disguises) guarding this biome's knife wall
+			Creature = nil :: string?, -- a round character guards this zone for now
 			Depth = 130,
 			BossAt = 0.6,
 			BossTitle = "The Gardener",
@@ -427,6 +429,7 @@ local GameConfig = {
 		{
 			Rarity = "Epic",
 			Boss = "Sam", -- a round character (Disguises) guarding this biome's knife wall
+			Creature = nil :: string?, -- a round character guards this zone for now
 			Depth = 170,
 			BossAt = 0.6,
 			BossTitle = "The Gravedigger",
@@ -443,6 +446,7 @@ local GameConfig = {
 		{
 			Rarity = "Legendary",
 			Boss = "Leo", -- a round character (Disguises) guarding this biome's knife wall
+			Creature = nil :: string?, -- a round character guards this zone for now
 			Depth = 210,
 			BossAt = 0.6,
 			BossTitle = "The Collector",
@@ -459,6 +463,7 @@ local GameConfig = {
 		{
 			Rarity = "Mythic",
 			Boss = "Ruby", -- a round character (Disguises) guarding this biome's knife wall
+			Creature = nil :: string?, -- a round character guards this zone for now
 			Depth = 250,
 			BossAt = 0.6,
 			BossTitle = "The Firestarter",
@@ -475,6 +480,7 @@ local GameConfig = {
 		{
 			Rarity = "Godly",
 			Boss = "Kate", -- a round character (Disguises) guarding this biome's knife wall
+			Creature = nil :: string?, -- a round character guards this zone for now
 			Depth = 290,
 			BossAt = 0.6,
 			BossTitle = "The Queen",
@@ -491,6 +497,7 @@ local GameConfig = {
 		{
 			Rarity = "Celestial",
 			Boss = "Zoe", -- a round character (Disguises) guarding this biome's knife wall
+			Creature = nil :: string?, -- a round character guards this zone for now
 			Depth = 330,
 			BossAt = 0.6,
 			BossTitle = "The Angel",
@@ -507,6 +514,7 @@ local GameConfig = {
 		{
 			Rarity = "Cosmic",
 			Boss = "Nick", -- a round character (Disguises) guarding this biome's knife wall
+			Creature = nil :: string?, -- a round character guards this zone for now
 			Depth = 370,
 			BossAt = 0.6,
 			BossTitle = "The Void Walker",
