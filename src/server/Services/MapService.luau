@@ -137,28 +137,31 @@ function MapService.IsInHideaway(pos: Vector3): boolean
 	return false
 end
 
--- A sunny afternoon, mid-sky (Steal An Egg style): a real sun angled enough that every wall gets a
--- lit face and a shaded face (not just overhead), everything throws a clear contact shadow, blue
--- sky all round (also below: the map floats), soft clouds.
+-- A sunny afternoon high in the sky (Steal An Egg style): a real sun, right overhead so it stays
+-- in view over the tall boundary walls instead of grazing/ducking behind their top edge, blue sky
+-- all round (also below: the map floats), soft clouds.
 -- (`Lighting.Technology` is gone from this Roblox version - `LightingStyle` replaced it and Studio
 -- already defaults it to a shadow-capable style. Nothing to flip by hand any more. If shadows ever
 -- look flat again in a Studio Play-test, check `settings():GetService("RenderSettings").QualityLevel`
 -- first - Studio pins test sessions to its lowest tier, which silently drops shadows regardless of
 -- Lighting.GlobalShadows. Not a issue for real players: their own Graphics setting controls this.)
 local function buildLighting()
-	-- Mid-afternoon, the sun ~35 degrees up in the north-west (Roblox north = -Z, west = -X): light
-	-- falls toward the south-east at a real angle, so everything throws a readable shadow AND the
-	-- runway's side walls (facing +-X) get a lit face and a shaded face instead of flat even light.
-	-- (Found by searching ClockTime/latitude for GetSunDirection ~ (-0.57, 0.57, 0.59).)
+	-- Early afternoon, the sun ~60 degrees up (Roblox north = -Z, west = -X): high enough to clear
+	-- the walls and stay visible, low enough that everything still throws a real contact shadow.
+	-- A lower, more raking angle (tried first) shaded the walls more dramatically, but ducked the
+	-- sun behind the wall top edge from almost every normal camera angle AND threw a blown-out
+	-- specular hotspot across the floor at some viewing angles - overhead reads better than either.
+	-- (Found by searching ClockTime/latitude for GetSunDirection ~ (-0.36, 0.87, -0.35).)
 	-- The tall boundary walls don't cast (Toy.DirtWall), or they'd shade half the arena.
-	Lighting.ClockTime = 15
-	Lighting.GeographicLatitude = 60
-	-- A punchier sun now that it's doing real modelling work (shading + shadows), with ambient
-	-- turned down from "flat and bright" to let that contrast actually read instead of washing out.
-	Lighting.Brightness = 3.5
+	Lighting.ClockTime = 13.5
+	Lighting.GeographicLatitude = 3
+	-- Bright but not blown out: toned down a touch from the original flat look now that shadows and
+	-- a correct haze colour are doing some of the work the raw brightness used to carry alone.
+	Lighting.Brightness = 2.7
 	Lighting.ExposureCompensation = 0
-	-- Warm but no longer doing ALL the work: the sun now lights the walls directly (see above), so
-	-- ambient only needs to keep the shaded side readable, not carry the whole wall on its own.
+	-- Warm, and a notch below the old near-white flat fill: the walls are back to getting no direct
+	-- light (the sun's overhead again), but the lower Brightness plus the now-correct warm haze
+	-- colour (below) keep them reading warm instead of needing ambient to carry the whole look.
 	-- The round maps' warm, neutral fill (rounds read clean and even), with the sun on top
 	Lighting.Ambient = Color3.fromRGB(110, 105, 100)
 	Lighting.OutdoorAmbient = Color3.fromRGB(115, 110, 105)

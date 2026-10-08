@@ -47,8 +47,8 @@ local BASE: Mood = {
 	Rays = { Intensity = 0.28, Spread = 0.85 },
 	Grade = { Brightness = 0, Contrast = 0.1, Saturation = 0.12, Tint = rgb(255, 253, 248) },
 	Exposure = 0,
-	Clock = 15,
-	Latitude = 60,
+	Clock = 13.5,
+	Latitude = 3,
 	Stars = 0,
 	Moon = 0,
 }
