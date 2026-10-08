@@ -75,7 +75,9 @@ Fixed in Studio:
 - An unused `info` in `showKill` (lint).
 
 Found, not fixed yet:
-- **A ~9 hour gap between pen slots 16 and 17** in pacing_sim (look at `Pens.SlotCosts`).
+- **Minimum-Speed getaway:** timed zone 2 / 3 round trips at their advertised minimum Speed
+  took 22.6 / 19.2 s, but both coffins were snatched within 0.8 s of stealing. The creature wake
+  is only 0.25 s; the new-player getaway still needs a successful delivery test before item 30.
 
 Still to test (needs real input): tapping Speed / Cash on physical hardware, the chase glow ending at
 the safe line, the deeper-monster fling, the trail after several deliveries, a creature's speed
@@ -92,6 +94,10 @@ sign up close.
   round; hub ambient and shadows restore afterward. Visually checked Office in the phone preset
   and at desktop size after the role-reveal overlay faded. All three code checks pass. One
   restart hit an existing timeout loading wheel geometry; the next boot was clean.
+- **Pen price cliff fixed:** slots 17-20 now cost 30B / 60B / 120B / 240B. pacing_sim gives
+  slot 16 at 6.50 h, slot 17 at 7.92 h; Rare 0.34 h, Epic 1.18 h, Legendary 4.01 h. Later
+  unique-slot milestones can still cross a rebirth, which resets the pen. Verified server purchases
+  through slot 17 on phone and slot 18 at desktop size; Selene, StyLua and luau-lsp pass.
 - **Owner chose item 30 option B:** IntermissionTime 70, RoundTime 60, warning 10. Survival
   steps at 10 / 20 / 35 / 50 / 60 s, weights 1 / 2 / 4 / 7 / 12, banked immediately.
   Delivered coffins pay a small share of the next zone gap, deeper zones pay more, about one

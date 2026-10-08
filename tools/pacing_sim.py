@@ -38,7 +38,7 @@ TRAILS = [(1.5, 160000), (2, 1.25e6), (3, 9e6), (4, 80e6), (6, 500e6), (8, 7e9),
           (17, 25e12), (20, 400e12)]  # multiplier, cost (kept through rebirth) - top trimmed, see GameConfig
 # Pens (GameConfig.Pens): room grows one knife at a time, 10 -> 20 (Pens.SlotCosts)
 STARTING_SLOTS, MAX_SLOTS = 10, 20
-PEN_COSTS = [1e3, 2.5e5, 5e6, 7.5e7, 1e9, 1.5e10, 2.5e11, 4e12, 6e13, 1e15]
+PEN_COSTS = [1e3, 2.5e5, 5e6, 7.5e7, 1e9, 1.5e10, 3e10, 6e10, 1.2e11, 2.4e11]
 REBIRTH_BASE, REBIRTH_GROWTH = 2e9, 6
 REBIRTH_INCOME, REBIRTH_SPEED = 0.5, 0.3
 REBIRTH_NEEDS = ["Mythic", "Godly", "Godly", "Celestial", "Celestial", "Cosmic"]  # then Cosmic (was Legendary first)

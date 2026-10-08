@@ -60,7 +60,7 @@ local GameConfig = {
 		-- Steal An Egg's pen: room grows one knife at a time, the first upgrade nearly free (an
 		-- instant first purchase), then steeper. Cost of the upgrade from 10, 11, ... 19 slots.
 		-- (Was one +10 jump at the vault's 2nd-floor price, $1.5M.)
-		SlotCosts = { 1e3, 2.5e5, 5e6, 7.5e7, 1e9, 1.5e10, 2.5e11, 4e12, 6e13, 1e15 },
+		SlotCosts = { 1e3, 2.5e5, 5e6, 7.5e7, 1e9, 1.5e10, 3e10, 6e10, 1.2e11, 2.4e11 },
 		PassRoom = 3, -- the Extra Room pass (Monetization ExtraFloor) adds this many on pens
 		PlaceAfter = 30, -- carrying something in your pen this long without tapping: it goes down anyway
 		Bag = 10, -- with the pen full, this many more wait in your bag (Knives menu), never lost
