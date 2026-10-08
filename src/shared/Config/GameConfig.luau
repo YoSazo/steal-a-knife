@@ -76,7 +76,10 @@ local GameConfig = {
 	-- each round still owed is OfflineSecondsPerRound of real time. A Common just takes CommonSeconds.
 	Coffins = {
 		Enabled = "WithPens" :: boolean | string, -- false / true / "WithPens" (on wherever pens are)
-		Rounds = { Common = 0, Rare = 1, Epic = 1, Legendary = 2, Mythic = 2, Godly = 3, Celestial = 4, Cosmic = 5 },
+		-- Longer waits for the rarer ones (was 0/1/1/2/2/3/4/5: a Cosmic coffin opened in under
+		-- 45 minutes). At the ~8.5 min murder-round cycle: Epic ~17m, Legendary ~34m, Mythic ~1.1h,
+		-- Godly ~2h, Celestial ~3.4h, Cosmic ~5h - a real wait, the way Steal An Egg's top eggs are.
+		Rounds = { Common = 0, Rare = 1, Epic = 2, Legendary = 4, Mythic = 8, Godly = 14, Celestial = 24, Cosmic = 36 },
 		CommonSeconds = 20,
 		TutorialSeconds = 6, -- a new player's first coffins: a short countdown, then it opens
 		WinRounds = 2,
@@ -98,20 +101,23 @@ local GameConfig = {
 	CarrySpeedMultiplier = 0.9,
 	-- Haunted Wheel tiers (the code calls it the treadmill): Rate = Speed per second while running
 	-- in it; Cost to buy that tier
+	-- Costs grow ~14x a tier (was ~7x: a tier paid for itself in minutes of the income it was meant
+	-- to take hours to reach - a committed kid found the WHOLE game too easy; tools/pacing_sim.py
+	-- validates this against Steal An Egg-paced milestones - keep both in step)
 	Treadmills = {
 		{ Name = "Creaky Wheel", Rate = 10, Cost = 0 },
 		{ Name = "Iron Wheel", Rate = 30, Cost = 15000 },
-		{ Name = "Steam Wheel", Rate = 80, Cost = 100000 },
-		{ Name = "Haunted Wheel", Rate = 250, Cost = 600000 },
-		{ Name = "Cursed Wheel", Rate = 800, Cost = 4e6 },
-		{ Name = "Bone Wheel", Rate = 2500, Cost = 30e6 },
-		{ Name = "Thief Moon Wheel", Rate = 8000, Cost = 250e6 },
-		{ Name = "Phantom Wheel", Rate = 25000, Cost = 2e9 },
-		{ Name = "Infernal Wheel", Rate = 80000, Cost = 15e9 },
-		{ Name = "Olympian Wheel", Rate = 250000, Cost = 120e9 },
-		{ Name = "Angelic Wheel", Rate = 800000, Cost = 1e12 },
-		{ Name = "Celestial Wheel", Rate = 2.5e6, Cost = 8e12 },
-		{ Name = "Cosmic Wheel", Rate = 8e6, Cost = 70e12 },
+		{ Name = "Steam Wheel", Rate = 80, Cost = 210000 },
+		{ Name = "Haunted Wheel", Rate = 250, Cost = 2.94e6 },
+		{ Name = "Cursed Wheel", Rate = 800, Cost = 41.2e6 },
+		{ Name = "Bone Wheel", Rate = 2500, Cost = 576e6 },
+		{ Name = "Thief Moon Wheel", Rate = 8000, Cost = 8.07e9 },
+		{ Name = "Phantom Wheel", Rate = 25000, Cost = 113e9 },
+		{ Name = "Infernal Wheel", Rate = 80000, Cost = 1.58e12 },
+		{ Name = "Olympian Wheel", Rate = 250000, Cost = 22.1e12 },
+		{ Name = "Angelic Wheel", Rate = 800000, Cost = 310e12 },
+		{ Name = "Celestial Wheel", Rate = 2.5e6, Cost = 4.34e15 },
+		{ Name = "Cosmic Wheel", Rate = 8e6, Cost = 60.7e15 },
 	},
 	-- Knife Trails (Steal An Egg style): bought with cash, each one multiplies the Speed your wheel
 	-- trains and sends a stream of that knife spinning off behind you when you run
@@ -261,8 +267,9 @@ local GameConfig = {
 		LuckBonus = 0.15, -- +15% mutation / size luck per rebirth
 		Max = 30,
 		-- Steal a Brainrot style: each rebirth also needs a knife of this rarity on your plates
-		-- (the last entry repeats for every rebirth after)
-		Needs = { "Legendary", "Mythic", "Godly", "Godly", "Celestial", "Celestial", "Cosmic" },
+		-- (the last entry repeats for every rebirth after). First rebirth needs Mythic, not
+		-- Legendary: the old Legendary gate was clearing in under 3 hours.
+		Needs = { "Mythic", "Godly", "Godly", "Celestial", "Celestial", "Cosmic" },
 		Titles = {
 			"Pickpocket",
 			"Cutpurse",
@@ -295,10 +302,12 @@ local GameConfig = {
 	-- The round prize (Shared/RoundPrize): "Win the round: +X Speed", the same promise for everyone
 	-- on the winning side, sized to the next boss you can't outrun yet
 	RoundPrize = {
-		-- of the step from the last boss's Speed to the next boss's: every win on the way is worth
-		-- the same, ~5 wins = one boss (a tuning guess: compare with how fast players train on the wheel)
-		StepShare = 0.2,
-		PastLastShare = 0.1, -- past the last boss: of your Speed
+		-- of the step from the last boss's Speed to the next boss's (was 0.2 / 0.1: ~5 wins cleared
+		-- a boss outright, so the round prize alone carried a player through the whole game in a
+		-- couple of hours - a committed kid found it "too easy"; the wheel is the engine now,
+		-- tools/pacing_sim.py validates this against Steal An Egg-paced milestones)
+		StepShare = 0.05,
+		PastLastShare = 0.03, -- past the last boss: of your Speed
 		MinSpeed = 300,
 		-- the cash choice (client/PrizePick): this many seconds of your income, at least MinCash
 		CashSeconds = 300,

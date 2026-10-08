@@ -2,18 +2,22 @@
 
 Not a replay of the game: a sanity check on the numbers in GameConfig / Knives. A greedy player
 trains Speed on their wheel, runs to the deepest biome they're fast enough for, mounts what they
-bring back, buys wheels / trails / floors when they can, rebirths as soon as they're allowed, and
-gets pulled into a murder round every cycle. It prints when each milestone happens (in hours of
-play) and flags long stretches where nothing new unlocks.
+bring back (after its coffin's murder-round wait), buys wheels / trails / floors when they can,
+rebirths as soon as they're allowed, and gets pulled into a murder round every cycle (its prize
+also adds Speed). It prints when each milestone happens (in hours of play) and flags long
+stretches where nothing new unlocks.
 
 Targets (Steal an Egg / Steal a Brainrot feel): Epic in the first hour, Legendary ~3h, Mythic by the
-end of day one (~6h), Godly on day 2-3, Celestial in week one, Cosmic is the long-haul goal.
+end of day one (~6h), Godly on day 2-3, Celestial in week one, Cosmic is the long-haul goal. (A
+committed kid found the whole game "too easy" at this file's old numbers - the wheel/trail COST
+columns were the main leak: a tier paid for itself in minutes of the income it was meant to take
+hours to reach.)
 
 Run:  python tools/pacing_sim.py [hours]
 Numbers here mirror src/shared/Config (update both together).
 """
 
-import math
+import random
 import sys
 
 RARITIES = ["Common", "Rare", "Epic", "Legendary", "Mythic", "Godly", "Celestial", "Cosmic"]
@@ -24,8 +28,10 @@ INCOME = {  # average of each rarity's three knives (Config/Knives)
 GUARD_SPEED = [12.5, 26, 47, 70, 82, 94, 104, 114]  # GameConfig.Zones[i].GuardSpeed
 CARRY = 0.9  # GameConfig.CarrySpeedMultiplier
 BASE_WALK, SPEED_CURVE, MAX_WALK = 16, 3.6, 135  # GameConfig.WalkSpeedFor
-WHEELS = [(10, 0), (30, 15000), (80, 100000), (250, 600000), (800, 4e6), (2500, 30e6), (8000, 250e6),
-          (25000, 2e9), (80000, 15e9), (250000, 120e9), (800000, 1e12), (2.5e6, 8e12), (8e6, 70e12)]
+# Rate (Speed/step), Cost. Costs grow ~14x a tier (GameConfig.Treadmills; was ~7x).
+WHEELS = [(10, 0), (30, 15000), (80, 210000), (250, 2.94e6), (800, 41.2e6), (2500, 576e6),
+          (8000, 8.07e9), (25000, 113e9), (80000, 1.58e12), (250000, 22.1e12), (800000, 310e12),
+          (2.5e6, 4.34e15), (8e6, 60.7e15)]
 TRAILS = [(1.5, 20000), (2, 250000), (3, 3e6), (4, 40e6), (6, 500e6), (8, 7e9), (12, 100e9), (16, 1.5e12),
           (22, 25e12), (30, 400e12)]  # multiplier, cost (kept through rebirth)
 STARTING_SLOTS, SLOTS_PER_FLOOR, MAX_SLOTS = 10, 10, 40
@@ -33,11 +39,17 @@ FLOOR_COSTS = [1.5e6, 2e10, 1e14]  # 2nd, 3rd, 4th floor
 FLOOR_REBIRTHS = [0, 1, 3]  # rebirths needed for the 2nd, 3rd, 4th floor
 REBIRTH_BASE, REBIRTH_GROWTH = 2e9, 6
 REBIRTH_INCOME, REBIRTH_SPEED = 0.5, 0.3
-REBIRTH_NEEDS = ["Legendary", "Mythic", "Godly", "Godly", "Celestial", "Celestial", "Cosmic"]  # then Cosmic
+REBIRTH_NEEDS = ["Mythic", "Godly", "Godly", "Celestial", "Celestial", "Cosmic"]  # then Cosmic (was Legendary first)
 INTERMISSION, ROUND = 360, 150
+# A stolen knife's income doesn't count until its coffin's murder-round wait is over
+# (GameConfig.Coffins.Rounds; was 0/1/1/2/2/3/4/5).
+COFFIN_ROUNDS = {"Common": 0, "Rare": 1, "Epic": 2, "Legendary": 4, "Mythic": 8,
+                 "Godly": 14, "Celestial": 24, "Cosmic": 36}
+STEP_SHARE, MIN_SPEED_PRIZE = 0.05, 300  # RoundPrize.StepShare / MinSpeed (was 0.2: see GameConfig)
+WIN_CHANCE = 0.65  # rough share of rounds a player ends up on the winning side
 ZONE_DEPTHS = [90, 130, 170, 210, 250, 290, 330, 370]
 FIRST_BOSS_Z = 50
-EXTRA_INCOME = 1.4  # Heat, survivor 2x boosts, mutations / sizes, friends, wheel cash: on average
+EXTRA_INCOME = 1.4  # survivor 2x boosts, mutations / sizes, friends, wheel cash: on average
 CATCH_CHANCE = 0.25  # a run where the boss gets you (the knife goes back)
 
 
@@ -53,10 +65,11 @@ def run_time(zone):
     return 8 + 2 * (boss_z + 110 + 60) / walk
 
 
-def simulate(hours):
+def simulate(hours, seed=1):
+    rng = random.Random(seed)
     t, cash, speed = 0.0, 0.0, 0.0
     wheel, trail, slots, rebirths = 0, 0, STARTING_SLOTS, 0
-    wall = []  # (income, rarity index)
+    wall = []  # (income, rarity index, ready_at: when the coffin's murder-round wait is over)
     milestones, seen = [], set()
 
     def note(label):
@@ -65,7 +78,8 @@ def simulate(hours):
             milestones.append((t, label))
 
     def income():
-        best = sorted(wall, reverse=True)[:slots]
+        ready = [k for k in wall if k[2] <= t]
+        best = sorted(ready, reverse=True)[:slots]
         return sum(k[0] for k in best) * (1 + rebirths * REBIRTH_INCOME) * EXTRA_INCOME
 
     cycle = INTERMISSION + ROUND
@@ -73,20 +87,28 @@ def simulate(hours):
     while t < hours * 3600:
         if (t % cycle) >= INTERMISSION:  # in a murder round: the vault keeps paying
             cash += income() * ROUND
+            if rng.random() < WIN_CHANCE:
+                best_zone = max(i for i in range(len(RARITIES)) if speed >= speed_needed(i))
+                if best_zone + 1 < len(RARITIES):
+                    need, previous = speed_needed(best_zone + 1), speed_needed(best_zone)
+                    speed += max(STEP_SHARE * (need - previous), MIN_SPEED_PRIZE)
+                else:
+                    speed += max(speed * 0.1, MIN_SPEED_PRIZE)
             t += ROUND
             continue
         # Rebirth?
         need = REBIRTH_NEEDS[min(rebirths, len(REBIRTH_NEEDS) - 1)]
         cost = REBIRTH_BASE * REBIRTH_GROWTH ** rebirths
-        if cash >= cost and any(r >= RARITIES.index(need) for _, r in wall):
+        if cash >= cost and any(r >= RARITIES.index(need) for _, r, rt in wall if rt <= t):
             rebirths += 1
             note(f"REBIRTH {rebirths}")
-            cash, speed, wheel, slots, wall = 0, 0, 0, STARTING_SLOTS, []
+            cash, speed, wheel, trail, slots, wall = 0, 0, 0, 0, STARTING_SLOTS, []
         # Shopping
         bought = True
         while bought:
             bought = False
             floor = slots // SLOTS_PER_FLOOR  # floors owned
+            ready_now = [k for k in wall if k[2] <= t]
             if wheel + 1 < len(WHEELS) and cash >= WHEELS[wheel + 1][1]:
                 cash -= WHEELS[wheel + 1][1]
                 wheel += 1
@@ -95,7 +117,7 @@ def simulate(hours):
                 cash -= TRAILS[trail][1]
                 trail += 1
                 bought = True
-            elif (slots < MAX_SLOTS and len(wall) >= slots and cash >= FLOOR_COSTS[floor - 1]
+            elif (slots < MAX_SLOTS and len(ready_now) >= slots and cash >= FLOOR_COSTS[floor - 1]
                   and rebirths >= FLOOR_REBIRTHS[floor - 1]):
                 cash -= FLOOR_COSTS[floor - 1]
                 slots += SLOTS_PER_FLOOR
@@ -104,13 +126,14 @@ def simulate(hours):
         best_zone = max(i for i in range(len(RARITIES)) if speed >= speed_needed(i))
         rarity = RARITIES[best_zone]
         note(f"can farm {rarity}")
-        knife = (INCOME[rarity], best_zone)
-        worst = min(wall) if len(wall) >= slots else None
+        ready_now = [k for k in wall if k[2] <= t]
+        worst = min(ready_now) if len(ready_now) >= slots else None
         last_zone = best_zone == len(RARITIES) - 1
-        if worst is None or knife[0] > worst[0] * 1.05 or last_zone:
+        if worst is None or INCOME[rarity] > worst[0] * 1.05 or last_zone:
             dt = run_time(best_zone)
             runs += 1
             if runs % round(1 / CATCH_CHANCE) != 0:
+                knife = (INCOME[rarity], best_zone, t + dt + COFFIN_ROUNDS[rarity] * cycle)
                 if worst is not None:
                     wall.remove(worst)
                 wall.append(knife)
