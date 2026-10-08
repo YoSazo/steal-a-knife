@@ -112,7 +112,6 @@ local function ownerName(userId: number?): string?
 	return if owner then owner.DisplayName else nil
 end
 
-local revealPower: (Player, string) -> ()
 local startCarry: (Player, string, string, number?, { Zone: number, Slot: number }?, string?, boolean?) -> ()
 
 -- Somewhere on the floor under `position`, ignoring bodies, players and other drops
@@ -580,15 +579,8 @@ function StealService.OpenCase(player: Player, rarity: string, force: boolean?, 
 	else
 		rolled, upgraded = Items.OpenCase(rng, rarity, caseLuck(profile, player))
 	end
-	local item = Fuel.RollPower(player, rolled)
+	local item = rolled
 	local parsed = Items.Parse(item) :: Items.Item
-	if parsed.Perk then
-		task.delay(3.6, function()
-			if player.Parent then
-				revealPower(player, item)
-			end
-		end)
-	end
 	local isNew = not table.find(profile.Discovered, parsed.Name)
 	local hype = Items.Hype(item)
 	DataService.Update(player, function(p)
@@ -633,29 +625,6 @@ function StealService.OpenCase(player: Player, rarity: string, force: boolean?, 
 	return item
 end
 
--- A knife came home with a Murderer power: a big reveal for you, and the whole server hears about
--- the rare ones
-revealPower = function(player: Player, item: string)
-	local parsed = Items.Parse(item)
-	if not parsed or not parsed.Perk then
-		return
-	end
-	local oneIn = Items.PowerOneIn(parsed.Perk)
-	-- Every knife has a power now: the big reveal is for Epic and up, the server hears Legendary+
-	if oneIn < 25 then
-		return
-	end
-	Net.Remotes.Effect:FireClient(player, "PowerRoll", item, parsed.Perk, oneIn)
-	if oneIn >= 60 then
-		local perk = GameConfig.Perks[parsed.Perk]
-		Net.Announce(
-			`{player.DisplayName} rolled {if perk then perk.DisplayName else parsed.Perk} (1 in {oneIn})!`,
-			Color3.fromRGB(255, 90, 140),
-			if oneIn >= 1000 then 4 else 3
-		)
-	end
-end
-
 local function deposit(player: Player)
 	local carry = carriers[player]
 	if not carry then
@@ -676,19 +645,10 @@ local function deposit(player: Player)
 		StealService.OpenCase(player, rarity)
 		return
 	end
-	-- Its Murderer power is rolled now, with your luck (Heat, deeper zones, bad-luck protection)
-	-- Power XP: a boss's knife home, or one stolen from a vault in the Blood Moon
-	if carry.Boss then
-		Fuel.GivePowerXP(player, GameConfig.PowerXP.BossSteal)
-	elseif carry.StolenFrom then
-		Fuel.GivePowerXP(player, GameConfig.PowerXP.MoonSteal)
-	end
 	-- The tutorial's first knife always gets the starter power (Shadow: vanish), so every new player
-	-- starts with the same simple, easy-to-show power; after that it's luck
+	-- starts with the same simple, easy-to-show power; after that it's the knife type's own power
 	local starter = not profile.TutorialDone and profile.TutorialStep <= 2 and #profile.Knives <= 1
-	local item = if starter
-		then Items.WithPower(carry.Item, KnifePowers.Starter)
-		else Fuel.RollPower(player, carry.Item)
+	local item = if starter then Items.WithPower(carry.Item, KnifePowers.Starter) else carry.Item
 	local parsed = Items.Parse(item) :: Items.Item
 	local isNew = not table.find(profile.Discovered, parsed.Name)
 	-- A boss's knife comes home in a COFFIN that opens later (CoffinService) - never in the tutorial
@@ -705,9 +665,6 @@ local function deposit(player: Player)
 				Fuel.AddMeter(helper, 1)
 			end
 		end
-	end
-	if parsed.Perk and not sealed then
-		revealPower(player, item) -- (a coffin keeps its power a secret until it opens)
 	end
 	local placedPlate: number? = nil
 	DataService.Update(player, function(p)
@@ -740,7 +697,6 @@ local function deposit(player: Player)
 		mutation = parsed.Mutation.Id,
 		size = parsed.Size.Id,
 		power = parsed.Perk,
-		power_one_in = if parsed.Perk then Items.PowerOneIn(parsed.Perk) else nil,
 		new = isNew,
 		value = Items.Income(item),
 		plate = carry.Plate,
@@ -1126,13 +1082,6 @@ function StealService.Init()
 			StealService.PlaceAt(player, position)
 		end
 	end)
-	-- A coffin opening shows the power it was hiding
-	CoffinService.OnOpened = function(player: Player, item: string)
-		local parsed = Items.Parse(item)
-		if parsed and parsed.Perk then
-			revealPower(player, item)
-		end
-	end
 	-- Carriers are hub-knife targets (CombatService swings and throws ask Targets)
 	Targets.AddProvider(function()
 		local list = {}

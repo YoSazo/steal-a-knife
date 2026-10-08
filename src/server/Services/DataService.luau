@@ -56,8 +56,6 @@ export type Profile = {
 	Bought: { string }, -- one-time Robux products already bought (Starter Pack)
 	Pending: { number }, -- money waiting on each slot's cash pad (BaseService), collected by walking over it
 	Heat: number, -- 0-10, boosts income and power luck (server Fuel)
-	PowerPity: number, -- knives in a row without a Murderer power (bad-luck protection)
-	RevengeUntil: number, -- os.time() until which a robbed Murderer gets revenge luck
 	Spins: number, -- Lucky Wheel spins banked (Gamble)
 	FreeSpinDay: number, -- UTC day number the free daily spin was used
 	LuckUntil: number, -- os.time() until which a luck potion doubles case / lucky block luck
@@ -70,7 +68,6 @@ export type Profile = {
 	Tips: { string }, -- one-time tips already shown (client/Tips)
 	GuidanceMode: string, -- Auto / On / Off
 	GuidanceLearned: { [string]: number }, -- demonstrated controls and deliveries; survives rejoining
-	PowerXP: { [string]: number }, -- knife power id -> XP (its level: GameConfig.PowerLevelFor)
 	-- Analytics (docs/ANALYTICS.md)
 	FirstSeen: number, -- os.time() of their first ever join
 	Sessions: number, -- visits so far (this one included once loaded)
@@ -142,8 +139,6 @@ local function defaultProfile(): Profile
 		HealthLevel = 0,
 		Pending = {},
 		Heat = 0,
-		PowerPity = 0,
-		RevengeUntil = 0,
 		Spins = 0,
 		FreeSpinDay = 0,
 		LuckUntil = 0,
@@ -156,7 +151,6 @@ local function defaultProfile(): Profile
 		Tips = {},
 		GuidanceMode = "Auto",
 		GuidanceLearned = {},
-		PowerXP = {},
 		FirstSeen = 0,
 		Sessions = 0,
 		Firsts = {},
@@ -215,13 +209,6 @@ local function reconcile(data: any): Profile
 		end
 	end
 	profile.Tips = tips
-	local xp = {}
-	for id, value in profile.PowerXP do
-		if type(id) == "string" and type(value) == "number" and value == value and value >= 0 then
-			xp[id] = math.floor(value)
-		end
-	end
-	profile.PowerXP = xp
 	local firsts = {}
 	for name, at in profile.Firsts do
 		if type(name) == "string" and #name <= 32 and type(at) == "number" and at == at then
@@ -257,7 +244,6 @@ local function reconcile(data: any): Profile
 	profile.GuidanceLearned = learned
 	profile.Source = profile.Source:sub(1, 300)
 	profile.Heat = math.clamp(math.floor(profile.Heat), 0, GameConfig.Fuel.MaxHeat)
-	profile.PowerPity = math.max(0, math.floor(profile.PowerPity))
 	profile.Speed = math.max(0, profile.Speed)
 	profile.TreadmillLevel = math.clamp(math.floor(profile.TreadmillLevel), 1, #GameConfig.Treadmills)
 	profile.Cash = math.max(0, profile.Cash)
@@ -373,19 +359,6 @@ function DataService.AddCharge(player: Player, name: string, count: number)
 	DataService.Update(player, function(p)
 		p.Charges[name] = (p.Charges[name] or 0) + count
 	end)
-end
-
--- Power XP for a knife power id; returns (old level, new level)
-function DataService.AddPowerXP(player: Player, power: string, amount: number): (number, number)
-	local profile = DataService.Get(player)
-	if not profile or amount <= 0 or power == "" then
-		return 1, 1
-	end
-	local before = profile.PowerXP[power] or 0
-	DataService.Update(player, function(p)
-		p.PowerXP[power] = before + amount
-	end)
-	return GameConfig.PowerLevelFor(before), GameConfig.PowerLevelFor(before + amount)
 end
 
 -- Uses one charge if they have any
@@ -559,7 +532,7 @@ local function saveAsync(player: Player, profile: Profile, release: boolean): bo
 end
 
 local BOOSTS = { "Speed", "Cash", "Training" }
-local CHARGES = { "Escape", "Insurance", "Reroll", "DoublePrize" }
+local CHARGES = { "Escape", "Insurance", "DoublePrize" }
 
 -- Mirror the profile onto the player so the HUD and leaderboard can read it (read-only for clients)
 local function publish(player: Player, profile: Profile)

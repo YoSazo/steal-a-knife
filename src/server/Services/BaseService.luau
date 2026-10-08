@@ -194,7 +194,7 @@ local rackIncome = BaseService.RackIncome
 
 -- THE knife a player fights with, everywhere (the hub Tool, the Murderer's weapon, the power you
 -- use in rounds, the one that can't be stolen): the one they chose (Equipped) if they still own it,
--- otherwise automatically their best POWER (tier, then its level), then the hardest hitter. Nobody
+-- otherwise automatically their best POWER (its tier), then the hardest hitter. Nobody
 -- has to equip anything to bring their best power into a round. (Each caller used to pick its own
 -- "best" - by damage or by income - so the weapon and the power could be from different knives.)
 -- Frozen while you're in a round, so a prize or a Sheriff steal never swaps it mid-round.
@@ -202,15 +202,14 @@ local roundPick: { [Player]: string } = {}
 Players.PlayerRemoving:Connect(function(player)
 	roundPick[player] = nil
 end)
-local function powerScore(profile: any, item: string): number
+local function powerScore(item: string): number
 	local parsed = Items.Parse(item)
 	local id = parsed and parsed.Perk
 	local entry = id and KnifePowers.ById[id]
 	if not entry then
 		return 0
 	end
-	local level = GameConfig.PowerLevelFor(profile.PowerXP[id] or 0)
-	return KnifePowers.TierRank(entry.Tier) * 1000 + level
+	return KnifePowers.TierRank(entry.Tier)
 end
 function BaseService.BestKnife(player: Player): string?
 	local profile = DataService.Get(player)
@@ -236,7 +235,7 @@ function BaseService.BestKnife(player: Player): string?
 			if DataService.IsSealedIndex(profile, i) then
 				continue -- (can't fight with a knife still in its coffin)
 			end
-			local score, damage = powerScore(profile, item), Items.Damage(item)
+			local score, damage = powerScore(item), Items.Damage(item)
 			if score > bestScore or (score == bestScore and damage > bestDamage) then
 				pick, bestScore, bestDamage = item, score, damage
 			end

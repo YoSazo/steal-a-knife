@@ -347,13 +347,24 @@ local function processReceipt(info: { [string]: any }): Enum.ProductPurchaseDeci
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
 	local product = productById[info.ProductId]
-	if not product then
+	local retired = Monetization.Retired[info.ProductId]
+	if not product and not retired then
 		warn(`[Monetization] unknown product {info.ProductId}`)
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
-	local ok, granted = pcall(grantProduct, player, product)
+	local ok, granted = pcall(function(): boolean
+		if product then
+			return grantProduct(player, product)
+		end
+		-- A product we no longer sell: cash worth the Robux (~20 s of income per Robux)
+		local price = retired :: number
+		local value = GameConfig.Pay({ Min = price * 4000, Seconds = price * 20 }, BaseService.RackIncome(player))
+		DataService.AddCash(player, value, "robux_product")
+		Net.Notify(player, `Thank you! That item was retired, so you got {Format.Cash(value)} instead.`, "good")
+		return true
+	end)
 	if not ok or not granted then
-		warn(`[Monetization] couldn't grant {product.Key} to {player.Name}: {granted}`)
+		warn(`[Monetization] couldn't grant {info.ProductId} to {player.Name}: {granted}`)
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 	DataService.Update(player, function(p)
@@ -362,10 +373,11 @@ local function processReceipt(info: { [string]: any }): Enum.ProductPurchaseDeci
 			table.remove(p.Receipts, 1)
 		end
 	end)
-	local robux = tonumber(info.CurrencySpent) or product.Price or 0
+	local robux = tonumber(info.CurrencySpent) or (if product then product.Price else retired) or 0
+	local key = if product then product.Key else `retired:{info.ProductId}`
 	Analytics.Robux(player, robux)
-	Analytics.Track(player, "purchase.product", { key = product.Key, robux = robux, price = product.Price })
-	Analytics.Milestone(player, "first_purchase", { key = product.Key, robux = robux })
+	Analytics.Track(player, "purchase.product", { key = key, robux = robux, price = product and product.Price })
+	Analytics.Milestone(player, "first_purchase", { key = key, robux = robux })
 	if not DataService.SaveNow(player) then
 		-- Roblox will retry; the PurchaseId is already recorded, so it won't be granted twice
 		return Enum.ProductPurchaseDecision.NotProcessedYet

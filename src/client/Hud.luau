@@ -627,9 +627,7 @@ function Hud.Init()
 		local friends = (player:GetAttribute("FriendsHere") or 0) :: number
 		heatHint.Text = (
 			if heat > 0
-				then `x{math.floor((1 + heat * fuel.HeatIncome) * 10) / 10} cash · x{math.floor(
-					(1 + heat * fuel.HeatLuck) * 10
-				) / 10} power luck`
+				then `x{math.floor((1 + heat * fuel.HeatIncome) * 10) / 10} cash`
 				else "Steal & survive rounds to heat up!"
 		) .. (if friends > 0 then `  · 👥 +{friends * 10}%` else "")
 	end
@@ -1104,9 +1102,7 @@ function Hud.Init()
 	local toastQueue: { { Text: string, Kind: string } } = {}
 	local toastWorker = false
 	local function busy(): boolean
-		return Ui.gui:GetAttribute("Presenting") == true
-			or Ui.gui:GetAttribute("FadeCover") == true
-			or ((Ui.gui:GetAttribute("PendingPowerRolls") or 0) :: number) > 0
+		return Ui.gui:GetAttribute("Presenting") == true or Ui.gui:GetAttribute("FadeCover") == true
 	end
 	local function toast(text: string, kind: string)
 		for _, entry in toastQueue do

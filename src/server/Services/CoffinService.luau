@@ -10,8 +10,7 @@
 -- are no rounds, so each round still owed is OfflineSecondsPerRound of real time (ReadyAt), and a
 -- coffin that finished while you were away opens when you're back.
 -- The owner can open one now for Robux (product CoffinOpen; the client names the coffin first with
--- Remotes.CoffinTarget). Opening = a burst, the knife on its plate, its power revealed
--- (StealService sets OnOpened).
+-- Remotes.CoffinTarget). Opening = a burst and the knife on its plate.
 -- Off unless GameConfig.Coffins.Enabled (Studio: ReplicatedStorage attribute DebugCoffins).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -27,7 +26,6 @@ local Analytics = require(script.Parent.Analytics)
 local PenMode = require(ReplicatedStorage.Shared.PenMode)
 
 local CoffinService = {}
-CoffinService.OnOpened = nil :: ((Player, string) -> ())? -- (StealService: reveal its power)
 
 local CONFIG = GameConfig.Coffins
 local target: { [Player]: number } = {} -- the coffin the owner asked to open with Robux
@@ -147,9 +145,6 @@ function CoffinService.Reveal(player: Player, plate: number, how: string)
 			Knives.RarityColors[rarity] or Color3.new(1, 1, 1),
 			2
 		)
-	end
-	if CoffinService.OnOpened then
-		CoffinService.OnOpened(player, item)
 	end
 	Analytics.Track(player, "coffin.open", {
 		rarity = rarity,

@@ -204,7 +204,6 @@ local function compact(player: Player): { [string]: any }
 		speed_reach = if profile then GameConfig.RarityReached(profile.Speed) else nil,
 		tutorial_done = if profile then profile.TutorialDone else nil,
 		payer = if profile then profile.RobuxSpent > 0 else nil,
-		power_level = player:GetAttribute("PowerLevel"),
 		in_round = player:GetAttribute("InRound") == true,
 		carrying = player:GetAttribute("Carrying") ~= nil and player:GetAttribute("Carrying") ~= false,
 		phase = ReplicatedStorage:GetAttribute("Phase"),
@@ -265,7 +264,6 @@ local function context(player: Player): { [string]: any }
 		props.luck = profile.Luck
 	end
 	props.power = player:GetAttribute("PowerId")
-	props.power_level = player:GetAttribute("PowerLevel")
 	props.in_round = player:GetAttribute("InRound") == true
 	props.carrying = player:GetAttribute("Carrying") ~= nil and player:GetAttribute("Carrying") ~= false
 	props.training = player:GetAttribute("Training") == true

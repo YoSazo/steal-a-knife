@@ -15,7 +15,6 @@ local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local Analytics = require(script.Parent.Analytics)
-local Fuel = require(script.Parent.Fuel)
 
 local InventoryService = {}
 
@@ -113,14 +112,12 @@ local function sell(player: Player, index: unknown): boolean
 	return true
 end
 
--- The power on the knife you fight with (the Murderer side in rounds) and its level
+-- The power on the knife you fight with (the Murderer's power in rounds)
 local function publishKnifePower(player: Player)
-	local profile = DataService.Get(player)
 	local item = BaseService.ProtectedItem(player)
 	local parsed = item and Items.Parse(item)
 	local id = parsed and parsed.Perk
 	local entry = id and KnifePowers.ById[id]
-	local xp = if profile and id then profile.PowerXP[id] or 0 else 0
 	local function set(name: string, value: any)
 		if player:GetAttribute(name) ~= value then
 			player:SetAttribute(name, value)
@@ -129,8 +126,6 @@ local function publishKnifePower(player: Player)
 	set("PowerId", id)
 	set("FightingKnife", item)
 	set("PowerName", if entry then entry.Name else nil)
-	set("PowerLevel", GameConfig.PowerLevelFor(xp))
-	set("PowerXP", xp)
 end
 
 -- Old saves: Innocent Powers were once bought with cash (and later cut). That cash comes back once.
@@ -179,7 +174,6 @@ InventoryService.DebugRefund = refundOldPowers
 function InventoryService.Init()
 	DataService.PlayerLoaded:Connect(function(player: Player, profile: DataService.Profile)
 		refundOldPowers(player, profile)
-		Fuel.EnsurePowers(player)
 		publishKnifePower(player)
 	end)
 	DataService.Changed:Connect(function(player: Player)

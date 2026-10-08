@@ -702,12 +702,6 @@ local GameConfig = {
 	Fuel = {
 		MaxHeat = 10,
 		HeatIncome = 0.2, -- +20% vault income per Heat (10 Heat = 3x)
-		HeatLuck = 0.1, -- +10% power-roll luck per Heat (10 Heat = 2x)
-		RarityLuck = 0.05, -- deeper-zone knives roll powers a bit more often (+5% per rarity step)
-		PityPer = 100, -- bad-luck protection: every 100 knives without a power = +1x luck
-		MaxPowerLuck = 4, -- all the boosts together never beat 4x (powers stay rare)
-		RevengeLuck = 2, -- after a Sheriff steals your power: 2x luck...
-		RevengeTime = 1800, -- ...for 30 minutes
 		MeterPerRound = 2, -- Murderer meter for each round you weren't the Murderer
 		MeterCap = 3, -- nobody's chance can be more than 3x the server average
 	},
@@ -751,13 +745,11 @@ local GameConfig = {
 		},
 		SpamKnife = {
 			DisplayName = "Spam Knife",
-			Description = "Q: every click throws a knife where you aim (Lv 100: the whole round)",
-			-- Lv 100 = passive, the whole round (RoundService.giveWeapon). Below that it's Q bursts that
-			-- grow with the level: GameConfig.SpamForLevel
-			Uses = 1,
+			Description = "Q: for a few seconds every click throws a knife where you aim (twice a round)",
+			Uses = 2,
 			Cooldown = 10,
-			Duration = 4,
-			Interval = 0.166, -- server floor between two spam throws (overridden per level)
+			Duration = 8,
+			Interval = 0.25, -- server floor between two spam throws
 			Range = 2000,
 		},
 		GhostKnife = {
@@ -790,7 +782,7 @@ local GameConfig = {
 			Description = "Q: drop a hidden snare: the next innocent to step in is stuck",
 			Uses = 2,
 			Cooldown = 4,
-			Duration = 2, -- seconds stuck (x0.5 at Lv 1 -> x1.5 at Lv 100)
+			Duration = 2, -- seconds stuck
 		},
 		DecoyKnife = {
 			DisplayName = "Decoy",
@@ -817,17 +809,6 @@ local GameConfig = {
 		},
 	} :: { [string]: any },
 
-	-- Power levels (docs/POWERS.md): XP goes to the power on the knife you fight with. Lv 100 takes
-	-- about 3 months of daily play. Never sold for Robux.
-	PowerXP = {
-		BossSteal = 12, -- a boss's knife safely home
-		MoonSteal = 18, -- a knife stolen from a vault in the Blood Moon
-		Survive = 20, -- survived a round
-		Kill = 12, -- each kill as the Murderer
-		Hero = 40, -- shot the Murderer
-		Curve = 1.85, -- XP for level L = Scale * (L - 1) ^ Curve
-		Scale = 5.5,
-	},
 	-- Anti-cheat
 	SpeedTolerance = 1.6, -- carriers moving faster than walkspeed * this drop their knife
 }
@@ -1008,35 +989,6 @@ function GameConfig.NextSpeedUpgrade(treadmillLevel: number, trailLevel: number)
 		}
 	end
 	return nil
-end
-
--- Power level (1..100) for an amount of power XP
-function GameConfig.PowerLevelFor(xp: number): number
-	local config = GameConfig.PowerXP
-	local level = math.floor((math.max(0, xp) / config.Scale) ^ (1 / config.Curve)) + 1
-	return math.clamp(level, 1, 100)
-end
-
--- XP needed to reach a level
-function GameConfig.PowerXPFor(level: number): number
-	local config = GameConfig.PowerXP
-	return math.ceil(config.Scale * math.max(0, level - 1) ^ config.Curve)
-end
-
--- 0 at level 1, 1 at level 100
-function GameConfig.PowerProgress(level: number): number
-	return math.clamp((level - 1) / 99, 0, 1)
-end
-
--- Spam Knife by level: Q bursts (uses per round, seconds each, throws per second); Lv 100 = whole round
-function GameConfig.SpamForLevel(level: number): { Uses: number, Duration: number, Interval: number, Whole: boolean }
-	local t = GameConfig.PowerProgress(level)
-	return {
-		Uses = 1 + math.floor(t * 2.99), -- 1 -> 3 bursts
-		Duration = 4 + 16 * t, -- 4 s -> 20 s
-		Interval = 1 / (2 + 3 * t), -- 2 -> 5 throws/s
-		Whole = level >= 100, -- the dream: all round at 6/s
-	}
 end
 
 return GameConfig

@@ -71,8 +71,6 @@ type Round = {
 	Sheriff: Player?, -- the first Sheriff (for the end-of-round card), whoever holds the gun later
 	SheriffBot: Bot?,
 	PowerRevealed: boolean?, -- this Murderer's power has been announced (first use)
-	PowerLevel: number?, -- this Murderer's power level (their PowerXP for the knife's power)
-	PerkTuned: any?, -- the knife's Murderer perk with this Murderer's level applied (tunePerk)
 	Snares: { { Part: BasePart, Stun: number } }?, -- the Murderer's hidden snares (Snare power)
 	Bots: { Bot },
 	BotFolder: Folder,
@@ -163,8 +161,6 @@ local OWN_FIELDS = {
 	Weapon = true,
 	WeaponKnife = true,
 	PowerRevealed = true,
-	PowerLevel = true,
-	PerkTuned = true,
 	LastAttack = true,
 	PerkReadyAt = true,
 	ThrowReadyAt = true,
@@ -568,7 +564,7 @@ local function payPrize(
 		BaseService.RefreshWalkSpeed(player)
 	elseif prize.Kind == "Knife" and prize.Knife then
 		for _ = 1, prize.Amount do
-			giveKnife(player, Fuel.RollPower(player, Items.Make(prize.Knife, nil, nil, "?")))
+			giveKnife(player, Items.Make(prize.Knife))
 		end
 	elseif prize.Kind == "Boost" then
 		DataService.AddBoost(player, "Cash", prize.Amount)
@@ -676,7 +672,6 @@ local function eliminate(round: Round, victim: Player, killer: Player?, fatal: b
 		if isKiller(round, killer) then
 			round.Kills += 1
 			round.HumanKills += 1
-			Fuel.GivePowerXP(killer, GameConfig.PowerXP.Kill)
 			lootKnife(round, victim)
 			onMurderKill(round, if root then root.Position else Vector3.zero)
 		end
@@ -755,7 +750,6 @@ local function killBot(round: Round, bot: Bot, killer: Player?)
 	if bot == round.MurdererBot then
 		if killer then
 			round.Hero = killer
-			Fuel.GivePowerXP(killer, GameConfig.PowerXP.Hero)
 			for other in round.Alive do
 				Net.Notify(other, `{round.Names[killer] or "Someone"} shot the Murderer!`, "good")
 			end
@@ -767,8 +761,6 @@ local function killBot(round: Round, bot: Bot, killer: Player?)
 			Net.Notify(killer, `Got one! +{Format.Cash(amount)}`, "good")
 			if killer == round.Murderer then
 				onMurderKill(round, bot.Root.Position)
-				-- (a bot is worth half a player: solo rounds still level you, they just can't be farmed)
-				Fuel.GivePowerXP(killer, math.ceil(GameConfig.PowerXP.Kill / 2))
 			end
 		end
 	end
@@ -919,54 +911,7 @@ local function perkOf(round: Round): (string?, any)
 	end
 	local parsed = Items.Parse(round.WeaponKnife)
 	local id = parsed and parsed.Perk
-	return id, if id then (round.PerkTuned or GameConfig.Perks[id]) else nil
-end
-
--- The Murderer's power, at their level (docs/POWERS.md): weak at Lv 1, growing in small steps to
--- Lv 100. Spam Knife: Q bursts that grow (1 x 4 s -> 3 x 20 s, 2 -> 5 throws/s); Lv 100 = the whole
--- round at 6/s, Mad Murderer style.
-local function tunePerk(round: Round)
-	round.PerkTuned = nil
-	local id, perk = perkOf(round)
-	if not id or not perk then
-		return
-	end
-	local level = 1
-	if round.Murderer then
-		local profile = DataService.Get(round.Murderer)
-		level = GameConfig.PowerLevelFor(if profile then profile.PowerXP[id] or 0 else 0)
-	end
-	round.PowerLevel = level
-	local t = GameConfig.PowerProgress(level)
-	local factor = 0.5 + t -- 0.5x at Lv 1, 1.5x at Lv 100
-	local tuned: any = table.clone(perk)
-	if tuned.Duration then
-		tuned.Duration *= factor
-	end
-	if tuned.Radius then
-		tuned.Radius *= factor
-	end
-	if tuned.PerKill then
-		tuned.PerKill *= factor
-	end
-	if tuned.Pierce then
-		tuned.Pierce = math.max(1, math.floor(tuned.Pierce * factor / 1.5 + 0.5))
-	end
-	if tuned.Uses and id ~= "SpamKnife" then
-		tuned.Uses = math.max(1, math.floor(tuned.Uses * factor + 0.5))
-	end
-	if tuned.Cooldown then
-		tuned.Cooldown /= 0.75 + 0.5 * t
-	end
-	if id == "SpamKnife" then
-		local spam = GameConfig.SpamForLevel(level)
-		tuned.Uses, tuned.Duration, tuned.Interval = spam.Uses, spam.Duration, spam.Interval
-		tuned.Passive = spam.Whole
-		if spam.Whole then
-			tuned.Interval = 1 / 6
-		end
-	end
-	round.PerkTuned = tuned
+	return id, if id then GameConfig.Perks[id] else nil
 end
 
 local function knifePerkId(round: Round): string?
@@ -987,7 +932,6 @@ revealPower = function(round: Round)
 	round.PowerRevealed = true
 	Net.Remotes.Effect:FireAllClients("PowerReveal", {
 		Perk = id,
-		Level = round.PowerLevel or 1,
 		Name = perk.DisplayName,
 		Description = perk.Description,
 		Knife = round.WeaponKnife,
@@ -1013,7 +957,6 @@ killCard = function(round: Round, victim: Player)
 		Knife = round.WeaponKnife,
 		Perk = id,
 		PerkName = if perk then perk.DisplayName else nil,
-		Level = round.PowerLevel or 1,
 	})
 end
 
@@ -1240,14 +1183,10 @@ local function usePerk(round: Round, direction: Vector3)
 	murderer:SetAttribute("PerkReadyAt", workspace:GetServerTimeNow() + perk.Cooldown)
 	Net.Remotes.AbilityState:FireClient(murderer, perk.DisplayName, workspace:GetServerTimeNow() + perk.Cooldown)
 	round.LatestAim = direction
-	Analytics.Track(
-		murderer,
-		"round.perk",
-		roundProps(round, murderer, { perk = perkId, level = round.PowerLevel, uses = round.PerkUses })
-	)
+	Analytics.Track(murderer, "round.perk", roundProps(round, murderer, { perk = perkId, uses = round.PerkUses }))
 
 	if perkId == "SpamKnife" then
-		-- A burst of click-throwing (Lv 100 never gets here: it's on all round)
+		-- A burst of click-throwing
 		murderer:SetAttribute("SpamUntil", workspace:GetServerTimeNow() + perk.Duration)
 		Net.Notify(murderer, `SPAM KNIFE! Throw for {math.floor(perk.Duration)} seconds!`, "good")
 	elseif perkId == "Hellfire" then
@@ -1631,58 +1570,6 @@ spawnRevolver = function(round: Round, position: Vector3?)
 	end)
 end
 
--- Shot by the Sheriff: the Murderer's power jumps off their knife onto the Sheriff's (a bot Sheriff
--- just knocks it off). The robbed Murderer gets revenge luck for their next rolls.
-local function stealPower(round: Round, hero: Player?)
-	local murderer = round.Murderer
-	local item = round.WeaponKnife
-	local parsed = Items.Parse(item)
-	local power = parsed and parsed.Perk
-	if not murderer or round.Classic or not power then
-		return
-	end
-	local profile = DataService.Get(murderer)
-	local index = profile and table.find(profile.Knives, item)
-	if not profile or not index then
-		return
-	end
-	local stripped = Items.WithPower(item, "")
-	DataService.Update(murderer, function(p)
-		p.Knives[index] = stripped
-		if p.Equipped == item then
-			p.Equipped = stripped
-		end
-		p.RevengeUntil = os.time() + GameConfig.Fuel.RevengeTime
-	end)
-	BaseService.RefreshRack(murderer)
-	local perk = GameConfig.Perks[power]
-	local powerName = if perk then perk.DisplayName else power
-	Net.Notify(murderer, `The Sheriff took your {powerName}! You get extra luck for a while.`, "bad")
-	local heroProfile = hero and DataService.Get(hero)
-	local target = hero and BaseService.ProtectedItem(hero)
-	if hero and heroProfile and target then
-		local heroIndex = table.find(heroProfile.Knives, target)
-		local upgraded = Items.WithPower(target, power)
-		if heroIndex then
-			DataService.Update(hero, function(p)
-				p.Knives[heroIndex] = upgraded
-				if p.Equipped == target then
-					p.Equipped = upgraded
-				end
-			end)
-			BaseService.RefreshRack(hero)
-			Net.Remotes.Effect:FireClient(hero, "PowerRoll", upgraded, power, Items.PowerOneIn(power))
-			Net.Announce(
-				`{hero.DisplayName} stole {murderer.DisplayName}'s {powerName}!`,
-				Color3.fromRGB(255, 90, 140),
-				3
-			)
-			return
-		end
-	end
-	Net.Announce(`{murderer.DisplayName} lost their {powerName}!`, Color3.fromRGB(255, 90, 140), 2)
-end
-
 local function onShoot(player: Player, aim: unknown)
 	local round = current
 	if
@@ -1783,9 +1670,7 @@ local function onShoot(player: Player, aim: unknown)
 			Analytics.Milestone(player, "hero_shot")
 		end
 		round.Hero = round.Hero or player
-		Fuel.GivePowerXP(player, GameConfig.PowerXP.Hero)
 		round.ShotKillers[victim] = true
-		stealPower(shotKiller, player)
 		local victimRoot = rootOf(victim)
 		if victimRoot then
 			finalMoment(round, victimRoot.Position, "Hero")
@@ -1904,7 +1789,6 @@ local function botShoot(round: Round, bot: Bot, target: BasePart)
 	end
 	round.ShotByBot = true
 	round.HeroBot = bot
-	stealPower(round, nil)
 	finalMoment(round, target.Position, "Hero")
 	for other in round.Alive do
 		Net.Notify(other, `{bot.Name} shot the Murderer!`, "good")
@@ -2071,7 +1955,6 @@ end
 -- Round flow --------------------------------------------------------------------------------
 
 giveWeapon = function(round: Round)
-	tunePerk(round)
 	local murderer = round.Murderer
 	if not murderer then
 		if round.MurdererBot then
@@ -2717,7 +2600,6 @@ local function endRound(round: Round)
 		Fuel.AddMeter(player, 1)
 		local reward = pay(round, player, GameConfig.RoundPay.Survive)
 			+ (if fewLeft then pay(round, player, GameConfig.RoundPay.LastAlive) else 0)
-		Fuel.GivePowerXP(player, GameConfig.PowerXP.Survive)
 		DataService.Update(player, function(p)
 			p.RoundsWon += 1
 			player:SetAttribute("Wins", p.RoundsWon)
@@ -2813,7 +2695,7 @@ local function endRound(round: Round)
 		elseif round.HeroBot then `{round.HeroBot.Name} (bot Sheriff)`
 		else nil
 	local _, murdererPerk = perkOf(round)
-	local murdererPower: string? = if murdererPerk then `{murdererPerk.DisplayName} Lv {round.PowerLevel or 1}` else nil
+	local murdererPower: string? = if murdererPerk then murdererPerk.DisplayName else nil
 	local sheriff: Player? = hero or round.Sheriff
 	local sheriffBot = if sheriff then nil else round.HeroBot or round.SheriffBot
 	local sheriffName: string? = if sheriff

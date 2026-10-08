@@ -403,26 +403,6 @@ Monetization.Products = {
 		Boost = { Name = "Training", Seconds = 900 },
 	},
 	{
-		Key = "Reroll3",
-		Id = 3716624556,
-		Price = 49,
-		Name = "3 Reroll Tokens",
-		Description = "Get a new random power on your knife at the Power Shop. One token each.",
-		Icon = "🔮",
-		Color = rgb(170, 90, 255),
-		Charge = { Name = "Reroll", Count = 3 },
-	},
-	{
-		Key = "Reroll10",
-		Id = 3716624560,
-		Price = 129,
-		Name = "10 Reroll Tokens",
-		Description = "Ten new random powers at the Power Shop.",
-		Icon = "🔮",
-		Color = rgb(130, 60, 230),
-		Charge = { Name = "Reroll", Count = 10 },
-	},
-	{
 		-- (Id 0 until created: Studio fakes it; analytics/ npm run setup creates it on Roblox)
 		Key = "CoffinOpen",
 		Id = 3717127486,
@@ -604,6 +584,14 @@ function Monetization.IsPaidRandom(product: Product): boolean
 	end
 	return product.Case ~= nil or product.LuckyBlock ~= nil
 end
+
+-- Products that are no longer sold (their systems were cut), by product id -> Robux price. A receipt
+-- for one that arrives late (bought just before an update, or retried by Roblox) still pays: cash
+-- worth the Robux (MonetizationService.processReceipt), never a "never granted" purchase.
+Monetization.Retired = {
+	[3716624556] = 49, -- 3 Reroll Tokens (knife power rerolls)
+	[3716624560] = 129, -- 10 Reroll Tokens
+} :: { [number]: number }
 
 Monetization.PassByKey = {} :: { [string]: Pass }
 Monetization.ProductByKey = {} :: { [string]: Product }

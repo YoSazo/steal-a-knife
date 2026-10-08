@@ -90,13 +90,6 @@ local commands: { [string]: (Player, ...any) -> any } = {
 		end
 		return root ~= nil
 	end,
-	-- Set the XP of a knife power (tests levels: Spam Knife bursts, level-ups, the cards)
-	PowerXP = function(player: Player, power: string, xp: number)
-		DataService.Update(player, function(p)
-			p.PowerXP[power] = xp
-		end)
-		return true
-	end,
 	-- Pretend this is an old save with cash-bought powers, then run the migration (tests the refund)
 	OldPowers = function(player: Player)
 		DataService.Update(player, function(p)

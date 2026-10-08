@@ -21,8 +21,6 @@ local KnifeModel = require(ReplicatedStorage.Shared:WaitForChild("KnifeModel"))
 local PenMode = require(ReplicatedStorage.Shared:WaitForChild("PenMode"))
 local CoffinModel = require(ReplicatedStorage.Shared:WaitForChild("CoffinModel"))
 local Lod = require(script.Parent.Lod)
-local Ui = require(script.Parent.Ui)
-local KnifePowers = require(ReplicatedStorage.Shared.Config.KnifePowers)
 local TopLine = require(script.Parent.TopLine)
 local WorldSignInput = require(script.Parent.WorldSignInput)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -417,96 +415,6 @@ local handlers: { [string]: (...any) -> () } = {
 				connection:Disconnect()
 				highlight:Destroy()
 			end
-		end)
-	end,
-	-- A Murderer power rolled on a knife you just got (or stole from the Sheriff-shot Murderer)
-	PowerRoll = function(item: string, power: string, oneIn: number)
-		local perk = GameConfig.Perks[power]
-		local gui = Instance.new("ScreenGui")
-		gui.Name, gui.ResetOnSpawn, gui.DisplayOrder = "PowerRoll", false, 45
-		gui.Parent = player:WaitForChild("PlayerGui")
-		Ui.TrackPresentation(gui)
-		local rare = oneIn >= 300
-		local color = if oneIn >= 1000
-			then Color3.fromRGB(255, 80, 200)
-			else if rare then Color3.fromRGB(255, 120, 60) else Color3.fromRGB(255, 220, 90)
-		local card = Ui.new("Frame", {
-			Name = "Card",
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.44),
-			BackgroundColor3 = Color3.fromRGB(22, 18, 34),
-			BackgroundTransparency = 0.12,
-		}, gui) :: Frame
-		Ui.corner(card, 14)
-		local stroke = Ui.new("UIStroke", { Thickness = 2, Color = color }, card)
-		local labels: { TextLabel } = {}
-		local short = KnifePowers.Short[power]
-		local words = {
-			"✨ KNIFE POWER! ✨",
-			if perk then perk.DisplayName else power,
-			`on your {Items.DisplayName(item)} · 1 in {oneIn}`,
-		}
-		if perk then
-			table.insert(words, `Murderer: {if short then short[1] else perk.Description}`)
-		end
-		for i, text in words do
-			local label = Ui.label({
-				Name = `Line{i}`,
-				Text = text,
-				TextScaled = false,
-				TextWrapped = false,
-				TextColor3 = if i == 2
-					then color
-					else if i == 4
-						then Color3.fromRGB(255, 200, 210)
-						else if i == 5 then Color3.fromRGB(180, 230, 255) else Color3.new(1, 1, 1),
-				ZIndex = 2,
-			}, card)
-			Ui.textStroke(label, 1.5)
-			table.insert(labels, label)
-		end
-		local function layout()
-			local _, bounds = Ui.bounds()
-			local phone = Ui.Phone
-			local width = math.min(if phone then 420 else 760, bounds.X - (if phone then 200 else 40))
-			local y, gap = if phone then 8 else 12, if phone then 4 else 6
-			for i, label in labels do
-				local height = if i == 1
-					then (if phone then 18 else 28)
-					else if i == 2 then (if phone then 28 else 48) else (if phone then 16 else 24)
-				label.Position, label.Size = UDim2.fromOffset(12, y), UDim2.new(1, -24, 0, height)
-				label.TextSize = height - 2
-				local limit = label:FindFirstChildOfClass("UITextSizeConstraint")
-				if limit then
-					limit.MinTextSize, limit.MaxTextSize = if phone then 12 else 14, height
-				end
-				y += height + gap
-			end
-			card.Size = UDim2.fromOffset(width, y + (if phone then 4 else 8))
-		end
-		local watch = Ui.Layout.Changed:Connect(layout)
-		gui.Destroying:Connect(function()
-			watch:Disconnect()
-		end)
-		layout()
-		local scale = Ui.new("UIScale", { Scale = 0.9 }, card)
-		TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-		Effects.Sound(Sounds.Reveal, nil, 1)
-		task.delay(if rare then 4 else 2.6, function()
-			if not gui.Parent then
-				return
-			end
-			TweenService:Create(card, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
-			TweenService:Create(stroke, TweenInfo.new(0.5), { Transparency = 1 }):Play()
-			for _, label in labels do
-				TweenService:Create(label, TweenInfo.new(0.5), { TextTransparency = 1 }):Play()
-				local border = label:FindFirstChildOfClass("UIStroke")
-				if border then
-					TweenService:Create(border, TweenInfo.new(0.5), { Transparency = 1 }):Play()
-				end
-			end
-			task.wait(0.55)
-			gui:Destroy()
 		end)
 	end,
 	-- Putting a stolen knife on your plate: it flies from your hands and lands with a burst
@@ -976,33 +884,8 @@ local handlers: { [string]: (...any) -> () } = {
 }
 
 function Effects.Init()
-	local pendingRolls: { { any } } = {}
-	local rollWorker = false
 	Remotes:WaitForChild("Effect").OnClientEvent:Connect(function(kind: string, ...)
 		local handler = handlers[kind]
-		if kind == "PowerRoll" then
-			table.insert(pendingRolls, { ... })
-			Ui.gui:SetAttribute("PendingPowerRolls", #pendingRolls)
-			if not rollWorker then
-				rollWorker = true
-				task.spawn(function()
-					while #pendingRolls > 0 do
-						while
-							Ui.gui:GetAttribute("Presenting") == true
-							or Ui.gui:GetAttribute("FadeCover") == true
-							or player:GetAttribute("InRound")
-						do
-							task.wait(0.1)
-						end
-						local args = table.remove(pendingRolls, 1) :: { any }
-						handlers.PowerRoll(table.unpack(args))
-						Ui.gui:SetAttribute("PendingPowerRolls", #pendingRolls)
-					end
-					rollWorker = false
-				end)
-			end
-			return
-		end
 		if handler then
 			handler(...)
 		end
