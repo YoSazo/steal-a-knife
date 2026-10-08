@@ -257,7 +257,7 @@ function Hud.Init()
 				else nil
 			local outrun = if knives and prize.Reaches then ` = {knives}!` elseif knives then ` for {knives}` else ""
 			return {
-				Text = `{star}{if player:GetAttribute("PrizePickOn") then "Your prize if you win" else "Win the round"}: <font color="#8CFF96"><b>{prize.Text}</b></font>{outrun}{done}`,
+				Text = `{star}Win the round: <font color="#8CFF96"><b>{prize.Text}</b></font>{outrun}{done}`,
 				Short = `{clock} · Win <font color="#8CFF96"><b>{prize.Text}</b></font>{done}`,
 				-- (not before your first round: 12 of 48 "x2 R$25" prompts came mid-tutorial, closed in ~1.6 s -
 				-- taps meant for the timer line, a Robux popup in the first minutes)

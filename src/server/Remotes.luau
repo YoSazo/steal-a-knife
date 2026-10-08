@@ -47,7 +47,6 @@ local Remotes = {
 	PlaceAt = event("PlaceAt"), -- client -> server: (position) put what you carry down here in your pen
 	CoffinTarget = event("CoffinTarget"), -- client -> server: (plate) the coffin "Open now" (Robux) is for
 	NotifyAsked = event("NotifyAsked"), -- client -> server: () Roblox's notifications opt-in was shown
-	PrizePick = event("PrizePick"), -- client -> server: ("Cash" | "Speed") your prize if you win the next round
 	Drop = event("Drop"), -- client -> server: () put down what you're carrying (boss knives go back on the wall)
 	Gamble = func("Gamble"), -- client -> server: (action, arg) -> (ok, message, extra), see Gamble
 	StoreTest = func("StoreTest"), -- client -> server: (kind, key) Studio-only fake purchase for unset ids

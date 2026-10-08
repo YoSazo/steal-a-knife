@@ -41,10 +41,7 @@ local HEARTBEAT_EVERY = 60
 -- A/B tests: name -> variants. Every player lands in one variant per test for good (hash of their
 -- id), it rides on every event as ab_<name>, and game code asks Analytics.Variant(player, name).
 local EXPERIMENTS: { [string]: { string } } = {
-	-- the "pick your prize" card before each murder round (client/PrizePick) vs the old Speed-only
-	-- prize. 50/50 so it reads in about a week at ~200 new players a day; judge on 2nd round, 10 min,
-	-- Rare knife home, session length and D1 (new players only), then ship the winner to everyone.
-	prize_pick = { "pick", "classic" },
+	-- (none running: pens and the Speed-only round prize are the one version of the game)
 }
 
 -- The first-session funnel, in order. Each step is a milestone (Analytics.Milestone); the same
@@ -218,10 +215,6 @@ local function context(player: Player): { [string]: any }
 		server_players = #Players:GetPlayers(),
 		studio = isStudio() or nil,
 		phase = ReplicatedStorage:GetAttribute("Phase"),
-		-- which half of the pens A/B this server is (Shared/PenMode "Split")
-		ab_pens = if GameConfig.Pens.Enabled == "Split"
-			then (if ReplicatedStorage:GetAttribute("PenServer") then "pens" else "vaults")
-			else nil,
 	}
 	if session then
 		props.session_s = math.floor(os.clock() - session.Started)

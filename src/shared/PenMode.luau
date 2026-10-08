@@ -14,38 +14,19 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 
 local PenMode = {}
 
--- GameConfig.Pens.Enabled: false / true / "Split" (the A/B launch: each server picks pens or vaults
--- once, from its JobId, and publishes it as ReplicatedStorage attribute PenServer for clients)
+-- GameConfig.Pens.Enabled (Studio: ReplicatedStorage DebugPenLayout forces pens on)
 function PenMode.On(): boolean
 	if RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugPenLayout") == true then
 		return true
 	end
-	local setting: any = GameConfig.Pens.Enabled
-	if setting == "Split" then
-		local decided = ReplicatedStorage:GetAttribute("PenServer")
-		if decided == nil and RunService:IsServer() then
-			local id = game.JobId
-			local sum = 0
-			for i = 1, #id do
-				sum = (sum * 31 + string.byte(id, i)) % 1000003
-			end
-			decided = sum % 2 == 0
-			ReplicatedStorage:SetAttribute("PenServer", decided)
-		end
-		return decided == true
-	end
-	return setting == true
+	return GameConfig.Pens.Enabled == true
 end
 
 -- Coffins on (GameConfig.Coffins.Enabled; Studio: ReplicatedStorage DebugCoffins): boss walls show
 -- coffins (rarity known, knife a surprise), carried home on your head, opening on the round clock
--- (GameConfig.Coffins.Enabled = "WithPens": coffins exactly where pens are - the A/B launch)
 function PenMode.Coffins(): boolean
-	local setting: any = GameConfig.Coffins.Enabled
-	if setting == "WithPens" then
-		return PenMode.On()
-	end
-	return setting == true or (RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugCoffins") == true)
+	return GameConfig.Coffins.Enabled == true
+		or (RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugCoffins") == true)
 end
 
 -- How many knives a base can hold at most (pens: Pens.MaxSlots; vaults: 4 floors)

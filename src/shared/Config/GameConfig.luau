@@ -51,8 +51,8 @@ local GameConfig = {
 	-- SlotsPerFloor). Knife characters are drawn Scale[rarity] x their 2.4-stud size (Common ~5 studs,
 	-- Cosmic ~48: over the hub walls, seen from spawn).
 	Pens = {
-		Enabled = "Split" :: boolean | string, -- false / true / "Split" (half the servers: the A/B launch)
-		Count = 10,
+		Enabled = true, -- one version of the game: pens everywhere (the vault/pen A/B is over)
+		Count = 8, -- one pen per player: 8-player servers (Creator Dashboard -> Places -> Server size)
 		Width = 64,
 		-- (10 studs of grass between neighbouring pens: each one its own plot - MapService)
 		Depth = 60, -- an upgraded pen's length (the gate stays put, the back fence moves out)
@@ -75,7 +75,7 @@ local GameConfig = {
 	-- round counts WinRounds), all together right after the results (the opening ceremony). Offline,
 	-- each round still owed is OfflineSecondsPerRound of real time. A Common just takes CommonSeconds.
 	Coffins = {
-		Enabled = "WithPens" :: boolean | string, -- false / true / "WithPens" (on wherever pens are)
+		Enabled = true, -- (coffins go with pens)
 		-- Longer waits for the rarer ones (was 0/1/1/2/2/3/4/5: a Cosmic coffin opened in under
 		-- 45 minutes). At the ~8.5 min murder-round cycle: Epic ~17m, Legendary ~34m, Mythic ~1.1h,
 		-- Godly ~2h, Celestial ~3.4h, Cosmic ~5h - a real wait, the way Steal An Egg's top eggs are.
@@ -315,16 +315,11 @@ local GameConfig = {
 		StepShare = 0.05,
 		PastLastShare = 0.03, -- past the last boss: of your Speed
 		MinSpeed = 300,
-		-- the cash choice (client/PrizePick): this many seconds of your income, at least MinCash
-		CashSeconds = 300,
-		MinCash = 5000,
-		-- the pick card shows from PickFrom s before the round: leaving ramps up from ~240 s before a
-		-- round (fewer leave in the first 2 min after one), so it lands just before most people go
-		PickFrom = 240,
-		PickUntil = 8, -- and stops this many seconds before it (no card as the round starts)
 		JackpotChance = 0.1, -- a JACKPOT round: x3
 		JackpotMultiplier = 3,
-		AnnounceAt = 240, -- "Your prize if you win" shows this many seconds before the round (= PickFrom)
+		-- "Win the round: +X Speed" shows this many seconds before the round (leaving ramps up from
+		-- ~240 s before a round, so it lands just before most people go)
+		AnnounceAt = 240,
 	},
 
 	-- Surprise gifts (server SurpriseGifts): a present drops near you at random moments while you

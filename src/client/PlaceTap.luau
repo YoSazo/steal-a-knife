@@ -22,9 +22,6 @@ local function holdingHatched(): boolean
 end
 
 local function ready(): boolean
-	if ReplicatedStorage:GetAttribute("PenServer") == false then
-		return false
-	end
 	return (player:GetAttribute("PlaceReady") == true and player:GetAttribute("Carrying") ~= nil) or holdingHatched()
 end
 

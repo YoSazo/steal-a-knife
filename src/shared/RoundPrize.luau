@@ -10,10 +10,7 @@
 -- next one's - so every win on the way to a boss is worth the same, about 1/StepShare wins per boss
 -- (not a share of what's LEFT, which shrank as you got close).
 --
--- YOU PICK IT: before each round a card asks "Win the murder round - pick your prize!" with
--- 💵 cash or 👟 Speed (client/PrizePick -> player attribute PrizePick, default Speed). Cash is
--- CashSeconds of your income. Picking makes it yours (a tap = commitment), and "your prize" is a
--- reason to stay for the next round.
+-- (The cash-or-Speed pick card was an A/B test; Speed-only won the plan: one promise, no choice.)
 --
 -- (Was five prize types with a different prize per side - cash, speed, a knife, a boost, spins -
 -- too much to follow, and the knives skipped players past bosses they hadn't beaten yet.)
@@ -24,7 +21,7 @@ local GameConfig = require(script.Parent.Config.GameConfig)
 
 local RoundPrize = {}
 
-export type Stats = { Income: number, Speed: number, BestRank: number, Wins: number?, Pick: string? }
+export type Stats = { Income: number, Speed: number, BestRank: number, Wins: number? }
 export type Prize = {
 	Kind: string,
 	Amount: number,
@@ -38,11 +35,6 @@ export type Prize = {
 }
 
 local CONFIG = GameConfig.RoundPrize
-
--- The prize this player picked for the next round ("Cash" / "Speed")
-function RoundPrize.Pick(player: Player): string
-	return if player:GetAttribute("PrizePick") == "Cash" then "Cash" else "Speed"
-end
 
 -- What the player has now (attributes the server keeps up to date)
 function RoundPrize.Stats(player: Player): Stats
@@ -61,7 +53,6 @@ function RoundPrize.Stats(player: Player): Stats
 		Speed = math.max(0, (player:GetAttribute("Speed") or 0) :: number),
 		BestRank = best, -- (client/Hud's next goal reads this)
 		Wins = (player:GetAttribute("Wins") or 0) :: number,
-		Pick = RoundPrize.Pick(player),
 	}
 end
 
@@ -89,16 +80,6 @@ function RoundPrize.For(
 	doubled: boolean?
 ): Prize
 	local x = (if jackpot then CONFIG.JackpotMultiplier else 1) * (if doubled then 2 else 1)
-	if stats.Pick == "Cash" then
-		local cash = math.floor(math.max(stats.Income * CONFIG.CashSeconds, CONFIG.MinCash) * x)
-		return {
-			Kind = "Cash",
-			Amount = cash,
-			Text = `+{Format.Cash(cash)}`,
-			Reaches = false,
-			Left = 0,
-		}
-	end
 	local need, boss, zone, previous = nextBoss(stats.Speed)
 	local base = if need then (need - previous) * CONFIG.StepShare else stats.Speed * CONFIG.PastLastShare
 	local amount = math.floor(math.max(base, CONFIG.MinSpeed) * x)

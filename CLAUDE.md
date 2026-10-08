@@ -4,8 +4,8 @@ Loop (Steal an Egg simple, after the October cut - docs/CUT_LIST_CHECKLIST.md): 
 place it in your pen -> murder rounds are its clock -> it hatches a knife character that hops and earns cash -> cash buys
 wheel/pen upgrades -> steal deeper. Your best knife is your Murderer weapon (one fixed perk per knife type). Steal-and-collect + Murder Mystery 2-style rounds: each zone's boss sleeps by a graveyard of coffins (deeper zone =
 rarer coffin, faster boss); every few minutes everyone is pulled into a round with one random Murderer (weighted by
-the chance meter), a Sheriff with the Revolver and a survival timer. Pens are a 50/50 server A/B (Pens.Enabled
-"Split"); vault servers keep direct knives.
+the chance meter), a Sheriff with the Revolver and a survival timer. One version of the game: pens + coffins
+everywhere (Pens.Enabled = true; the vault code is dead and due to be deleted), 8 pens = 8-player servers.
 Rarities (one biome zone each): Common, Rare, Epic, Legendary, Mythic, Godly, Celestial, Cosmic (24 knives,
 3 per rarity). Money is Steal An Egg-sized (starter knife $75/s, into the quintillions; `shared/Format` prints
 K/M/B/T/Qd/Qn/Sx/...). Audience ~9-15, low-poly.
