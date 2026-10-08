@@ -130,7 +130,7 @@ function View.Build(): (Frame, () -> ())
 			or (carrying ~= nil and carrying ~= false and carrying ~= "")
 		local text = if maximum
 			then "MAX"
-			elseif blocked then "Finish your run first"
+			elseif blocked then "Get home first!"
 			elseif not hasNeed then `Need a {need} knife`
 			else "REBIRTH"
 		SimpleUi.set(action, text, PURPLE, not maximum and not blocked and hasNeed and cash >= cost)

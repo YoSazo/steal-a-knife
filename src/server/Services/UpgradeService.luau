@@ -101,7 +101,7 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			return false, "You've reached the final rebirth!"
 		end
 		if player:GetAttribute("InRound") or player:GetAttribute("Carrying") then
-			return false, "Finish what you're doing first"
+			return false, "Get home first!"
 		end
 		if profile.Cash < cost then
 			return false, `Rebirth needs {Format.Cash(cost)}`

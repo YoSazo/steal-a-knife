@@ -438,7 +438,11 @@ function Hud.Init()
 		chanceLabel.Visible = type(chance) == "number"
 			and Ui.inHub()
 			and ((player:GetAttribute("RoundsPlayed") or 0) :: number) > 0
-		chanceLabel.Text = `🔪 Murderer chance: {chance or 0}%`
+		-- (words, not a percentage: "42%" means nothing to a young kid)
+		chanceLabel.Text = if (chance or 0) >= 30
+			then "🔪 You'll probably be the Murderer next!"
+			elseif (chance or 0) >= 15 then "🔪 You might be the Murderer next!"
+			else "🔪 Could you be the Murderer next?"
 	end
 	player:GetAttributeChangedSignal("RoundsPlayed"):Connect(refreshChance)
 	player:GetAttributeChangedSignal("MurdererChance"):Connect(refreshChance)
@@ -586,11 +590,9 @@ function Hud.Init()
 			player:GetAttribute("Pass_FastWheel") == true,
 			false
 		)
-		trainLabel.Text = if training
-			then `+{Ui.abbreviate(rate)}/s  running!`
-			else `{math.floor(GameConfig.WalkSpeedFor(speed))} walk speed`
+		trainLabel.Text = if training then `+{Ui.abbreviate(rate)}/s  running!` else "" -- (one speed number only: the Speed readout. "{n} walk speed" was a second one)
 		incomeLabel.Text = `+${Ui.abbreviate(player:GetAttribute("Income") or 0)}/s`
-		rackLabel.Text = `Wall {player:GetAttribute("KnifeCount") or 0}/{slots}  ·  Luck {player:GetAttribute("Luck") or 0}`
+		rackLabel.Text = PenMode.Words(`{player:GetAttribute("KnifeCount") or 0}/{slots} in your vault`)
 			.. (if rebirths > 0 then `  ·  Rebirth {rebirths}` else "")
 
 		local _ = walls -- (vault walls are gone: open vaults, nothing to upgrade)
@@ -835,7 +837,7 @@ function Hud.Init()
 			AutomaticSize = Enum.AutomaticSize.XY,
 			BackgroundTransparency = 1,
 			TextScaled = false,
-			TextSize = if Ui.Phone then 27 else 21, -- (the feedback layer is scaled down on phones)
+			TextSize = if Ui.Phone then 32 else 28, -- (was 27 / 21: too small to read at a glance; the feedback layer is scaled down on phones)
 			TextWrapped = true,
 			TextColor3 = tint:Lerp(Color3.new(1, 1, 1), 0.3),
 			Text = text,
@@ -915,9 +917,11 @@ function Hud.Init()
 	Ui.gui:GetAttributeChangedSignal("Presenting"):Connect(function()
 		toasts.Visible = not busy()
 	end)
-	-- In a round nothing pops up at all: the game speaks for itself (a vanished Murderer, a body)
-	Remotes.Notify.OnClientEvent:Connect(function(text: string, kind: string)
-		if not player:GetAttribute("InRound") then
+	-- In a round almost nothing pops up: the game speaks for itself (a vanished Murderer, a body).
+	-- Only the round's big moments get through (the server marks them: the gun dropping, picking
+	-- it up, the Murderer shot) - they used to be sent and never seen.
+	Remotes.Notify.OnClientEvent:Connect(function(text: string, kind: string, inRound: boolean?)
+		if not player:GetAttribute("InRound") or inRound == true then
 			toast(text, kind)
 		end
 	end)

@@ -256,7 +256,7 @@ function Menus.Init()
 		end
 		if #owned == 0 or #owned == #Ui.list(player:GetAttribute("SealedKnives")) then
 			local empty = card(rackGrid, 1)
-			cardText(empty, 20, 120, "Steal knives off the bosses' walls on the runway and carry them home!")
+			cardText(empty, 20, 120, "Steal a coffin from a monster and run it home!")
 			return
 		end
 		local equippedShown = false -- two copies of the same knife: only one says "Equipped"
@@ -288,7 +288,7 @@ function Menus.Init()
 				end)
 			end)
 			cardText(c, 88, 20, Items.DisplayName(item), Items.Color(item))
-			cardText(c, 108, 16, `{knife.Rarity} · Dmg {Items.Damage(item)}`, Knives.RarityColors[knife.Rarity])
+			cardText(c, 108, 16, knife.Rarity, Knives.RarityColors[knife.Rarity])
 			cardText(c, 124, 18, `+${Ui.abbreviate(Items.Income(item))}/s`, Color3.fromRGB(120, 255, 140))
 			if parsed.Perk then
 				perkBadge(c, parsed.Perk)

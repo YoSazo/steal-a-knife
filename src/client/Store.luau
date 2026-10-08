@@ -50,7 +50,7 @@ local function buy(kind: string, key: string)
 	then
 		-- not available here (or not checked yet): Roblox's paid random item policy
 		if Ui.Toast then
-			Ui.Toast("This isn't available where you are.", "bad")
+			Ui.Toast("Can't buy that here!", "bad")
 		end
 		return
 	end

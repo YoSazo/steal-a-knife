@@ -81,7 +81,7 @@ local function buildKnivesPanel(): (Frame, () -> ())
 		-- The next floor: +10 plates (later floors wait for a rebirth)
 		local floorRebirths = GameConfig.FloorRebirthsFor(slots)
 		if slots >= GameConfig.MaxSlots then
-			SimpleUi.set(floorButton, "Vault is max size", GOLD, false)
+			SimpleUi.set(floorButton, PenMode.Words("Vault is max size"), GOLD, false)
 		elseif ((player:GetAttribute("Rebirths") or 0) :: number) < floorRebirths then
 			SimpleUi.set(floorButton, "🔒 More room after Rebirth", Color3.fromRGB(160, 70, 235), false)
 		else
@@ -90,7 +90,7 @@ local function buildKnivesPanel(): (Frame, () -> ())
 		end
 		if #owned == 0 then
 			local empty = new("Frame", { Size = UDim2.new(1, 0, 0, 90), BackgroundTransparency = 1, ZIndex = 6 }, list)
-			SimpleUi.text(empty, "Steal a knife from a boss and carry it home!", {
+			SimpleUi.text(empty, "Steal a coffin from a monster and run it home!", {
 				Size = UDim2.fromScale(1, 1),
 				Max = 30,
 			})

@@ -64,10 +64,10 @@ local tip = label({
 })
 
 local TIPS = {
-	"Steal a knife from a boss and run it home!",
-	"Every knife in your vault makes money!",
+	"Steal a coffin from a monster and run it home!",
+	"What hatches from it makes you money!",
 	"Run in your wheel to get faster!",
-	"Faster = deeper bosses = better knives!",
+	"Faster = outrun scarier monsters!",
 	"Win the Murder Round to get faster!",
 	"Be the Murderer: get everyone!",
 }

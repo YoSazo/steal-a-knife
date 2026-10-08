@@ -97,7 +97,11 @@ function NextAction.Pick(s: State): Action?
 	if carrying and carrying ~= "" then
 		if full then
 			if floorAffordable(s) then
-				return { Id = "carry_bigger", Text = "Your vault is full! Make it <b>bigger</b>!", Target = "VaultSign" }
+				return {
+					Id = "carry_bigger",
+					Text = PenMode.Words("Your vault is full! Make it <b>bigger</b>!"),
+					Target = "VaultSign",
+				}
 			end
 			return {
 				Id = "carry_full",
@@ -161,21 +165,25 @@ function NextAction.Pick(s: State): Action?
 	end
 	if full then
 		if floorAffordable(s) then
-			return { Id = "vault_bigger", Text = "Your vault is full! Make it <b>bigger</b>!", Target = "VaultSign" }
+			return {
+				Id = "vault_bigger",
+				Text = PenMode.Words("Your vault is full! Make it <b>bigger</b>!"),
+				Target = "VaultSign",
+			}
 		end
 		if s.CanRebirth then
 			return {
 				Id = "rebirth",
-				Text = "More → Rebirth: see what starting over gives you",
-				Short = "More → Rebirth: your rewards",
+				Text = "<b>Rebirth</b> = earn more forever! (More → Rebirth)",
+				Short = "Rebirth = earn more forever!",
 				Ui = "Rebirth",
 			}
 		end
 		if s.BetterReplacement ~= false then
 			return {
 				Id = "vault_full",
-				Text = "Make room for a better knife - <b>sell a spare</b>!",
-				Short = "Sell a spare for a better knife!",
+				Text = PenMode.Words("Vault full! <b>Sell</b> a knife to make room!"),
+				Short = PenMode.Words("Vault full! Sell a knife!"),
 				Target = if s.Spare ~= false then "Sell" else nil,
 				Ui = if s.Spare == false then "Knives" else nil,
 			}

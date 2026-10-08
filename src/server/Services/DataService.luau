@@ -13,7 +13,6 @@ local Items = require(ReplicatedStorage.Shared.Items)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local GuidePolicy = require(ReplicatedStorage.Shared.GuidePolicy)
 local LegacyProgress = require(ReplicatedStorage.Shared.LegacyProgress)
-local Net = require(script.Parent.Parent.Remotes)
 
 export type Profile = {
 	Cash: number,
@@ -735,7 +734,6 @@ function DataService.Init()
 				elseif wasNew then
 					player:SetAttribute("Shielded", nil)
 					player:SetAttribute("ShieldLeft", nil)
-					Net.Notify(player, "Your safe time is over. Protect your vault!", "info")
 				end
 			end
 		end

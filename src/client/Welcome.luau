@@ -102,7 +102,7 @@ local function show(info: Info)
 	local headerCorner = header:FindFirstChildOfClass("UICorner") :: UICorner
 	headerCorner.CornerRadius = UDim.new(0, 18)
 	Theme.image(header, "Gift", { Position = UDim2.fromOffset(8, 2), Size = UDim2.fromOffset(60, 60) })
-	Theme.text(header, if info.Away > 0 then "WELCOME BACK!" else "WELCOME TO BLACKWOOD!", {
+	Theme.text(header, if info.Away > 0 then "WELCOME BACK!" else "WELCOME!", {
 		Name = "Title",
 		Position = UDim2.fromOffset(76, 2),
 		Size = UDim2.new(1, -180, 1, -4),
@@ -149,7 +149,9 @@ local function show(info: Info)
 			Size = UDim2.new(1, -40, 0, 34),
 			Position = UDim2.fromOffset(20, y),
 			Text = PenMode.Words(
-				`💰 Your vault earned ${Ui.abbreviate(info.Offline)} while you were away ({awayText(info.Away)})`
+				PenMode.Words(
+					`💰 Your vault earned ${Ui.abbreviate(info.Offline)} while you were away ({awayText(info.Away)})`
+				)
 			),
 			TextColor3 = Color3.fromRGB(140, 240, 150),
 			ZIndex = 52,
@@ -213,18 +215,6 @@ local function show(info: Info)
 			y += 54
 		end
 	end
-	if info.Shielded then
-		local shield = Ui.label({
-			Size = UDim2.new(1, -40, 0, 30),
-			Position = UDim2.fromOffset(20, y),
-			Text = `🛡️ New-player shield: nobody can steal your knives for your first {GameConfig.NewPlayerShield // 60} minutes`,
-			TextColor3 = Color3.fromRGB(150, 210, 255),
-			ZIndex = 52,
-		}, card)
-		Ui.textStroke(shield, 2)
-		y += 40
-	end
-
 	-- The streak: seven days, today's lit up
 	local heading = Ui.label({
 		Size = UDim2.new(1, -40, 0, 28),

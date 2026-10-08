@@ -66,10 +66,11 @@ end
 
 return {
 	Remotes = Remotes,
-	-- kind: "info" | "good" | "bad"
-	Notify = function(player: Player, text: string, kind: string?)
+	-- kind: "info" | "good" | "bad". inRound: show it during a murder round too (most notices
+	-- are hidden there - the round speaks for itself - but a few are the round's big moments)
+	Notify = function(player: Player, text: string, kind: string?, inRound: boolean?)
 		text = words(text)
-		Remotes.Notify:FireClient(player, text, kind or "info")
+		Remotes.Notify:FireClient(player, text, kind or "info", inRound == true)
 		if notifyHook then
 			task.spawn(notifyHook, player, text, kind or "info")
 		end

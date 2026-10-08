@@ -242,7 +242,7 @@ function StealService.DropKnife(item: string, position: Vector3, sealed: boolean
 			{ Text = Items.DisplayName(item), Color = color, Height = 30 },
 			{ Text = knife.Rarity:upper(), Color = Knives.RarityColors[knife.Rarity], Height = 18 },
 			{
-				Text = `Damage {Items.Damage(item)}  ·  {Format.Cash(Items.Income(item))}/s`,
+				Text = `{Format.Cash(Items.Income(item))}/s`,
 				Color = Color3.new(1, 1, 1),
 				Height = 22,
 			},
@@ -557,7 +557,7 @@ local function deposit(player: Player)
 	BaseService.RefreshRack(player)
 	-- The plate already labels name/income. Let a Murderer-power reveal have the screen to itself.
 	if toBag then
-		Net.Notify(player, `Your pen is full! {name} is waiting in your bag - sell one or get a bigger pen.`, "info")
+		Net.Notify(player, `Pen full! {name} is in your bag.`, "info")
 		Offers.Show(player, "Mount", "Your pen is full! Get more room right now.")
 	elseif opensIn then
 		Net.Notify(player, `⚰️ {parsed.Knife.Rarity} Coffin! It opens {opensIn}`, "good")

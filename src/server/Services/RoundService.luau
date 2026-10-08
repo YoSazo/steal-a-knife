@@ -671,7 +671,7 @@ local function killBot(round: Round, bot: Bot, killer: Player?)
 		if killer then
 			round.Hero = killer
 			for other in round.Alive do
-				Net.Notify(other, `{round.Names[killer] or "Someone"} shot the Murderer!`, "good")
+				Net.Notify(other, `{round.Names[killer] or "Someone"} shot the Murderer!`, "good", true)
 			end
 		end
 	else
@@ -1435,7 +1435,7 @@ giveRevolver = function(round: Round, player: Player)
 	ReplicatedStorage:SetAttribute("Revolver", "Taken")
 	-- The role card said Innocent a moment ago: show the real role now
 	Net.Remotes.Role:FireClient(player, "Sheriff", round.Names[player])
-	Net.Notify(player, "You're the SHERIFF! Shoot the Murderer. Don't hit anyone else!", "good")
+	Net.Notify(player, "You're the SHERIFF! Shoot the Murderer. Don't hit anyone else!", "good", true)
 end
 giveRevolverToBot = function(round: Round, bot: Bot)
 	local tool = Revolver.BuildTool()
@@ -1482,7 +1482,7 @@ spawnRevolver = function(round: Round, position: Vector3?)
 		player:SetAttribute("RevolverReadyAt", 0)
 		ReplicatedStorage:SetAttribute("Revolver", "Taken")
 		Analytics.Track(player, "round.revolver_pickup", roundProps(round, player))
-		Net.Notify(player, "You got the gun! Shoot the Murderer!", "good")
+		Net.Notify(player, "You got the gun! Shoot the Murderer!", "good", true)
 	end)
 end
 
@@ -1592,7 +1592,7 @@ local function onShoot(player: Player, aim: unknown)
 			finalMoment(round, victimRoot.Position, "Hero")
 		end
 		for other in round.Alive do
-			Net.Notify(other, `{round.Names[player] or "Someone"} shot the Murderer!`, "good")
+			Net.Notify(other, `{round.Names[player] or "Someone"} shot the Murderer!`, "good", true)
 		end
 		eliminate(round, victim, player, true)
 	else
@@ -1686,7 +1686,7 @@ local function botShoot(round: Round, bot: Bot, target: BasePart)
 	if murdererBot and target == murdererBot.Root then
 		round.HeroBot = bot
 		for other in round.Alive do
-			Net.Notify(other, `{bot.Name} shot the Murderer!`, "good")
+			Net.Notify(other, `{bot.Name} shot the Murderer!`, "good", true)
 		end
 		killBot(round, murdererBot, nil)
 		return
@@ -1707,7 +1707,7 @@ local function botShoot(round: Round, bot: Bot, target: BasePart)
 	round.HeroBot = bot
 	finalMoment(round, target.Position, "Hero")
 	for other in round.Alive do
-		Net.Notify(other, `{bot.Name} shot the Murderer!`, "good")
+		Net.Notify(other, `{bot.Name} shot the Murderer!`, "good", true)
 	end
 	eliminate(round, murderer, nil, true)
 end
@@ -2314,7 +2314,7 @@ local function startRound(participants: { Player })
 		if current == round and not round.Gunner and not round.GunnerBot and not round.Revolver then
 			spawnRevolver(round, nil)
 			for player in round.Alive do
-				Net.Notify(player, "A gun dropped somewhere. Find it!", "info")
+				Net.Notify(player, "A gun dropped somewhere. Find it!", "info", true)
 			end
 		end
 	end)
@@ -2455,7 +2455,7 @@ local function endRound(round: Round)
 	end
 	if murderer and murdererPresent then
 		if hero then
-			Net.Notify(murderer, "You got shot! The knives you took went back.", "bad")
+			Net.Notify(murderer, "You got shot! The innocents win this one.", "bad")
 		elseif not innocentsWon and round.Kills > 0 then -- no bonus when everyone just left
 			-- One against the whole lobby: the prize grows with every real player they got
 			local bonus = pay(round, murderer, GameConfig.RoundPay.Wipe)

@@ -90,7 +90,8 @@ local function fit(text: string, withPill: boolean)
 		return
 	end
 	local _, bounds = Ui.bounds()
-	words.TextSize = if Ui.Phone then 18 else 20
+	-- (big enough for a 5-year-old to read at a glance: was 18 / 20)
+	words.TextSize = if Ui.Phone then 24 else 28
 	local compactStrip = Ui.topStrip("Status")
 	local iconSize = if compactStrip then math.min(baseHeight() - 2, compactStrip.H - 2) else baseHeight() - 2
 	local iconWidth = if shownIcon then iconSize + 4 else 0
@@ -124,9 +125,12 @@ local function fit(text: string, withPill: boolean)
 		words.TextSize = 14
 	end
 	words.Position = UDim2.fromOffset(fade, 0)
-	-- A bit too long for one line: smaller words first (down to 14), wrapping only after that
+	-- A bit too long for one line: a little smaller first (never below 22 - tiny words are as good
+	-- as none for a young kid), then it wraps onto a second line
 	local oneLine = TextService:GetTextSize(plain, words.TextSize, words.Font, Vector2.new(4000, 1000)).X
-	if oneLine > maxLane then
+	if oneLine > maxLane and not compactStrip then
+		words.TextSize = math.max(22, math.floor(words.TextSize * maxLane / oneLine))
+	elseif oneLine > maxLane then
 		words.TextSize = math.max(14, math.floor(words.TextSize * maxLane / oneLine))
 	end
 	local size = TextService:GetTextSize(plain, words.TextSize, words.Font, Vector2.new(maxLane, 1000))
