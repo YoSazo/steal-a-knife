@@ -170,7 +170,11 @@ the next boss you can't outrun yet; the win card + ~30 shoes flying into the Spe
 - Phones: `Ui.Phone` (touch, no keyboard) switches every HUD piece to a compact layout clear of Roblox's thumbstick
   (bottom left) and jump button (bottom right); `Ui.iconOnly` for menu buttons. Landscape is forced
   (PlayerGui.ScreenOrientation). Studio preview: ReplicatedStorage `DebugPhone = true` (draws touch-control ghosts).
-- Lighting.Technology can't be set from scripts: set it to Future in Studio's Properties.
+- `Lighting.Technology` no longer exists on this Roblox version - `LightingStyle` (Realistic/Soft) replaced it
+  and needs no manual Studio step. If shadows look flat in a Studio Play-test, it's almost always
+  `settings():GetService("RenderSettings").QualityLevel` pinned to its lowest tier (Studio's own test-session
+  default), not a lighting bug - bump it to check. Real players aren't affected; their own Graphics setting
+  controls this.
 - Studio testing: `ReplicatedStorage:SetAttribute("DebugMinPlayers", 1)` + `SetAttribute("DebugSkip", true)` starts a
   solo round; `game.ServerStorage.Debug:Invoke("Give", player, {"Katana"})` / `("Cash", player, n)`. Command-bar code
   gets its own module copies, so go through that hook for live state.

@@ -137,26 +137,31 @@ function MapService.IsInHideaway(pos: Vector3): boolean
 	return false
 end
 
--- A sunny afternoon high in the sky (Steal An Egg style): a real sun low enough that everything
--- throws a clear shadow, blue sky all the way round (also below: the map floats), soft clouds.
--- Set Lighting.Technology to Future (or ShadowMap) in Studio for crisp shadows.
+-- A sunny afternoon, mid-sky (Steal An Egg style): a real sun angled enough that every wall gets a
+-- lit face and a shaded face (not just overhead), everything throws a clear contact shadow, blue
+-- sky all round (also below: the map floats), soft clouds.
+-- (`Lighting.Technology` is gone from this Roblox version - `LightingStyle` replaced it and Studio
+-- already defaults it to a shadow-capable style. Nothing to flip by hand any more. If shadows ever
+-- look flat again in a Studio Play-test, check `settings():GetService("RenderSettings").QualityLevel`
+-- first - Studio pins test sessions to its lowest tier, which silently drops shadows regardless of
+-- Lighting.GlobalShadows. Not a issue for real players: their own Graphics setting controls this.)
 local function buildLighting()
-	-- Early afternoon, the sun 60 degrees up in the north-west: high enough to stay in view over
-	-- the walls, low enough that everything throws a real shadow (76 degrees hid them underfoot) (Roblox north = -Z, west = -X): light
-	-- falls toward the south-east, so everything throws a short shadow and its sides shade.
-	-- (Found by searching ClockTime/latitude for GetSunDirection ~ (-0.36, 0.87, -0.35).)
+	-- Mid-afternoon, the sun ~35 degrees up in the north-west (Roblox north = -Z, west = -X): light
+	-- falls toward the south-east at a real angle, so everything throws a readable shadow AND the
+	-- runway's side walls (facing +-X) get a lit face and a shaded face instead of flat even light.
+	-- (Found by searching ClockTime/latitude for GetSunDirection ~ (-0.57, 0.57, 0.59).)
 	-- The tall boundary walls don't cast (Toy.DirtWall), or they'd shade half the arena.
-	Lighting.ClockTime = 13.5
-	Lighting.GeographicLatitude = 3
-	-- Flat and bright: a gentle sun (a strong one glares off the floors in bright patches) and
-	-- strong, even fill light so nothing looks dim
-	Lighting.Brightness = 3
+	Lighting.ClockTime = 15
+	Lighting.GeographicLatitude = 60
+	-- A punchier sun now that it's doing real modelling work (shading + shadows), with ambient
+	-- turned down from "flat and bright" to let that contrast actually read instead of washing out.
+	Lighting.Brightness = 3.5
 	Lighting.ExposureCompensation = 0
-	-- Warm and even, like Steal An Egg: the sun is overhead, so walls get no direct light - strong
-	-- warm fill keeps them bright tan instead of murky. No sky-light bounce (it tinted everything blue).
+	-- Warm but no longer doing ALL the work: the sun now lights the walls directly (see above), so
+	-- ambient only needs to keep the shaded side readable, not carry the whole wall on its own.
 	-- The round maps' warm, neutral fill (rounds read clean and even), with the sun on top
-	Lighting.Ambient = Color3.fromRGB(165, 160, 150)
-	Lighting.OutdoorAmbient = Color3.fromRGB(170, 165, 155)
+	Lighting.Ambient = Color3.fromRGB(110, 105, 100)
+	Lighting.OutdoorAmbient = Color3.fromRGB(115, 110, 105)
 	Lighting.ColorShift_Top = Color3.fromRGB(255, 252, 245)
 	Lighting.ColorShift_Bottom = Color3.fromRGB(0, 0, 0)
 	Lighting.EnvironmentDiffuseScale = 0
