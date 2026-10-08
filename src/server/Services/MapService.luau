@@ -188,14 +188,20 @@ local function buildLighting()
 	-- now, tinted every distant surface teal; every OTHER zone already had to hand-correct for it -
 	-- see ZoneLighting's "fixes it reading cold under the cyan" comment on Inferno. This is that fix
 	-- for the Courtyard/base look itself, not another zone papering over it.)
-	atmosphere.Density = 0.22
+	atmosphere.Density = 0.1
 	atmosphere.Offset = 0.3
 	atmosphere.Color = Color3.fromRGB(255, 248, 235)
 	atmosphere.Decay = Color3.fromRGB(220, 208, 192)
 	atmosphere:SetAttribute("HubColor", atmosphere.Color)
 	atmosphere:SetAttribute("HubDecay", atmosphere.Decay)
-	atmosphere.Glare = 10 -- the big soft glow around the sun (max - see the Bloom/Grade below)
-	atmosphere.Haze = 1.2 -- natural sun haze, not a cyan wash
+	-- Glare maxed out once (10) to chase Egg's sun - wrong read: sampling a FRESH reference where
+	-- their sun sits mid-frame (not near the top edge, which was hiding how contained their halo
+	-- actually is) showed it falls back to clear sky within ~20-25% of frame width, not edge to
+	-- edge. Our max-Glare version never recovered to baseline across the WHOLE frame (checked with
+	-- the same horizontal-scan method). The custom skybox now carries the vivid sky on its own, so
+	-- Glare only has to do the sun's own halo - a much smaller job than before.
+	atmosphere.Glare = 2.5
+	atmosphere.Haze = 0.3 -- a light veil, not a wash - the skybox itself supplies the vivid colour now
 	atmosphere.Parent = Lighting
 	local sky = Instance.new("Sky")
 	-- A flat painted sky (tools/make_sky_day.py), not Roblox's own realistic scattering - that read
@@ -214,29 +220,26 @@ local function buildLighting()
 	sky.MoonAngularSize = 0
 	sky.Parent = Lighting
 	local bloom = Instance.new("BloomEffect")
-	-- Egg's own sun photographs as near-pure white clipping G/B to 255 over a huge soft radius
-	-- (checked pixel-for-pixel against a reference screenshot, not eyeballed) - a small tight glow
-	-- reads nothing like it. Size maxes out well past the old 56; Threshold pulled back a little so
-	-- the hot white core doesn't linger too far from the sun itself once Saturation (below) is doing
-	-- the rest of the work.
-	bloom.Intensity = 0.95
-	bloom.Size = 100
-	bloom.Threshold = 1.45
+	-- A contained halo around the sun, not a wash over the whole sky (see the Glare comment above -
+	-- same correction, the same way). Smaller and tighter than the original too: Size/Intensity down,
+	-- Threshold up, so only the sun itself blooms.
+	bloom.Intensity = 0.5
+	bloom.Size = 40
+	bloom.Threshold = 1.9
 	local rays = Instance.new("SunRaysEffect")
 	-- Light streaming out of the sun (that lifelike glow you see looking up at it)
-	rays.Intensity = 0.5
-	rays.Spread = 1
+	rays.Intensity = 0.2
+	rays.Spread = 0.7
 	rays.Parent = Lighting
 	bloom.Parent = Lighting
 	local grade = Instance.new("ColorCorrectionEffect")
-	-- Punchy and bright, like Tsunami - pushed further toward Egg's own vivid sky (sampling their
-	-- screenshot showed the clear sky sitting at G/B ~255, fully saturated). Tried matching that
-	-- literally (Saturation 1.3): it blew out everywhere ELSE instead - skin, walls and the warm
-	-- atmosphere haze (itself already warm-toned) all swung hard orange once amplified that hard,
-	-- confirmed by sampling THAT screenshot too (skin clipped to pure (255,112,7)). 0.3 is the
-	-- highest that still reads vivid in normal gameplay framing without cooking the rest of the scene.
+	-- Punchy and bright, like Tsunami. (History: tried pushing this to 1.3 to chase Egg's sky before
+	-- the custom skybox existed - it blew out skin/walls orange instead, confirmed by sampling that
+	-- screenshot too. 0.3 was the safe compromise at the time. Now the skybox texture itself carries
+	-- the sky's vividness, so this doesn't need to - checked live, 0.15 looks identical to 0.3 since
+	-- the sky's colour no longer depends on this slider, and it's a lower-risk number to carry.)
 	grade.Contrast = 0.12
-	grade.Saturation = 0.3
+	grade.Saturation = 0.15
 	grade.TintColor = Color3.fromRGB(255, 253, 248)
 	grade.Brightness = 0
 	grade.Parent = Lighting

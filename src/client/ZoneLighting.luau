@@ -37,15 +37,15 @@ local rgb = Color3.fromRGB
 -- The base: what the server sets (MapService.buildLighting) - keep these in sync by hand, this
 -- table reapplies every frame in zone 1 / the plaza and will stomp any server-side change otherwise.
 local BASE: Mood = {
-	Density = 0.22,
+	Density = 0.1,
 	Offset = 0.3,
 	Color = rgb(255, 248, 235),
 	Decay = rgb(220, 208, 192),
-	Glare = 10,
-	Haze = 1.2,
-	Bloom = { Intensity = 0.95, Size = 100, Threshold = 1.45 },
-	Rays = { Intensity = 0.5, Spread = 1 },
-	Grade = { Brightness = 0, Contrast = 0.12, Saturation = 0.3, Tint = rgb(255, 253, 248) },
+	Glare = 2.5,
+	Haze = 0.3,
+	Bloom = { Intensity = 0.5, Size = 40, Threshold = 1.9 },
+	Rays = { Intensity = 0.2, Spread = 0.7 },
+	Grade = { Brightness = 0, Contrast = 0.12, Saturation = 0.15, Tint = rgb(255, 253, 248) },
 	Exposure = 0,
 	Clock = 13.5,
 	Latitude = 3,
