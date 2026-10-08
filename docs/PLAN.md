@@ -180,6 +180,34 @@ Test every step in Studio before starting the next (nothing here was tested yet)
       "Steve", "Pete") instead of writing new ones. Watch the doubles with the rarity prefix
       ("Cosmic Cosmic Carl").
 
+29. **Goals are monsters, not knife categories.** A kid doesn't want "EPIC knives"; they want to
+    beat the next monster they can see. Three nouns only: the **MONSTER** (who you steal from), the
+    **COFFIN** (what you steal, the glowing character inside), the **CHARACTER** by name (what comes
+    out: "Rainbow Cosmic Bob"), plus SPEED and CASH. Rarity words stay as coloured labels on coffins
+    and characters, never as a goal.
+    - **Bosses are named after the creature,** not the old people: the hedge hound is tagged "Frank /
+      The Groundskeeper" today (`GameConfig.Zones` Boss / BossTitle, the tag in GuardService ~371 /
+      ~481, the 3D titles in `BossTitles` / `BossTitleModel`). -> HEDGE HOUND, FLOWER TOAD, BONE WOLF,
+      GOLD SCORPION, LAVA SALAMANDER, GOLDEN GRIFFIN, SKY PEGASUS, VOID BEAST. (The disguise names for
+      round characters can stay: they're people.)
+    - **Every progress line points at the next monster, with its picture:**
+      - Round prize (`Hud.luau` ~253-258, whose comment says "never a boss's name": reverse it now
+        bosses are creatures): "WIN = +26K SPEED 👟" / "→ outrun the FLOWER TOAD!".
+      - `RoundService` ~577-578: "Now you can steal {rarity} knives!" -> "You can outrun the FLOWER
+        TOAD!"; "{n} more for {rarity} knives" -> "{n} more Speed to outrun the FLOWER TOAD".
+      - `NextAction` ~145 / ~202 / ~217: "Fast enough! Steal a RARE knife!" -> "Fast enough! Steal from
+        the FLOWER TOAD!"; "Keep running! X Speed to RARE knives" -> "X more Speed to outrun the FLOWER
+        TOAD!"; "Steal another RARE coffin" -> "Steal another coffin from the FLOWER TOAD!".
+      - `Guide.luau` ~701: "RARE knives unlocked!" -> "You can outrun the FLOWER TOAD!".
+      - The speed sign at each lair: "SPEED NEEDED" + the monster's name.
+      - The zone pop-up (`Transitions` ~77-81): the biome name + "Home of the FLOWER TOAD".
+    - **Knife-focused wording -> coffin / character wording:** "Steal a knife from a boss and carry it
+      home!" (QuickBar, LoadingScreen), "Steal knives off the bosses' walls on the runway..." (Menus
+      ~259), "Every knife in your vault makes money!" (LoadingScreen), "Follow the arrows to Frank's
+      knife / coffins!" (Tutorial ~120), "THE BOSS IS COMING!" (GuardService ~1292) -> "THE HEDGE HOUND
+      IS COMING! RUN!!". The Knives menu / Index become "My Characters" / "Index" (characters, not
+      blades); Coffins + Knives fold into one button (item 6).
+
 Later, once likes and retention are healthy: stealing from other players' pens (the biggest
 remaining difference from Steal An Egg / Steal a Brainrot; kept out while rounds are gain-only).
 
