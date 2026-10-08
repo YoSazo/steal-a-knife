@@ -274,6 +274,9 @@ local function buildHoundRig(config: ZoneConfig, shadow: boolean): Model
 	local model = creature.Build(nil, CFrame.identity, "Asleep")
 	model.Name = if shadow then `{config.Boss}Shadow` else config.Boss
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+	-- Idle breathing while asleep is purely cosmetic (client/CreatureIdle), the same way a
+	-- round character's chair fidget is - the server never ticks a guard at its post.
+	model:AddTag("CreatureBoss")
 	local headCore = model:FindFirstChild("HeadCore") :: BasePart
 	local head = Instance.new("Part")
 	head.Name = "Head"
@@ -450,8 +453,10 @@ end
 -- (client/Moves), and a 💤 floats over it. Waking = a thief took a knife.
 local function setAsleep(guard: Guard, asleep: boolean)
 	guard.Model:SetAttribute("Asleep", asleep)
-	if guard.Hound then
-		guard.Hound.SetPose(guard.Model, if asleep then "Asleep" else "Awake")
+	if guard.Hound and asleep then
+		-- (waking is a gradual blend over the step() alert window, not an instant snap - see
+		-- the "t < guard.AlertUntil" branch below)
+		guard.Hound.SetPose(guard.Model, "Asleep")
 	end
 	local head = guard.Model:FindFirstChild("Head")
 	-- Eyes shut while dozing (Config/BossSleepFaces), their own face back when they wake
@@ -1099,8 +1104,10 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 	if not startAt then
 		local profile = DataService.Get(thief)
 		local knives = if profile then #profile.Knives else 0
-		wake = if knives < GameConfig.BossWake.NewcomerKnives
-			then GameConfig.BossWake.Newcomer
+		local newcomer = knives < GameConfig.BossWake.NewcomerKnives
+		wake = if guard.Hound
+			then (if newcomer then GameConfig.BossWake.HoundNewcomer else GameConfig.BossWake.HoundTime)
+			elseif newcomer then GameConfig.BossWake.Newcomer
 			else GameConfig.BossWake.Time
 		-- The boss himself gets up out of his chair (client/Moves acts it out), steps out of it and
 		-- walks forward clear of the torch post before turning for you (he walked through it).
@@ -1117,7 +1124,12 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 		Net.Remotes.Effect:FireAllClients("BossWake", guard.Model, wake)
 	end
 	guard.WakeStart = now()
-	guard.WakeUntil = now() + BossChairMotion.WakeDuration(wake) * GameConfig.BossHop.Done
+	-- A creature has no stand-and-face beat after its pose blend finishes (no chair to clear) - the
+	-- blend IS the whole wake, so it ends exactly when the chase starts (see AlertUntil below), not
+	-- 40% early with an idle "waiting" pause tacked on after it.
+	guard.WakeUntil = if guard.Hound
+		then now() + wake
+		else now() + BossChairMotion.WakeDuration(wake) * GameConfig.BossHop.Done
 	setAsleep(guard, false)
 	guard.Target = thief
 	guard.Returning = false
@@ -1474,6 +1486,11 @@ local function step(guard: Guard, dt: number)
 		local x = math.clamp((t - sitStart) / BossChairMotion.SitDuration(), 0, 1)
 		guard.Position = restSpot(guard, post, hop.Done - x * (hop.Done - hop.Crouch))
 		guard.Model:PivotTo(post.Rotation + guard.Position)
+		if guard.Hound then
+			-- Lying back down, not an instant snap to Asleep: legs fold, eyes close, over the
+			-- same settle a round character backs into its chair with.
+			guard.Hound.SetPose(guard.Model, "Waking", 1 - x)
+		end
 		if x >= 1 then
 			guard.Returning = false
 			guard.SitStart = nil
@@ -1499,6 +1516,17 @@ local function step(guard: Guard, dt: number)
 	-- The wake-up / "!" beat: a fair head start (still in the chair for the first part of it, so
 	-- they only turn towards you once they're getting up)
 	if t < guard.AlertUntil then
+		if guard.Hound then
+			-- Waking up (not an instant snap to Awake): eyes open, legs unfold, over the same
+			-- head-start a round character gets standing from its chair.
+			local span = math.max(guard.WakeUntil - guard.WakeStart, 0.1)
+			local blend = math.clamp((t - guard.WakeStart) / span, 0, 1)
+			guard.Hound.SetPose(guard.Model, "Waking", blend)
+			if t >= guard.WakeUntil then
+				face(guard, targetRoot.Position)
+			end
+			return
+		end
 		if guard.InChair then
 			-- Stand and step forward at 1.5x speed; the original alert/head-start time stays intact.
 			local post = guard.Boss.Post

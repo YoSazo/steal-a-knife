@@ -607,6 +607,10 @@ local GameConfig = {
 		Time = 1.3,
 		Newcomer = 2.2, -- until you own NewcomerKnives knives
 		NewcomerKnives = 3,
+		-- A creature boss has no chair to climb out of - its "getting up" IS the pose blend, with no
+		-- separate stand-and-face beat after it, so it needs much less total time to still read fair.
+		HoundTime = 0.45,
+		HoundNewcomer = 0.8,
 	},
 	-- How a boss gets out of / back into his chair: he hops out forward over his footstool and hops
 	-- back in backwards. Shares of the wake time (client/Moves poses, GuardService flies the body):
