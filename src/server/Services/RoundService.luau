@@ -40,7 +40,6 @@ local DataService = require(script.Parent.DataService)
 local Offers = require(script.Parent.Offers)
 local Fuel = require(script.Parent.Fuel)
 local ServerEvents = require(script.Parent.ServerEvents)
-local Social = require(script.Parent.Social)
 local MapService = require(script.Parent.MapService)
 local PowerService = require(script.Parent.PowerService)
 local Stealth = require(script.Parent.Stealth)
@@ -2298,14 +2297,9 @@ local function startRound(participants: { Player })
 		and #participants >= 3
 		and (#participants >= GameConfig.DoubleTrouble.Always or rng:NextNumber() < GameConfig.DoubleTrouble.Chance)
 	then
-		local teammate = Social.PartnerOf(murderer)
-		if teammate and table.find(participants, teammate) then
-			partner = teammate
-		else
-			local rest = table.clone(participants)
-			table.remove(rest, table.find(rest, murderer) :: number)
-			partner = pickMurderer(rest)
-		end
+		local rest = table.clone(participants)
+		table.remove(rest, table.find(rest, murderer) :: number)
+		partner = pickMurderer(rest)
 	end
 	local botFolder = Instance.new("Folder")
 	botFolder.Name = "RoundBots"
@@ -2596,10 +2590,7 @@ local function startRound(participants: { Player })
 		end
 		table.remove(sheriffs, table.find(sheriffs, chosen) :: number)
 		if round.Double and #sheriffs > 0 then
-			local teammate = if typeof(chosen) == "Instance" then Social.PartnerOf(chosen :: Player) else nil
-			local second = if teammate and table.find(sheriffs, teammate)
-				then teammate
-				else sheriffs[rng:NextInteger(1, #sheriffs)]
+			local second = sheriffs[rng:NextInteger(1, #sheriffs)]
 			if typeof(second) == "Instance" then
 				local player = second :: Player
 				local tool = Revolver.BuildTool()

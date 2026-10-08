@@ -23,7 +23,6 @@ local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local Fuel = require(script.Parent.Fuel)
 local ServerEvents = require(script.Parent.ServerEvents)
-local Social = require(script.Parent.Social)
 local MapService = require(script.Parent.MapService)
 local Offers = require(script.Parent.Offers)
 local Ragdoll = require(script.Parent.Ragdoll)
@@ -464,7 +463,7 @@ startCarry = function(
 			if
 				otherRoot
 				and not other:GetAttribute("InRound")
-				and ((otherRoot.Position - root.Position).Magnitude < 35 or Social.PartnerOf(player) == other)
+				and (otherRoot.Position - root.Position).Magnitude < 35
 			then
 				table.insert(helpers, other)
 			end

@@ -21,7 +21,6 @@ local Ui = {
 	feedback = nil :: any, -- the always-on-top layer for messages (see below)
 	Navigation = nil :: any,
 	Buy = nil :: ((kind: string, key: string) -> ())?, -- set by Store
-	OpenGift = nil :: ((target: Player) -> ())?, -- set by GambleUi
 	ReplayTutorial = nil :: (() -> ())?, -- set by Tutorial (More > How to play)
 	Toast = nil :: ((text: string, kind: string) -> ())?, -- set by Hud: a message on the Feedback layer
 	GuideTargets = {} :: { [string]: GuiObject },

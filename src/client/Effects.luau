@@ -1019,40 +1019,7 @@ local handlers: { [string]: (...any) -> () } = {
 	end,
 }
 
--- 🤝 Your teammate is outlined green in the hub (so you can find each other)
-local function trackTeammate()
-	local current: Highlight? = nil
-	local function refresh()
-		if current then
-			current:Destroy()
-			current = nil
-		end
-		local id = player:GetAttribute("Partner")
-		local mate = if type(id) == "number" then Players:GetPlayerByUserId(id) else nil
-		local character = mate and mate.Character
-		if character and not player:GetAttribute("InRound") then
-			local highlight = Instance.new("Highlight")
-			highlight.Name = "TeammateOutline"
-			highlight.FillTransparency = 1
-			highlight.OutlineColor = Color3.fromRGB(90, 255, 120)
-			highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-			highlight.Adornee = character
-			highlight.Parent = character
-			current = highlight
-		end
-	end
-	player:GetAttributeChangedSignal("Partner"):Connect(refresh)
-	player:GetAttributeChangedSignal("InRound"):Connect(refresh)
-	task.spawn(function()
-		while true do
-			task.wait(3) -- they respawn / stream in
-			refresh()
-		end
-	end)
-end
-
 function Effects.Init()
-	trackTeammate()
 	local pendingRolls: { { any } } = {}
 	local rollWorker = false
 	Remotes:WaitForChild("Effect").OnClientEvent:Connect(function(kind: string, ...)

@@ -611,7 +611,11 @@ local function publish(player: Player, profile: Profile)
 	player:SetAttribute("TrailLevel", profile.TrailLevel)
 	player:SetAttribute("HealthLevel", profile.HealthLevel)
 	for _, bought in profile.Bought do
-		player:SetAttribute("Bought_" .. bought, true)
+		-- ("Pass:<key>" entries only record a pass bought outside the game: attribute names can't
+		-- hold ":", and Pass_<key> already says they own it)
+		if not bought:find(":", 1, true) then
+			player:SetAttribute("Bought_" .. bought, true)
+		end
 	end
 	player:SetAttribute("LastDaily", profile.LastDaily)
 	for _, name in BOOSTS do

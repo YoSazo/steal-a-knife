@@ -1,6 +1,6 @@
 --!strict
 -- The gambling panels (server: Gamble): the Lucky Wheel, the Mystery Merchant, the luck-potion
--- timer and the gift picker. No HUD buttons: the wheel and the merchant are places on the plaza.
+-- timer. No HUD buttons: the wheel and the merchant are places on the plaza.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -10,7 +10,6 @@ local TweenService = game:GetService("TweenService")
 local Ui = require(script.Parent.Ui)
 local Theme = require(script.Parent.MenuTheme)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
-local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local WheelArt = require(ReplicatedStorage.Shared.Config.LuckyWheelArt).Images :: { [string]: string }
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -334,76 +333,6 @@ local function buildMerchant()
 	return frame
 end
 
--- Gift picker ---------------------------------------------------------------------------------------
-
-local function buildGifts()
-	local frame, body = Theme.shell("Gifts", "Send a Gift", Color3.fromRGB(255, 120, 80), "Gift", 470, 760)
-	local who = Theme.text(body, "", { Size = UDim2.new(1, 0, 0, 36), MaximumTextSize = 28 })
-	local grid = new("Frame", {
-		Position = UDim2.fromOffset(0, 44),
-		Size = UDim2.new(1, 0, 1, -44),
-		BackgroundTransparency = 1,
-		ZIndex = 7,
-	}, body)
-	new("UIGridLayout", {
-		CellSize = UDim2.new(0.5, -8, 0, 150),
-		CellPadding = UDim2.fromOffset(8, 8),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-	}, grid)
-	local target: Player? = nil
-	local gifts = {}
-	for _, product in Monetization.Products do
-		if product.Gift then
-			table.insert(gifts, product)
-		end
-	end
-	for i, product in gifts do
-		local card = Theme.surface(grid, { LayoutOrder = i, ZIndex = 7 }, Theme.Navy, product.Color)
-		Theme.text(card, product.Name:gsub("^Gift: ", ""), {
-			Position = UDim2.fromOffset(8, 6),
-			Size = UDim2.new(1, -16, 0, 40),
-			MaximumTextSize = 26,
-			ZIndex = 10,
-		})
-		Theme.text(card, product.Description, {
-			Position = UDim2.fromOffset(8, 46),
-			Size = UDim2.new(1, -16, 0, 30),
-			MaximumTextSize = 18,
-			TextColor3 = Color3.fromRGB(210, 215, 235),
-			ZIndex = 10,
-		})
-		local giftButton = Theme.button(card, `Gift  R$ {product.Price}`, Theme.Green, {
-			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -8),
-			Size = UDim2.new(0.8, 0, 0, 56),
-			MaximumTextSize = 30,
-		}, function()
-			if not target or not target.Parent or not Ui.Buy then
-				return
-			end
-			local ok = Remotes.Gamble:InvokeServer("GiftTarget", target.UserId)
-			if ok then
-				Ui.Buy("Product", product.Key)
-			end
-		end)
-		giftButton:SetAttribute("PaidRandom", Monetization.IsPaidRandom(product))
-	end
-	Ui.OpenGift = function(other: Player)
-		target = other
-		who.Text = `Gift to {other.DisplayName}`
-		-- Lucky Block gifts are paid random items: hidden where they're restricted
-		local allowed = player:GetAttribute("PaidRandomRestricted") == false
-		for _, card in grid:GetChildren() do
-			local button = card:FindFirstChildWhichIsA("TextButton")
-			if card:IsA("Frame") and button then
-				card.Visible = allowed or button:GetAttribute("PaidRandom") ~= true
-			end
-		end
-		Ui.Menu.Open(frame)
-	end
-	return frame
-end
-
 -- Luck timer pill -----------------------------------------------------------------------------------
 
 local function buildLuckTimer()
@@ -460,7 +389,6 @@ end
 function GambleUi.Init()
 	local wheel = buildWheel()
 	local merchant = buildMerchant()
-	buildGifts()
 	buildLuckTimer()
 	-- No HUD buttons any more: the Lucky Wheel and Silas the Mystery Merchant stand on the plaza
 	-- (server ShopNPCs); stepping onto their rings opens these panels (client/Menus)
