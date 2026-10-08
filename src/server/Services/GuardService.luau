@@ -479,7 +479,6 @@ local function setSlot(boss: Boss, slot: Slot, item: string)
 		local rarity = parsed.Knife.Rarity
 		local floor = CFrame.new(slot.Pad.Position + Vector3.new(0, slot.Pad.Size.Y / 2, 0)) * slot.Spot.Rotation
 		local coffin = CoffinModel.Build(rarity, floor) -- (straight on the floor, no tray)
-		coffin:AddTag("CoffinOdds") -- (client/CoffinOdds: what's inside, and the chances)
 		KnifeHaze.Add(coffin, rarity)
 		coffin.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 		coffin.Parent = boss.Folder
