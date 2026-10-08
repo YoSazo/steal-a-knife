@@ -18,7 +18,7 @@ variant. Fixed Murderer perks, the tutorial showcase and the Speed prize tuning 
 - [x] Remove luck potions/server luck and their store/UI/runtime hooks; rebirth + Luck pass mutation/size luck kept.
 - [x] Retired paid products/pass ownership receive compatible, once-only replacement value (Retired, RetiredPasses, LegacyProgress).
 - [x] Receipt retries, save failure and duplicate requests: re-save before acknowledging, in-flight lock, 200 ids, passes wait for the profile (tested in Studio).
-- [ ] Final HUD/menu/config/source sweep; update obsolete architecture documentation.
+- [x] Final HUD/menu/config/source sweep; CLAUDE.md rewritten for the cut game.
 - [ ] Lint, formatting, types, regression tests, clean Studio boots and both coffin/vault variants.
 
 Historical save fields and retired purchase IDs may remain for compatibility. They must not expose

@@ -17,7 +17,6 @@ return {
 
 	-- Music
 	HubMusic = "rbxassetid://1845444990", -- "Coffee Break" (APM, Manfred Paulsen): light jazz under the hub
-	RaidMusic = "rbxassetid://9048541013", -- "Battleground" (APM), during the Blood Moon
 
 	-- Raids
 	Alarm = "rbxassetid://9125544285", -- alarm bell (PSE): someone is robbing YOUR vault

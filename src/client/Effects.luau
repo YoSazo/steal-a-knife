@@ -1177,10 +1177,9 @@ function Effects.Init()
 		end
 	end)
 
-	-- Rack "Sell" prompts belong to one player; hide everyone else's
+	-- Owner prompts (Open now, Sell...) belong to one player; hide everyone else's
 	local function filterPrompt(instance: Instance)
-		-- (raid "Steal" prompts are managed by client/Raid)
-		if instance:IsA("ProximityPrompt") and not instance:GetAttribute("Steal") then
+		if instance:IsA("ProximityPrompt") then
 			local owner = instance:GetAttribute("Owner")
 			if owner ~= nil and owner ~= player.UserId then
 				instance.Enabled = false

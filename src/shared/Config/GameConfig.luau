@@ -361,8 +361,6 @@ local GameConfig = {
 		Cosmic = { Cash = 1.7e12, Speed = 8e9 },
 	},
 
-	-- Health: bought with cash at the Knife Merchant (and boosted with Robux). Every level is more
-	-- max health, so guards, raiders' defenders and the Murderer's helpers need more hits on you.
 	PlayerHealth = 100, -- everyone's health in the hub (health levels were cut: caught means caught)
 
 	RoundWalkSpeed = 16, -- upgrades don't carry into rounds so new players can still win
