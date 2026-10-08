@@ -19,10 +19,14 @@ from make_skybox import N, face_dirs, fbm
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "blender" / "textures" / "skybox"
 
-# Matched to Steal An Egg's sky: deep clear blue overhead, lighter towards the horizon
-ZENITH = np.array([10, 132, 218]) / 255
-HORIZON = np.array([125, 196, 232]) / 255
-BELOW = np.array([40, 150, 222]) / 255
+# Matched to Egg's own sky, pixel-sampled from a real screenshot (not eyeballed): their clear sky
+# sits at roughly G/B = 255 everywhere, fully saturated, with only Red varying - deep cyan overhead,
+# paling toward near-white at the horizon. A believable realistic gradient (the old ZENITH/HORIZON
+# below this comment, kept in git history) tops out nowhere near that; only a flat painted sky can
+# hit it without wrecking the rest of the scene the way pushing global Saturation did.
+ZENITH = np.array([60, 255, 255]) / 255
+HORIZON = np.array([190, 255, 255]) / 255
+BELOW = np.array([70, 230, 255]) / 255
 
 
 def render(face):

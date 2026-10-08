@@ -35,6 +35,7 @@ local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 local Toy = require(ReplicatedStorage.Shared.Toy)
 local WheelModel = require(ReplicatedStorage.Shared.WheelModel)
 local VaultModel = require(ReplicatedStorage.Shared.VaultModel)
+local Textures = require(ReplicatedStorage.Shared.Config.Textures)
 
 export type Bounds = { MinX: number, MaxX: number, MinZ: number, MaxZ: number }
 export type BaseSite = {
@@ -197,7 +198,16 @@ local function buildLighting()
 	atmosphere.Haze = 1.2 -- natural sun haze, not a cyan wash
 	atmosphere.Parent = Lighting
 	local sky = Instance.new("Sky")
-	-- Roblox's own soft sky (the painted Textures.Day box read deep blue and flat next to Brainrot's)
+	-- A flat painted sky (tools/make_sky_day.py), not Roblox's own realistic scattering - that read
+	-- deep blue and flat next to Brainrot's, and separately can't be pushed to Egg's fully-saturated
+	-- G/B~255 clear-sky colour without a global Saturation push that cooks skin and walls along with
+	-- it. CelestialBodiesShown still draws the real sun on top of this, matching the shadows.
+	sky.SkyboxFt = Textures.Day.Ft
+	sky.SkyboxBk = Textures.Day.Bk
+	sky.SkyboxLf = Textures.Day.Lf
+	sky.SkyboxRt = Textures.Day.Rt
+	sky.SkyboxUp = Textures.Day.Up
+	sky.SkyboxDn = Textures.Day.Dn
 	sky.StarCount = 0
 	sky.CelestialBodiesShown = true -- the real sun, matching the shadows
 	sky.SunAngularSize = 21

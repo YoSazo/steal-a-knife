@@ -24,14 +24,16 @@ return {
 		Swirl = "rbxassetid://108719891117380",
 		Money = "rbxassetid://76716007732214",
 	},
-	-- The daytime sky the map floats in (tools/make_sky_day.py); Roblox draws the real sun on top
+	-- The daytime sky the map floats in (tools/make_sky_day.py); Roblox draws the real sun on top.
+	-- Regenerated to match Egg's own sky pixel-for-pixel (clear sky sits at G/B ~255 - a flat
+	-- painted sky hits that without the global Saturation push needed to fake it cooking skin/walls.
 	Day = {
-		Ft = "rbxassetid://83399161022636",
-		Bk = "rbxassetid://73082797676258",
-		Lf = "rbxassetid://86757023267568",
-		Rt = "rbxassetid://108523761045371",
-		Up = "rbxassetid://110235716882201",
-		Dn = "rbxassetid://80516369739171",
+		Ft = "rbxassetid://133629020225640",
+		Bk = "rbxassetid://121611227462677",
+		Lf = "rbxassetid://112408100556124",
+		Rt = "rbxassetid://105730453586847",
+		Up = "rbxassetid://130651846807231",
+		Dn = "rbxassetid://107384874170226",
 	},
 	-- Soft light sprites for auras (Shared/KnifeHaze): a round glow and a 4-point flare, white on
 	-- transparent, tinted per knife (generated with PIL, uploaded via Studio)
