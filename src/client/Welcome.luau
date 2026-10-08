@@ -11,7 +11,6 @@ local TweenService = game:GetService("TweenService")
 local Ui = require(script.Parent.Ui)
 local Theme = require(script.Parent.MenuTheme)
 local Effects = require(script.Parent.Effects)
-local TopLine = require(script.Parent.TopLine)
 local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("GameConfig"))
 local Sounds = require(ReplicatedStorage.Shared.Config:WaitForChild("Sounds"))
@@ -67,9 +66,10 @@ local function show(info: Info)
 		task.spawn(function()
 			if info.DailyReady then
 				local ok = Remotes:WaitForChild("ClaimDaily"):InvokeServer()
+				-- (just the chime: the server's "Day 1 reward: $20K!" says it. A second line about tomorrow
+				-- fought the first DO line for a brand-new player's attention)
 				if ok then
 					Effects.Sound(Sounds.Cash, nil, 0.6)
-					TopLine.Show("🎁 Come back tomorrow for your Day 2 reward!", 4, "Daily")
 				end
 			end
 		end)
