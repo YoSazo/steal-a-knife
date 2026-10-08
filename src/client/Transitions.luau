@@ -22,6 +22,7 @@ local TopLine = require(script.Parent.TopLine)
 local Favorite = require(script.Parent.Favorite)
 local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 local VoxelKnives = require(ReplicatedStorage.Shared.Config.VoxelUi).Knives :: { [string]: string }
+local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local Transitions = {}
 
 local player = Players.LocalPlayer
@@ -661,8 +662,9 @@ function Transitions.Init()
 	end
 
 	-- The Murderer's haul: "You stole 3 knives!" with every knife's picture and name (up to 5, then
-	-- "+N more"), for a few seconds once you're back in the hub
-	local function showHaul(items: { string })
+	-- "+N more"), for a few seconds once you're back in the hub. Coffin servers: they landed in your
+	-- pen as coffins, so it shows the coffins (what's inside stays a secret till they open).
+	local function showHaul(items: { string }, coffins: boolean?)
 		local shown = math.min(#items, 5)
 		local width = math.max(360, shown * 140 + 40)
 		local haul = Instance.new("Frame")
@@ -683,7 +685,10 @@ function Transitions.Init()
 		label(haul, {
 			Position = UDim2.fromOffset(16, 12),
 			Size = UDim2.new(1, -32, 0, 48),
-			Text = `You stole {#items} {if #items == 1 then "knife" else "knives"}!`,
+			Text = `You stole {#items} {if coffins
+				then (if #items == 1 then "coffin" else "coffins")
+				elseif #items == 1 then "knife"
+				else "knives"}!`,
 			TextColor3 = Color3.fromRGB(255, 110, 110),
 			ZIndex = 46,
 		})
@@ -691,17 +696,28 @@ function Transitions.Init()
 			local item = items[i]
 			local parsed = Items.Parse(item)
 			local x = 20 + (i - 1) * 140 + (width - 40 - shown * 140) / 2
-			Ui.art(haul, "", {
-				Position = UDim2.fromOffset(x + 10, 70),
-				Size = UDim2.fromOffset(120, 120),
-				Image = if parsed then (VoxelKnives[parsed.Name] or KnifeIcons[parsed.Name] or "") else "",
-				ZIndex = 46,
-			})
+			local rarity = if parsed then parsed.Knife.Rarity else "Common"
+			if coffins then
+				label(haul, {
+					Position = UDim2.fromOffset(x + 10, 70),
+					Size = UDim2.fromOffset(120, 120),
+					Text = "⚰️",
+					TextScaled = true,
+					ZIndex = 46,
+				})
+			else
+				Ui.art(haul, "", {
+					Position = UDim2.fromOffset(x + 10, 70),
+					Size = UDim2.fromOffset(120, 120),
+					Image = if parsed then (VoxelKnives[parsed.Name] or KnifeIcons[parsed.Name] or "") else "",
+					ZIndex = 46,
+				})
+			end
 			label(haul, {
 				Position = UDim2.fromOffset(x, 196),
 				Size = UDim2.fromOffset(140, 56),
-				Text = Items.DisplayName(item),
-				TextColor3 = Items.Color(item),
+				Text = if coffins then `{rarity} Coffin` else Items.DisplayName(item),
+				TextColor3 = if coffins then Knives.RarityColors[rarity] or Color3.new(1, 1, 1) else Items.Color(item),
 				TextWrapped = true,
 				ZIndex = 46,
 			})
@@ -809,7 +825,7 @@ function Transitions.Init()
 		if kind == "LootHaul" then
 			if type(text) == "table" and #text > 0 then
 				queueCard(5.3, function()
-					showHaul(text)
+					showHaul(text, extra == true)
 				end)
 			end
 			return

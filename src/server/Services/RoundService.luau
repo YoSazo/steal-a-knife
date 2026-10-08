@@ -2521,7 +2521,10 @@ local function endRound(round: Round)
 				Net.Notify(entry.Owner, `Your {Items.DisplayName(entry.Knife)} is back!`, "good")
 			end
 		else
-			giveKnife(killer, entry.Knife)
+			-- (coffin servers: the haul lands in the Murderer's pen sealed, like any mystery knife)
+			if not CoffinService.On(killer) or not CoffinService.Give(killer, entry.Knife, "your haul", true) then
+				giveKnife(killer, entry.Knife)
+			end
 			kept[killer] = kept[killer] or {}
 			table.insert(kept[killer], entry.Knife)
 		end
@@ -2533,7 +2536,7 @@ local function endRound(round: Round)
 			if not killer.Parent then
 				return
 			end
-			Net.Remotes.Effect:FireClient(killer, "LootHaul", items)
+			Net.Remotes.Effect:FireClient(killer, "LootHaul", items, CoffinService.On(killer))
 			local count = #items
 			Net.Announce(
 				`🔪 {killer.DisplayName} the Murderer stole {count} {if count == 1 then "knife" else "knives"}!`,
@@ -2626,23 +2629,12 @@ local function endRound(round: Round)
 			end)
 			Net.Notify(murderer, `You got everyone! +{Format.Cash(bonus)}`, "good")
 			if round.HumanKills > 0 then
-				local config = GameConfig.WipeCase
+				local config = GameConfig.WipeCoffin
 				local rarity = if #round.Innocents >= config.BigLobby then config.Big else config.Small
 				task.delay(1.5, function()
-					if not murderer.Parent then
-						return
-					end
-					if StealService.OpenCase(murderer, rarity) then
-						Net.Notify(murderer, `You won a {rarity} Case!`, "good")
-					else
-						local value = 0
-						for _, entry in GameConfig.CaseShop do
-							if entry.Rarity == rarity then
-								value = entry.Cost
-							end
-						end
-						DataService.AddCash(murderer, value, "round_wipe")
-						Net.Notify(murderer, `Your vault is full, so +{Format.Cash(value)} instead`, "good")
+					if murderer.Parent then
+						local got = CoffinService.GiveOrCash(murderer, rarity, "your wipe")
+						Net.Notify(murderer, `You won {got}!`, "good")
 					end
 				end)
 			end

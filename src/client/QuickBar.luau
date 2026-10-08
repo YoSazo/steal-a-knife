@@ -4,7 +4,7 @@
 --   Knives: your wall as Tsunami-simple rows (icon, name, $/s, Sell and Equip), "Equip Best", and
 --           the next floor ("+10 slots") - Steal An Egg's "9/12 Active, +1 EQUIP, Equip Best" panel
 -- Everything else moved into the world: Upgrade Wheel sign by your Haunted Wheel, the Lucky Wheel
--- and the Mystery Merchant on the plaza, the free chest on the plaza.
+-- on the plaza.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PenMode = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PenMode"))

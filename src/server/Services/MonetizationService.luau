@@ -24,7 +24,6 @@ local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local Offers = require(script.Parent.Offers)
 local RaidService = require(script.Parent.RaidService)
-local StealService = require(script.Parent.StealService)
 local Gamble = require(script.Parent.Gamble)
 local GuardService = require(script.Parent.GuardService)
 local Fuel = require(script.Parent.Fuel)
@@ -113,13 +112,8 @@ end
 
 -- Products -----------------------------------------------------------------------------------
 
-local function caseValue(rarity: string): number
-	for _, entry in GameConfig.CaseShop do
-		if entry.Rarity == rarity then
-			return entry.Cost
-		end
-	end
-	return 0
+local function coffinValue(rarity: string): number
+	return GameConfig.CoffinValue[rarity] or 0
 end
 
 -- Gives what a product contains. Returns false if it can't be given right now (try again later).
@@ -133,31 +127,16 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 	if product.OneTime and table.find(profile.Bought, key) then
 		-- Bought twice somehow: never lose their Robux, pay out the cash part twice instead
 		local cash = if product.Cash then GameConfig.Pay(product.Cash, BaseService.RackIncome(player)) else 0
-		DataService.AddCash(player, cash * 2 + (if product.Case then caseValue(product.Case) else 0), "robux_product")
+		DataService.AddCash(
+			player,
+			cash * 2 + (if product.Coffin then coffinValue(product.Coffin) else 0),
+			"robux_product"
+		)
 		return true
 	end
 
-	-- A gift: the chosen player gets the real product (the buyer, if they've left)
-	if product.Gift then
-		local inner = Monetization.ProductByKey[product.Gift]
-		local target = Gamble.GiftTarget(player) or player
-		if inner and grantProduct(target, inner) then
-			if target ~= player then
-				Net.Notify(player, `You gifted {inner.Name} to {target.DisplayName}!`, "good")
-				Net.Notify(target, `{player.DisplayName} gifted you {inner.Name}!`, "good")
-				Net.Announce(`{player.DisplayName} gifted {target.DisplayName} a {inner.Name}!`, inner.Color, 2)
-			end
-			return true
-		end
-		return false
-	end
-	-- Paid random items aren't allowed where this player lives: never open one (the client hides
-	-- them; this is the backstop). They get the case's cash value instead.
-	if Monetization.IsPaidRandom(product) and player:GetAttribute("PaidRandomRestricted") == true then
-		DataService.AddCash(player, caseValue(product.Case or product.LuckyBlock or "Rare"), "robux_case_value")
-		Net.Notify(player, "Cases aren't available where you are - here's cash instead.", "info")
-		return true
-	end
+	-- Paid random items aren't allowed where this player lives: the coffin's cash value instead
+	local restricted = Monetization.IsPaidRandom(product) and player:GetAttribute("PaidRandomRestricted") == true
 	local got: { string } = {}
 	if product.Cash then
 		local cash = GameConfig.Pay(product.Cash, BaseService.RackIncome(player))
@@ -180,9 +159,16 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 		end)
 		table.insert(got, `{amount} Murderer Tickets`)
 	end
-	if product.Case then
-		StealService.OpenCase(player, product.Case, true)
-		table.insert(got, `a {product.Case} Case`)
+	if product.Coffin then
+		if restricted then
+			local value = coffinValue(product.Coffin)
+			DataService.AddCash(player, value, "robux_coffin_value")
+			table.insert(got, Format.Cash(value))
+		else
+			-- (paid for: it always arrives - with no free plate it waits in storage, unsealed)
+			CoffinService.GiveRarity(player, product.Coffin, "the Starter Pack", true, true)
+			table.insert(got, `a {product.Coffin} {if PenMode.Coffins() then "Coffin" else "knife"}`)
+		end
 	end
 	if product.Spins then
 		Gamble.AddSpins(player, product.Spins)
@@ -191,10 +177,6 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 	if product.Luck then
 		Gamble.AddLuck(player, product.Luck)
 		table.insert(got, `{product.Luck // 60} min of 2x Luck`)
-	end
-	if product.LuckyBlock then
-		StealService.OpenCase(player, product.LuckyBlock, true, true)
-		table.insert(got, `a {product.LuckyBlock} Lucky Block`)
 	end
 	if product.Boost then
 		local boost = product.Boost
@@ -271,11 +253,6 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 			3
 		)
 		table.insert(got, "Server Luck")
-	elseif key == "ChestRefill" then
-		DataService.Update(player, function(p)
-			p.NextFreeChest = 0
-		end)
-		table.insert(got, "a full free chest")
 	elseif key == "CoffinOpen" then
 		if CoffinService.OpenNow(player) then
 			table.insert(got, "your coffin, open")
@@ -420,7 +397,7 @@ function MonetizationService.Init()
 
 	local function setup(player: Player)
 		player:SetAttribute("JoinedAt", os.time())
-		-- Roblox policy: paid random items (Robux cases, Lucky Blocks) are off where restricted.
+		-- Roblox policy: paid random items (a Robux coffin) are off where restricted.
 		-- If the check fails we assume restricted (the safe side).
 		task.spawn(function()
 			local ok, info = pcall(function()

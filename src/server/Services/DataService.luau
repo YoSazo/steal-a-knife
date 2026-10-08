@@ -41,11 +41,8 @@ export type Profile = {
 	WallLevel: number, -- GameConfig.Walls tier: wall height and gate health
 	Rebirths: number,
 	TutorialDone: boolean,
-	CasesOpened: number,
 	KnivesStolen: number, -- from other players' vaults in raids
-	BestPull: string, -- the most hyped item ever unboxed (for bragging rights)
 	IndexClaimed: { string }, -- knives whose Index reward was collected
-	NextFreeChest: number, -- os.time() when the plaza's free chest is ready for them again
 	LastSeen: number, -- os.time() of the last save (offline earnings count from here)
 	PlayTime: number, -- seconds played in total (the new-player shield runs out on this)
 	DailyStreak: number, -- day of the 7-day login streak last claimed (0 = none yet)
@@ -58,7 +55,7 @@ export type Profile = {
 	Heat: number, -- 0-10, boosts income and power luck (server Fuel)
 	Spins: number, -- Lucky Wheel spins banked (Gamble)
 	FreeSpinDay: number, -- UTC day number the free daily spin was used
-	LuckUntil: number, -- os.time() until which a luck potion doubles case / lucky block luck
+	LuckUntil: number, -- os.time() until which a luck potion doubles coffin luck
 	MerchantBought: { string }, -- "rotation:slot" bought from the Mystery Merchant this rotation
 	Boosts: { [string]: number }, -- Robux timed boosts: name (Speed/Cash/Training) -> os.time() it ends
 	Charges: { [string]: number }, -- Robux charges: name (Escape/Insurance) -> how many left
@@ -124,11 +121,8 @@ local function defaultProfile(): Profile
 		WallLevel = 1,
 		Rebirths = 0,
 		TutorialDone = false,
-		CasesOpened = 0,
 		KnivesStolen = 0,
-		BestPull = "",
 		IndexClaimed = {},
-		NextFreeChest = 0,
 		LastSeen = 0,
 		PlayTime = 0,
 		DailyStreak = 0,
@@ -290,9 +284,6 @@ local function reconcile(data: any): Profile
 		end
 	end
 	profile.Discovered = discovered
-	if not Items.Valid(profile.BestPull) then
-		profile.BestPull = ""
-	end
 	if profile.Equipped ~= "" and not table.find(profile.Knives, profile.Equipped) then
 		profile.Equipped = ""
 	end
@@ -560,11 +551,8 @@ local function publish(player: Player, profile: Profile)
 	player:SetAttribute("Rebirths", profile.Rebirths)
 	player:SetAttribute("Title", GameConfig.RebirthTitle(profile.Rebirths))
 	player:SetAttribute("TutorialDone", profile.TutorialDone)
-	player:SetAttribute("CasesOpened", profile.CasesOpened)
 	player:SetAttribute("KnivesStolen", profile.KnivesStolen)
-	player:SetAttribute("BestPull", profile.BestPull)
 	player:SetAttribute("IndexClaimed", table.concat(profile.IndexClaimed, ","))
-	player:SetAttribute("NextFreeChest", profile.NextFreeChest)
 	player:SetAttribute("DailyStreak", profile.DailyStreak)
 	player:SetAttribute("TrailLevel", profile.TrailLevel)
 	player:SetAttribute("HealthLevel", profile.HealthLevel)
@@ -706,7 +694,7 @@ function DataService.AddCash(player: Player, amount: number, reason: string?)
 	end
 end
 
--- `reason` names the sink for analytics ("upgrade_speed", "case", "enchant"...)
+-- `reason` names the sink for analytics ("upgrade_speed", "upgrade_wheel"...)
 function DataService.TrySpend(player: Player, amount: number, reason: string?): boolean
 	local profile = profiles[player]
 	if not profile or amount < 0 or profile.Cash < amount then

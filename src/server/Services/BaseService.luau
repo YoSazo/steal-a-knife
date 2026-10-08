@@ -589,10 +589,9 @@ local function makePrompt(parent: Instance, props: { [string]: any }): Proximity
 	return p
 end
 
--- Carrying a knife (not a case) right now
+-- Carrying a knife right now
 local function carryingKnife(player: Player): boolean
-	local carrying = player:GetAttribute("Carrying")
-	return type(carrying) == "string" and carrying:sub(1, 5) ~= "Case:"
+	return type(player:GetAttribute("Carrying")) == "string"
 end
 
 -- Worth a second tap before it's sold: rare knives, mutations, big sizes

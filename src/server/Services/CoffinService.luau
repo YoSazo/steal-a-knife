@@ -11,6 +11,9 @@
 -- coffin that finished while you were away opens when you're back.
 -- The owner can open one now for Robux (product CoffinOpen; the client names the coffin first with
 -- Remotes.CoffinTarget). Opening = a burst and the knife on its plate.
+-- Every other mystery knife (gifts, Lucky Wheel prizes, round loot, the daily streak, the Starter
+-- Pack) also arrives as a coffin: CoffinService.Give / GiveRarity. On vault servers (coffins off)
+-- the knife goes straight onto the wall.
 -- Off unless GameConfig.Coffins.Enabled (Studio: ReplicatedStorage attribute DebugCoffins).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -29,9 +32,30 @@ local CoffinService = {}
 
 local CONFIG = GameConfig.Coffins
 local target: { [Player]: number } = {} -- the coffin the owner asked to open with Robux
+local rng = Random.new()
 
 function CoffinService.On(_player: Player): boolean
 	return PenMode.Coffins()
+end
+
+-- Set by Gamble: luck potions (CoffinService.Luck multiplies it in)
+CoffinService.LuckMultiplier = nil :: ((Player, DataService.Profile) -> number)?
+
+-- Mutation / size luck for a knife rolled for this player: rebirths, the 2x Luck pass, potions and
+-- Server Luck
+function CoffinService.Luck(player: Player, profile: DataService.Profile): number
+	local luck = 1 + profile.Rebirths * GameConfig.Rebirth.LuckBonus
+	if player:GetAttribute("Pass_Luck") == true then
+		luck *= 2
+	end
+	if CoffinService.LuckMultiplier then
+		luck *= CoffinService.LuckMultiplier(player, profile)
+	end
+	local until_ = ReplicatedStorage:GetAttribute("ServerLuckUntil")
+	if type(until_) == "number" and workspace:GetServerTimeNow() < until_ then
+		luck *= (ReplicatedStorage:GetAttribute("ServerLuckMultiplier") or 2) :: number
+	end
+	return luck
 end
 
 local function roundsText(rounds: number): string
@@ -61,6 +85,103 @@ function CoffinService.Seal(player: Player, plate: number, item: string, seconds
 	end)
 	Analytics.Track(player, "coffin.sealed", { rarity = rarity, rounds = rounds })
 	return if rounds <= 0 then `in {Format.Duration(CONFIG.CommonSeconds)}` else roundsText(rounds)
+end
+
+-- A boss's knife going into your coffin gets one more mutation / size roll with your luck (rebirths,
+-- the Luck pass, potions); the better of the two is what's inside. Nobody sees it until it opens.
+function CoffinService.LuckyContents(player: Player, item: string): string
+	local profile = DataService.Get(player)
+	local parsed = Items.Parse(item)
+	if not profile or not parsed then
+		return item
+	end
+	local luck = CoffinService.Luck(player, profile)
+	if luck <= 1 then
+		return item
+	end
+	local mutation, size = Items.Roll(rng, luck)
+	local candidate = Items.Make(parsed.Name, mutation.Id, size.Id)
+	local fields = string.split(item, "|")
+	if fields[4] and fields[4] ~= "" then
+		candidate = Items.WithPower(candidate, fields[4]) -- (a set power stays: the tutorial's Shadow)
+	end
+	return if Items.Income(candidate) > Items.Income(item) then candidate else item
+end
+
+-- A mystery knife for `player` (a gift, a wheel prize, round loot, the daily streak, the Starter
+-- Pack). Coffin servers: it lands in their pen SEALED in a coffin, on the murder-round clock like a
+-- boss's (the knife stays a secret till it opens). Vault servers: straight onto the wall.
+-- Returns the item, or nil when there's no free plate (the caller pays its worth instead).
+-- `source` names it in the toast ("a gift", "the Lucky Wheel") and in analytics; `quiet` skips the
+-- toast (the round haul has its own card). `force` (paid for with Robux): with no free plate it
+-- still arrives, unsealed, waiting in storage until there's room (DataService.AddKnife).
+function CoffinService.Give(player: Player, item: string, source: string, quiet: boolean?, force: boolean?): string?
+	local profile = DataService.Get(player)
+	local parsed = Items.Parse(item)
+	if not profile or not parsed or (not DataService.FreePlate(profile) and not force) then
+		return nil
+	end
+	local rarity = parsed.Knife.Rarity
+	if PenMode.Coffins() and DataService.FreePlate(profile) then
+		local plate = 0
+		DataService.Update(player, function(p)
+			plate = DataService.AddKnife(p, item)
+		end)
+		local when = CoffinService.Seal(player, plate, item)
+		BaseService.RefreshRack(player)
+		Net.Remotes.Effect:FireAllClients("Deposit", player, rarity)
+		if not quiet then
+			Net.Notify(player, `⚰️ A {rarity} Coffin from {source} is in your pen! It opens {when}.`, "good")
+		end
+	else
+		local isNew = not table.find(profile.Discovered, parsed.Name)
+		DataService.Update(player, function(p)
+			DataService.AddKnife(p, item)
+			if isNew then
+				table.insert(p.Discovered, parsed.Name)
+			end
+		end)
+		BaseService.RefreshRack(player)
+		Net.Remotes.Effect:FireAllClients("Deposit", player, rarity)
+		if not quiet then
+			Net.Notify(
+				player,
+				`🔪 {if isNew then "NEW! " else ""}{Items.DisplayName(item)} from {source}! +{Format.Cash(
+					Items.Income(item)
+				)}/s`,
+				"good"
+			)
+		end
+	end
+	Analytics.Track(player, "coffin.given", { rarity = rarity, source = source, sealed = PenMode.Coffins() })
+	return item
+end
+
+-- A mystery knife of this rarity (a 4% chance of one rarity up), rolled with the player's luck
+function CoffinService.GiveRarity(
+	player: Player,
+	rarity: string,
+	source: string,
+	quiet: boolean?,
+	force: boolean?
+): string?
+	local profile = DataService.Get(player)
+	if not profile then
+		return nil
+	end
+	local item = Items.RollKnife(rng, rarity, CoffinService.Luck(player, profile))
+	return CoffinService.Give(player, item, source, quiet, force)
+end
+
+-- A coffin of this rarity, or its worth in cash (GameConfig.CoffinValue) when there's no room.
+-- Returns what they got, for a toast ("a Rare Coffin" / "$300K (no room for a coffin)").
+function CoffinService.GiveOrCash(player: Player, rarity: string, source: string): string
+	if CoffinService.GiveRarity(player, rarity, source) then
+		return `a {rarity} {if PenMode.Coffins() then "Coffin" else "knife"}`
+	end
+	local value = GameConfig.CoffinValue[rarity] or GameConfig.CoffinValue.Common
+	DataService.AddCash(player, value, "coffin_value")
+	return `{Format.Cash(value)} (no room for a {rarity} {if PenMode.Coffins() then "Coffin" else "knife"})`
 end
 
 local POP_TIME = 1.1 -- the coffin rattles and its lid swings open this long before the knife shows

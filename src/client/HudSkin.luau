@@ -128,10 +128,6 @@ function HudSkin.Init()
 			restyle(button, look.Icon, look.Color)
 		end
 	end
-	local chest = root:FindFirstChild("ChestPill", true)
-	if chest and chest:IsA("GuiObject") then
-		restyle(chest, hud.FreeChest, Color3.fromRGB(255, 190, 40))
-	end
 end
 
 return HudSkin

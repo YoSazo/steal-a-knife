@@ -17,7 +17,6 @@ local Ui = require(script.Parent.Ui)
 local Theme = require(script.Parent.MenuTheme)
 local Effects = require(script.Parent.Effects)
 local StoreView = require(script.Parent.StoreView)
-local CaseOdds = require(script.Parent.CaseOdds)
 local Telemetry = require(script.Parent.Telemetry)
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("Config"):WaitForChild("GameConfig"))
@@ -97,8 +96,6 @@ local function priceButton(parent: Instance, price: number, props: { [string]: a
 	return button
 end
 
--- Case odds (the same numbers the Case Shop shows) -----------------------------------------------
-
 -- The Store panel --------------------------------------------------------------------------------
 
 local function text(parent: Instance, props: { [string]: any }): TextLabel
@@ -142,7 +139,7 @@ function Store.Init()
 	task.spawn(preloadIcons)
 	local gui = Ui.gui
 
-	StoreView.Build({ buy = buy, owned = owned, cash = cashFor, odds = CaseOdds.Text, price = priceButton })
+	StoreView.Build({ buy = buy, owned = owned, cash = cashFor, price = priceButton })
 
 	-- Contextual offers ---------------------------------------------------------------------------
 	local offerCard: Frame? = nil

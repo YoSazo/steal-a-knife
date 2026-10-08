@@ -255,7 +255,6 @@ local function context(player: Player): { [string]: any }
 		props.trail_level = profile.TrailLevel
 		props.tutorial_done = profile.TutorialDone
 		props.tutorial_step = profile.TutorialStep
-		props.cases_opened = profile.CasesOpened
 		props.kills_total = profile.TotalKills
 		props.wins_total = profile.RoundsWon
 		props.daily_streak = profile.DailyStreak

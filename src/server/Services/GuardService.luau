@@ -539,7 +539,7 @@ local function setSlot(boss: Boss, slot: Slot, item: string)
 end
 
 local function rollItem(boss: Boss): string
-	return Items.OpenCase(rng, boss.Config.Rarity, 1)
+	return Items.RollKnife(rng, boss.Config.Rarity, 1)
 end
 
 -- A restock worth shouting about: a strong mutation or a huge size

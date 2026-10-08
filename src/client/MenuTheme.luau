@@ -170,8 +170,6 @@ local function symbol(parent: Instance, name: string, props: { [string]: any }?)
 end
 
 local VoxelHud = require(ReplicatedStorage.Shared.Config.VoxelUi).Hud :: { [string]: string }
-local VoxelCases = require(ReplicatedStorage.Shared.Config.VoxelUi).Cases :: { [string]: string }
-local VoxelLuckyBlocks = require(ReplicatedStorage.Shared.Config.VoxelUi).LuckyBlocks :: { [string]: string }
 local Icons2 = require(ReplicatedStorage.Shared.Config.VoxelIcons2).Icons :: { [string]: string }
 local VOXEL_ALIAS: { [string]: string } = {
 	Upgrades = "Upgrades",
@@ -185,21 +183,15 @@ local VOXEL_ALIAS: { [string]: string } = {
 	Training = "Speed",
 	Trophy = "Stats",
 	Spin = "Spin",
-	Merchant = "Merchant",
+	Shop = "Shop",
 	Knives = "Knives",
 	Cash = "Cash",
-	FreeChest = "FreeChest",
 	Heat = "Heat",
 }
 function Theme.image(parent: Instance, name: string, props: { [string]: any }?): ImageLabel
 	-- Codex's voxel art (headers AND buttons/tiles now - the Powers menu is the bar every icon
 	-- should clear, so anything with a real icon here uses it instead of the old sprite sheet).
-	local caseRarity = name:match("^Case(%a+)$")
-	local luckyRarity = name:match("^Lucky(%a+)$")
-	local voxel = (VOXEL_ALIAS[name] and VoxelHud[VOXEL_ALIAS[name]])
-		or Icons2[name]
-		or (caseRarity and VoxelCases[caseRarity])
-		or (luckyRarity and VoxelLuckyBlocks[luckyRarity])
+	local voxel = (VOXEL_ALIAS[name] and VoxelHud[VOXEL_ALIAS[name]]) or Icons2[name]
 	if voxel then
 		local options: { [string]: any } = {
 			Name = name .. "Art",

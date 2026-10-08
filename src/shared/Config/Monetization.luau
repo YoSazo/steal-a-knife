@@ -27,12 +27,10 @@ export type Product = {
 	Color: Color3,
 	Cash: { Min: number, Seconds: number }?, -- seconds of the buyer's income, at least Min
 	Speed: { Share: number, Min: number }?, -- Speed: this share of the buyer's Speed, at least Min
-	Case: string?, -- a sealed case of this rarity
-	LuckyBlock: string?, -- a Lucky Block of this tier (Items.LuckyBlocks)
+	Coffin: string?, -- a coffin of this rarity (CoffinService.GiveRarity)
 	Spins: number?, -- Lucky Wheel spins
 	Luck: number?, -- seconds of 2x luck (potion)
-	Gift: string?, -- a gift: grants the product with this key to the chosen player (Gamble.GiftTarget)
-	Hidden: boolean?, -- not listed in the Store grid (gifts are bought from the gift picker)
+	Hidden: boolean?, -- not listed in the Store grid
 	Tickets: number?,
 	OneTime: boolean?,
 	Boost: { Name: string, Seconds: number }?, -- a timed boost (profile.Boosts): Speed, Cash, Training
@@ -60,7 +58,7 @@ Monetization.Passes = {
 		Id = 2005917480,
 		Price = 199,
 		Name = "VIP",
-		Description = "+10% money, a gold VIP tag, and the free chest twice as often.",
+		Description = "+10% money and a gold VIP tag, forever.",
 		Icon = "👑",
 		Color = rgb(255, 196, 40),
 	},
@@ -96,7 +94,7 @@ Monetization.Passes = {
 		Id = 2005341434,
 		Price = 299,
 		Name = "2x Luck",
-		Description = "Better knives from every case, Lucky Block and wheel spin, forever.",
+		Description = "Better knives in every coffin you get, forever.",
 		Icon = "🍀",
 		Color = rgb(80, 220, 90),
 	},
@@ -135,11 +133,11 @@ Monetization.Products = {
 		Id = 3716624495,
 		Price = 79,
 		Name = "Starter Pack",
-		Description = "A head start: a pile of cash and a Rare Case. Once per player.",
+		Description = "A head start: a pile of cash and a Legendary Coffin. Once per player.",
 		Icon = "🎁",
 		Color = rgb(255, 130, 60),
 		Cash = { Min = 225000, Seconds = 300 },
-		Case = "Rare",
+		Coffin = "Legendary",
 		OneTime = true,
 	},
 	{
@@ -204,67 +202,7 @@ Monetization.Products = {
 		Color = rgb(40, 120, 255),
 		Speed = { Share = 4, Min = 120000 },
 	},
-	{
-		Key = "CaseEpic",
-		Id = 3716624504,
-		Price = 49,
-		Name = "Epic Case",
-		Description = "Opens on the spot. Odds are shown in the Store.",
-		Icon = "📦",
-		Color = rgb(180, 90, 255),
-		Case = "Epic",
-	},
-	{
-		Key = "CaseLegendary",
-		Id = 3716624507,
-		Price = 149,
-		Name = "Legendary Case",
-		Description = "Opens on the spot. Odds are shown in the Store.",
-		Icon = "📦",
-		Color = rgb(255, 190, 40),
-		Case = "Legendary",
-	},
-	{
-		Key = "CaseGodly",
-		Id = 3716624511,
-		Price = 449,
-		Name = "Godly Case",
-		Description = "Opens on the spot. Odds are shown in the Store.",
-		Icon = "📦",
-		Color = rgb(255, 80, 120),
-		Case = "Godly",
-	},
 	-- Lucky Blocks (Steal a Brainrot style): wide odds, every knife's chance shown in the Store
-	{
-		Key = "LuckyMythic",
-		Id = 3716624512,
-		Price = 175,
-		Name = "Mythic Lucky Block",
-		Description = "Legendary to Celestial. Every knife's odds are on the block.",
-		Icon = "🎁",
-		Color = rgb(235, 60, 60),
-		LuckyBlock = "Mythic",
-	},
-	{
-		Key = "LuckyGodly",
-		Id = 3716624517,
-		Price = 399,
-		Name = "Godly Lucky Block",
-		Description = "Mythic to Cosmic. Every knife's odds are on the block.",
-		Icon = "🎁",
-		Color = rgb(70, 110, 255),
-		LuckyBlock = "Godly",
-	},
-	{
-		Key = "LuckyCosmic",
-		Id = 3716624519,
-		Price = 1499,
-		Name = "Cosmic Lucky Block",
-		Description = "Godly to Cosmic. Every knife's odds are on the block.",
-		Icon = "🎁",
-		Color = rgb(40, 36, 60),
-		LuckyBlock = "Cosmic",
-	},
 	-- Lucky Wheel spins and luck potions
 	{
 		Key = "Spins3",
@@ -307,50 +245,6 @@ Monetization.Products = {
 		Luck = 3600,
 	},
 	-- Gifts (bought from the gift picker for another player in the server)
-	{
-		Key = "GiftLuckyMythic",
-		Id = 3716624534,
-		Price = 175,
-		Name = "Gift: Mythic Lucky Block",
-		Description = "A Mythic Lucky Block for a friend.",
-		Icon = "🎁",
-		Color = rgb(235, 60, 60),
-		Gift = "LuckyMythic",
-		Hidden = true,
-	},
-	{
-		Key = "GiftLuckyGodly",
-		Id = 3716624539,
-		Price = 399,
-		Name = "Gift: Godly Lucky Block",
-		Description = "A Godly Lucky Block for a friend.",
-		Icon = "🎁",
-		Color = rgb(70, 110, 255),
-		Gift = "LuckyGodly",
-		Hidden = true,
-	},
-	{
-		Key = "GiftSpins10",
-		Id = 3716624540,
-		Price = 129,
-		Name = "Gift: 10 Wheel Spins",
-		Description = "Ten Lucky Wheel spins for a friend.",
-		Icon = "🎁",
-		Color = rgb(255, 80, 170),
-		Gift = "Spins10",
-		Hidden = true,
-	},
-	{
-		Key = "GiftLuckPotion",
-		Id = 3716624541,
-		Price = 39,
-		Name = "Gift: Luck Potion",
-		Description = "15 minutes of better cases for a friend.",
-		Icon = "🎁",
-		Color = rgb(80, 220, 90),
-		Gift = "LuckPotion",
-		Hidden = true,
-	},
 	-- Consumables: each fixes a friction you run into every session (GameConfig.Consumables)
 	{
 		Key = "SpeedPotion",
@@ -527,15 +421,6 @@ Monetization.Products = {
 		Color = rgb(80, 220, 120),
 	},
 	{
-		Key = "ChestRefill",
-		Id = 3716624592,
-		Price = 25,
-		Name = "Refill Free Chest",
-		Description = "Your plaza chest is ready to open again, right now.",
-		Icon = "🎁",
-		Color = rgb(255, 200, 70),
-	},
-	{
 		Key = "DoublePrize",
 		Id = 3716821469,
 		Price = 25,
@@ -566,8 +451,9 @@ Monetization.Products = {
 	},
 } :: { Product }
 
--- Paid random items (Roblox policy): Robux cases and Lucky Blocks. Hidden and refused for players
--- where PolicyService says paid random items are restricted (player attribute PaidRandomRestricted).
+-- Paid random items (Roblox policy): a coffin bought with Robux (the Starter Pack's). Refused for
+-- players where PolicyService says paid random items are restricted (attribute
+-- PaidRandomRestricted): they get its cash value instead.
 -- What a speed pack gives a player with this much Speed (client shows it, server grants it)
 function Monetization.SpeedFor(product: Product, speed: number): number
 	local pack = product.Speed
@@ -578,11 +464,7 @@ function Monetization.SpeedFor(product: Product, speed: number): number
 end
 
 function Monetization.IsPaidRandom(product: Product): boolean
-	if product.Gift then
-		local inner = Monetization.ProductByKey[product.Gift]
-		return inner ~= nil and Monetization.IsPaidRandom(inner)
-	end
-	return product.Case ~= nil or product.LuckyBlock ~= nil
+	return product.Coffin ~= nil
 end
 
 -- Products that are no longer sold (their systems were cut), by product id -> Robux price. A receipt
@@ -591,6 +473,17 @@ end
 Monetization.Retired = {
 	[3716624556] = 49, -- 3 Reroll Tokens (knife power rerolls)
 	[3716624560] = 129, -- 10 Reroll Tokens
+	[3716624504] = 49, -- Epic Case (cases)
+	[3716624507] = 149, -- Legendary Case (cases)
+	[3716624511] = 449, -- Godly Case (cases)
+	[3716624512] = 175, -- Mythic Lucky Block (lucky blocks)
+	[3716624517] = 399, -- Godly Lucky Block (lucky blocks)
+	[3716624519] = 1499, -- Cosmic Lucky Block (lucky blocks)
+	[3716624534] = 175, -- Gift: Mythic Lucky Block (gifts to a player)
+	[3716624539] = 399, -- Gift: Godly Lucky Block (gifts to a player)
+	[3716624540] = 129, -- Gift: 10 Wheel Spins (gifts to a player)
+	[3716624541] = 39, -- Gift: Luck Potion (gifts to a player)
+	[3716624592] = 25, -- Refill Free Chest (the free chest)
 } :: { [number]: number }
 
 Monetization.PassByKey = {} :: { [string]: Pass }

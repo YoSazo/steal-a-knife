@@ -1,6 +1,6 @@
 --!strict
--- The gambling panels (server: Gamble): the Lucky Wheel, the Mystery Merchant, the luck-potion
--- timer. No HUD buttons: the wheel and the merchant are places on the plaza.
+-- The Lucky Wheel panel (server: Gamble) and the luck-potion timer. No HUD button: the wheel stands
+-- on the plaza.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -10,7 +10,6 @@ local TweenService = game:GetService("TweenService")
 local Ui = require(script.Parent.Ui)
 local Theme = require(script.Parent.MenuTheme)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
-local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local WheelArt = require(ReplicatedStorage.Shared.Config.LuckyWheelArt).Images :: { [string]: string }
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
@@ -231,108 +230,6 @@ local function buildWheel()
 	return frame
 end
 
--- Mystery Merchant ----------------------------------------------------------------------------------
-
-local function buildMerchant()
-	local frame, body = Theme.shell("MysteryMerchant", "Deals", PURPLE, "Merchant", 520, 860)
-	local timer = Theme.text(body, "", {
-		Size = UDim2.new(1, 0, 0, 36),
-		MaximumTextSize = 28,
-		TextColor3 = Color3.fromRGB(255, 220, 120),
-	})
-	local row = new("Frame", {
-		Position = UDim2.fromOffset(0, 44),
-		Size = UDim2.new(1, 0, 1, -44),
-		BackgroundTransparency = 1,
-		ZIndex = 7,
-	}, body)
-	new("UIGridLayout", {
-		CellSize = UDim2.new(1 / GameConfig.Merchant.Slots, -10, 1, -4),
-		CellPadding = UDim2.fromOffset(10, 0),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-	}, row)
-	local endsAt = 0
-	local function load()
-		local ok, _, info = Remotes.Gamble:InvokeServer("Merchant")
-		if not ok or type(info) ~= "table" then
-			return
-		end
-		endsAt = info.EndsAt
-		for _, child in row:GetChildren() do
-			if child:IsA("Frame") then
-				child:Destroy()
-			end
-		end
-		for slot, offer in info.Stock do
-			local color = Knives.RarityColors[offer.Tier] or Theme.Cyan
-			local card =
-				Theme.surface(row, { LayoutOrder = slot, ZIndex = 7 }, color:Lerp(Color3.new(0, 0, 0), 0.5), color)
-			Theme.text(card, `-{offer.Discount}%`, {
-				Position = UDim2.new(1, -96, 0, 6),
-				Size = UDim2.fromOffset(90, 40),
-				BackgroundTransparency = 0,
-				BackgroundColor3 = Theme.Red,
-				MaximumTextSize = 30,
-				ZIndex = 11,
-			})
-			-- A Lucky Block offer showed the same case-chest picture as a Case offer; pick the
-			-- art that matches what's actually being sold.
-			Theme.image(card, (if offer.Kind == "Lucky" then "Lucky" else "Case") .. offer.Tier, {
-				Position = UDim2.new(0.15, 0, 0, 30),
-				Size = UDim2.fromScale(0.7, 0.42),
-				ZIndex = 9,
-			})
-			Theme.text(card, `{offer.Tier} {if offer.Kind == "Lucky" then "Lucky Block" else "Case"}`, {
-				Position = UDim2.new(0, 6, 0.5, 20),
-				Size = UDim2.new(1, -12, 0, 36),
-				MaximumTextSize = 26,
-				TextColor3 = color:Lerp(Color3.new(1, 1, 1), 0.3),
-				ZIndex = 10,
-			})
-			local was = Theme.text(card, "$" .. Ui.abbreviate(offer.Full), {
-				Position = UDim2.new(0, 6, 0.5, 56),
-				Size = UDim2.new(1, -12, 0, 26),
-				MaximumTextSize = 22,
-				TextColor3 = Color3.fromRGB(190, 190, 200),
-				ZIndex = 10,
-			})
-			was.Text = `<s>{was.Text}</s>`
-			was.RichText = true
-			local buy = Theme.button(card, "$" .. Ui.abbreviate(offer.Price), Theme.Gold, {
-				AnchorPoint = Vector2.new(0.5, 1),
-				Position = UDim2.new(0.5, 0, 1, -8),
-				Size = UDim2.new(0.86, 0, 0, 60),
-				MaximumTextSize = 36,
-			}, function()
-				local done = Remotes.Gamble:InvokeServer("BuyMerchant", slot)
-				if done then
-					load()
-				end
-			end, "Cash")
-			if info.Bought[slot] then
-				Theme.enabled(buy, false, "SOLD")
-			end
-		end
-	end
-	frame:GetPropertyChangedSignal("Visible"):Connect(function()
-		if frame.Visible then
-			load()
-		end
-	end)
-	RunService.Heartbeat:Connect(function()
-		if not frame.Visible then
-			return
-		end
-		local left = endsAt - os.time()
-		timer.Text = `New stock in {Ui.clock(left)}`
-		if left <= 0 and endsAt > 0 then
-			endsAt = 0
-			task.spawn(load)
-		end
-	end)
-	return frame
-end
-
 -- Luck timer pill -----------------------------------------------------------------------------------
 
 local function buildLuckTimer()
@@ -388,12 +285,10 @@ end
 
 function GambleUi.Init()
 	local wheel = buildWheel()
-	local merchant = buildMerchant()
 	buildLuckTimer()
-	-- No HUD buttons any more: the Lucky Wheel and Silas the Mystery Merchant stand on the plaza
-	-- (server ShopNPCs); stepping onto their rings opens these panels (client/Menus)
+	-- No HUD button: the Lucky Wheel stands on the plaza (server PlazaWheel); stepping onto its ring
+	-- opens this panel (client/Menus)
 	Ui.Panels.Spin = wheel
-	Ui.Panels.Merchant = merchant
 	-- Over the wheel: "🎁 2 FREE SPINS!" (just yours), and the wheel face turns slowly
 	local badgeGui = new("BillboardGui", {
 		Name = "FreeSpins",

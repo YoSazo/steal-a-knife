@@ -607,7 +607,7 @@ local handlers: { [string]: (...any) -> () } = {
 	GiftOpen = function(at: Vector3, what: string, kind: string)
 		Effects.Burst(at, Color3.fromRGB(255, 120, 200), 40, 18, 0.8)
 		Effects.Burst(at, Color3.fromRGB(255, 215, 80), 30, 14, 0.6)
-		Effects.Sound(if kind == "Case" then Sounds.Reveal else Sounds.Cash, at, 0.8)
+		Effects.Sound(if kind == "Coffin" then Sounds.Reveal else Sounds.Cash, at, 0.8)
 		Effects.FloatText(at + Vector3.new(0, 4, 0), `🎁 {what}`, Color3.fromRGB(255, 230, 120))
 	end,
 	-- Bought a Health level: a green burst over them
@@ -847,11 +847,6 @@ local handlers: { [string]: (...any) -> () } = {
 	WallsUp = function(_who: Player, position: Vector3)
 		smoke(position)
 		Effects.Sound(Sounds.GateBreak, position, 0.6)
-	end,
-	ChestOpen = function(position: Vector3, _who: Player)
-		pillar(position, Color3.fromRGB(255, 220, 90), 40, 1.2)
-		Effects.Burst(position + Vector3.new(0, 2, 0), Color3.fromRGB(255, 220, 90), 60, 25, 0.9)
-		Effects.Sound(Sounds.Reveal, position, 0.8)
 	end,
 	CashBurst = function(at: Vector3?, cash: number, automatic: boolean?)
 		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?

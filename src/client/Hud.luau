@@ -2,7 +2,6 @@
 -- Always-on HUD, Steal An Egg style:
 --   * bottom left: your Speed and Cash in big chunky numbers (with income, training, boost)
 --   * right: upgrade buttons (Haunted Wheel, vault walls, mounts, Murderer tickets)
---   * bottom right: event timers (next raid, next murder round, the plaza's free chest)
 --   * top: the phase / round timer, raid banner, and big server-wide announcements
 --   * rounds: the role reveal, results
 --   * toasts, the zone title when you cross into a new part of the runway
@@ -17,7 +16,6 @@ local TweenService = game:GetService("TweenService")
 
 local Ui = require(script.Parent.Ui)
 local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
-local Theme = require(script.Parent.MenuTheme)
 local CartoonArt = require(ReplicatedStorage.Shared.Config.CartoonArt)
 local VoxelUi = require(ReplicatedStorage.Shared.Config.VoxelUi)
 local RoundPrize = require(ReplicatedStorage.Shared.RoundPrize)
@@ -56,25 +54,6 @@ local function bigNumber(parent: Instance, color: Color3, position: UDim2, size:
 	return label
 end
 
-local function pill(parent: Instance, order: number): (Frame, TextLabel, TextLabel)
-	local frame = new("Frame", {
-		LayoutOrder = order,
-		Size = UDim2.fromOffset(250, 46),
-		BackgroundColor3 = Color3.fromRGB(20, 16, 28),
-		BackgroundTransparency = 0.35,
-	}, parent)
-	Ui.corner(frame, 14)
-	local icon = Ui.label({ Size = UDim2.fromOffset(40, 40), Position = UDim2.fromOffset(4, 3), Text = "" }, frame)
-	local text = Ui.label({
-		Size = UDim2.new(1, -54, 1, -8),
-		Position = UDim2.fromOffset(48, 4),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "",
-	}, frame)
-	Ui.textStroke(text, 2.5)
-	return frame, icon, text
-end
-
 -- Studio phone preview (DebugPhone): ghosts of Roblox's touch thumbstick and jump button, using
 -- the same sizes and positions Roblox's TouchGui does, so the layout can be checked on desktop
 local function touchGhosts()
@@ -99,22 +78,6 @@ local function touchGhosts()
 	end
 	Ui.Layout.Changed:Connect(resize)
 	resize()
-end
-
--- Puts an art-pack picture where an emoji icon label was (the label keeps its size and place)
-local function pictureIcon(label: TextLabel, image: string)
-	label.Text = ""
-	local picture = label:FindFirstChild("Picture") :: ImageLabel?
-	if not picture then
-		picture = new("ImageLabel", {
-			Name = "Picture",
-			BackgroundTransparency = 1,
-			Size = UDim2.fromScale(1, 1),
-			ScaleType = Enum.ScaleType.Fit,
-			ZIndex = label.ZIndex + 1,
-		}, label)
-	end
-	(picture :: ImageLabel).Image = image
 end
 
 function Hud.Init()
@@ -660,79 +623,6 @@ function Hud.Init()
 	-- (No Upgrades button any more: the wheel + trail are one "Upgrade Wheel" sign by your Haunted
 	-- Wheel, the vault floor is the Upgrade Base sign / the Knives panel, and Health is gone.)
 
-	-- Bottom right: event timers ----------------------------------------------------------------
-	-- (phones: top right, out from under the jump button)
-	local timers = new("Frame", {
-		Name = "Timers",
-		AnchorPoint = if Ui.Phone then Vector2.new(1, 0) else Vector2.new(1, 1),
-		Position = if Ui.Phone then UDim2.new(1, -10, 0, 6) else UDim2.new(1, -14, 1, -14),
-		Size = UDim2.fromOffset(250, 160),
-		BackgroundTransparency = 1,
-	}, gui)
-	if Ui.Phone then
-		new("UIScale", { Scale = 0.72 }, timers)
-	end
-	new("UIListLayout", {
-		Padding = UDim.new(0, if Ui.Phone then 4 else 8),
-		VerticalAlignment = if Ui.Phone then Enum.VerticalAlignment.Top else Enum.VerticalAlignment.Bottom,
-		HorizontalAlignment = Enum.HorizontalAlignment.Right,
-		SortOrder = Enum.SortOrder.LayoutOrder,
-	}, timers)
-	-- New-player shield: how long nobody can rob you
-	local shieldPill, shieldIcon, shieldText = pill(timers, 0)
-	shieldIcon.Text = "🛡️"
-	local function refreshShield()
-		local left = player:GetAttribute("ShieldLeft")
-		local on = player:GetAttribute("Shielded") == true and type(left) == "number" and left > 0
-		shieldPill.Visible = on
-		if on then
-			shieldText.Text = `Protected {math.ceil((left :: number) / 60)}m`
-			shieldText.TextColor3 = Color3.fromRGB(150, 210, 255)
-		end
-	end
-	player:GetAttributeChangedSignal("ShieldLeft"):Connect(refreshShield)
-	player:GetAttributeChangedSignal("Shielded"):Connect(refreshShield)
-	refreshShield()
-	local raidPill, raidIcon, _raidText = pill(timers, 1)
-	pictureIcon(raidIcon, CartoonArt.LootBag)
-	local roundPill, roundIcon, roundText = pill(timers, 2)
-	roundPill.Visible = false -- the top timer says the same thing
-	roundIcon.Text = "🔪"
-	local chestPill, chestIcon, chestText = pill(timers, 3)
-	chestPill.Name = "ChestPill"
-	chestIcon.Visible = false
-	chestPill.BackgroundColor3 = Theme.Navy
-	chestPill.BackgroundTransparency = 0
-	Theme.outline(chestPill)
-	Theme.studs(chestPill)
-	Theme.image(
-		chestPill,
-		"FreeChest",
-		{ Position = UDim2.fromOffset(2, 4), Size = UDim2.fromOffset(32, 36), ZIndex = 2 }
-	)
-	chestText.ZIndex = 2
-	-- Named "Label" so HudSkin keeps and styles it like Upgrades/Spin/Merchant's words (it hid it
-	-- before: the click-catcher below had that name, so the chest showed no text at all)
-	chestText.Name = "Label"
-	-- It looked like a button (same skin as Upgrades/Spin/Merchant) but did nothing when tapped;
-	-- tapping it now claims the chest directly, same as walking up and holding E.
-	-- Named "Tap": HudSkin's restyle skips it too, so this click-catcher survives the restyle.
-	local chestButton = new("TextButton", {
-		Name = "Tap",
-		Text = "",
-		BackgroundTransparency = 1,
-		Size = UDim2.fromScale(1, 1),
-		ZIndex = 20,
-	}, chestPill)
-	chestButton.Activated:Connect(function()
-		if chestButton:GetAttribute("Busy") then
-			return
-		end
-		chestButton:SetAttribute("Busy", true)
-		Remotes.ClaimFreeChest:InvokeServer()
-		chestButton:SetAttribute("Busy", false)
-	end)
-
 	local function refreshStats()
 		local cash = player:GetAttribute("Cash") or 0
 		local slots = player:GetAttribute("Slots") or GameConfig.StartingSlots
@@ -949,7 +839,6 @@ function Hud.Init()
 	end)
 
 	-- Timers, banners, every frame ------------------------------------------------------------
-	local freeChestLabel: TextLabel? = nil
 	RunService.RenderStepped:Connect(function()
 		local phase = ReplicatedStorage:GetAttribute("Phase")
 		local endsAt = ReplicatedStorage:GetAttribute("PhaseEndsAt") or 0
@@ -986,34 +875,6 @@ function Hud.Init()
 		banner.Visible = false
 		-- (not hidden while the knife is held: they never overlap, and taps made it flicker)
 		stats.Visible = not Ui.menuOpen() and Ui.inHub() -- (speed / cash: hub things; not while dead in a round)
-		timers.Visible = Ui.inHub()
-
-		roundText.Text = if phase == "Round"
-			then "Murder round on!"
-			elseif status:find("Waiting") then "Waiting for players"
-			else `Murder in {clock}`
-		local nextChest = (player:GetAttribute("NextFreeChest") or 0) :: number
-		local chestLeft = nextChest - now
-		chestText.Text = if chestLeft <= 0 then "Free Chest" else Ui.clock(chestLeft)
-		chestText.TextColor3 = Color3.new(1, 1, 1)
-		chestText.TextScaled = true -- (something resets it once after the skin; keep it like the others)
-		-- (no HUD chest button any more: the chest itself on the plaza says FREE! - less is more)
-		chestPill.Visible = false
-		shieldPill.Visible = false -- remaining shield/boost times are available in Stats
-		raidPill.Visible = false -- the top timer already reports active raids
-		-- The chest's own label on the plaza counts down for you too
-		if not freeChestLabel or not freeChestLabel.Parent then
-			local map = workspace:FindFirstChild("Map")
-			local rewards = map and map:FindFirstChild("PlazaRewards")
-			local chest = rewards and rewards:FindFirstChild("FreeChest")
-			freeChestLabel = chest and chest:FindFirstChild("Text", true) :: TextLabel?
-		end
-		if freeChestLabel then
-			freeChestLabel.Text = if chestLeft <= 0 then "FREE!" else Ui.clock(chestLeft)
-			freeChestLabel.TextColor3 = if chestLeft <= 0
-				then Color3.fromRGB(120, 255, 140)
-				else Color3.fromRGB(220, 220, 230)
-		end
 		-- Boost
 		local boostUntil = player:GetAttribute("BoostUntil")
 		local boostLeft = if type(boostUntil) == "number" then boostUntil - now else 0
@@ -1414,16 +1275,6 @@ function Hud.Init()
 	Ui.Layout.Changed:Connect(placeStats)
 	placeStatsLater = placeStats
 	placeStats()
-	timers.AnchorPoint, timers.Position, timers.Size =
-		Vector2.new(1, 0), UDim2.new(1, -12, 0, 0), UDim2.fromOffset(120, 44)
-	local timerScale = timers:FindFirstChildOfClass("UIScale")
-	if timerScale then
-		timerScale:Destroy()
-	end
-	chestPill.Size = UDim2.fromOffset(120, 44)
-	chestIcon.Size, chestIcon.Position = UDim2.fromOffset(26, 32), UDim2.fromOffset(2, 6)
-	chestText.Position, chestText.Size = UDim2.fromOffset(36, 4), UDim2.fromOffset(80, 36)
-	chestText.TextScaled, chestText.TextWrapped = true, false
 	healthFrame.AnchorPoint, healthFrame.Position, healthFrame.Size =
 		Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -12), UDim2.fromOffset(180, 20)
 	for _, text in { healthText, chanceLabel, subLabel } do

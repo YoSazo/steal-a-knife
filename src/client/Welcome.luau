@@ -34,12 +34,12 @@ type Info = {
 local GOLD = Color3.fromRGB(255, 205, 60)
 local RARITY_COLORS: { [string]: Color3 } = Knives.RarityColors
 
--- Real Codex art where there is any (Cash, every case rarity); Tickets has none yet, so it keeps
--- its emoji until Codex makes one.
+-- Real Codex art where there is any (Cash); coffins and Tickets have none yet, so they keep an
+-- emoji until Codex makes one.
 local function rewardArt(reward: GameConfig.DailyReward): (string?, string, string, Color3)
-	if reward.Kind == "Case" then
+	if reward.Kind == "Coffin" then
 		local rarity = reward.Rarity or "Common"
-		return VoxelUi.Cases[rarity], "", `{rarity} Case`, RARITY_COLORS[rarity] or GOLD
+		return nil, "⚰️", `{rarity} Coffin`, RARITY_COLORS[rarity] or GOLD
 	elseif reward.Kind == "Tickets" then
 		return nil, "🎟️", `{reward.Amount or 1} Tickets`, Color3.fromRGB(230, 70, 90)
 	end

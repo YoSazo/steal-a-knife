@@ -21,6 +21,7 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
 local RoundService = require(script.Parent.RoundService)
 local StealService = require(script.Parent.StealService)
+local CoffinService = require(script.Parent.CoffinService)
 local RaidService = require(script.Parent.RaidService)
 local GuardService = require(script.Parent.GuardService)
 
@@ -131,12 +132,9 @@ local commands: { [string]: (Player, ...any) -> any } = {
 		StealService.StartCarry(player, "Knife", name or "KitchenKnife")
 		return true
 	end,
-	Case = function(player: Player, rarity: string?)
-		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if root then
-			StealService.DropCase(rarity or "Common", root.Position + root.CFrame.LookVector * 5)
-		end
-		return root ~= nil
+	-- A mystery coffin, as a gift / wheel prize / daily streak would give it
+	Coffin = function(player: Player, rarity: string?)
+		return CoffinService.GiveRarity(player, rarity or "Epic", "Studio") ~= nil
 	end,
 	Raid = function(player: Player, enabled: boolean?)
 		local start = if enabled == nil then not RaidService.IsRaiding() else enabled

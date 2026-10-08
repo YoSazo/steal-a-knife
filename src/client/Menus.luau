@@ -3,8 +3,7 @@
 --   Index    every knife in the game: silhouettes until you own one, and a reward to claim for each
 --   Knives   your wall (equip the one you fight / murder with, sell the rest)
 --   Rebirth  start over for a permanent multiplier
--- and the shopkeepers' panels, opened by standing on the ring at their stall (server ShopNPCs):
---   Mortimer the Knife Merchant  sealed cases and cash Lucky Blocks, with the odds of everything inside
+-- and the Lucky Wheel's panel, opened by standing on the ring in front of it (server PlazaWheel).
 -- Knife cards show a live 3D model in a ViewportFrame built from the same KnifeModel as the game.
 
 local ContextActionService = game:GetService("ContextActionService")
@@ -18,9 +17,6 @@ local Ui = require(script.Parent.Ui)
 local Theme = require(script.Parent.MenuTheme)
 local IndexView = require(script.Parent.IndexView)
 local RebirthView = require(script.Parent.RebirthView)
-local CaseShowcase = require(script.Parent.CaseShowcase)
-local CaseOdds = require(script.Parent.CaseOdds)
-local LuckyBlockView = require(script.Parent.LuckyBlockView)
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("Config"):WaitForChild("GameConfig"))
 local Items = require(Shared:WaitForChild("Items"))
@@ -47,11 +43,7 @@ local function viewport(parent: Instance, build: () -> Model, dim: boolean?, siz
 		ZIndex = 6,
 	}, parent)
 	local model = build()
-	if model:GetAttribute("Case") then
-		model:PivotTo(CFrame.Angles(math.rad(-18), math.rad(205), 0)) -- three-quarter view of the lock
-	else
-		model:PivotTo(CFrame.Angles(0, 0, math.rad(-40))) -- flat of the blade to the camera, tilted
-	end
+	model:PivotTo(CFrame.Angles(0, 0, math.rad(-40))) -- flat of the blade to the camera, tilted
 	model.Parent = frame
 	local camera = new("Camera", { FieldOfView = 30 }, frame)
 	frame.CurrentCamera = camera
@@ -227,82 +219,6 @@ function Menus.Init()
 		if open and GuiService.SelectedObject ~= nil then
 			GuiService.SelectedObject = frame:FindFirstChild("Close", true)
 		end
-	end
-
-	-- SHOP: sealed cases ---------------------------------------------------------------------------
-	local shopFrame, shopBody = Theme.shell("Mortimer's Knife Cases", "Shop", Theme.Green, "Shop", 540)
-	table.insert(panels, shopFrame)
-	local shopList = new("ScrollingFrame", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		ScrollBarThickness = 8,
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		CanvasSize = UDim2.new(),
-		ZIndex = 5,
-	}, shopBody)
-	new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, shopList)
-	local oddsFrame, oddsBody =
-		Theme.shell("Cash case: full odds", "Case Odds", Color3.fromRGB(61, 178, 255), "Merchant", 650, 960)
-	table.insert(panels, oddsFrame)
-	local oddsScroll = new("ScrollingFrame", {
-		Size = UDim2.new(1, 0, 1, -56),
-		BackgroundTransparency = 1,
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		CanvasSize = UDim2.new(),
-		ScrollBarThickness = 4,
-		ZIndex = 5,
-	}, oddsBody)
-	local fullOdds = Ui.label({
-		Size = UDim2.new(1, -12, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		TextSize = 16,
-		TextScaled = false,
-		TextWrapped = true,
-		TextYAlignment = Enum.TextYAlignment.Top,
-		ZIndex = 6,
-	}, oddsScroll)
-	Ui.button(
-		{ Text = "Back to cash cases", Position = UDim2.new(0, 0, 1, -48), Size = UDim2.new(1, 0, 0, 44), ZIndex = 6 },
-		oddsBody,
-		function()
-			oddsFrame.Visible = false
-			shopFrame.Visible = true
-		end
-	)
-
-	-- (Health is gone: bosses never kill you, so it bought nothing you could feel)
-	for order, entry in GameConfig.CaseShop do
-		local row = CaseShowcase.Build(shopList, entry.Rarity, "$" .. Ui.abbreviate(entry.Cost), function()
-			Remotes.Purchase:InvokeServer("Case:" .. entry.Rarity)
-		end, function()
-			fullOdds.Text = CaseOdds.Text(entry.Rarity)
-				.. "\n\nCash purchase. Knife, mutation and size are separate rolls. Current rebirth and server luck apply to mutation and size."
-			oddsFrame.Visible = true
-		end)
-		row.LayoutOrder = order + 1
-	end
-	-- Cash Lucky Blocks: the same gamble as the Robux ones, for in-game cash (moved here from the
-	-- Robux shop, which is Robux only now)
-	Theme.text(shopList, "CASH LUCKY BLOCKS", {
-		LayoutOrder = 100,
-		Size = UDim2.new(1, -12, 0, 44),
-		MaximumTextSize = 28,
-		TextColor3 = Theme.Gold,
-		ZIndex = 6,
-	})
-	for row, tiers in { { "Rare", "Epic", "Legendary" }, { "Mythic", "Godly", "Cosmic" } } do
-		local cashBlocks = {}
-		for _, tier in tiers do
-			table.insert(cashBlocks, {
-				Block = tier,
-				Price = "$" .. Ui.abbreviate(GameConfig.LuckyBlockCash[tier]),
-				Cash = true,
-				Buy = function()
-					Remotes.Gamble:InvokeServer("LuckyBlock", tier) -- (the server toasts any problem)
-				end,
-			})
-		end
-		LuckyBlockView.Build(shopList, 100 + row, cashBlocks).Name = `CashLucky{row}`
 	end
 
 	-- INDEX: the illustrated collection grid and selected knife inspector.
@@ -568,7 +484,6 @@ function Menus.Init()
 	tile("Kills", 5, "🔪", "Murderer kills", Color3.fromRGB(255, 110, 120))
 	tile("Wins", 6, "🏆", "Rounds won", Color3.fromRGB(255, 215, 80))
 	tile("Stolen", 7, "🔪", "Knives stolen", Color3.fromRGB(255, 120, 120))
-	tile("Cases", 8, "🎁", "Cases opened", Color3.fromRGB(255, 200, 120))
 	tile("Friends", 10, "👥", "Friend boost", Color3.fromRGB(120, 230, 200))
 	tile("Shield", 12, "🛡️", "Knives safe for", Color3.fromRGB(140, 220, 255))
 	tile("Boost", 13, "⚡", "Cash boost", Color3.fromRGB(120, 255, 140))
@@ -586,7 +501,6 @@ function Menus.Init()
 		set("Kills", Ui.abbreviate(player:GetAttribute("Kills") or 0))
 		set("Wins", Ui.abbreviate(player:GetAttribute("Wins") or 0))
 		set("Stolen", Ui.abbreviate(player:GetAttribute("KnivesStolen") or 0))
-		set("Cases", Ui.abbreviate(player:GetAttribute("CasesOpened") or 0))
 		set("Friends", `+{(player:GetAttribute("FriendsHere") or 0) * 10}%`)
 		set("Shield", Ui.clock(player:GetAttribute("ShieldLeft") or 0), player:GetAttribute("Shielded") == true)
 		local boost = player:GetAttribute("BoostUntil")
@@ -767,7 +681,7 @@ function Menus.Init()
 			{ Text = "Bot: Murd", Command = "BotRound", Arg = "Murderer", Color = Color3.fromRGB(200, 40, 50) },
 			{ Text = "Bot: Inno", Command = "BotRound", Arg = "Innocent", Color = Color3.fromRGB(70, 150, 240) },
 			{ Text = "Raid", Command = "Raid", Arg = nil, Color = Color3.fromRGB(230, 90, 40) },
-			{ Text = "Case", Command = "Case", Arg = "Epic", Color = Color3.fromRGB(170, 90, 255) },
+			{ Text = "Coffin", Command = "Coffin", Arg = "Epic", Color = Color3.fromRGB(170, 90, 255) },
 		}
 		for _, spec in specs do
 			Ui.button({ Text = spec.Text, BackgroundColor3 = spec.Color }, tests, function()
@@ -802,7 +716,7 @@ function Menus.Init()
 		return Enum.ContextActionResult.Pass
 	end, false, Enum.KeyCode.K, Enum.KeyCode.ButtonL1)
 
-	-- Shopkeepers (server ShopNPCs): stand on the glowing ring in front of a stall and its shop
+	-- The Lucky Wheel (server PlazaWheel): stand on the glowing ring in front of it and its panel
 	-- opens; step off and it closes. Close it yourself and it stays shut until you step off.
 	local onRing: BasePart? = nil
 	local openedFrame: Frame? = nil
@@ -837,7 +751,7 @@ function Menus.Init()
 		onRing = standing
 		if standing then
 			local which = standing:GetAttribute("ShopPanel")
-			local frame: Frame? = if which == "Shop" then shopFrame else Ui.Panels[tostring(which)] :: any -- the Lucky Wheel / Mystery Merchant (client/GambleUi)
+			local frame: Frame? = Ui.Panels[tostring(which)] :: any -- the Lucky Wheel (client/GambleUi)
 			if frame then
 				if not frame.Visible then
 					toggle(frame)

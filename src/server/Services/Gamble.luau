@@ -1,41 +1,32 @@
 --!strict
--- The gambling layer, all with odds shown and all earnable for free:
---   * Lucky Wheel: one free spin a day + one per GameConfig.Spin.EarnEvery of play; Robux spin packs
---   * Luck potions: 2x case / lucky block luck for a while (profile.LuckUntil, player attr LuckUntil)
---   * Cash Lucky Blocks: Items.LuckyBlocks bought with in-game cash (GameConfig.LuckyBlockCash)
---   * Mystery Merchant: every GameConfig.Merchant.Rotation seconds a new stock of discounted cases
---     and blocks, sized to your income, each buyable once (a real rotation: the timer never lies)
---   * Gifts: pick a player (Remotes.Gamble "GiftTarget"), then buy a Gift product for them
--- Remotes.Gamble(action, ...) -> (ok, message, extra)
+-- The Lucky Wheel and luck, odds shown and earnable for free:
+--   * Lucky Wheel: one free spin a day + one per GameConfig.Spin.EarnEvery of play; Robux spin packs.
+--     Knife prizes are coffins (CoffinService.GiveRarity).
+--   * Luck potions: 2x coffin luck for a while (profile.LuckUntil, player attr LuckUntil)
+-- Remotes.Gamble("Spin") -> (ok, message, prizeIndex)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
-local Items = require(ReplicatedStorage.Shared.Items)
-local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
-local StealService = require(script.Parent.StealService)
+local CoffinService = require(script.Parent.CoffinService)
 local Analytics = require(script.Parent.Analytics)
 
 local Gamble = {}
 
 local rng = Random.new()
-local giftTargets: { [Player]: number } = {}
 
 -- Luck --------------------------------------------------------------------------------------------
 
--- Extra case / lucky block luck from potions and the Luck pass (StealService.caseLuck multiplies it)
-function Gamble.LuckMultiplier(player: Player, profile: DataService.Profile): number
+-- Extra coffin luck from potions (CoffinService.Luck multiplies it in, with the Luck pass)
+function Gamble.LuckMultiplier(_player: Player, profile: DataService.Profile): number
 	local luck = 1
 	if profile.LuckUntil > os.time() then
 		luck *= GameConfig.LuckPotion.Multiplier
-	end
-	if player:GetAttribute("Pass_Luck") == true then
-		luck *= 2
 	end
 	return luck
 end
@@ -119,15 +110,15 @@ local function spin(player: Player): (boolean, string, number?)
 			Net.Notify(player, `Lucky Wheel: +{Format.Cash(cash)}!`, "good")
 		elseif prize.Kind == "Luck" then
 			Gamble.AddLuck(player, prize.Seconds)
-			Net.Notify(player, `Lucky Wheel: better cases for {prize.Seconds // 60} minutes!`, "good")
+			Net.Notify(player, `Lucky Wheel: better coffins for {prize.Seconds // 60} minutes!`, "good")
 		elseif prize.Kind == "Spin" then
 			Gamble.AddSpins(player, prize.Count)
 			Net.Notify(player, `Lucky Wheel: +{prize.Count} spins!`, "good")
-		elseif prize.Kind == "Case" or prize.Kind == "Lucky" then
-			if not StealService.OpenCase(player, prize.Tier, false, prize.Kind == "Lucky") then
+		elseif prize.Kind == "Coffin" then
+			if not CoffinService.GiveRarity(player, prize.Tier, "the Lucky Wheel") then
 				local cash = GameConfig.Pay({ Min = 20000, Seconds = 600 }, BaseService.RackIncome(player))
 				DataService.AddCash(player, cash, "wheel")
-				Net.Notify(player, `Your vault is full - +{Format.Cash(cash)} instead`, "good")
+				Net.Notify(player, `No room for a coffin - +{Format.Cash(cash)} instead`, "good")
 			end
 		end
 		local after = DataService.Get(player)
@@ -139,151 +130,10 @@ local function spin(player: Player): (boolean, string, number?)
 	return true, if free then "Free daily spin!" else "Spinning...", index
 end
 
--- Cash Lucky Blocks -------------------------------------------------------------------------------
-
-local function buyLuckyBlock(player: Player, tier: unknown): (boolean, string)
-	local cost: number? = if type(tier) == "string" then GameConfig.LuckyBlockCash[tier] else nil
-	local profile = DataService.Get(player)
-	if not cost or not profile or not Items.LuckyBlocks[tier :: string] then
-		return false, "Unknown block"
-	end
-	if player:GetAttribute("InRound") then
-		return false, "Not during a round!"
-	end
-	if #profile.Knives >= profile.Slots then
-		return false, "Your vault is full! Sell a knife first."
-	end
-	if Knives.Rank(tier :: string) > Knives.Rank(GameConfig.RarityReached(profile.Speed)) then
-		return false, `Reach the {tier} biome first (train your Speed)!`
-	end
-	if not DataService.TrySpend(player, cost :: number, "lucky_block") then
-		return false, "Not enough cash"
-	end
-	StealService.OpenCase(player, tier :: string, false, true)
-	return true, ""
-end
-
--- Mystery Merchant --------------------------------------------------------------------------------
-
-export type Offer = { Kind: string, Tier: string, Price: number, Full: number, Discount: number }
-
-local function rotation(): (number, number)
-	local period = GameConfig.Merchant.Rotation
-	local now = os.time()
-	return now // period, (now // period + 1) * period
-end
-
--- This rotation's stock for a player: tiers around what they earn, so it's always tempting
-function Gamble.MerchantStock(player: Player): { Offer }
-	local index = rotation()
-	local income = math.max(1, BaseService.RackIncome(player))
-	local seeded = Random.new(index * 7919 + player.UserId % 100000)
-	local stock: { Offer } = {}
-	local used: { [string]: boolean } = {} -- never the same thing twice in one rotation
-	local caseCatalog: { [string]: number } = {}
-	for _, entry in GameConfig.CaseShop do
-		caseCatalog[entry.Rarity] = entry.Cost
-	end
-	for slot = 1, GameConfig.Merchant.Slots do
-		local lucky = seeded:NextNumber() < 0.5
-		local reach = income * 60 * GameConfig.Merchant.MaxMinutes * (0.4 + 0.3 * slot)
-		-- The priciest tier that's within ~MaxMinutes of income (at least the cheapest) and not on
-		-- the stall already; if that kind is all taken, the other kind
-		local tier: string? = nil
-		for _ = 1, 2 do
-			local catalog: { [string]: number } = if lucky then GameConfig.LuckyBlockCash else caseCatalog
-			local kind = if lucky then "Lucky" else "Case"
-			local best, bestCost = nil :: string?, 0
-			local cheapest, cheapestCost = nil :: string?, math.huge
-			for name, cost in pairs(catalog) do
-				if not used[kind .. name] then
-					if cost <= reach and cost > bestCost then
-						best, bestCost = name, cost
-					end
-					if cost < cheapestCost then
-						cheapest, cheapestCost = name, cost
-					end
-				end
-			end
-			tier = best or cheapest
-			if tier then
-				used[kind .. tier] = true
-				break
-			end
-			lucky = not lucky
-		end
-		if not tier then
-			break
-		end
-		local prices: { [string]: number } = if lucky then GameConfig.LuckyBlockCash else caseCatalog
-		local full = prices[tier :: string]
-		local discount = seeded:NextInteger(GameConfig.Merchant.MinDiscount, GameConfig.Merchant.MaxDiscount)
-		table.insert(stock, {
-			Kind = if lucky then "Lucky" else "Case",
-			Tier = tier :: string,
-			Full = full,
-			Discount = discount,
-			Price = math.floor(full * (100 - discount) / 100),
-		})
-	end
-	return stock
-end
-
-local function merchantInfo(player: Player): any
-	local index, endsAt = rotation()
-	local profile = DataService.Get(player)
-	local bought = {}
-	for slot = 1, GameConfig.Merchant.Slots do
-		bought[slot] = profile ~= nil and table.find(profile.MerchantBought, `{index}:{slot}`) ~= nil
-	end
-	return { Stock = Gamble.MerchantStock(player), EndsAt = endsAt, Bought = bought }
-end
-
-local function buyMerchant(player: Player, slot: unknown): (boolean, string)
-	local index = rotation()
-	local profile = DataService.Get(player)
-	local stock = Gamble.MerchantStock(player)
-	if type(slot) ~= "number" or not profile or not stock[slot] then
-		return false, "Gone!"
-	end
-	local key = `{index}:{slot}`
-	if table.find(profile.MerchantBought, key) then
-		return false, "Sold out - new stock soon"
-	end
-	if #profile.Knives >= profile.Slots then
-		return false, "Your vault is full! Sell a knife first."
-	end
-	local offer = stock[slot]
-	if not DataService.TrySpend(player, offer.Price, "merchant") then
-		return false, "Not enough cash"
-	end
-	DataService.Update(player, function(p)
-		-- Only this rotation's purchases matter
-		local kept = {}
-		for _, k in p.MerchantBought do
-			if k:match("^(%d+):") == tostring(index) then
-				table.insert(kept, k)
-			end
-		end
-		table.insert(kept, key)
-		p.MerchantBought = kept
-	end)
-	StealService.OpenCase(player, offer.Tier, false, offer.Kind == "Lucky")
-	return true, ""
-end
-
--- Gifts -------------------------------------------------------------------------------------------
-
-function Gamble.GiftTarget(buyer: Player): Player?
-	local id = giftTargets[buyer]
-	local target = id and Players:GetPlayerByUserId(id)
-	return if target and target ~= buyer then target else nil
-end
-
 -- Setup -------------------------------------------------------------------------------------------
 
 function Gamble.Init()
-	StealService.LuckMultiplier = Gamble.LuckMultiplier
+	CoffinService.LuckMultiplier = Gamble.LuckMultiplier
 	local handle: (Player, unknown, unknown) -> (any, any, any)
 	Net.Remotes.Gamble.OnServerInvoke = Analytics.Remote(
 		"Gamble",
@@ -299,26 +149,11 @@ function Gamble.Init()
 	handle = function(player: Player, action: unknown, arg: unknown): (any, any, any)
 		if action == "Spin" then
 			return spin(player)
-		elseif action == "LuckyBlock" then
-			return buyLuckyBlock(player, arg)
-		elseif action == "Merchant" then
-			return true, "", merchantInfo(player)
-		elseif action == "BuyMerchant" then
-			return buyMerchant(player, arg)
-		elseif action == "GiftTarget" then
-			if type(arg) == "number" and Players:GetPlayerByUserId(arg) then
-				giftTargets[player] = arg
-				return true, ""
-			end
-			return false, "They're not in this server"
 		end
 		return false, "?"
 	end
 	DataService.PlayerLoaded:Connect(function(player: Player, profile: DataService.Profile)
 		syncSpins(player, profile)
-	end)
-	Players.PlayerRemoving:Connect(function(player)
-		giftTargets[player] = nil
 	end)
 	-- Spins earned by playing
 	task.spawn(function()
@@ -342,5 +177,4 @@ function Gamble.Init()
 	end)
 end
 
-local _ = Knives
 return Gamble

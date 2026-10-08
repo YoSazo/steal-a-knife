@@ -1,6 +1,5 @@
 --!strict
--- Owned knives are "items": a catalog knife plus a mutation and a size, rolled when its sealed case
--- is opened. Stored as one string so profiles, attributes and round loot stay simple:
+-- Owned knives are "items": a catalog knife plus a mutation and a size (Items.RollKnife). Stored as one string so profiles, attributes and round loot stay simple:
 --   "Katana"              plain, normal size (every save from before cases still works)
 --   "Katana|Gold|Big"     Gold mutation, Big size ("Katana||Huge" = no mutation, Huge)
 --   "Katana|Gold|Big|SpamKnife"  ...carrying a set Murderer power (old rolled saves, the tutorial's
@@ -283,65 +282,10 @@ function Items.Roll(rng: Random, luck: number?): (Mutation, Size)
 	return mutation, size
 end
 
--- What a sealed case of `rarity` holds: a random knife from that rarity (or, rarely, the next one
--- up), a mutation and a size. Returns the item and whether it jumped a rarity.
--- Lucky Blocks (Steal a Brainrot style): one block spans several rarities with very lopsided odds,
--- and inside each rarity the knives are lopsided too (the first knife is the common pull). The
--- Store shows every knife's exact chance from Items.LuckyBlockOdds.
-Items.LuckyBlocks = {
-	Rare = { Common = 70, Rare = 26, Epic = 3.5, Legendary = 0.5 },
-	Epic = { Rare = 70, Epic = 26, Legendary = 3.5, Mythic = 0.5 },
-	Legendary = { Epic = 68, Legendary = 27, Mythic = 4.5, Godly = 0.5 },
-	Mythic = { Legendary = 70, Mythic = 26, Godly = 3.5, Celestial = 0.5 },
-	Godly = { Mythic = 68, Godly = 27, Celestial = 4.5, Cosmic = 0.5 },
-	Cosmic = { Godly = 74.45, Celestial = 23, Cosmic = 2.55 },
-} :: { [string]: { [string]: number } }
-local LUCKY_SPLIT = { 0.6, 0.3, 0.1 } -- knives within one rarity
-
-export type LuckyOdd = { Knife: string, Rarity: string, Percent: number }
-function Items.LuckyBlockOdds(block: string): { LuckyOdd }
-	local out: { LuckyOdd } = {}
-	local weights = Items.LuckyBlocks[block]
-	if not weights then
-		return out
-	end
-	for _, rarity in Knives.Rarities do
-		local share = weights[rarity]
-		local pool = Knives.ByRarity[rarity]
-		if share and pool then
-			local total = 0
-			for i = 1, #pool do
-				total += LUCKY_SPLIT[i] or LUCKY_SPLIT[#LUCKY_SPLIT]
-			end
-			for i, knife in pool do
-				local part = (LUCKY_SPLIT[i] or LUCKY_SPLIT[#LUCKY_SPLIT]) / total
-				table.insert(out, { Knife = knife.Name, Rarity = rarity, Percent = share * part })
-			end
-		end
-	end
-	-- Most likely first
-	table.sort(out, function(a, b)
-		return a.Percent > b.Percent
-	end)
-	return out
-end
-
-function Items.OpenLuckyBlock(rng: Random, block: string, luck: number?): (string, string)
-	local odds = Items.LuckyBlockOdds(block)
-	local roll = rng:NextNumber() * 100
-	local pick = odds[#odds]
-	for _, entry in odds do
-		roll -= entry.Percent
-		if roll <= 0 then
-			pick = entry
-			break
-		end
-	end
-	local mutation, size = Items.Roll(rng, luck)
-	return Items.Make(pick.Knife, mutation.Id, size.Id, "?"), pick.Rarity
-end
-
-function Items.OpenCase(rng: Random, rarity: string, luck: number?): (string, boolean)
+-- A random knife of `rarity` (or, 4% of the time, the next one up), with a mutation and a size:
+-- what's inside a coffin, and what a boss keeps on its wall. Returns the item and whether it
+-- jumped a rarity.
+function Items.RollKnife(rng: Random, rarity: string, luck: number?): (string, boolean)
 	local rarityIndex = table.find(Knives.Rarities, rarity) or 1
 	local upgraded = rarityIndex < #Knives.Rarities and rng:NextNumber() < 0.04
 	if upgraded then

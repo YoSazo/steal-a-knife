@@ -60,8 +60,6 @@ function PhoneHud.Init()
 	local phone = Ui.Phone
 	local gui = Ui.root or Ui.gui
 	local right: { GuiObject } = {}
-	-- the free chest pill first (only shown when it's ready), then the buttons
-	local timers = gui:FindFirstChild("Timers", true)
 	-- (Coffins first: the coffin loop is the game; only on coffin servers)
 	for _, name in { "CoffinsButton", "KnivesButton" } do
 		local button = gui:FindFirstChild(name, true)
@@ -71,23 +69,6 @@ function PhoneHud.Init()
 				caption(button, CAPTIONS[name])
 			end
 			table.insert(right, button)
-		end
-	end
-	local chest = timers and timers:FindFirstChild("ChestPill")
-	if phone and chest and chest:IsA("GuiObject") then
-		caption(chest, "Free Chest")
-	end
-	if chest and chest:IsA("GuiObject") and not chest:GetAttribute("HudSkinned") then
-		for _, child in chest:GetChildren() do
-			local keep = child.Name == "Badge" or child.Name == "Studs"
-			if child:IsA("TextLabel") and not keep then
-				child.Visible = false
-			end
-			if child:IsA("ImageLabel") and not keep then
-				child.AnchorPoint = Vector2.new(0.5, 0.5)
-				child.Position = UDim2.fromScale(0.5, 0.5)
-				child.Size = UDim2.fromScale(0.85, 0.85)
-			end
 		end
 	end
 	local function layout()
@@ -122,7 +103,7 @@ function PhoneHud.Init()
 		end
 		-- Right: a column centred on the right edge (phones: squares, kept above the jump button;
 		-- desktop: the labelled buttons, same height each)
-		local count = #right + (if timers then 1 else 0)
+		local count = #right
 		local bottomLimit = if phone then Ui.Layout.touchBounds().Y - 12 else bounds.Y - 12
 		local gap = if phone then SQUARE_GAP + CAPTION else SQUARE_GAP
 		local square = if phone then math.clamp(math.floor((bottomLimit - 10) / count - gap), 32, SQUARE) else 52
@@ -136,12 +117,6 @@ function PhoneHud.Init()
 			item.Position = UDim2.new(1, edge, 0, y)
 			item.Size = UDim2.fromOffset(width, square)
 			y += square + gap
-		end
-		if timers and timers:IsA("GuiObject") then
-			place(timers)
-			if chest and chest:IsA("GuiObject") then
-				chest.Size = UDim2.fromOffset(width, square)
-			end
 		end
 		for _, button in right do
 			place(button)

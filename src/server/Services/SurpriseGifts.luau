@@ -2,7 +2,7 @@
 -- Surprise gifts (Steal An Egg's "keep playing, something might drop"): every few minutes of play,
 -- at a random moment, a glowing present lands just outside YOUR vault's gate (a spot you can always
 -- reach - dropped in front of you, it landed in odd places or mid-chase). Usually cash or a wheel
--- spin, sometimes luck or a case, rarely a big case the whole server hears about. Only its owner
+-- spin, sometimes luck or a coffin, rarely a big coffin the whole server hears about. Only its owner
 -- sees it: the parts are invisible on the server and the owner's client shows them (client/Effects),
 -- so nobody mistakes someone else's gift for theirs. Never during a round or while carrying a knife.
 local Players = game:GetService("Players")
@@ -15,6 +15,7 @@ local Analytics = require(script.Parent.Analytics)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local Gamble = require(script.Parent.Gamble)
+local CoffinService = require(script.Parent.CoffinService)
 local StealService = require(script.Parent.StealService)
 
 local SurpriseGifts = {}
@@ -102,19 +103,19 @@ local function give(player: Player, prize: Prize): string
 	elseif prize.Kind == "Luck" then
 		Gamble.AddLuck(player, prize.Seconds or 300)
 		return `2x luck for {math.floor((prize.Seconds or 300) / 60)} min`
-	elseif prize.Kind == "Case" then
+	elseif prize.Kind == "Coffin" then
 		local rarity = prize.Rarity or "Rare"
-		if StealService.OpenCase(player, rarity) then
+		if CoffinService.GiveRarity(player, rarity, "a gift") then
 			if prize.Announce then
 				Net.Announce(
-					`🎁 {player.DisplayName} found a {rarity} Case in a gift!`,
+					`🎁 {player.DisplayName} found a {rarity} Coffin in a gift!`,
 					Color3.fromRGB(255, 200, 80),
 					2
 				)
 			end
-			return `a {rarity} Case`
+			return `a {rarity} Coffin`
 		end
-		-- vault full: the case's worth in cash instead
+		-- no free plate: the coffin's worth in cash instead
 		local cash = math.max(CONFIG.MinCash, math.floor(income * 600))
 		DataService.AddCash(player, cash, "gift")
 		return `+{Format.Cash(cash)}`

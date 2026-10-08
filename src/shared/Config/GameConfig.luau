@@ -2,18 +2,18 @@
 -- Every tunable number in one place. Shared so the client can show prices; the server is the
 -- only one that ever acts on them.
 
--- One day of the login streak: "Cash" (Seconds of income, at least Min), "Case" (Rarity) or
+-- One day of the login streak: "Cash" (Seconds of income, at least Min), "Coffin" (Rarity) or
 -- "Tickets" (Amount)
 export type DailyReward = { Kind: string, Seconds: number?, Min: number?, Rarity: string?, Amount: number? }
 
 local DAILY: { DailyReward } = {
 	{ Kind = "Cash", Seconds = 120, Min = 20000 },
-	{ Kind = "Case", Rarity = "Common" },
+	{ Kind = "Coffin", Rarity = "Common" },
 	{ Kind = "Cash", Seconds = 300, Min = 45000 },
 	{ Kind = "Tickets", Amount = 2 },
 	{ Kind = "Cash", Seconds = 600, Min = 110000 },
-	{ Kind = "Case", Rarity = "Rare" },
-	{ Kind = "Case", Rarity = "Epic" },
+	{ Kind = "Coffin", Rarity = "Rare" },
+	{ Kind = "Coffin", Rarity = "Epic" },
 }
 
 local GameConfig = {
@@ -309,26 +309,17 @@ local GameConfig = {
 
 	TutorialReward = 10000,
 
-	-- The Case Shop: sealed cases for cash, opened on the spot (same odds as watchmen's cases)
-	CaseShop = {
-		{ Rarity = "Common", Cost = 20000 },
-		{ Rarity = "Rare", Cost = 300000 },
-		{ Rarity = "Epic", Cost = 4e6 },
-		{ Rarity = "Legendary", Cost = 60e6 },
-		{ Rarity = "Mythic", Cost = 900e6 },
-		{ Rarity = "Godly", Cost = 14e9 },
-		{ Rarity = "Celestial", Cost = 220e9 },
-		{ Rarity = "Cosmic", Cost = 3.5e12 },
-	},
-
-	-- Lucky Blocks bought with in-game cash (Items.LuckyBlocks has the odds)
-	LuckyBlockCash = {
-		Rare = 250000,
-		Epic = 3.5e6,
-		Legendary = 50e6,
-		Mythic = 800e6,
-		Godly = 12e9,
-		Cosmic = 3e12,
+	-- What a coffin is worth in cash: paid instead when one is won but there's no free plate for it
+	-- (CoffinService.GiveOrCash)
+	CoffinValue = {
+		Common = 20000,
+		Rare = 300000,
+		Epic = 4e6,
+		Legendary = 60e6,
+		Mythic = 900e6,
+		Godly = 14e9,
+		Celestial = 220e9,
+		Cosmic = 3.5e12,
 	} :: { [string]: number },
 	-- The Lucky Wheel (Gamble): a free spin a day, one per EarnEvery seconds played, Robux packs
 	-- The round prize (Shared/RoundPrize): "Win the round: +X Speed", the same promise for everyone
@@ -367,10 +358,10 @@ local GameConfig = {
 			{ Kind = "Spin", Count = 1, Weight = 16 },
 			{ Kind = "Spin", Count = 3, Weight = 4 },
 			{ Kind = "Luck", Seconds = 300, Weight = 8 },
-			{ Kind = "Case", Rarity = "Rare", Weight = 8 },
-			{ Kind = "Case", Rarity = "Epic", Weight = 4 },
-			{ Kind = "Case", Rarity = "Legendary", Weight = 1.5, Announce = true },
-			{ Kind = "Case", Rarity = "Mythic", Weight = 0.5, Announce = true },
+			{ Kind = "Coffin", Rarity = "Rare", Weight = 8 },
+			{ Kind = "Coffin", Rarity = "Epic", Weight = 4 },
+			{ Kind = "Coffin", Rarity = "Legendary", Weight = 1.5, Announce = true },
+			{ Kind = "Coffin", Rarity = "Mythic", Weight = 0.5, Announce = true },
 		} :: { any },
 	},
 	Spin = {
@@ -380,22 +371,15 @@ local GameConfig = {
 			{ Kind = "Cash", Seconds = 60, Weight = 26, Label = "$ Cash" },
 			{ Kind = "Spin", Count = 1, Weight = 14, Label = "+1 Spin" },
 			{ Kind = "Cash", Seconds = 300, Weight = 18, Label = "$$ Cash" },
-			{ Kind = "Luck", Seconds = 900, Weight = 12, Label = "Lucky Cases" },
-			{ Kind = "Case", Tier = "Rare", Weight = 12, Label = "Rare Case" },
+			{ Kind = "Luck", Seconds = 900, Weight = 12, Label = "Lucky Coffins" },
+			{ Kind = "Coffin", Tier = "Rare", Weight = 12, Label = "Rare Coffin" },
 			{ Kind = "Cash", Seconds = 1800, Weight = 7, Label = "$$$ CASH" },
-			{ Kind = "Case", Tier = "Epic", Weight = 6, Label = "Epic Case" },
-			{ Kind = "Lucky", Tier = "Legendary", Weight = 3, Label = "Legendary Block" },
-			{ Kind = "Case", Tier = "Legendary", Weight = 1.5, Label = "Legendary Case" },
-			{ Kind = "Lucky", Tier = "Mythic", Weight = 0.5, Label = "MYTHIC BLOCK" },
+			{ Kind = "Coffin", Tier = "Epic", Weight = 6, Label = "Epic Coffin" },
+			{ Kind = "Coffin", Tier = "Legendary", Weight = 4.5, Label = "Legendary Coffin" },
+			{ Kind = "Coffin", Tier = "Mythic", Weight = 0.5, Label = "MYTHIC COFFIN" },
 		} :: { any },
 	},
 	LuckPotion = { Multiplier = 2 },
-	-- The Mystery Merchant: a fresh, discounted stock every Rotation seconds (one of each per player)
-	Merchant = { Rotation = 1200, Slots = 3, MinDiscount = 25, MaxDiscount = 50, MaxMinutes = 20 },
-
-	-- A free chest on the plaza every so often: cash (scaled to what you earn) or a case
-	FreeChest = { Cooldown = 600, MinCash = 10000, IncomeSeconds = 90, CaseChance = 0.4 },
-
 	-- The Index pays out once for every knife you've ever owned
 	IndexRewards = {
 		Common = { Cash = 10000, Speed = 500 },
@@ -599,8 +583,8 @@ local GameConfig = {
 	BotRoundPay = 0.5, -- rounds with fewer than two real players pay this fraction (no bot farming)
 	BotKillPay = 0.5, -- a bot kill pays this fraction of a player kill
 	LastAliveFraction = 0.3,
-	-- A full wipe also hands the Murderer a sealed case: better in bigger lobbies (real players only)
-	WipeCase = { Small = "Rare", Big = "Epic", BigLobby = 6 },
+	-- A full wipe also hands the Murderer a coffin: better in bigger lobbies (real players only)
+	WipeCoffin = { Small = "Rare", Big = "Epic", BigLobby = 6 },
 
 	-- Live servers: bots top every round up to this many people, so a round can start as soon as one
 	-- real player is around. With one real player, a bot is sometimes the Murderer.

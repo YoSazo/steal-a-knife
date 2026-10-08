@@ -105,7 +105,7 @@ return function(t)
 			m.PrimaryPart = p
 			return m
 		end
-		deps.KnifeModel = { Build = model, BuildCase = model, FitItem = noOp }
+		deps.KnifeModel = { Build = model, FitItem = noOp }
 		deps.Fuel = {
 			AddHeat = noOp,
 			AddMeter = noOp,

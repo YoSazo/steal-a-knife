@@ -69,7 +69,7 @@ local function run(startAt: number, replay: boolean)
 	end
 	local function carryingKnife(): boolean
 		local carrying = player:GetAttribute("Carrying")
-		return type(carrying) == "string" and carrying ~= "" and not carrying:match("^Case:")
+		return type(carrying) == "string" and carrying ~= ""
 	end
 	local placementBaseline = (player:GetAttribute("KnifePlacementSerial") or 0) :: number
 	local carriedOnce = carryingKnife()

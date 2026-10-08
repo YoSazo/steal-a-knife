@@ -38,7 +38,6 @@ local STUCK = 60 -- seconds on one action with no progress: log it (that's where
 local URGENT: { [string]: boolean } = {
 	carry_home = true,
 	carry_place = true,
-	carry_case = true,
 	carry_full = true,
 	carry_bigger = true,
 	gift = true,

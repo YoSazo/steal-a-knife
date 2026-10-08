@@ -1,9 +1,7 @@
 --!strict
--- Loot and carrying. Watchmen drop sealed cases when they die; dropped cases and knives float
--- with a tag and a light beam. Hold the prompt to pick one up and carry it over your head back to
--- your vault (picking up alerts the guards). Cases open when you get home: a reveal rolls the
--- knife inside, its mutation and its size (Items.OpenCase). Knives stolen from other players'
--- vaults in a raid remember who they belong to - if the thief drops one, its owner can grab it
+-- Loot and carrying. Dropped knives float with a tag and a light beam. Hold the prompt to pick one
+-- up and carry it over your head back to your vault (a boss's knife travels as a coffin on coffin
+-- servers). Knives stolen from other players' vaults in a raid remember who they belong to - if the thief drops one, its owner can grab it
 -- straight back onto their wall. If a carrier dies or gets knocked down, what they carried drops.
 -- The server checks distance, state and rack space, and decides deposits from where it sees the
 -- character.
@@ -32,8 +30,8 @@ local PenMode = require(ReplicatedStorage.Shared.PenMode)
 local CoffinModel = require(ReplicatedStorage.Shared.CoffinModel)
 
 type Carry = {
-	Kind: string, -- "Case" | "Knife"
-	Item: string, -- the case's rarity, or the knife item
+	Kind: string, -- "Knife"
+	Item: string, -- the knife item
 	ReadySince: number?, -- (pens) when they walked into their pen holding it: PlaceAfter fallback
 	StolenFrom: number?, -- UserId of the vault it was stolen from
 	Boss: { Zone: number, Slot: number }?,
@@ -43,7 +41,7 @@ type Carry = {
 	LastCheck: number,
 	Plate: number?, -- the plate the owner chose to put it on (Place)
 	Started: number, -- os.clock() it was picked up (analytics)
-	Source: string, -- "boss" | "vault" | "ground" | "case" (analytics)
+	Source: string, -- "boss" | "vault" | "ground" | "coffin" (analytics)
 	Zone: number, -- zone it was picked up in, 0 = outside the biomes (analytics)
 }
 
@@ -57,7 +55,6 @@ StealService.OnBossCarryEnded = nil :: ((zone: number, slot: number, item: strin
 
 local carriers: { [Player]: Carry } = {}
 local dropFolder: Folder
-local rng = Random.new()
 
 local function rootPart(player: Player): BasePart?
 	local character = player.Character
@@ -283,42 +280,6 @@ function StealService.DropKnife(item: string, position: Vector3, stolenFrom: num
 	end)
 end
 
--- A sealed case on the floor (what watchmen drop)
-function StealService.DropCase(rarity: string, position: Vector3)
-	local color = Knives.RarityColors[rarity]
-	if not color then
-		return
-	end
-	local floorY = floorAt(position)
-	local at = Vector3.new(position.X, floorY + 1.8, position.Z)
-	local model = KnifeModel.BuildCase(rarity, true)
-	model:PivotTo(CFrame.new(at))
-	local anchor = model.PrimaryPart :: BasePart
-	tag(anchor, {
-		{ Text = `{rarity:upper()} CASE`, Color = color, Height = 30 },
-		{ Text = "Sealed · open it at your vault", Color = Color3.fromRGB(230, 230, 240), Height = 18 },
-		{ Text = "Mutation? Size? Find out!", Color = Color3.fromRGB(255, 220, 120), Height = 16 },
-	})
-	local prompt = dress(model, color, floorY, at, `{rarity} Case`)
-	prompt.Triggered:Connect(function(player)
-		if not model.Parent or not canPickUp(player, anchor, prompt) then
-			return
-		end
-		model:Destroy()
-		startCarry(player, "Case", rarity, nil, nil, "case")
-		local zone = zoneIndexAt(at)
-		if zone and StealService.OnPickup then
-			StealService.OnPickup(player, zone)
-		end
-	end)
-	model.Parent = dropFolder
-	task.delay(GameConfig.DroppedKnifeLifetime, function()
-		if model.Parent then
-			model:Destroy()
-		end
-	end)
-end
-
 -- Ends a carry. deposited = made it home; otherwise it drops where they are
 -- Analytics: what was carried, from where, for how long
 local function carryProps(carry: Carry, extra: { [string]: any }?): { [string]: any }
@@ -386,15 +347,11 @@ local function endCarry(player: Player, deposited: boolean, dropAt: Vector3?, wh
 		return
 	end
 	if not deposited and where then
-		if carry.Kind == "Case" then
-			StealService.DropCase(carry.Item, where)
-		else
-			StealService.DropKnife(carry.Item, where, carry.StolenFrom)
-		end
+		StealService.DropKnife(carry.Item, where, carry.StolenFrom)
 	end
 end
 
--- Lifts something over a player's head: kind "Case" (item = rarity) or "Knife" (item string)
+-- Lifts a knife (kind "Knife", item string) over a player's head
 startCarry = function(
 	player: Player,
 	kind: string,
@@ -415,11 +372,7 @@ startCarry = function(
 	-- can see who has what (the arms come from the Carry pose in AnimLibrary)
 	local visual: Model
 	local above: CFrame
-	if kind == "Case" then
-		visual = KnifeModel.BuildCase(item, false)
-		above = head.CFrame * CFrame.new(0, 1.9, 0)
-		visual:PivotTo(above)
-	elseif (boss or source == "coffin") and PenMode.Coffins() then
+	if (boss or source == "coffin") and PenMode.Coffins() then
 		-- a boss's coffin, held over your head (what's in it stays a secret until it opens)
 		local parsed = Items.Parse(item)
 		visual = CoffinModel.Build(if parsed then parsed.Knife.Rarity else "Common", CFrame.identity)
@@ -477,8 +430,7 @@ startCarry = function(
 		LastPos = root.Position,
 		LastCheck = os.clock(),
 		Started = os.clock(),
-		Source = source
-			or (if boss then "boss" elseif kind == "Case" then "case" elseif stolenFrom then "vault" else "ground"),
+		Source = source or (if boss then "boss" elseif stolenFrom then "vault" else "ground"),
 		Zone = if boss then boss.Zone else (zoneIndexAt(root.Position) or 0),
 	}
 	if not resumed then
@@ -495,14 +447,12 @@ startCarry = function(
 		end
 	end
 	Net.Animate(character, "Pickup")
-	player:SetAttribute("Carrying", if kind == "Case" then `Case:{item}` else item)
+	player:SetAttribute("Carrying", item)
 	player:SetAttribute("StolenFrom", stolenFrom) -- the UserId it was taken from, if anyone
 	player:SetAttribute("BossCarry", if boss then boss.Zone else nil) -- (a boss is after you)
 	BaseService.RefreshWalkSpeed(player)
 	-- (a boss steal gets no toast: GuardService already says "<BOSS> IS COMING! RUN HOME!")
-	if kind == "Case" then
-		Net.Notify(player, `You got a {item} Case! RUN HOME!`, "good")
-	elseif boss then
+	if boss then
 		return
 	elseif stolenFrom then
 		Net.Notify(player, `You took a {Items.DisplayName(item)}! RUN HOME!`, "good")
@@ -544,87 +494,6 @@ function StealService.BossCarry(player: Player): { Zone: number, Slot: number }?
 	return carry and carry.Boss
 end
 
--- Rebirths bring better luck in cases
--- Set by Gamble: luck potions and the Luck pass
-StealService.LuckMultiplier = nil :: ((Player, DataService.Profile) -> number)?
-
-local function caseLuck(profile: DataService.Profile, player: Player?): number
-	local luck = 1 + profile.Rebirths * GameConfig.Rebirth.LuckBonus
-	if player and StealService.LuckMultiplier then
-		luck *= StealService.LuckMultiplier(player, profile)
-	end
-	-- Someone bought Server Luck: everyone's cases roll better for a while
-	local until_ = ReplicatedStorage:GetAttribute("ServerLuckUntil")
-	if type(until_) == "number" and workspace:GetServerTimeNow() < until_ then
-		luck *= (ReplicatedStorage:GetAttribute("ServerLuckMultiplier") or 2) :: number
-	end
-	return luck
-end
-
--- Opens a sealed case straight onto a player's wall: the knife, mutation and size are rolled here,
--- the reveal plays on their screen (Effects "Unbox") and the wall updates when it lands. Used for
--- cases carried home, bought in the Case Shop and won from the free chest. nil if the wall is full,
--- unless `force` (a case paid for with Robux always opens; the knife waits in storage).
--- `lucky` = open a Lucky Block of that tier instead of a plain case (Items.LuckyBlocks)
-function StealService.OpenCase(player: Player, rarity: string, force: boolean?, lucky: boolean?): string?
-	local profile = DataService.Get(player)
-	if not profile or (#profile.Knives >= profile.Slots and not force) then
-		return nil
-	end
-	local rolled, upgraded
-	if lucky then
-		local got
-		rolled, got = Items.OpenLuckyBlock(rng, rarity, caseLuck(profile, player))
-		upgraded = Knives.Rank(got) > Knives.Rank(rarity)
-	else
-		rolled, upgraded = Items.OpenCase(rng, rarity, caseLuck(profile, player))
-	end
-	local item = rolled
-	local parsed = Items.Parse(item) :: Items.Item
-	local isNew = not table.find(profile.Discovered, parsed.Name)
-	local hype = Items.Hype(item)
-	DataService.Update(player, function(p)
-		DataService.AddKnife(p, item)
-		if isNew then
-			table.insert(p.Discovered, parsed.Name)
-		end
-		p.CasesOpened += 1
-		if p.BestPull == "" or hype > Items.Hype(p.BestPull) then
-			p.BestPull = item
-		end
-	end)
-	Net.Remotes.Effect:FireClient(player, "Unbox", rarity, item, upgraded, isNew, lucky == true)
-	Analytics.Track(player, if lucky then "case.lucky_block" else "case.open", {
-		case = rarity,
-		knife = parsed.Name,
-		rarity = parsed.Knife.Rarity,
-		mutation = parsed.Mutation.Id,
-		size = parsed.Size.Id,
-		power = parsed.Perk,
-		upgraded = upgraded == true,
-		new = isNew,
-		hype = hype,
-		paid = force == true,
-		value = Items.Income(item),
-	})
-	Analytics.Milestone(player, "case_opened")
-	task.delay(3.6, function()
-		if player.Parent then
-			BaseService.RefreshRack(player)
-			Net.Remotes.Effect:FireAllClients("Deposit", player, parsed.Knife.Rarity)
-			if player.Character then
-				Net.Animate(player.Character, "Cheer")
-			end
-		end
-	end)
-	if hype >= 2 then
-		task.delay(3.4, function()
-			Net.Announce(`{player.DisplayName} unboxed a {Items.DisplayName(item)}!`, Items.Color(item), hype)
-		end)
-	end
-	return item
-end
-
 local function deposit(player: Player)
 	local carry = carriers[player]
 	if not carry then
@@ -639,12 +508,6 @@ local function deposit(player: Player)
 	end
 	-- (pen full, bag has room: it goes in the bag - no coffin to sit in the pen)
 	local toBag = #profile.Knives >= profile.Slots
-	if carry.Kind == "Case" then
-		local rarity = carry.Item
-		endCarry(player, true)
-		StealService.OpenCase(player, rarity)
-		return
-	end
 	-- The tutorial's first knife always gets the starter power (Shadow: vanish), so every new player
 	-- starts with the same simple, easy-to-show power; after that it's the knife type's own power
 	local starter = not profile.TutorialDone and profile.TutorialStep <= 2 and #profile.Knives <= 1
@@ -655,6 +518,10 @@ local function deposit(player: Player)
 	local sealed = (carry.Boss ~= nil or carry.Source == "coffin") and CoffinService.On(player) and not toBag
 	-- (the tutorial's coffin: it lands and counts down a few seconds - Steal an Egg's egg - then opens)
 	local quick = sealed and (starter or not profile.TutorialDone)
+	if sealed and not quick then
+		item = CoffinService.LuckyContents(player, item)
+		parsed = Items.Parse(item) :: Items.Item
+	end
 	if carry.Boss then
 		Fuel.AddHeat(player, 1, "Stole from a boss!")
 		Fuel.AddMeter(player, 1)
@@ -822,10 +689,6 @@ local function tick()
 		end
 		local pos = root.Position
 		if BaseService.IsInOwnBase(player, pos) then
-			if carry.Kind == "Case" then
-				deposit(player) -- cases open as soon as you're home
-				continue
-			end
 			-- A pen: you tap where to put it down (client/PlaceTap -> Remotes.PlaceAt). A full pen
 			-- (bag only) takes it straight away; and nobody stands holding it forever (PlaceAfter)
 			if PenMode.On() then
@@ -940,11 +803,7 @@ local function release(player: Player)
 			hook(held.Boss.Zone, held.Boss.Slot, held.Item, false)
 		end
 	elseif held.At then
-		if held.Kind == "Case" then
-			StealService.DropCase(held.Item, held.At)
-		else
-			StealService.DropKnife(held.Item, held.At, held.StolenFrom)
-		end
+		StealService.DropKnife(held.Item, held.At, held.StolenFrom)
 	end
 end
 

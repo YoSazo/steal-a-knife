@@ -93,12 +93,7 @@ function Ui.new(className: string, props: { [string]: any }, parent: Instance?):
 		(instance :: any)[key] = value
 	end
 	instance.Parent = if parent == Ui.gui and Ui.root then Ui.root else parent
-	if
-		props.Name == "Welcome"
-		or props.Name == "Unbox"
-		or props.Name == "PowerShowcase"
-		or props.Name == "RoleReveal"
-	then
+	if props.Name == "Welcome" or props.Name == "PowerShowcase" or props.Name == "RoleReveal" then
 		Ui.TrackPresentation(instance)
 	end
 	return instance
@@ -425,8 +420,8 @@ Ui.Scale:GetPropertyChangedSignal("Scale"):Connect(function()
 end)
 Ui.Layout = Layout
 Ui.Menu = MenuController
--- Panels other modules can open by name (the plaza's rings: ShopPanel "Spin" / "Merchant", and the
--- right-side quick buttons)
+-- Panels other modules can open by name (the plaza's ring: ShopPanel "Spin", and the right-side
+-- quick buttons)
 Ui.Panels = {} :: { [string]: GuiObject }
 -- The Speed shoe in the bottom-left readout (client/Hud), for the round prize's flying shoes
 Ui.SpeedIcon = nil :: GuiObject?

@@ -2,7 +2,7 @@
 -- "Is that rare? like %?" (a kid, about his Mythic coffin): walk up to any coffin - in a boss's
 -- graveyard or in a pen - and a small card shows what could be inside and the chance of each,
 -- Steal an Egg's egg odds. Every coffin holds one knife of its rarity, each equally likely
--- (Items.OpenCase), plus the rarity's place on the ladder ("5th rarest of 8"). Server tags the
+-- (Items.RollKnife), plus the rarity's place on the ladder ("5th rarest of 8"). Server tags the
 -- coffins "CoffinOdds" (attribute Rarity).
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")

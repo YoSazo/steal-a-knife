@@ -6,7 +6,6 @@ local RunService = game:GetService("RunService")
 
 local Items = require(script.Parent.Items)
 local KnifeIcons = require(script.Parent.Config.KnifeIcons)
-local Props = require(script.Parent.Props)
 local Knives = require(script.Parent.Config.Knives)
 local KnifeAura = require(script.Parent.KnifeAura)
 
@@ -17,34 +16,6 @@ local KnifeModel = {}
 local TEMPLATE_FOLDER = "KnifeTemplates"
 local TOOL_LENGTH = 1.7 -- forearm length: reads as a knife in a Roblox hand (was 2.4)
 local BLOCK_VERSION = 1
-
-local function part(parent: Instance, name: string, size: Vector3, offset: CFrame, color: Color3): Part
-	local p = Instance.new("Part")
-	p.Name = name
-	p.Size = size
-	p.CFrame = offset
-	p.Color = color
-	p.Material = Enum.Material.SmoothPlastic
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	p.CanCollide = false
-	p.CanQuery = false
-	p.CanTouch = false
-	p.Massless = true
-	p.Parent = parent
-	return p
-end
-
-local function weldAll(parent: Instance, root: BasePart)
-	for _, child in parent:GetChildren() do
-		if child:IsA("BasePart") and child ~= root then
-			local weld = Instance.new("WeldConstraint")
-			weld.Part0 = root
-			weld.Part1 = child
-			weld.Parent = child
-		end
-	end
-end
 
 -- Server templates and client fallback use exactly the same native geometry.
 function KnifeModel.Preload()
@@ -254,141 +225,6 @@ function KnifeModel.Build(item: string, anchored: boolean?): Model
 			end
 		end
 	end
-	return model
-end
-
--- Rarity flourishes shared by both chest builds: chains on Epic+, embers and sparkles, a glow
-function KnifeModel.DressCase(model: Model, seam: BasePart, color: Color3, rank: number)
-	if rank >= 3 then
-		for _, x in { -0.55, 0.55 } do
-			local chain =
-				part(model, "Chain", Vector3.new(0.14, 0.14, 2.3), CFrame.new(x, 1.3, 0), Color3.fromRGB(110, 110, 120))
-			chain.Material = Enum.Material.DiamondPlate
-		end
-	end
-	if rank >= 5 then
-		-- Godly: a ring of embers around it
-		sparkles(seam, ColorSequence.new(color, Color3.fromRGB(255, 200, 120)), 12, 0.5)
-	elseif rank >= 2 then
-		sparkles(seam, ColorSequence.new(color), 3 * rank, 0.35)
-	end
-	local light = Instance.new("PointLight")
-	light.Color = color
-	light.Range = 8 + rank * 2
-	light.Brightness = 1.5
-	light.Parent = seam
-end
-
--- A sealed case: what a watchman drops. Iron-banded crate with a glowing seam and lock in its
--- rarity's colour; better cases get gold trim, chains and a floating sigil. Opened (with a reveal)
--- once you carry it home. PrimaryPart "Handle" sits at its centre.
-function KnifeModel.BuildCase(rarity: string, anchored: boolean?): Model
-	local color = Knives.RarityColors[rarity] or Color3.new(1, 1, 1)
-	local rank = table.find(Knives.Rarities, rarity) or 1
-	local wood = Color3.fromRGB(110, 70, 40):Lerp(Color3.fromRGB(50, 28, 48), math.min((rank - 1) / 4, 1))
-	local trim = if rank >= 4 then Color3.fromRGB(230, 180, 60) else Color3.fromRGB(70, 66, 78)
-	if Props.Has("Chest") then
-		-- The Blender chest, recoloured for its rarity
-		local model = Props.Build("Chest", false)
-		model.Name = `Case_{rarity}`
-		local root = model.PrimaryPart :: BasePart
-		root.Name = "Handle"
-		root.Massless = false
-		for _, d in model:GetDescendants() do
-			if d:IsA("BasePart") and d ~= root then
-				d.CanCollide = false
-				d.CanQuery = false
-				d.CanTouch = false
-				d.Massless = true
-				if d.Name == "Lock" or d.Name == "Seam" then
-					d.Color = color
-					d.Material = Enum.Material.Neon
-				elseif d.Name == "Wood" then
-					d.Color = wood
-				elseif d.Name == "Iron" then
-					d.Color = trim
-				end
-			end
-		end
-		local seam = model:FindFirstChild("Seam") :: BasePart
-		local sigil = part(
-			model,
-			"Sigil",
-			Vector3.new(0.5, 0.5, 0.12),
-			CFrame.new(0, 1.75, 0) * CFrame.Angles(0, 0, math.rad(45)),
-			color
-		)
-		sigil.Material = Enum.Material.Neon
-		KnifeModel.DressCase(model, seam, color, rank)
-		weldAll(model, root)
-		model:SetAttribute("Case", rarity)
-		if anchored then
-			for _, d in model:GetDescendants() do
-				if d:IsA("BasePart") then
-					d.Anchored = true
-				end
-			end
-		end
-		return model
-	end
-	local model = Instance.new("Model")
-	model.Name = `Case_{rarity}`
-	local root = part(model, "Handle", Vector3.new(0.4, 0.4, 0.4), CFrame.new(), Color3.new())
-	root.Transparency = 1
-	root.Massless = false
-	local body = part(model, "Body", Vector3.new(2.8, 1.45, 1.9), CFrame.new(0, -0.2, 0), wood)
-	body.Material = Enum.Material.WoodPlanks
-	local lid =
-		part(model, "Lid", Vector3.new(2.95, 0.55, 2.02), CFrame.new(0, 0.82, 0), wood:Lerp(Color3.new(1, 1, 1), 0.08))
-	lid.Material = Enum.Material.WoodPlanks
-	-- Glowing seam all the way round where the lid meets the box
-	local seam = part(model, "Seam", Vector3.new(2.9, 0.09, 1.98), CFrame.new(0, 0.53, 0), color)
-	seam.Material = Enum.Material.Neon
-	-- Iron (or gold) straps and corner caps
-	for _, x in { -0.95, 0.95 } do
-		local band = part(model, "Band", Vector3.new(0.26, 2.12, 2.06), CFrame.new(x, 0.1, 0), trim)
-		band.Material = Enum.Material.Metal
-	end
-	for _, x in { -1.42, 1.42 } do
-		for _, y in { -0.88, 1.05 } do
-			for _, z in { -0.96, 0.96 } do
-				local cap = part(model, "Corner", Vector3.new(0.22, 0.22, 0.22), CFrame.new(x, y, z), trim)
-				cap.Material = Enum.Material.Metal
-			end
-		end
-	end
-	-- The lock on the front, glowing, with a dark keyhole
-	local lock = part(model, "Lock", Vector3.new(0.62, 0.7, 0.16), CFrame.new(0, 0.4, -1.04), color)
-	lock.Material = Enum.Material.Neon
-	part(model, "Keyhole", Vector3.new(0.12, 0.28, 0.05), CFrame.new(0, 0.36, -1.13), Color3.fromRGB(15, 10, 20))
-	-- A rarity sigil hovering over the lid
-	local sigil = part(
-		model,
-		"Sigil",
-		Vector3.new(0.5, 0.5, 0.12),
-		CFrame.new(0, 1.55, 0) * CFrame.Angles(0, 0, math.rad(45)),
-		color
-	)
-	sigil.Material = Enum.Material.Neon
-	KnifeModel.DressCase(model, seam, color, rank)
-	weldAll(model, root)
-	model.PrimaryPart = root
-	model:SetAttribute("Case", rarity)
-	if anchored then
-		for _, d in model:GetDescendants() do
-			if d:IsA("BasePart") then
-				d.Anchored = true
-			end
-		end
-	end
-	return model
-end
-
--- Mystery blocks are actual cuboid toys, shared by the Store's static viewport previews.
-function KnifeModel.BuildLuckyBlock(rarity: string, anchored: boolean?): Model
-	assert(Knives.RarityColors[rarity] and rarity ~= "Common", `Unknown Lucky Block tier {rarity}`)
-	local model = ToyBlockModel.Build("Lucky" .. rarity, anchored, "Handle")
-	model:SetAttribute("LuckyBlock", rarity)
 	return model
 end
 

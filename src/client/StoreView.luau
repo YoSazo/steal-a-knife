@@ -4,8 +4,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Ui = require(script.Parent.Ui)
 local Theme = require(script.Parent.MenuTheme)
-local CaseShowcase = require(script.Parent.CaseShowcase)
-local LuckyBlockView = require(script.Parent.LuckyBlockView)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Config = ReplicatedStorage.Shared.Config
 local Monetization = require(Config.Monetization)
@@ -70,8 +68,8 @@ function View.Build(actions: any): Frame
 			border.Color = if key == name then Color3.new(1, 1, 1) else Theme.Black
 		end
 	end
-	-- Steal An Egg's shop: Featured / Speed / Money (the cash cases and cash Lucky Blocks are
-	-- Mortimer's, on the plaza; consumables that fix one moment are offered at that moment instead)
+	-- Steal An Egg's shop: Featured / Speed / Money (consumables that fix one moment are offered at
+	-- that moment instead)
 	for i, name in { "Featured", "Speed", "Money" } do -- (the tab says "Top": "Featured" wrapped on phones)
 		pages[name] = page(body, { Name = name, Size = UDim2.fromScale(1, 1), Visible = i == 1 })
 		tabButtons[name] = Theme.button(
@@ -82,64 +80,21 @@ function View.Build(actions: any): Frame
 			function()
 				selectTab(name)
 			end,
-			({ "CaseLegendary", "Speed", "Cash" })[i]
+			({ "Shop", "Speed", "Cash" })[i]
 		)
 	end
 	local refreshers: { () -> () } = {}
-	local function showOdds(rarity: string)
-		local dialog = Ui.new(
-			"Frame",
-			{ Name = "CaseOdds", Size = UDim2.fromOffset(720, 560), BackgroundColor3 = Ui.PANEL, ZIndex = 8 },
-			Ui.gui
-		)
-		Ui.corner(dialog, 16)
-		Ui.fitMenu(dialog, Vector2.new(720, 560))
-		Ui.registerMenu(dialog)
-		label(dialog, rarity .. " Case — full odds", {
-			Position = UDim2.fromOffset(16, 8),
-			Size = UDim2.new(1, -80, 0, 44),
-			ZIndex = 9,
-			TextXAlignment = Enum.TextXAlignment.Left,
-		})
-		Ui.button(
-			{
-				Name = "Close",
-				Text = "X",
-				Position = UDim2.new(1, -52, 0, 8),
-				Size = UDim2.fromOffset(44, 44),
-				ZIndex = 10,
-			},
-			dialog,
-			function()
-				dialog:Destroy()
-				frame.Visible = true
-			end
-		)
-		local scroll = page(dialog, { Position = UDim2.fromOffset(16, 64), Size = UDim2.new(1, -32, 1, -80) })
-		label(
-			scroll,
-			actions.odds(rarity)
-				.. "\n\nKnife, mutation and size are separate rolls. Current rebirth and server luck apply to mutations and sizes. Murderer powers are rolled separately at your vault.",
-			{
-				TextSize = 19,
-				TextYAlignment = Enum.TextYAlignment.Top,
-				Size = UDim2.new(1, -12, 0, 0),
-				AutomaticSize = Enum.AutomaticSize.Y,
-				ZIndex = 10,
-			}
-		)
-	end
 	local symbols: { [string]: string } = {
 		DoubleCash = "Cash",
 		VIP = "VIP",
 		FastWheel = "Speed",
 		PhantomTrail = "VoidEdge",
 		AutoCollect = "Cash",
-		Luck = "CaseLegendary",
+		Luck = "Luck",
 		OfflinePlus = "Rebirth",
 		ExtraFloor = "Upgrades",
 		Spins10 = "Spin",
-		LuckPotion = "CaseLegendary",
+		LuckPotion = "Luck",
 		SpeedPotion = "Speed",
 		SpeedPotionBig = "Speed",
 		CollectSession = "Cash",
@@ -229,59 +184,14 @@ function View.Build(actions: any): Frame
 		end
 	end
 
-	-- FEATURED: the Starter Pack (once), one big featured case with its odds, the passes, the other
-	-- Robux cases and the Lucky Blocks, then luck and spins
+	-- FEATURED: the Starter Pack (once), the passes, then luck and spins
 	local featured = pages.Featured
-	local hero = Ui.new("Frame", {
-		Name = "FeaturedCase",
-		Size = UDim2.new(1, -8, 0, 328),
-		LayoutOrder = 2,
-		BackgroundTransparency = 1,
-		ZIndex = 7,
-	}, featured)
-	hero:SetAttribute("PaidRandom", true)
-	do
-		local godly = Monetization.ProductByKey.CaseGodly
-		local showcase = CaseShowcase.Build(hero, godly.Case :: string, "R$ " .. godly.Price, function()
-			actions.buy("Product", "CaseGodly")
-		end, function()
-			showOdds(godly.Case :: string)
-		end)
-		showcase.Size = UDim2.fromScale(1, 1)
-	end
 	title(featured, "PASSES", 3)
 	local passOrder = 4
 	for _, key in { "DoubleCash", "VIP", "Luck", "AutoCollect", "OfflinePlus", "ExtraFloor" } do
 		pass(featured, key, passOrder)
 		passOrder += 1
 	end
-	title(featured, "ROBUX CASES", 20, "RobuxCasesTitle")
-	local function caseRow(key: string, order: number)
-		local entry = Monetization.ProductByKey[key]
-		local rarity = entry.Case :: string
-		local showcase = CaseShowcase.Build(featured, rarity, "R$ " .. entry.Price, function()
-			actions.buy("Product", key)
-		end, function()
-			showOdds(rarity)
-		end)
-		showcase.LayoutOrder = order
-		showcase:SetAttribute("PaidRandom", true)
-	end
-	caseRow("CaseLegendary", 21)
-	caseRow("CaseEpic", 22)
-	title(featured, "LUCKY BLOCKS", 23, "LuckyTitle")
-	local blocks = {}
-	for _, key in { "LuckyMythic", "LuckyGodly", "LuckyCosmic" } do
-		local entry = Monetization.ProductByKey[key]
-		table.insert(blocks, {
-			Block = entry.LuckyBlock :: string,
-			Price = "R$ " .. entry.Price,
-			Buy = function()
-				actions.buy("Product", key)
-			end,
-		})
-	end
-	local luckyRow = LuckyBlockView.Build(featured, 24, blocks)
 	title(featured, "LUCK", 30)
 	product(featured, "Spins10", 31)
 	product(featured, "LuckPotion", 32)
@@ -332,28 +242,16 @@ function View.Build(actions: any): Frame
 		hideIfOwned()
 	end
 
-	-- Roblox policy: no paid random items where they're restricted (PolicyService, set by the server)
-	local function applyPolicy()
-		local allowed = Players.LocalPlayer:GetAttribute("PaidRandomRestricted") == false
-		for _, child in featured:GetChildren() do
-			if child == luckyRow or child.Name == "RobuxCasesTitle" or child.Name == "LuckyTitle" then
-				(child :: GuiObject).Visible = allowed
-			elseif child:IsA("GuiObject") and child:GetAttribute("PaidRandom") then
-				child.Visible = allowed
-			end
-		end
-	end
-	Players.LocalPlayer:GetAttributeChangedSignal("PaidRandomRestricted"):Connect(applyPolicy)
-	task.defer(applyPolicy)
+	-- The Starter Pack: cash and a Legendary Coffin (a paid random item: hidden where Roblox's policy
+	-- restricts those - PolicyService, set by the server - and the server pays its value there)
 	local starter = Monetization.ProductByKey.Starter
 	local starterRow = card(featured, 1, starter.Color, 112)
-	starterRow:SetAttribute("PaidRandom", true) -- contains a case
-	-- Theme.image (not Ui.art) so this picks up Codex's Cases chest, not the old wooden one.
-	Theme.image(
-		starterRow,
-		"CaseRare",
-		{ Position = UDim2.fromOffset(8, 8), Size = UDim2.fromOffset(80, 90), ZIndex = 6 }
-	)
+	label(starterRow, "⚰️", {
+		Position = UDim2.fromOffset(8, 8),
+		Size = UDim2.fromOffset(80, 90),
+		TextSize = 64,
+		ZIndex = 6,
+	})
 	-- (big type: the Shop is scaled down to fit a phone, and 16 pt came out ~8 px on an iPhone 7)
 	label(starterRow, "Starter Pack · once per player", {
 		Position = UDim2.fromOffset(96, 8),
@@ -376,16 +274,10 @@ function View.Build(actions: any): Frame
 			actions.buy("Product", "Starter")
 		end
 	)
-	Ui.button(
-		{ Text = "Case odds", Position = UDim2.new(1, -140, 0, 62), Size = UDim2.fromOffset(128, 44), ZIndex = 7 },
-		starterRow,
-		function()
-			showOdds("Rare")
-		end
-	)
 	table.insert(refreshers, function()
 		starterRow.Visible = not actions.owned("Starter")
-		contents.Text = `{exactCash(actions.cash(starter) or 0)} + 1 Rare Case`
+			and Players.LocalPlayer:GetAttribute("PaidRandomRestricted") == false
+		contents.Text = `{exactCash(actions.cash(starter) or 0)} + 1 Legendary Coffin`
 	end)
 	local function refresh()
 		for _, fn in refreshers do
@@ -410,7 +302,7 @@ function View.Build(actions: any): Frame
 		MaximumTextSize = 23,
 	}, function()
 		Ui.Menu.Toggle(frame)
-	end, "CaseLegendary")
+	end, "Shop")
 	local function visibility()
 		shop.Visible = not player:GetAttribute("InRound")
 	end

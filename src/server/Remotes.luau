@@ -40,7 +40,6 @@ local Remotes = {
 	ClaimIndex = func("ClaimIndex"), -- client -> server: (knifeName | "All") -> ok
 	Welcome = event("Welcome"), -- server -> client: ({ Offline, Away, Streak, DailyReady }) on join
 	ClaimDaily = func("ClaimDaily"), -- client -> server: () -> (ok, message) today's login-streak reward
-	ClaimFreeChest = func("ClaimFreeChest"), -- client -> server: () -> ok; same as walking up and pressing E
 	Offer = event("Offer"), -- server -> client: (storeKey, reason) a contextual store offer
 	OfferShown = event("OfferShown"), -- client -> server: (key, token) acknowledge a pending offer
 	SellSign = event("SellSign"), -- client -> server: (sign: BasePart) tapped a Sell sign with a tool in hand

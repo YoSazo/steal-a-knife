@@ -14,7 +14,6 @@ local Net = require(script.Parent.Parent.Remotes)
 local DataService = require(script.Parent.DataService)
 local BaseService = require(script.Parent.BaseService)
 local Offers = require(script.Parent.Offers)
-local Rewards = require(script.Parent.Rewards)
 local Analytics = require(script.Parent.Analytics)
 
 local UpgradeService = {}
@@ -39,11 +38,6 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 	local profile = DataService.Get(player)
 	if not profile or type(kind) ~= "string" then
 		return false, "Not ready yet"
-	end
-
-	local caseRarity = kind:match("^Case:(%a+)$")
-	if caseRarity then
-		return Rewards.BuyCase(player, caseRarity)
 	end
 
 	-- The "Upgrade Wheel" sign: the cheaper of the next wheel and the next trail
@@ -217,9 +211,7 @@ function UpgradeService.Init()
 		if ok then
 			local base = what:match("^(%a+)") or what
 			Analytics.Milestone(player, "upgrade_" .. base)
-			if base ~= "Case" then
-				Analytics.Milestone(player, "first_upgrade")
-			end
+			Analytics.Milestone(player, "first_upgrade")
 			if what == "Rebirth" then
 				local after = DataService.Get(player)
 				Analytics.Track(player, "rebirth", { cash_lost = cashBefore, rebirths = after and after.Rebirths })

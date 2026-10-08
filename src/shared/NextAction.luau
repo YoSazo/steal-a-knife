@@ -14,7 +14,7 @@ local NextAction = {}
 
 export type State = {
 	InRound: boolean,
-	Carrying: string?, -- item string, or "Case:<Rarity>"
+	Carrying: string?, -- the item string
 	InVault: boolean, -- standing inside your own vault
 	FreePlate: boolean, -- a "Place Knife" plate is lit (carrying)
 	KnifeCount: number,
@@ -104,9 +104,6 @@ function NextAction.Pick(s: State): Action?
 				Target = if s.Spare ~= false then "Sell" else nil,
 				Ui = if s.Spare == false then "Knives" else nil,
 			}
-		end
-		if carrying:match("^Case:") then
-			return { Id = "carry_case", Text = "Bring your case home!", Target = "Home" }
 		end
 		if s.InVault and PenMode.On() then
 			return {

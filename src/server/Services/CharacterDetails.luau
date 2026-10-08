@@ -5,13 +5,6 @@ local CharacterDetails = {}
 local rgb = Color3.fromRGB
 type Finish = { Style: string, Cloth: Color3, Accent: Color3, Shoe: Color3, Sole: Color3 }
 local FINISHES: { [string]: Finish } = {
-	Mortimer = {
-		Style = "Suit",
-		Cloth = rgb(70, 30, 40),
-		Accent = rgb(220, 190, 90),
-		Shoe = rgb(30, 26, 30),
-		Sole = rgb(15, 15, 18),
-	},
 	Nick = {
 		Style = "Zip",
 		Cloth = rgb(20, 190, 200),

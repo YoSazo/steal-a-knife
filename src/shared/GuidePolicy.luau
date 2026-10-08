@@ -32,7 +32,7 @@ function GuidePolicy.Parse(encoded: string): { [string]: number }
 end
 
 function GuidePolicy.Skill(id: string, perk: string?): string?
-	if id == "steal" or id == "carry_home" or id == "carry_place" or id == "carry_case" then
+	if id == "steal" or id == "carry_home" or id == "carry_place" then
 		return "delivery"
 	elseif id == "collect" or id == "collect_all" then
 		return "collect"

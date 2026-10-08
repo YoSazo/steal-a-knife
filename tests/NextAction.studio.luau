@@ -60,14 +60,6 @@ return function(t)
 			"carry_place"
 		)
 	end)
-	t.test("carrying a case", function()
-		t.expect.equal(
-			id(function(s)
-				s.Carrying = "Case:Rare"
-			end),
-			"carry_case"
-		)
-	end)
 	t.test("carrying, vault full, floor affordable", function()
 		t.expect.equal(
 			id(function(s)
