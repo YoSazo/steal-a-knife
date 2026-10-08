@@ -35,7 +35,7 @@ WHEELS = [(10, 0), (25, 15000), (60, 180000), (150, 2.52e6), (350, 40.3e6), (850
           (2000, 14.5e9), (5000, 319e9), (12000, 7.66e12), (29000, 199e12), (70000, 5.58e15),
           (170000, 167e15), (400000, 5.36e18)]
 TRAILS = [(1.5, 20000), (2, 250000), (3, 3e6), (4, 40e6), (6, 500e6), (8, 7e9), (12, 100e9), (16, 1.5e12),
-          (22, 25e12), (30, 400e12)]  # multiplier, cost (kept through rebirth)
+          (17, 25e12), (20, 400e12)]  # multiplier, cost (kept through rebirth) - top trimmed, see GameConfig
 STARTING_SLOTS, SLOTS_PER_FLOOR, MAX_SLOTS = 10, 10, 40
 FLOOR_COSTS = [1.5e6, 2e10, 1e14]  # 2nd, 3rd, 4th floor
 FLOOR_REBIRTHS = [0, 1, 3]  # rebirths needed for the 2nd, 3rd, 4th floor

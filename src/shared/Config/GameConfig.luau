@@ -182,16 +182,19 @@ local GameConfig = {
 			Color = Color3.fromRGB(255, 240, 90),
 		},
 		{
+			-- Multiplier trimmed from 22/30 (was 1.56x more generous than Steal An Egg combined with
+			-- the Cosmic Wheel's own fixed rate - see GameConfig.Treadmills): top combined ceiling
+			-- now matches its ratio against our hardest zone's Speed need.
 			Name = "Halo Trail",
 			Knife = "HaloBlade",
-			Multiplier = 22,
+			Multiplier = 17,
 			Cost = 25e12,
 			Color = Color3.fromRGB(255, 250, 220),
 		},
 		{
 			Name = "Galaxy Trail",
 			Knife = "GalaxyKatana",
-			Multiplier = 30,
+			Multiplier = 20,
 			Cost = 400e12,
 			Color = Color3.fromRGB(255, 90, 230),
 		},
