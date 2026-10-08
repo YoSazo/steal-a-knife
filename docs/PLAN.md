@@ -4,8 +4,8 @@
 murder round feed it. If it doesn't, cut it. Think 5-year-old: one obvious thing to do, no reading.
 
 **The loop:** steal a locked knife from a monster → run home → murder rounds unlock it (and pay
-Speed, give Winner's Luck, give a fuse charge) → it earns cash → cash buys wheel/pen upgrades →
-faster → steal deeper. The round is also the stage where you flex your best knife.
+Speed - the only Speed, item 30 - give Winner's Luck, give a fuse charge) → it earns cash → cash
+buys pen upgrades → faster → steal deeper. The round is also the stage where you flex your best knife.
 
 Test every step in Studio before starting the next (nothing here was tested yet).
 
@@ -48,7 +48,8 @@ Done:
   the Lucky Wheel in the middle (`MapService.LuckyWheelAt`). About 432 x 188 studs.
 - **Other fixes:** the red chase glow ends at the safe line; deeper monsters throw you further
   (x1 -> ~x2.3); torches / braziers / lava vents use the cartoon flame sprite (`Shared/SpriteFire`)
-  instead of Roblox Fire.
+  instead of Roblox Fire. Every pen is the same full size (`PenMode.Depth` = `Pens.Depth`; the
+  growing pen left a cut-off strip).
 
 **Test first in Studio (desktop + phone):** the hub (the 6 + 1 + 1 pens, wheels in front of each
 gate, walking out of your gate, the Lucky Wheel, nothing left inside pens); a deep biome; a creature lair (Z's, sign); a solo
@@ -57,7 +58,8 @@ NEW COFFINS restock); the HUD (big objective line, the trail after several deliv
 Speed / Cash); the sprite fires (sizes are guesses: torch 2.2, brazier 4, vent 6); early pacing
 (the 2nd wheel should take ~10 min of a new player's income).
 
-**Not started (next):** the hatch layer (items 13-17: see-through "x-ray" coffin - glass in the
+**Not started (next):** first **item 30** (rounds are the Speed: cut the Haunted Wheel, the
+survival ladder), since it changes the balance everything else sits on; then the hatch layer (items 13-17: see-through "x-ray" coffin - glass in the
 rarity colour with a glowing knife shape inside, Diamond+ a second sparkle glow; human names;
 manual opening; Winner's Luck; the fuse machine), the shop rebuild (item 20), deleting the dormant
 vault / power / Classic code, and the rest of the plan below.
@@ -136,6 +138,38 @@ vault / power / Classic code, and the rest of the plan below.
     - A $1K first pen upgrade. Check pen upgrade costs (`SlotCost` still reads vault `FloorCosts`).
     - Update `tools/pacing_sim.py` to pens first (it still models vault floors).
 12. **Faster check on round maps size** after 10: 8 players, ~one biome in size (see 18).
+30. **Rounds are the Speed: cut the Haunted Wheel (treadmill).** Pens make Cash, rounds make
+    Speed, one source each. Speed gates the zones, so every round pushes you deeper.
+    - **Why:** the wheel is the worst tutorial step. Of 431 new players, 260 reached it and 143
+      finished: 77 pressed Skip and ~40 got stuck (45% lost). Standing on a wheel is neither
+      stealing nor murdering.
+    - **The survival ladder.** One line on screen in a round: "⏱ 8s → +5% Speed". Each step is
+      banked the moment you reach it (dying keeps what you banked), and steps get bigger the longer
+      you last. Surviving to the end is the jackpot. E.g. a 90 s round: steps at 10 / 25 / 45 / 70 /
+      90 s worth 1 / 2 / 4 / 7 / 12 parts. The whole ladder is a share of the gap to the next zone
+      (like `RoundPrize.StepShare` today), so it works from 5.5K to 900B Speed.
+    - **Murderer ladder:** every kill is a step (each bigger), a wipe is the jackpot. Sheriff who
+      kills the Murderer gets the jackpot; everyone still alive banks the end step.
+    - Round coins become 👟 shoes (+Speed), so the round has one prize. Round cash pay
+      (`RoundPay`, `BotRoundPay`) goes. Losing a round is slower progress, never zero; an AFK
+      survivor still banks the early steps.
+    - **Show every step:** shoes fly into the Speed readout + a "+5% Speed" pop (both exist); after
+      the round "You can outrun the FLOWER TOAD now!" when you crossed a zone's SpeedNeeded.
+    - **Cycle:** a bit faster, not much (every round sends carried coffins home, steals need room):
+      IntermissionTime 180 -> ~100-120, RoundTime 120 -> ~90. Rescale `Coffins.Rounds`,
+      `OfflineSecondsPerRound`.
+    - **Cut:** `GameConfig.Treadmills`, the wheels + WheelUpgradeSign in front of each pen gate
+      (MapService), BaseService's training tick, `client/TreadmillLock`, the wheel tutorial step,
+      UpgradeService's wheel upgrade, treadmill bits in Moves / Effects / KnifeTrails / Hud / Guide /
+      StoreView / SurpriseGifts / DataService (grep `Treadmill`). Refund owned wheel tiers once as
+      cash (`Shared/LegacyProgress`).
+    - **Robux:** "2x Speed Training" becomes "2x Round Speed"; wheel-tier products to
+      `Monetization.Retired`. Speed Packs stay.
+    - **Money:** the wheel was a main cash sink (120K .. 80.6M). Pen rooms, trails and rebirth must
+      soak up the cash instead; check it in pacing_sim.
+    - **pacing_sim:** treadmill speed out, rounds/hour x ladder in. Keep the milestones (Rare
+      0.34 h, Epic 1.2 h, Legendary 4.0 h).
+    - Replaces RoundPrize's win-only "+X Speed" promise and the wheel half of item 11.
 
 ## 4. The hatch layer
 
