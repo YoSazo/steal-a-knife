@@ -19,7 +19,7 @@ local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
-local Fuel = require(script.Parent.Fuel)
+local ChanceMeter = require(script.Parent.ChanceMeter)
 local MapService = require(script.Parent.MapService)
 local Offers = require(script.Parent.Offers)
 local Ragdoll = require(script.Parent.Ragdoll)
@@ -460,8 +460,7 @@ function StealService.ReturnToBoss(player: Player): string?
 	end
 	local item = carry.Item
 	endCarry(player, false, nil, "caught")
-	Fuel.AddHeat(player, -1, "Caught by the boss!")
-	Fuel.AddMeter(player, -1)
+	ChanceMeter.Add(player, -1)
 	return item
 end
 
@@ -505,13 +504,11 @@ local function deposit(player: Player)
 		parsed = Items.Parse(item) :: Items.Item
 	end
 	if carry.Boss then
-		Fuel.AddHeat(player, 1, "Stole from a boss!")
-		Fuel.AddMeter(player, 1)
+		ChanceMeter.Add(player, 1)
 		-- 🤝 Whoever helped (near you when you grabbed it, or your teammate) shares the glory
 		for _, helper in carry.Helpers do
 			if helper.Parent and helper ~= player then
-				Fuel.AddHeat(helper, 1, `Team steal with {player.DisplayName}!`)
-				Fuel.AddMeter(helper, 1)
+				ChanceMeter.Add(helper, 1)
 			end
 		end
 	end

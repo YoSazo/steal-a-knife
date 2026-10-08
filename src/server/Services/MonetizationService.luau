@@ -24,7 +24,6 @@ local DataService = require(script.Parent.DataService)
 local Offers = require(script.Parent.Offers)
 local Gamble = require(script.Parent.Gamble)
 local GuardService = require(script.Parent.GuardService)
-local Fuel = require(script.Parent.Fuel)
 local Rewards = require(script.Parent.Rewards)
 local Analytics = require(script.Parent.Analytics)
 local CoffinService = require(script.Parent.CoffinService)
@@ -96,6 +95,31 @@ local function countPass(player: Player, pass: Monetization.Pass, source: string
 end
 
 local function checkPasses(player: Player)
+	-- (the profile first: ExtraFloor's slots and the purchase record both live in it)
+	local waited = 0
+	while player.Parent and not DataService.Get(player) and waited < 60 do
+		waited += task.wait(0.25)
+	end
+	local profile = DataService.Get(player)
+	if not player.Parent or not profile then
+		return
+	end
+	-- Retired passes (a system that was cut): the owner gets the Robux back as cash, once
+	for id, price in Monetization.RetiredPasses do
+		local mark = `RetiredPass:{id}`
+		if not table.find(profile.Bought, mark) then
+			local ok, owns = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, id)
+			if ok and owns and player.Parent then
+				local value =
+					GameConfig.Pay({ Min = price * 4000, Seconds = price * 20 }, BaseService.RackIncome(player))
+				DataService.Update(player, function(p)
+					table.insert(p.Bought, mark)
+				end)
+				DataService.AddCash(player, value, "robux_retired_pass")
+				Net.Notify(player, `Thank you! A pass you own was retired, so you got {Format.Cash(value)}.`, "good")
+			end
+		end
+	end
 	for _, pass in Monetization.Passes do
 		if pass.Id > 0 then
 			local ok, owns = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, pass.Id)
@@ -224,24 +248,6 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 			DataService.AddCash(player, value, "robux_product")
 			table.insert(got, `{Format.Cash(value)} (your vault was already maxed)`)
 		end
-	elseif key == "HealthBoost" then
-		local before = profile.HealthLevel
-		local after = math.min(before + 3, GameConfig.Health.MaxLevel)
-		if after > before then
-			DataService.Update(player, function(p)
-				p.HealthLevel = after
-			end)
-			table.insert(got, `+{after - before} Health levels`)
-		end
-		-- Anything past the max comes back as the cash those levels would have cost
-		local refund = 0
-		for level = after, before + 2 do
-			refund += GameConfig.HealthCost(level)
-		end
-		if refund > 0 then
-			DataService.AddCash(player, refund, "robux_product")
-			table.insert(got, `{Format.Cash(refund)} (health was maxed)`)
-		end
 	elseif key == "ServerLuck" then
 		local config = Monetization.ServerLuck
 		local now = workspace:GetServerTimeNow()
@@ -267,9 +273,6 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 	elseif key == "CollectSession" then
 		player:SetAttribute("SessionAutoCollect", true) -- gone when they leave (never saved)
 		table.insert(got, "Auto Collect until you leave")
-	elseif key == "HeatRefill" then
-		Fuel.AddHeat(player, GameConfig.Fuel.MaxHeat - profile.Heat, "Full Heat!")
-		table.insert(got, "full Heat")
 	elseif key == "BossRestock" then
 		local boss = GuardService.RestockNear(player)
 		if boss then

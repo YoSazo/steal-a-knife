@@ -364,7 +364,7 @@ local GameConfig = {
 
 	-- Health: bought with cash at the Knife Merchant (and boosted with Robux). Every level is more
 	-- max health, so guards, raiders' defenders and the Murderer's helpers need more hits on you.
-	Health = { Base = 100, PerLevel = 25, MaxLevel = 20, BaseCost = 25000, CostGrowth = 2.6 },
+	PlayerHealth = 100, -- everyone's health in the hub (health levels were cut: caught means caught)
 
 	RoundWalkSpeed = 16, -- upgrades don't carry into rounds so new players can still win
 	MurdererWalkSpeed = 18.5,
@@ -652,12 +652,10 @@ local GameConfig = {
 		TrainingOfferAfter = 90, -- seconds on the wheel before the Training Potion is offered
 		RestockOfferRange = 45, -- studs from a lair where an empty wall offers the restock
 	},
-	-- The fuel between the two games (server Fuel): Heat and the Murderer meter
-	Fuel = {
-		MaxHeat = 10,
-		HeatIncome = 0.2, -- +20% vault income per Heat (10 Heat = 3x)
-		MeterPerRound = 2, -- Murderer meter for each round you weren't the Murderer
-		MeterCap = 3, -- nobody's chance can be more than 3x the server average
+	-- The Murderer meter (server ChanceMeter, profile.Luck): grows each round you aren't picked
+	MurdererMeter = {
+		PerRound = 2, -- for each round you weren't the Murderer
+		Cap = 3, -- nobody's chance can be more than 3x the server average
 	},
 
 	-- Every so often a CLASSIC round: no Murderer power, just a knife and a Revolver - and
@@ -870,17 +868,6 @@ end
 
 function GameConfig.FloorsFor(slots: number): number
 	return math.clamp(math.ceil(slots / GameConfig.SlotsPerFloor), 1, GameConfig.MaxSlots // GameConfig.SlotsPerFloor)
-end
-
--- Max health at a Health level, and the price of the next level
-function GameConfig.MaxHealthFor(level: number, multiplier: number?): number
-	local h = GameConfig.Health
-	return math.floor((h.Base + h.PerLevel * level) * (multiplier or 1))
-end
-
-function GameConfig.HealthCost(level: number): number
-	local h = GameConfig.Health
-	return math.floor(h.BaseCost * h.CostGrowth ^ level)
 end
 
 -- Speed stat -> walk speed. Every doubling of Speed is worth +4.4 walk speed (16 at 0, ~30 at 4K,

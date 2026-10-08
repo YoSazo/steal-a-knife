@@ -16,7 +16,6 @@ local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local KnifeAura = require(ReplicatedStorage.Shared.KnifeAura)
 local Net = require(script.Parent.Parent.Remotes)
 local DataService = require(script.Parent.DataService)
-local Fuel = require(script.Parent.Fuel)
 local Offers = require(script.Parent.Offers)
 local Social = require(script.Parent.Social)
 local MapService = require(script.Parent.MapService)
@@ -160,8 +159,7 @@ function BaseService.IncomeMultiplier(player: Player): number
 	if player:GetAttribute("Pass_VIP") then
 		multiplier *= 1.1
 	end
-	-- 🔥 Heat from playing both games, friends playing with you
-	multiplier *= Fuel.IncomeMultiplier(player) * Social.FriendsMultiplier(player)
+	multiplier *= Social.FriendsMultiplier(player)
 	-- 2x Cash Potion (Robux consumable)
 	if profile and DataService.BoostActive(profile, "Cash") then
 		multiplier *= GameConfig.Consumables.CashMultiplier

@@ -116,16 +116,13 @@ Monetization.Passes = {
 		Icon = "🏢",
 		Color = rgb(255, 170, 60),
 	},
-	{
-		Key = "Titan",
-		Id = 2004975371,
-		Price = 299,
-		Name = "Titan Health",
-		Description = "Twice the health, forever: bosses need twice the hits to stop you.",
-		Icon = "❤️",
-		Color = rgb(235, 60, 80),
-	},
 } :: { Pass }
+
+-- Passes we no longer sell (id -> price): an owner gets their Robux back as cash, once
+-- (MonetizationService.checkPasses, Bought "RetiredPass:<id>")
+Monetization.RetiredPasses = {
+	[2004975371] = 299, -- Titan Health (health levels were cut)
+} :: { [number]: number }
 
 Monetization.Products = {
 	{
@@ -356,15 +353,6 @@ Monetization.Products = {
 		Charge = { Name = "Insurance", Count = 10 },
 	},
 	{
-		Key = "HeatRefill",
-		Id = 3716624573,
-		Price = 25,
-		Name = "Full Heat",
-		Description = "🔥 Heat to max: more cash and better powers.",
-		Icon = "🔥",
-		Color = rgb(255, 110, 40),
-	},
-	{
 		Key = "BossRestock",
 		Id = 3716624574,
 		Price = 35,
@@ -392,15 +380,6 @@ Monetization.Products = {
 		Icon = "📅",
 		Color = rgb(255, 190, 60),
 		Hidden = true,
-	},
-	{
-		Key = "HealthBoost",
-		Id = 3716624585,
-		Price = 49,
-		Name = "+3 Health Levels",
-		Description = "Three Health upgrades right now (+75 max health).",
-		Icon = "💗",
-		Color = rgb(255, 90, 120),
 	},
 	{
 		Key = "Mount",
@@ -476,6 +455,8 @@ Monetization.Retired = {
 	[3716624541] = 39, -- Gift: Luck Potion (gifts to a player)
 	[3716624592] = 25, -- Refill Free Chest (the free chest)
 	[3716624594] = 99, -- Summon the Blood Moon (raids)
+	[3716624573] = 25, -- Full Heat (Heat)
+	[3716624585] = 49, -- +3 Health Levels (health levels)
 } :: { [number]: number }
 
 Monetization.PassByKey = {} :: { [string]: Pass }

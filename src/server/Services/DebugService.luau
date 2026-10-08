@@ -111,12 +111,6 @@ local commands: { [string]: (Player, ...any) -> any } = {
 		require(script.Parent.Offers).Show(player, key, "Studio offer check", true)
 		return true
 	end,
-	Heat = function(player: Player, amount: number)
-		DataService.Update(player, function(p)
-			p.Heat = math.clamp(amount, 0, GameConfig.Fuel.MaxHeat)
-		end)
-		return true
-	end,
 	Home = function(player: Player)
 		BaseService.SetReturnSpot(player, nil)
 		BaseService.TeleportHome(player)

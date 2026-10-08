@@ -327,19 +327,14 @@ local function stepFlying(dt: number)
 	end
 end
 
--- Max health from the Health level (cash upgrade) and the Titan pass. Topping up keeps the same
--- fraction of health you had, so buying mid-fight doesn't heal you outright.
+-- Health is an engine constant, not a progression system; rounds and the hub use the same value.
 function CombatService.ApplyHealth(player: Player)
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if not humanoid or humanoid.Health <= 0 then
 		return
 	end
-	local level = (player:GetAttribute("HealthLevel") or 0) :: number
-	local max = GameConfig.MaxHealthFor(level, if player:GetAttribute("Pass_Titan") then 2 else 1)
-	if player:GetAttribute("InRound") then
-		max = GameConfig.Health.Base -- rounds are fair: everyone is equal
-	end
+	local max = GameConfig.PlayerHealth
 	if humanoid.MaxHealth ~= max then
 		local fraction = humanoid.Health / math.max(humanoid.MaxHealth, 1)
 		humanoid.MaxHealth = max
@@ -354,14 +349,14 @@ local function onCharacterAdded(player: Player, character: Model)
 		return
 	end
 	task.defer(function()
-		local level = (player:GetAttribute("HealthLevel") or 0) :: number
-		local max = GameConfig.MaxHealthFor(level, if player:GetAttribute("Pass_Titan") then 2 else 1)
+		local max = GameConfig.PlayerHealth
 		if not player:GetAttribute("InRound") and humanoid.Health > 0 then
 			humanoid.MaxHealth = max
 			humanoid.Health = max
 		end
 	end)
 	humanoid.BreakJointsOnDeath = false
+	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
 	humanoid.Died:Connect(function()
 		Analytics.Track(player, "death", { where = if player:GetAttribute("InRound") then "round" else "hub" })
 		Ragdoll.DeathCry(character)
@@ -415,11 +410,6 @@ function CombatService.Init()
 			end
 			CombatService.ApplyHealth(player)
 		end)
-		for _, attribute in { "HealthLevel", "Pass_Titan" } do
-			player:GetAttributeChangedSignal(attribute):Connect(function()
-				CombatService.ApplyHealth(player)
-			end)
-		end
 	end
 	Players.PlayerAdded:Connect(watch)
 	for _, player in Players:GetPlayers() do

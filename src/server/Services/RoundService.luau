@@ -38,7 +38,7 @@ local BaseService = require(script.Parent.BaseService)
 local CombatService = require(script.Parent.CombatService)
 local DataService = require(script.Parent.DataService)
 local Offers = require(script.Parent.Offers)
-local Fuel = require(script.Parent.Fuel)
+local ChanceMeter = require(script.Parent.ChanceMeter)
 local MapService = require(script.Parent.MapService)
 local Decoy = require(script.Parent.Decoy)
 local Stealth = require(script.Parent.Stealth)
@@ -301,7 +301,7 @@ local function cappedWeights(players: { Player }): { [Player]: number }
 		raw[player] = murdererWeight(player)
 		total += raw[player]
 	end
-	local cap = if #players > 1 then total / #players * GameConfig.Fuel.MeterCap else math.huge
+	local cap = if #players > 1 then total / #players * GameConfig.MurdererMeter.Cap else math.huge
 	for player, weight in raw do
 		raw[player] = math.min(weight, cap)
 	end
@@ -643,7 +643,7 @@ local function eliminate(round: Round, victim: Player, killer: Player?, fatal: b
 	if not isKiller(round, victim) then
 		-- (no Heat lost any more: the round pulls everyone in, so dying in it shouldn't make your
 		-- vault earn less)
-		Fuel.AddMeter(victim, -1)
+		ChanceMeter.Add(victim, -1)
 	end
 	local root = rootOf(victim)
 	if round.Gunner == victim and root then
@@ -2224,7 +2224,7 @@ local function startRound(participants: { Player })
 		player:SetAttribute("InRound", true)
 		player:SetAttribute("Role", if isMurderer then "Murderer" else "Innocent")
 		DataService.Update(player, function(p)
-			p.Luck = if isMurderer then 0 else p.Luck + GameConfig.Fuel.MeterPerRound
+			p.Luck = if isMurderer then 0 else p.Luck + GameConfig.MurdererMeter.PerRound
 		end)
 
 		-- Back to exactly this spot when the round is over (BaseService.TeleportHome)
@@ -2580,12 +2580,6 @@ local function endRound(round: Round)
 		Net.Notify(hero, `HERO! +{Format.Cash(amount)}`, "good")
 	end
 	ReplicatedStorage:SetAttribute("Loot", nil)
-	if round.Partner and round.Partner.Parent and not innocentsWon then
-		Fuel.AddHeat(round.Partner, 1, "You won as the Murderers!")
-	end
-	if murderer and murderer.Parent and not innocentsWon then
-		Fuel.AddHeat(murderer, 1, "You won as the Murderer!")
-	end
 	local fewLeft = #survivors <= math.max(1, math.ceil(#round.Innocents * GameConfig.LastAliveFraction))
 
 	-- The innocents' side won: everyone on it gets something, even the ones who didn't make it
@@ -2599,8 +2593,7 @@ local function endRound(round: Round)
 	end
 
 	for _, player in survivors do
-		Fuel.AddHeat(player, 1, "Survived the round!")
-		Fuel.AddMeter(player, 1)
+		ChanceMeter.Add(player, 1)
 		local reward = pay(round, player, GameConfig.RoundPay.Survive)
 			+ (if fewLeft then pay(round, player, GameConfig.RoundPay.LastAlive) else 0)
 		DataService.Update(player, function(p)

@@ -560,62 +560,6 @@ function Hud.Init()
 	Ui.textStroke(rackLabel, 1.5)
 	Hud.CashLabel = cashLabel
 
-	-- 🔥 Heat, right above Speed: one number that both games fill, boosting cash and power luck
-	local heatLabel = Ui.label({
-		Position = UDim2.fromOffset(0, -44),
-		Size = UDim2.fromOffset(320, 34),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = Color3.fromRGB(255, 150, 60),
-		Text = "",
-	}, stats)
-	Ui.textStroke(heatLabel, 2.5)
-	local heatHint = Ui.label({
-		Position = UDim2.fromOffset(4, -14),
-		Size = UDim2.fromOffset(320, 16),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = Color3.fromRGB(255, 220, 170),
-		Text = "",
-	}, stats)
-	Ui.textStroke(heatHint, 1.5)
-	local function refreshHeat()
-		local heat = (player:GetAttribute("Heat") or 0) :: number
-		local fuel = GameConfig.Fuel
-		-- what it does, not a score: "HEAT 3 = x1.3 CASH" (hidden at 0: placeStats)
-		heatLabel.Text = `HEAT {heat} = x{math.floor((1 + heat * fuel.HeatIncome) * 10) / 10} CASH`
-		heatLabel.TextColor3 = Color3.fromRGB(255, 200, 90):Lerp(Color3.fromRGB(255, 60, 40), heat / fuel.MaxHeat)
-		local friends = (player:GetAttribute("FriendsHere") or 0) :: number
-		heatHint.Text = (
-			if heat > 0
-				then `x{math.floor((1 + heat * fuel.HeatIncome) * 10) / 10} cash`
-				else "Steal & survive rounds to heat up!"
-		) .. (if friends > 0 then `  · 👥 +{friends * 10}%` else "")
-	end
-	player:GetAttributeChangedSignal("Heat"):Connect(refreshHeat)
-	player:GetAttributeChangedSignal("FriendsHere"):Connect(refreshHeat)
-	local placeStatsLater: (() -> ())? = nil
-	player:GetAttributeChangedSignal("Heat"):Connect(function()
-		if placeStatsLater then
-			placeStatsLater()
-		end
-	end)
-	refreshHeat()
-	Remotes.Effect.OnClientEvent:Connect(function(kind: string, _heat: any, delta: any, reason: any)
-		if kind ~= "Heat" or type(delta) ~= "number" then
-			return
-		end
-		local scale = heatLabel:FindFirstChildOfClass("UIScale") or new("UIScale", {}, heatLabel)
-		scale.Scale = 1.35
-		TweenService:Create(scale, TweenInfo.new(0.4, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if root then
-			Effects.FloatText(
-				root.Position + Vector3.new(0, 4, 0),
-				`{if delta > 0 then "+" else ""}{delta} 🔥 {reason or ""}`,
-				if delta > 0 then Color3.fromRGB(255, 160, 60) else Color3.fromRGB(150, 160, 190)
-			)
-		end
-	end)
-
 	-- (No Upgrades button any more: the wheel + trail are one "Upgrade Wheel" sign by your Haunted
 	-- Wheel, the vault floor is the Upgrade Base sign / the Knives panel, and Health is gone.)
 
@@ -654,8 +598,6 @@ function Hud.Init()
 			"TreadmillLevel",
 			"TrailLevel",
 			"WallLevel",
-			"HealthLevel",
-			"Pass_Titan",
 			"Training",
 			"Tickets",
 			"Income",
@@ -1190,12 +1132,6 @@ function Hud.Init()
 	Ui.SpeedIcon = speedArt -- (the round prize's shoes fly into it: client/Transitions)
 	local cashArt = Ui.art(stats, "Cash", { Image = CartoonArt.Cash })
 	Ui.CashIcon = cashArt
-	local heatArt = Ui.art(stats, "Heat", { Image = CartoonArt.Heat })
-	heatLabel.Visible = true
-	heatLabel.Font = Enum.Font.LuckiestGuy
-	heatLabel.TextScaled = false
-	heatLabel.TextXAlignment = Enum.TextXAlignment.Left
-	heatLabel.TextYAlignment = Enum.TextYAlignment.Center
 	for _, text in { speedLabel, cashLabel } do
 		text.TextScaled = false
 		text.Font = Enum.Font.LuckiestGuy
@@ -1215,30 +1151,22 @@ function Hud.Init()
 			local _, bounds = Ui.bounds()
 			local stick = if bounds.Y < 500 then 70 else 120
 			-- as big as the screen allows (Steal An Egg keeps them huge on phones too)
-			-- Steal An Egg keeps these small and tucked in: two short rows, no Heat row on phones
+			-- Steal An Egg keeps these small and tucked in: two short rows
 			size = math.clamp(math.floor(bounds.Y * 0.085), 26, 44) -- big and chunky, like theirs
 			icon, row = math.floor(size * 1.1), math.floor(size * 1.2)
 			x = 25 + stick + 12 -- just right of the thumbstick
 		end
-		-- a smaller Heat row on top (not on phones, and only once you have some Heat), then Speed, Cash
-		local showHeat = not Ui.Phone and ((player:GetAttribute("Heat") or 0) :: number) > 0
-		heatArt.Visible, heatLabel.Visible = showHeat, showHeat
-		local small = if showHeat then math.floor(row * 0.7) else 0
-		local smallIcon = math.floor(icon * 0.7)
+		-- Speed over Cash
+		local small = 0
 		stats.Position, stats.Size = UDim2.new(0, x, 1, -12), UDim2.fromOffset(icon + 8 + size * 6, small + row * 2)
-		heatArt.Position, heatArt.Size =
-			UDim2.fromOffset((icon - smallIcon) / 2, (small - smallIcon) / 2), UDim2.fromOffset(smallIcon, smallIcon)
 		speedArt.Position, speedArt.Size = UDim2.fromOffset(0, small + (row - icon) / 2), UDim2.fromOffset(icon, icon)
 		cashArt.Position, cashArt.Size =
 			UDim2.fromOffset(0, small + row + (row - icon) / 2), UDim2.fromOffset(icon, icon)
-		heatLabel.Position, heatLabel.Size = UDim2.fromOffset(icon + 8, 0), UDim2.fromOffset(size * 6, small)
 		speedLabel.Position, speedLabel.Size = UDim2.fromOffset(icon + 8, small), UDim2.fromOffset(size * 6, row)
 		cashLabel.Position, cashLabel.Size = UDim2.fromOffset(icon + 8, small + row), UDim2.fromOffset(size * 6, row)
 		speedLabel.TextSize, cashLabel.TextSize = math.floor(size * 0.9), size
-		heatLabel.TextSize = math.floor(size * 0.6)
 	end
 	Ui.Layout.Changed:Connect(placeStats)
-	placeStatsLater = placeStats
 	placeStats()
 	healthFrame.AnchorPoint, healthFrame.Position, healthFrame.Size =
 		Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -12), UDim2.fromOffset(180, 20)

@@ -12,6 +12,7 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local GuidePolicy = require(ReplicatedStorage.Shared.GuidePolicy)
+local LegacyProgress = require(ReplicatedStorage.Shared.LegacyProgress)
 local Net = require(script.Parent.Parent.Remotes)
 
 export type Profile = {
@@ -237,14 +238,13 @@ local function reconcile(data: any): Profile
 	end
 	profile.GuidanceLearned = learned
 	profile.Source = profile.Source:sub(1, 300)
-	profile.Heat = math.clamp(math.floor(profile.Heat), 0, GameConfig.Fuel.MaxHeat)
 	profile.Speed = math.max(0, profile.Speed)
 	profile.TreadmillLevel = math.clamp(math.floor(profile.TreadmillLevel), 1, #GameConfig.Treadmills)
 	profile.Cash = math.max(0, profile.Cash)
 	profile.WallLevel = math.clamp(math.floor(profile.WallLevel), 1, #GameConfig.Walls)
 	profile.Rebirths = math.clamp(math.floor(profile.Rebirths), 0, GameConfig.Rebirth.Max)
 	profile.TrailLevel = math.clamp(math.floor(profile.TrailLevel), 0, #GameConfig.Trails)
-	profile.HealthLevel = math.clamp(math.floor(profile.HealthLevel), 0, GameConfig.Health.MaxLevel)
+	LegacyProgress.Apply(profile)
 	-- Drop knives that were removed from the catalog so nothing downstream sees an unknown name
 	-- Each kept knife keeps its plate (older saves: plates in list order); duplicates or bad plates
 	-- get the first free one
@@ -539,7 +539,6 @@ local function publish(player: Player, profile: Profile)
 	player:SetAttribute("Speed", math.floor(profile.Speed))
 	player:SetAttribute("TreadmillLevel", profile.TreadmillLevel)
 	player:SetAttribute("Luck", profile.Luck)
-	player:SetAttribute("Heat", profile.Heat)
 	player:SetAttribute("Tickets", profile.Tickets)
 	player:SetAttribute("Knives", table.concat(profile.Knives, ","))
 	player:SetAttribute("Equipped", profile.Equipped)
@@ -555,7 +554,6 @@ local function publish(player: Player, profile: Profile)
 	player:SetAttribute("IndexClaimed", table.concat(profile.IndexClaimed, ","))
 	player:SetAttribute("DailyStreak", profile.DailyStreak)
 	player:SetAttribute("TrailLevel", profile.TrailLevel)
-	player:SetAttribute("HealthLevel", profile.HealthLevel)
 	for _, bought in profile.Bought do
 		-- ("Pass:<key>" entries only record a pass bought outside the game: attribute names can't
 		-- hold ":", and Pass_<key> already says they own it)

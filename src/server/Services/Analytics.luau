@@ -250,8 +250,6 @@ local function context(player: Player): { [string]: any }
 		props.best_rarity = bestRarity(profile.Knives)
 		props.speed = math.floor(profile.Speed)
 		props.speed_reach = GameConfig.RarityReached(profile.Speed)
-		props.heat = profile.Heat
-		props.health_level = profile.HealthLevel
 		props.trail_level = profile.TrailLevel
 		props.tutorial_done = profile.TutorialDone
 		props.tutorial_step = profile.TutorialStep
