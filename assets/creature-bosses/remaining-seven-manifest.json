@@ -1,0 +1,68 @@
+[
+  {
+    "Name": "FlowerToad",
+    "Zone": 2,
+    "Boss": "Ivy",
+    "StandHeight": 14,
+    "PartCount": 90,
+    "AnimationNotes": [
+      "Bloom can sway a few degrees; no Tail group. Four legs use the normal trot."
+    ]
+  },
+  {
+    "Name": "BoneWolf",
+    "Zone": 3,
+    "Boss": "Sam",
+    "StandHeight": 15.5,
+    "PartCount": 89,
+    "AnimationNotes": []
+  },
+  {
+    "Name": "GoldScorpion",
+    "Zone": 4,
+    "Boss": "Leo",
+    "StandHeight": 17,
+    "PartCount": 80,
+    "AnimationNotes": [
+      "Eight visible legs paired into four named trot groups. ClawLeft/ClawRight may open or bob. Tail folds backward in sleep; wag conservatively (large tail)."
+    ]
+  },
+  {
+    "Name": "LavaSalamander",
+    "Zone": 5,
+    "Boss": "Ruby",
+    "StandHeight": 18.5,
+    "PartCount": 93,
+    "AnimationNotes": []
+  },
+  {
+    "Name": "GoldenGriffin",
+    "Zone": 6,
+    "Boss": "Kate",
+    "StandHeight": 20,
+    "PartCount": 114,
+    "AnimationNotes": [
+      "WingLeft/WingRight have folded sleep pivots; flap around local Z. Ground trot remains four legs. Keep golden crest and beak moving with Head."
+    ]
+  },
+  {
+    "Name": "SkyPegasus",
+    "Zone": 7,
+    "Boss": "Zoe",
+    "StandHeight": 21.5,
+    "PartCount": 112,
+    "AnimationNotes": [
+      "WingLeft/WingRight have folded sleep pivots; flap around local Z. Ground trot remains four legs. Halo is a separate group and may bob with Head."
+    ]
+  },
+  {
+    "Name": "VoidBeast",
+    "Zone": 8,
+    "Boss": "Nick",
+    "StandHeight": 23,
+    "PartCount": 100,
+    "AnimationNotes": [
+      "Six eyes use EyeLeft/EyeRight roles; all close together. Tail wag only; crown stays with Head."
+    ]
+  }
+]

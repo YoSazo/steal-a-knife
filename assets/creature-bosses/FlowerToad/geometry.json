@@ -1,0 +1,2183 @@
+{
+  "Name": "FlowerToad",
+  "Zone": 2,
+  "Boss": "Ivy",
+  "Title": "The Gardener",
+  "StandHeight": 14,
+  "PartCount": 90,
+  "FrontAxis": "-Z",
+  "Root": "floor centre under torso",
+  "Joints": {
+    "Body": {
+      "Awake": [
+        0.0,
+        6.849407,
+        0.0
+      ],
+      "Asleep": [
+        0.0,
+        3.093281,
+        0.0
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "Head": {
+      "Awake": [
+        0.0,
+        7.733202,
+        -4.418972
+      ],
+      "Asleep": [
+        0.0,
+        3.314229,
+        -5.523715
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "LegFrontLeft": {
+      "Awake": [
+        -4.639921,
+        4.971344,
+        -3.314229
+      ],
+      "Asleep": [
+        -4.639921,
+        1.242836,
+        -3.314229
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "LegFrontRight": {
+      "Awake": [
+        4.639921,
+        4.971344,
+        -3.314229
+      ],
+      "Asleep": [
+        4.639921,
+        1.242836,
+        -3.314229
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "LegBackLeft": {
+      "Awake": [
+        -4.639921,
+        4.971344,
+        4.418972
+      ],
+      "Asleep": [
+        -4.639921,
+        1.242836,
+        4.418972
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "LegBackRight": {
+      "Awake": [
+        4.639921,
+        4.971344,
+        4.418972
+      ],
+      "Asleep": [
+        4.639921,
+        1.242836,
+        4.418972
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "Bloom": {
+      "Awake": [
+        0.0,
+        11.047431,
+        2.209486
+      ],
+      "Asleep": [
+        0.0,
+        6.849407,
+        2.209486
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "Blocks": [
+    {
+      "Name": "Torso",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        11.047431,
+        5.302767,
+        11.047431
+      ],
+      "Offset": [
+        0.0,
+        0.0,
+        1.104743
+      ],
+      "Color": [
+        77,
+        152,
+        35
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "BackCrown",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        8.837945,
+        0.994269,
+        9.942688
+      ],
+      "Offset": [
+        0.0,
+        2.927569,
+        1.104743
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Chest",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        7.18083,
+        3.314229,
+        2.209486
+      ],
+      "Offset": [
+        0.0,
+        -0.331423,
+        -5.302767
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "HeadCore",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        9.169368,
+        5.081818,
+        4.971344
+      ],
+      "Offset": [
+        0.0,
+        1.104743,
+        -0.220949
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Forehead",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        7.733202,
+        0.883794,
+        4.198024
+      ],
+      "Offset": [
+        0.0,
+        4.087549,
+        -0.220949
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Upper",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        2.872332,
+        2.883379,
+        2.872332
+      ],
+      "Offset": [
+        0.0,
+        -1.093696,
+        0.0
+      ],
+      "Color": [
+        77,
+        152,
+        35
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Lower",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        2.297866,
+        2.336532,
+        2.297866
+      ],
+      "Offset": [
+        0.0,
+        -3.3308,
+        0.0
+      ],
+      "Color": [
+        77,
+        152,
+        35
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Paw",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        3.504245,
+        1.215217,
+        3.734032
+      ],
+      "Offset": [
+        0.0,
+        -4.363735,
+        -0.38666
+      ],
+      "Color": [
+        77,
+        152,
+        35
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Toe0",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        0.890423,
+        0.994269,
+        0.718083
+      ],
+      "Offset": [
+        -1.091486,
+        -4.474209,
+        -2.297866
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Toe1",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        0.890423,
+        0.994269,
+        0.718083
+      ],
+      "Offset": [
+        0.0,
+        -4.474209,
+        -2.297866
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Toe2",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        0.890423,
+        0.994269,
+        0.718083
+      ],
+      "Offset": [
+        1.091486,
+        -4.474209,
+        -2.297866
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Upper",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        2.872332,
+        2.883379,
+        2.872332
+      ],
+      "Offset": [
+        0.0,
+        -1.093696,
+        0.0
+      ],
+      "Color": [
+        77,
+        152,
+        35
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Lower",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        2.297866,
+        2.336532,
+        2.297866
+      ],
+      "Offset": [
+        0.0,
+        -3.3308,
+        0.0
+      ],
+      "Color": [
+        77,
+        152,
+        35
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Paw",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        3.504245,
+        1.215217,
+        3.734032
+      ],
+      "Offset": [
+        0.0,
+        -4.363735,
+        -0.38666
+      ],
+      "Color": [
+        77,
+        152,
+        35
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Toe0",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        0.890423,
+        0.994269,
+        0.718083
+      ],
+      "Offset": [
+        -1.091486,
+        -4.474209,
+        -2.297866
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Toe1",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        0.890423,
+        0.994269,
+        0.718083
+      ],
+      "Offset": [
+        0.0,
+        -4.474209,
+        -2.297866
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Toe2",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        0.890423,
+        0.994269,
+        0.718083
+      ],
+      "Offset": [
+        1.091486,
+        -4.474209,
+        -2.297866
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Upper",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        2.872332,
+        2.883379,
+        2.872332
+      ],
+      "Offset": [
+        0.0,
+        -1.093696,
+        0.0
+      ],
+      "Color": [
+        77,
+        152,
+        35
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Lower",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        2.297866,
+        2.336532,
+        2.297866
+      ],
+      "Offset": [
+        0.0,
+        -3.3308,
+        0.0
+      ],
+      "Color": [
+        77,
+        152,
+        35
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Paw",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        3.504245,
+        1.215217,
+        3.734032
+      ],
+      "Offset": [
+        0.0,
+        -4.363735,
+        -0.38666
+      ],
+      "Color": [
+        77,
+        152,
+        35
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Toe0",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        0.890423,
+        0.994269,
+        0.718083
+      ],
+      "Offset": [
+        -1.091486,
+        -4.474209,
+        -2.297866
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Toe1",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        0.890423,
+        0.994269,
+        0.718083
+      ],
+      "Offset": [
+        0.0,
+        -4.474209,
+        -2.297866
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Toe2",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        0.890423,
+        0.994269,
+        0.718083
+      ],
+      "Offset": [
+        1.091486,
+        -4.474209,
+        -2.297866
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Upper",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        2.872332,
+        2.883379,
+        2.872332
+      ],
+      "Offset": [
+        0.0,
+        -1.093696,
+        0.0
+      ],
+      "Color": [
+        77,
+        152,
+        35
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Lower",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        2.297866,
+        2.336532,
+        2.297866
+      ],
+      "Offset": [
+        0.0,
+        -3.3308,
+        0.0
+      ],
+      "Color": [
+        77,
+        152,
+        35
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Paw",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        3.504245,
+        1.215217,
+        3.734032
+      ],
+      "Offset": [
+        0.0,
+        -4.363735,
+        -0.38666
+      ],
+      "Color": [
+        77,
+        152,
+        35
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Toe0",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        0.890423,
+        0.994269,
+        0.718083
+      ],
+      "Offset": [
+        -1.091486,
+        -4.474209,
+        -2.297866
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Toe1",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        0.890423,
+        0.994269,
+        0.718083
+      ],
+      "Offset": [
+        0.0,
+        -4.474209,
+        -2.297866
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Toe2",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        0.890423,
+        0.994269,
+        0.718083
+      ],
+      "Offset": [
+        1.091486,
+        -4.474209,
+        -2.297866
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Belly",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        8.837945,
+        2.31996,
+        7.733202
+      ],
+      "Offset": [
+        0.0,
+        -1.767589,
+        0.0
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Muzzle",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        11.047431,
+        2.31996,
+        2.540909
+      ],
+      "Offset": [
+        0.0,
+        -0.552372,
+        -3.424704
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Smile",
+      "Group": "Head",
+      "Role": "Mouth",
+      "Size": [
+        8.837945,
+        0.309328,
+        0.220949
+      ],
+      "Offset": [
+        0.0,
+        -1.325692,
+        -4.86087
+      ],
+      "Color": [
+        32,
+        75,
+        27
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "EyeBump-1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        3.756126,
+        3.866601,
+        2.761858
+      ],
+      "Offset": [
+        -3.314229,
+        3.314229,
+        -1.767589
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ToadSpot-1_0",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.552372,
+        1.104743,
+        1.436166
+      ],
+      "Offset": [
+        -5.744664,
+        0.441897,
+        -2.209486
+      ],
+      "Color": [
+        57,
+        153,
+        177
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ToadSpot-1_1",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.552372,
+        1.104743,
+        1.436166
+      ],
+      "Offset": [
+        -5.744664,
+        1.767589,
+        0.0
+      ],
+      "Color": [
+        57,
+        153,
+        177
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ToadSpot-1_2",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.552372,
+        1.104743,
+        1.436166
+      ],
+      "Offset": [
+        -5.744664,
+        0.441897,
+        2.209486
+      ],
+      "Color": [
+        57,
+        153,
+        177
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ToadSpot-1_3",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.552372,
+        1.104743,
+        1.436166
+      ],
+      "Offset": [
+        -5.744664,
+        1.767589,
+        4.418972
+      ],
+      "Color": [
+        57,
+        153,
+        177
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "EyeBump1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        3.756126,
+        3.866601,
+        2.761858
+      ],
+      "Offset": [
+        3.314229,
+        3.314229,
+        -1.767589
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ToadSpot1_0",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.552372,
+        1.104743,
+        1.436166
+      ],
+      "Offset": [
+        5.744664,
+        0.441897,
+        -2.209486
+      ],
+      "Color": [
+        57,
+        153,
+        177
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ToadSpot1_1",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.552372,
+        1.104743,
+        1.436166
+      ],
+      "Offset": [
+        5.744664,
+        1.767589,
+        0.0
+      ],
+      "Color": [
+        57,
+        153,
+        177
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ToadSpot1_2",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.552372,
+        1.104743,
+        1.436166
+      ],
+      "Offset": [
+        5.744664,
+        0.441897,
+        2.209486
+      ],
+      "Color": [
+        57,
+        153,
+        177
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ToadSpot1_3",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.552372,
+        1.104743,
+        1.436166
+      ],
+      "Offset": [
+        5.744664,
+        1.767589,
+        4.418972
+      ],
+      "Color": [
+        57,
+        153,
+        177
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "EyeLeftSocket_3_3.2_-1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        2.872332,
+        3.148518,
+        0.331423
+      ],
+      "Offset": [
+        -3.314229,
+        3.535178,
+        -3.314229
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "EyeLeftGlow_3_3.2_-1",
+      "Group": "Head",
+      "Role": "EyeLeft",
+      "Size": [
+        2.209486,
+        2.485672,
+        0.220949
+      ],
+      "Offset": [
+        -3.314229,
+        3.535178,
+        -3.590415
+      ],
+      "Color": [
+        57,
+        153,
+        177
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "EyeLeftShine_3_3.2_-1",
+      "Group": "Head",
+      "Role": "EyeLeft",
+      "Size": [
+        0.486087,
+        0.695988,
+        0.132569
+      ],
+      "Offset": [
+        -3.756126,
+        4.032312,
+        -3.778221
+      ],
+      "Color": [
+        255,
+        247,
+        224
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "EyeLeftLid_3_3.2_-1",
+      "Group": "Head",
+      "Role": "EyeLeft",
+      "Size": [
+        2.540909,
+        0.276186,
+        0.220949
+      ],
+      "Offset": [
+        -3.314229,
+        3.535178,
+        -3.590415
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Asleep",
+      "Angle": -5,
+      "Neon": false
+    },
+    {
+      "Name": "Brow_3_3.2_-1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        3.148518,
+        0.607609,
+        0.77332
+      ],
+      "Offset": [
+        -3.314229,
+        5.344195,
+        -3.424704
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Both",
+      "Angle": -13,
+      "Neon": false
+    },
+    {
+      "Name": "EyeRightSocket_3_3.2_1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        2.872332,
+        3.148518,
+        0.331423
+      ],
+      "Offset": [
+        3.314229,
+        3.535178,
+        -3.314229
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "EyeRightGlow_3_3.2_1",
+      "Group": "Head",
+      "Role": "EyeRight",
+      "Size": [
+        2.209486,
+        2.485672,
+        0.220949
+      ],
+      "Offset": [
+        3.314229,
+        3.535178,
+        -3.590415
+      ],
+      "Color": [
+        57,
+        153,
+        177
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "EyeRightShine_3_3.2_1",
+      "Group": "Head",
+      "Role": "EyeRight",
+      "Size": [
+        0.486087,
+        0.695988,
+        0.132569
+      ],
+      "Offset": [
+        2.872332,
+        4.032312,
+        -3.778221
+      ],
+      "Color": [
+        255,
+        247,
+        224
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "EyeRightLid_3_3.2_1",
+      "Group": "Head",
+      "Role": "EyeRight",
+      "Size": [
+        2.540909,
+        0.276186,
+        0.220949
+      ],
+      "Offset": [
+        3.314229,
+        3.535178,
+        -3.590415
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Asleep",
+      "Angle": 5,
+      "Neon": false
+    },
+    {
+      "Name": "Brow_3_3.2_1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        3.148518,
+        0.607609,
+        0.77332
+      ],
+      "Offset": [
+        3.314229,
+        5.344195,
+        -3.424704
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Both",
+      "Angle": 13,
+      "Neon": false
+    },
+    {
+      "Name": "ToadPupil-1",
+      "Group": "Head",
+      "Role": "EyeLeft",
+      "Size": [
+        1.104743,
+        1.54664,
+        0.176759
+      ],
+      "Offset": [
+        -3.314229,
+        3.535178,
+        -3.778221
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ToadPupilShine-1",
+      "Group": "Head",
+      "Role": "EyeLeft",
+      "Size": [
+        0.530277,
+        0.552372,
+        0.132569
+      ],
+      "Offset": [
+        -3.590415,
+        4.087549,
+        -3.95498
+      ],
+      "Color": [
+        255,
+        247,
+        224
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "ToadHaunch-1",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        4.529447,
+        3.424704,
+        4.529447
+      ],
+      "Offset": [
+        -0.662846,
+        0.110474,
+        0.552372
+      ],
+      "Color": [
+        77,
+        152,
+        35
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ToadHaunchTop-1",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        3.756126,
+        0.883794,
+        3.866601
+      ],
+      "Offset": [
+        -0.662846,
+        2.099012,
+        0.552372
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ToadPupil1",
+      "Group": "Head",
+      "Role": "EyeRight",
+      "Size": [
+        1.104743,
+        1.54664,
+        0.176759
+      ],
+      "Offset": [
+        3.314229,
+        3.535178,
+        -3.778221
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ToadPupilShine1",
+      "Group": "Head",
+      "Role": "EyeRight",
+      "Size": [
+        0.530277,
+        0.552372,
+        0.132569
+      ],
+      "Offset": [
+        3.038043,
+        4.087549,
+        -3.95498
+      ],
+      "Color": [
+        255,
+        247,
+        224
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "ToadHaunch1",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        4.529447,
+        3.424704,
+        4.529447
+      ],
+      "Offset": [
+        0.662846,
+        0.110474,
+        0.552372
+      ],
+      "Color": [
+        77,
+        152,
+        35
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ToadHaunchTop1",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        3.756126,
+        0.883794,
+        3.866601
+      ],
+      "Offset": [
+        0.662846,
+        2.099012,
+        0.552372
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_WebbedFoot",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        4.529447,
+        1.215217,
+        5.192292
+      ],
+      "Offset": [
+        0.0,
+        -4.363735,
+        -0.883794
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_WebbedFoot",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        4.529447,
+        1.215217,
+        5.192292
+      ],
+      "Offset": [
+        0.0,
+        -4.363735,
+        -0.883794
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_WebbedFoot",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        4.529447,
+        1.215217,
+        5.192292
+      ],
+      "Offset": [
+        0.0,
+        -4.363735,
+        -0.883794
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_WebbedFoot",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        4.529447,
+        1.215217,
+        5.192292
+      ],
+      "Offset": [
+        0.0,
+        -4.363735,
+        -0.883794
+      ],
+      "Color": [
+        134,
+        194,
+        42
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal0_0",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        0.77332,
+        2.982806
+      ],
+      "Offset": [
+        2.430435,
+        0.441897,
+        0.0
+      ],
+      "Color": [
+        225,
+        63,
+        128
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal0_1",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        1.104743,
+        2.982806
+      ],
+      "Offset": [
+        3.535178,
+        1.325692,
+        0.0
+      ],
+      "Color": [
+        225,
+        63,
+        128
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal0_2",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        1.436166,
+        2.982806
+      ],
+      "Offset": [
+        4.639921,
+        2.209486,
+        0.0
+      ],
+      "Color": [
+        247,
+        112,
+        165
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal1_0",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        0.77332,
+        2.982806
+      ],
+      "Offset": [
+        1.718577,
+        0.441897,
+        1.718577
+      ],
+      "Color": [
+        225,
+        63,
+        128
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal1_1",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        1.104743,
+        2.982806
+      ],
+      "Offset": [
+        2.499748,
+        1.325692,
+        2.499748
+      ],
+      "Color": [
+        225,
+        63,
+        128
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal1_2",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        1.436166,
+        2.982806
+      ],
+      "Offset": [
+        3.28092,
+        2.209486,
+        3.28092
+      ],
+      "Color": [
+        247,
+        112,
+        165
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal2_0",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        0.77332,
+        2.982806
+      ],
+      "Offset": [
+        0.0,
+        0.441897,
+        2.430435
+      ],
+      "Color": [
+        225,
+        63,
+        128
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal2_1",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        1.104743,
+        2.982806
+      ],
+      "Offset": [
+        0.0,
+        1.325692,
+        3.535178
+      ],
+      "Color": [
+        225,
+        63,
+        128
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal2_2",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        1.436166,
+        2.982806
+      ],
+      "Offset": [
+        0.0,
+        2.209486,
+        4.639921
+      ],
+      "Color": [
+        247,
+        112,
+        165
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal3_0",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        0.77332,
+        2.982806
+      ],
+      "Offset": [
+        -1.718577,
+        0.441897,
+        1.718577
+      ],
+      "Color": [
+        225,
+        63,
+        128
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal3_1",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        1.104743,
+        2.982806
+      ],
+      "Offset": [
+        -2.499748,
+        1.325692,
+        2.499748
+      ],
+      "Color": [
+        225,
+        63,
+        128
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal3_2",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        1.436166,
+        2.982806
+      ],
+      "Offset": [
+        -3.28092,
+        2.209486,
+        3.28092
+      ],
+      "Color": [
+        247,
+        112,
+        165
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal4_0",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        0.77332,
+        2.982806
+      ],
+      "Offset": [
+        -2.430435,
+        0.441897,
+        0.0
+      ],
+      "Color": [
+        225,
+        63,
+        128
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal4_1",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        1.104743,
+        2.982806
+      ],
+      "Offset": [
+        -3.535178,
+        1.325692,
+        0.0
+      ],
+      "Color": [
+        225,
+        63,
+        128
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal4_2",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        1.436166,
+        2.982806
+      ],
+      "Offset": [
+        -4.639921,
+        2.209486,
+        0.0
+      ],
+      "Color": [
+        247,
+        112,
+        165
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal5_0",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        0.77332,
+        2.982806
+      ],
+      "Offset": [
+        -1.718577,
+        0.441897,
+        -1.718577
+      ],
+      "Color": [
+        225,
+        63,
+        128
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal5_1",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        1.104743,
+        2.982806
+      ],
+      "Offset": [
+        -2.499748,
+        1.325692,
+        -2.499748
+      ],
+      "Color": [
+        225,
+        63,
+        128
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal5_2",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        1.436166,
+        2.982806
+      ],
+      "Offset": [
+        -3.28092,
+        2.209486,
+        -3.28092
+      ],
+      "Color": [
+        247,
+        112,
+        165
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal6_0",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        0.77332,
+        2.982806
+      ],
+      "Offset": [
+        -0.0,
+        0.441897,
+        -2.430435
+      ],
+      "Color": [
+        225,
+        63,
+        128
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal6_1",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        1.104743,
+        2.982806
+      ],
+      "Offset": [
+        -0.0,
+        1.325692,
+        -3.535178
+      ],
+      "Color": [
+        225,
+        63,
+        128
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal6_2",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        1.436166,
+        2.982806
+      ],
+      "Offset": [
+        -0.0,
+        2.209486,
+        -4.639921
+      ],
+      "Color": [
+        247,
+        112,
+        165
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal7_0",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        0.77332,
+        2.982806
+      ],
+      "Offset": [
+        1.718577,
+        0.441897,
+        -1.718577
+      ],
+      "Color": [
+        225,
+        63,
+        128
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal7_1",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        1.104743,
+        2.982806
+      ],
+      "Offset": [
+        2.499748,
+        1.325692,
+        -2.499748
+      ],
+      "Color": [
+        225,
+        63,
+        128
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Petal7_2",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        2.982806,
+        1.436166,
+        2.982806
+      ],
+      "Offset": [
+        3.28092,
+        2.209486,
+        -3.28092
+      ],
+      "Color": [
+        247,
+        112,
+        165
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "FlowerCentre",
+      "Group": "Bloom",
+      "Role": "Bloom",
+      "Size": [
+        3.314229,
+        1.657115,
+        3.314229
+      ],
+      "Offset": [
+        0.0,
+        1.104743,
+        0.0
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    }
+  ],
+  "AnimationNotes": [
+    "Bloom can sway a few degrees; no Tail group. Four legs use the normal trot."
+  ]
+}

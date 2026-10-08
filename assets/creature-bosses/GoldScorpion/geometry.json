@@ -1,0 +1,1987 @@
+{
+  "Name": "GoldScorpion",
+  "Zone": 4,
+  "Boss": "Leo",
+  "Title": "The Collector",
+  "StandHeight": 17,
+  "PartCount": 80,
+  "FrontAxis": "-Z",
+  "Root": "floor centre under torso",
+  "Joints": {
+    "Body": {
+      "Awake": [
+        0.0,
+        3.784236,
+        0.0
+      ],
+      "Asleep": [
+        0.0,
+        1.946178,
+        0.0
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "Head": {
+      "Awake": [
+        0.0,
+        3.784236,
+        -5.406051
+      ],
+      "Asleep": [
+        0.0,
+        1.946178,
+        -5.406051
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "Tail": {
+      "Awake": [
+        0.0,
+        3.892357,
+        5.406051
+      ],
+      "Asleep": [
+        0.0,
+        2.594904,
+        5.406051
+      ],
+      "AsleepRotation": [
+        -58,
+        0,
+        0
+      ]
+    },
+    "LegFrontLeft": {
+      "Awake": [
+        -3.243631,
+        3.784236,
+        -2.16242
+      ],
+      "Asleep": [
+        -3.243631,
+        0.946059,
+        -2.16242
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "LegFrontRight": {
+      "Awake": [
+        3.243631,
+        3.784236,
+        -2.16242
+      ],
+      "Asleep": [
+        3.243631,
+        0.946059,
+        -2.16242
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "LegBackLeft": {
+      "Awake": [
+        -3.243631,
+        3.784236,
+        3.243631
+      ],
+      "Asleep": [
+        -3.243631,
+        0.946059,
+        3.243631
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "LegBackRight": {
+      "Awake": [
+        3.243631,
+        3.784236,
+        3.243631
+      ],
+      "Asleep": [
+        3.243631,
+        0.946059,
+        3.243631
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "ClawLeft": {
+      "Awake": [
+        -3.567994,
+        3.243631,
+        -4.324841
+      ],
+      "Asleep": [
+        -3.567994,
+        1.729936,
+        -4.324841
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "ClawRight": {
+      "Awake": [
+        3.567994,
+        3.243631,
+        -4.324841
+      ],
+      "Asleep": [
+        3.567994,
+        1.729936,
+        -4.324841
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "Blocks": [
+    {
+      "Name": "Torso",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        7.568471,
+        3.676115,
+        10.812102
+      ],
+      "Offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Color": [
+        105,
+        78,
+        47
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ArmourSegment0",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        8.109076,
+        1.621815,
+        1.621815
+      ],
+      "Offset": [
+        0.0,
+        1.729936,
+        -4.541083
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ArmourSegment1",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        7.568471,
+        1.621815,
+        1.621815
+      ],
+      "Offset": [
+        0.0,
+        1.729936,
+        -2.757086
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ArmourSegment2",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        8.109076,
+        1.621815,
+        1.621815
+      ],
+      "Offset": [
+        0.0,
+        1.729936,
+        -0.973089
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ArmourSegment3",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        7.568471,
+        1.621815,
+        1.621815
+      ],
+      "Offset": [
+        0.0,
+        1.729936,
+        0.810908
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ArmourSegment4",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        8.109076,
+        1.621815,
+        1.621815
+      ],
+      "Offset": [
+        0.0,
+        1.729936,
+        2.594904
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ArmourSegment5",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        7.568471,
+        1.621815,
+        1.621815
+      ],
+      "Offset": [
+        0.0,
+        1.729936,
+        4.378901
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "HeadCore",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        7.135987,
+        3.243631,
+        3.784236
+      ],
+      "Offset": [
+        0.0,
+        0.432484,
+        -0.648726
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "EyeLeftSocket_1.8_0.7_-1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        1.838057,
+        1.513694,
+        0.324363
+      ],
+      "Offset": [
+        -1.946178,
+        0.756847,
+        -2.757086
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "EyeLeftGlow_1.8_0.7_-1",
+      "Group": "Head",
+      "Role": "EyeLeft",
+      "Size": [
+        1.189331,
+        0.864968,
+        0.216242
+      ],
+      "Offset": [
+        -1.946178,
+        0.756847,
+        -3.027389
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "EyeLeftShine_1.8_0.7_-1",
+      "Group": "Head",
+      "Role": "EyeLeft",
+      "Size": [
+        0.261653,
+        0.242191,
+        0.129745
+      ],
+      "Offset": [
+        -2.184045,
+        0.929841,
+        -3.211194
+      ],
+      "Color": [
+        255,
+        247,
+        224
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "EyeLeftLid_1.8_0.7_-1",
+      "Group": "Head",
+      "Role": "EyeLeft",
+      "Size": [
+        1.513694,
+        0.270303,
+        0.216242
+      ],
+      "Offset": [
+        -1.946178,
+        0.756847,
+        -3.027389
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Asleep",
+      "Angle": -5,
+      "Neon": false
+    },
+    {
+      "Name": "Brow_1.8_0.7_-1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        2.10836,
+        0.594666,
+        0.756847
+      ],
+      "Offset": [
+        -1.946178,
+        1.665064,
+        -2.865207
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Both",
+      "Angle": -13,
+      "Neon": false
+    },
+    {
+      "Name": "EyeRightSocket_1.8_0.7_1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        1.838057,
+        1.513694,
+        0.324363
+      ],
+      "Offset": [
+        1.946178,
+        0.756847,
+        -2.757086
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "EyeRightGlow_1.8_0.7_1",
+      "Group": "Head",
+      "Role": "EyeRight",
+      "Size": [
+        1.189331,
+        0.864968,
+        0.216242
+      ],
+      "Offset": [
+        1.946178,
+        0.756847,
+        -3.027389
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "EyeRightShine_1.8_0.7_1",
+      "Group": "Head",
+      "Role": "EyeRight",
+      "Size": [
+        0.261653,
+        0.242191,
+        0.129745
+      ],
+      "Offset": [
+        1.708312,
+        0.929841,
+        -3.211194
+      ],
+      "Color": [
+        255,
+        247,
+        224
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "EyeRightLid_1.8_0.7_1",
+      "Group": "Head",
+      "Role": "EyeRight",
+      "Size": [
+        1.513694,
+        0.270303,
+        0.216242
+      ],
+      "Offset": [
+        1.946178,
+        0.756847,
+        -3.027389
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Asleep",
+      "Angle": 5,
+      "Neon": false
+    },
+    {
+      "Name": "Brow_1.8_0.7_1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        2.10836,
+        0.594666,
+        0.756847
+      ],
+      "Offset": [
+        1.946178,
+        1.665064,
+        -2.865207
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Both",
+      "Angle": 13,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Reach0",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        3.892357,
+        0.973089,
+        1.08121
+      ],
+      "Offset": [
+        -1.838057,
+        -0.324363,
+        0.0
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Shin0",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        1.189331,
+        2.919268,
+        1.189331
+      ],
+      "Offset": [
+        -3.243631,
+        -2.054299,
+        0.0
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Foot0",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        1.513694,
+        0.594666,
+        1.621815
+      ],
+      "Offset": [
+        -3.243631,
+        -3.486903,
+        0.0
+      ],
+      "Color": [
+        105,
+        78,
+        47
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Band0",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        1.513694,
+        0.432484,
+        1.513694
+      ],
+      "Offset": [
+        -3.243631,
+        -1.621815,
+        0.0
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Reach1",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        3.892357,
+        0.973089,
+        1.08121
+      ],
+      "Offset": [
+        -1.838057,
+        -0.324363,
+        2.054299
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Shin1",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        1.189331,
+        2.919268,
+        1.189331
+      ],
+      "Offset": [
+        -3.243631,
+        -2.054299,
+        2.054299
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Foot1",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        1.513694,
+        0.594666,
+        1.621815
+      ],
+      "Offset": [
+        -3.243631,
+        -3.486903,
+        2.054299
+      ],
+      "Color": [
+        105,
+        78,
+        47
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Band1",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        1.513694,
+        0.432484,
+        1.513694
+      ],
+      "Offset": [
+        -3.243631,
+        -1.621815,
+        2.054299
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Reach0",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        3.892357,
+        0.973089,
+        1.08121
+      ],
+      "Offset": [
+        1.838057,
+        -0.324363,
+        0.0
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Shin0",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        1.189331,
+        2.919268,
+        1.189331
+      ],
+      "Offset": [
+        3.243631,
+        -2.054299,
+        0.0
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Foot0",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        1.513694,
+        0.594666,
+        1.621815
+      ],
+      "Offset": [
+        3.243631,
+        -3.486903,
+        0.0
+      ],
+      "Color": [
+        105,
+        78,
+        47
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Band0",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        1.513694,
+        0.432484,
+        1.513694
+      ],
+      "Offset": [
+        3.243631,
+        -1.621815,
+        0.0
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Reach1",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        3.892357,
+        0.973089,
+        1.08121
+      ],
+      "Offset": [
+        1.838057,
+        -0.324363,
+        2.054299
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Shin1",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        1.189331,
+        2.919268,
+        1.189331
+      ],
+      "Offset": [
+        3.243631,
+        -2.054299,
+        2.054299
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Foot1",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        1.513694,
+        0.594666,
+        1.621815
+      ],
+      "Offset": [
+        3.243631,
+        -3.486903,
+        2.054299
+      ],
+      "Color": [
+        105,
+        78,
+        47
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Band1",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        1.513694,
+        0.432484,
+        1.513694
+      ],
+      "Offset": [
+        3.243631,
+        -1.621815,
+        2.054299
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Reach0",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        3.892357,
+        0.973089,
+        1.08121
+      ],
+      "Offset": [
+        -1.838057,
+        -0.324363,
+        0.0
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Shin0",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        1.189331,
+        2.919268,
+        1.189331
+      ],
+      "Offset": [
+        -3.243631,
+        -2.054299,
+        0.0
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Foot0",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        1.513694,
+        0.594666,
+        1.621815
+      ],
+      "Offset": [
+        -3.243631,
+        -3.486903,
+        0.0
+      ],
+      "Color": [
+        105,
+        78,
+        47
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Band0",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        1.513694,
+        0.432484,
+        1.513694
+      ],
+      "Offset": [
+        -3.243631,
+        -1.621815,
+        0.0
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Reach1",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        3.892357,
+        0.973089,
+        1.08121
+      ],
+      "Offset": [
+        -1.838057,
+        -0.324363,
+        2.054299
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Shin1",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        1.189331,
+        2.919268,
+        1.189331
+      ],
+      "Offset": [
+        -3.243631,
+        -2.054299,
+        2.054299
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Foot1",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        1.513694,
+        0.594666,
+        1.621815
+      ],
+      "Offset": [
+        -3.243631,
+        -3.486903,
+        2.054299
+      ],
+      "Color": [
+        105,
+        78,
+        47
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Band1",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        1.513694,
+        0.432484,
+        1.513694
+      ],
+      "Offset": [
+        -3.243631,
+        -1.621815,
+        2.054299
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Reach0",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        3.892357,
+        0.973089,
+        1.08121
+      ],
+      "Offset": [
+        1.838057,
+        -0.324363,
+        0.0
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Shin0",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        1.189331,
+        2.919268,
+        1.189331
+      ],
+      "Offset": [
+        3.243631,
+        -2.054299,
+        0.0
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Foot0",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        1.513694,
+        0.594666,
+        1.621815
+      ],
+      "Offset": [
+        3.243631,
+        -3.486903,
+        0.0
+      ],
+      "Color": [
+        105,
+        78,
+        47
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Band0",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        1.513694,
+        0.432484,
+        1.513694
+      ],
+      "Offset": [
+        3.243631,
+        -1.621815,
+        0.0
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Reach1",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        3.892357,
+        0.973089,
+        1.08121
+      ],
+      "Offset": [
+        1.838057,
+        -0.324363,
+        2.054299
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Shin1",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        1.189331,
+        2.919268,
+        1.189331
+      ],
+      "Offset": [
+        3.243631,
+        -2.054299,
+        2.054299
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Foot1",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        1.513694,
+        0.594666,
+        1.621815
+      ],
+      "Offset": [
+        3.243631,
+        -3.486903,
+        2.054299
+      ],
+      "Color": [
+        105,
+        78,
+        47
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Band1",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        1.513694,
+        0.432484,
+        1.513694
+      ],
+      "Offset": [
+        3.243631,
+        -1.621815,
+        2.054299
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ClawLeft_Arm",
+      "Group": "ClawLeft",
+      "Role": "ClawLeft",
+      "Size": [
+        1.513694,
+        1.297452,
+        4.000478
+      ],
+      "Offset": [
+        -1.08121,
+        0.0,
+        -1.729936
+      ],
+      "Color": [
+        105,
+        78,
+        47
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ClawLeft_Palm",
+      "Group": "ClawLeft",
+      "Role": "ClawLeft",
+      "Size": [
+        3.351752,
+        1.946178,
+        2.811146
+      ],
+      "Offset": [
+        -1.405573,
+        0.216242,
+        -4.432962
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ClawLeft_Finger-1",
+      "Group": "ClawLeft",
+      "Role": "ClawLeft",
+      "Size": [
+        0.973089,
+        1.621815,
+        3.027389
+      ],
+      "Offset": [
+        -2.648965,
+        0.216242,
+        -6.703503
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ClawLeft_Tip-1",
+      "Group": "ClawLeft",
+      "Role": "ClawLeft",
+      "Size": [
+        1.189331,
+        1.405573,
+        1.08121
+      ],
+      "Offset": [
+        -2.270541,
+        0.216242,
+        -8.433439
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ClawLeft_Finger1",
+      "Group": "ClawLeft",
+      "Role": "ClawLeft",
+      "Size": [
+        0.973089,
+        1.621815,
+        3.027389
+      ],
+      "Offset": [
+        -0.162182,
+        0.216242,
+        -6.703503
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ClawLeft_Tip1",
+      "Group": "ClawLeft",
+      "Role": "ClawLeft",
+      "Size": [
+        1.189331,
+        1.405573,
+        1.08121
+      ],
+      "Offset": [
+        -0.540605,
+        0.216242,
+        -8.433439
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ClawRight_Arm",
+      "Group": "ClawRight",
+      "Role": "ClawRight",
+      "Size": [
+        1.513694,
+        1.297452,
+        4.000478
+      ],
+      "Offset": [
+        1.08121,
+        0.0,
+        -1.729936
+      ],
+      "Color": [
+        105,
+        78,
+        47
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ClawRight_Palm",
+      "Group": "ClawRight",
+      "Role": "ClawRight",
+      "Size": [
+        3.351752,
+        1.946178,
+        2.811146
+      ],
+      "Offset": [
+        1.405573,
+        0.216242,
+        -4.432962
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ClawRight_Finger-1",
+      "Group": "ClawRight",
+      "Role": "ClawRight",
+      "Size": [
+        0.973089,
+        1.621815,
+        3.027389
+      ],
+      "Offset": [
+        0.162182,
+        0.216242,
+        -6.703503
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ClawRight_Tip-1",
+      "Group": "ClawRight",
+      "Role": "ClawRight",
+      "Size": [
+        1.189331,
+        1.405573,
+        1.08121
+      ],
+      "Offset": [
+        0.540605,
+        0.216242,
+        -8.433439
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ClawRight_Finger1",
+      "Group": "ClawRight",
+      "Role": "ClawRight",
+      "Size": [
+        0.973089,
+        1.621815,
+        3.027389
+      ],
+      "Offset": [
+        2.648965,
+        0.216242,
+        -6.703503
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "ClawRight_Tip1",
+      "Group": "ClawRight",
+      "Role": "ClawRight",
+      "Size": [
+        1.189331,
+        1.405573,
+        1.08121
+      ],
+      "Offset": [
+        2.270541,
+        0.216242,
+        -8.433439
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailSegment0",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.378662,
+        2.378662,
+        2.378662
+      ],
+      "Offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailBand0",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.540844,
+        0.432484,
+        2.540844
+      ],
+      "Offset": [
+        0.0,
+        0.864968,
+        0.0
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailSegment1",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.378662,
+        2.378662,
+        2.378662
+      ],
+      "Offset": [
+        0.0,
+        2.16242,
+        1.08121
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailBand1",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.540844,
+        0.432484,
+        2.540844
+      ],
+      "Offset": [
+        0.0,
+        3.027389,
+        1.08121
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailSegment2",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.378662,
+        2.378662,
+        2.378662
+      ],
+      "Offset": [
+        0.0,
+        4.324841,
+        2.16242
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailBand2",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.540844,
+        0.432484,
+        2.540844
+      ],
+      "Offset": [
+        0.0,
+        5.189809,
+        2.16242
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailSegment3",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.378662,
+        2.378662,
+        2.378662
+      ],
+      "Offset": [
+        0.0,
+        6.487261,
+        3.027389
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailBand3",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.540844,
+        0.432484,
+        2.540844
+      ],
+      "Offset": [
+        0.0,
+        7.352229,
+        3.027389
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailSegment4",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.378662,
+        2.378662,
+        2.378662
+      ],
+      "Offset": [
+        0.0,
+        8.649682,
+        2.919268
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailBand4",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.540844,
+        0.432484,
+        2.540844
+      ],
+      "Offset": [
+        0.0,
+        9.51465,
+        2.919268
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailSegment5",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.378662,
+        2.378662,
+        2.378662
+      ],
+      "Offset": [
+        0.0,
+        10.812102,
+        1.838057
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailBand5",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.540844,
+        0.432484,
+        2.540844
+      ],
+      "Offset": [
+        0.0,
+        11.67707,
+        1.838057
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailSegment6",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.378662,
+        2.378662,
+        2.378662
+      ],
+      "Offset": [
+        0.0,
+        11.893312,
+        0.0
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailBand6",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.540844,
+        0.432484,
+        2.540844
+      ],
+      "Offset": [
+        0.0,
+        12.75828,
+        0.0
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailSegment7",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.378662,
+        2.378662,
+        2.378662
+      ],
+      "Offset": [
+        0.0,
+        11.568949,
+        -1.946178
+      ],
+      "Color": [
+        178,
+        145,
+        91
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailBand7",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.540844,
+        0.432484,
+        2.540844
+      ],
+      "Offset": [
+        0.0,
+        12.433917,
+        -1.946178
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "BluntStinger",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        1.838057,
+        2.703025,
+        1.838057
+      ],
+      "Offset": [
+        0.0,
+        9.947134,
+        -2.919268
+      ],
+      "Color": [
+        191,
+        145,
+        45
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    }
+  ],
+  "AnimationNotes": [
+    "Eight visible legs paired into four named trot groups. ClawLeft/ClawRight may open or bob. Tail folds backward in sleep; wag conservatively (large tail)."
+  ]
+}

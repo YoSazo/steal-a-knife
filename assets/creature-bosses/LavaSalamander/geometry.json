@@ -1,0 +1,2250 @@
+{
+  "Name": "LavaSalamander",
+  "Zone": 5,
+  "Boss": "Ruby",
+  "Title": "The Firestarter",
+  "StandHeight": 18.5,
+  "PartCount": 93,
+  "FrontAxis": "-Z",
+  "Root": "floor centre under torso",
+  "Joints": {
+    "Body": {
+      "Awake": [
+        0.0,
+        10.442391,
+        0.0
+      ],
+      "Asleep": [
+        0.0,
+        4.498261,
+        0.0
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "Head": {
+      "Awake": [
+        0.0,
+        11.245652,
+        -6.426087
+      ],
+      "Asleep": [
+        0.0,
+        4.819565,
+        -8.032609
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "Tail": {
+      "Awake": [
+        0.0,
+        10.924348,
+        10.603043
+      ],
+      "Asleep": [
+        0.0,
+        4.819565,
+        10.603043
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "LegFrontLeft": {
+      "Awake": [
+        -6.072652,
+        7.711304,
+        -4.819565
+      ],
+      "Asleep": [
+        -6.072652,
+        1.927826,
+        -4.819565
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "LegFrontRight": {
+      "Awake": [
+        6.072652,
+        7.711304,
+        -4.819565
+      ],
+      "Asleep": [
+        6.072652,
+        1.927826,
+        -4.819565
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "LegBackLeft": {
+      "Awake": [
+        -6.072652,
+        7.711304,
+        6.426087
+      ],
+      "Asleep": [
+        -6.072652,
+        1.927826,
+        6.426087
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "LegBackRight": {
+      "Awake": [
+        6.072652,
+        7.711304,
+        6.426087
+      ],
+      "Asleep": [
+        6.072652,
+        1.927826,
+        6.426087
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "Blocks": [
+    {
+      "Name": "Torso",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        14.458696,
+        7.711304,
+        19.278261
+      ],
+      "Offset": [
+        0.0,
+        0.0,
+        1.606522
+      ],
+      "Color": [
+        109,
+        35,
+        28
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "BackCrown",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        11.566957,
+        1.44587,
+        17.350435
+      ],
+      "Offset": [
+        0.0,
+        4.257283,
+        1.606522
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Chest",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        9.398152,
+        4.819565,
+        3.213043
+      ],
+      "Offset": [
+        0.0,
+        -0.481957,
+        -9.253565
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "HeadCore",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        12.000717,
+        7.39,
+        7.229348
+      ],
+      "Offset": [
+        0.0,
+        1.606522,
+        -0.321304
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Forehead",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        10.121087,
+        1.285217,
+        6.104783
+      ],
+      "Offset": [
+        0.0,
+        5.94413,
+        -0.321304
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Upper",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        4.176957,
+        4.472557,
+        4.176957
+      ],
+      "Offset": [
+        0.0,
+        -1.696487,
+        0.0
+      ],
+      "Color": [
+        109,
+        35,
+        28
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Lower",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        3.341565,
+        3.624313,
+        3.341565
+      ],
+      "Offset": [
+        0.0,
+        -5.166574,
+        0.0
+      ],
+      "Color": [
+        109,
+        35,
+        28
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Paw",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        5.095887,
+        1.767174,
+        5.430043
+      ],
+      "Offset": [
+        0.0,
+        -6.827717,
+        -0.562283
+      ],
+      "Color": [
+        109,
+        35,
+        28
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Toe0",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        1.294857,
+        1.44587,
+        1.044239
+      ],
+      "Offset": [
+        -1.587243,
+        -6.98837,
+        -3.341565
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Toe1",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        1.294857,
+        1.44587,
+        1.044239
+      ],
+      "Offset": [
+        0.0,
+        -6.98837,
+        -3.341565
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Toe2",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        1.294857,
+        1.44587,
+        1.044239
+      ],
+      "Offset": [
+        1.587243,
+        -6.98837,
+        -3.341565
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Upper",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        4.176957,
+        4.472557,
+        4.176957
+      ],
+      "Offset": [
+        0.0,
+        -1.696487,
+        0.0
+      ],
+      "Color": [
+        109,
+        35,
+        28
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Lower",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        3.341565,
+        3.624313,
+        3.341565
+      ],
+      "Offset": [
+        0.0,
+        -5.166574,
+        0.0
+      ],
+      "Color": [
+        109,
+        35,
+        28
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Paw",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        5.095887,
+        1.767174,
+        5.430043
+      ],
+      "Offset": [
+        0.0,
+        -6.827717,
+        -0.562283
+      ],
+      "Color": [
+        109,
+        35,
+        28
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Toe0",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        1.294857,
+        1.44587,
+        1.044239
+      ],
+      "Offset": [
+        -1.587243,
+        -6.98837,
+        -3.341565
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Toe1",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        1.294857,
+        1.44587,
+        1.044239
+      ],
+      "Offset": [
+        0.0,
+        -6.98837,
+        -3.341565
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Toe2",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        1.294857,
+        1.44587,
+        1.044239
+      ],
+      "Offset": [
+        1.587243,
+        -6.98837,
+        -3.341565
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Upper",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        4.176957,
+        4.472557,
+        4.176957
+      ],
+      "Offset": [
+        0.0,
+        -1.696487,
+        0.0
+      ],
+      "Color": [
+        109,
+        35,
+        28
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Lower",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        3.341565,
+        3.624313,
+        3.341565
+      ],
+      "Offset": [
+        0.0,
+        -5.166574,
+        0.0
+      ],
+      "Color": [
+        109,
+        35,
+        28
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Paw",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        5.095887,
+        1.767174,
+        5.430043
+      ],
+      "Offset": [
+        0.0,
+        -6.827717,
+        -0.562283
+      ],
+      "Color": [
+        109,
+        35,
+        28
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Toe0",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        1.294857,
+        1.44587,
+        1.044239
+      ],
+      "Offset": [
+        -1.587243,
+        -6.98837,
+        -3.341565
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Toe1",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        1.294857,
+        1.44587,
+        1.044239
+      ],
+      "Offset": [
+        0.0,
+        -6.98837,
+        -3.341565
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Toe2",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        1.294857,
+        1.44587,
+        1.044239
+      ],
+      "Offset": [
+        1.587243,
+        -6.98837,
+        -3.341565
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Upper",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        4.176957,
+        4.472557,
+        4.176957
+      ],
+      "Offset": [
+        0.0,
+        -1.696487,
+        0.0
+      ],
+      "Color": [
+        109,
+        35,
+        28
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Lower",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        3.341565,
+        3.624313,
+        3.341565
+      ],
+      "Offset": [
+        0.0,
+        -5.166574,
+        0.0
+      ],
+      "Color": [
+        109,
+        35,
+        28
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Paw",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        5.095887,
+        1.767174,
+        5.430043
+      ],
+      "Offset": [
+        0.0,
+        -6.827717,
+        -0.562283
+      ],
+      "Color": [
+        109,
+        35,
+        28
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Toe0",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        1.294857,
+        1.44587,
+        1.044239
+      ],
+      "Offset": [
+        -1.587243,
+        -6.98837,
+        -3.341565
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Toe1",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        1.294857,
+        1.44587,
+        1.044239
+      ],
+      "Offset": [
+        0.0,
+        -6.98837,
+        -3.341565
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Toe2",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        1.294857,
+        1.44587,
+        1.044239
+      ],
+      "Offset": [
+        1.587243,
+        -6.98837,
+        -3.341565
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Muzzle",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        10.442391,
+        3.534348,
+        4.819565
+      ],
+      "Offset": [
+        0.0,
+        -0.160652,
+        -5.301522
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Jaw",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        9.799783,
+        1.124565,
+        4.819565
+      ],
+      "Offset": [
+        0.0,
+        -2.891739,
+        -5.301522
+      ],
+      "Color": [
+        109,
+        35,
+        28
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Mouth",
+      "Group": "Head",
+      "Role": "Mouth",
+      "Size": [
+        8.996522,
+        0.963913,
+        0.321304
+      ],
+      "Offset": [
+        0.0,
+        -1.927826,
+        -7.871957
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "EyeLeftSocket_2.4_2_-1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        3.052391,
+        2.731087,
+        0.481957
+      ],
+      "Offset": [
+        -3.855652,
+        3.213043,
+        -4.337609
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "EyeLeftGlow_2.4_2_-1",
+      "Group": "Head",
+      "Role": "EyeLeft",
+      "Size": [
+        2.088478,
+        1.767174,
+        0.321304
+      ],
+      "Offset": [
+        -3.855652,
+        3.213043,
+        -4.739239
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "EyeLeftShine_2.4_2_-1",
+      "Group": "Head",
+      "Role": "EyeLeft",
+      "Size": [
+        0.459465,
+        0.494809,
+        0.192783
+      ],
+      "Offset": [
+        -4.273348,
+        3.566478,
+        -5.012348
+      ],
+      "Color": [
+        255,
+        247,
+        224
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "EyeLeftLid_2.4_2_-1",
+      "Group": "Head",
+      "Role": "EyeLeft",
+      "Size": [
+        2.570435,
+        0.40163,
+        0.321304
+      ],
+      "Offset": [
+        -3.855652,
+        3.213043,
+        -4.739239
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Asleep",
+      "Angle": -5,
+      "Neon": false
+    },
+    {
+      "Name": "Brow_2.4_2_-1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        3.454022,
+        0.883587,
+        1.124565
+      ],
+      "Offset": [
+        -3.855652,
+        4.827598,
+        -4.498261
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Both",
+      "Angle": -13,
+      "Neon": false
+    },
+    {
+      "Name": "EyeRightSocket_2.4_2_1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        3.052391,
+        2.731087,
+        0.481957
+      ],
+      "Offset": [
+        3.855652,
+        3.213043,
+        -4.337609
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "EyeRightGlow_2.4_2_1",
+      "Group": "Head",
+      "Role": "EyeRight",
+      "Size": [
+        2.088478,
+        1.767174,
+        0.321304
+      ],
+      "Offset": [
+        3.855652,
+        3.213043,
+        -4.739239
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "EyeRightShine_2.4_2_1",
+      "Group": "Head",
+      "Role": "EyeRight",
+      "Size": [
+        0.459465,
+        0.494809,
+        0.192783
+      ],
+      "Offset": [
+        3.437957,
+        3.566478,
+        -5.012348
+      ],
+      "Color": [
+        255,
+        247,
+        224
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "EyeRightLid_2.4_2_1",
+      "Group": "Head",
+      "Role": "EyeRight",
+      "Size": [
+        2.570435,
+        0.40163,
+        0.321304
+      ],
+      "Offset": [
+        3.855652,
+        3.213043,
+        -4.739239
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Asleep",
+      "Angle": 5,
+      "Neon": false
+    },
+    {
+      "Name": "Brow_2.4_2_1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        3.454022,
+        0.883587,
+        1.124565
+      ],
+      "Offset": [
+        3.855652,
+        4.827598,
+        -4.498261
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Both",
+      "Angle": 13,
+      "Neon": false
+    },
+    {
+      "Name": "Teeth-1_0",
+      "Group": "Head",
+      "Role": "Mouth",
+      "Size": [
+        0.963913,
+        0.963913,
+        0.481957
+      ],
+      "Offset": [
+        -1.606522,
+        -1.606522,
+        -7.952283
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Teeth-1_1",
+      "Group": "Head",
+      "Role": "Mouth",
+      "Size": [
+        0.963913,
+        0.963913,
+        0.481957
+      ],
+      "Offset": [
+        -2.731087,
+        -1.606522,
+        -7.952283
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Teeth-1_2",
+      "Group": "Head",
+      "Role": "Mouth",
+      "Size": [
+        0.963913,
+        0.963913,
+        0.481957
+      ],
+      "Offset": [
+        -3.855652,
+        -1.606522,
+        -7.952283
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "HornNub-1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        1.606522,
+        1.927826,
+        1.606522
+      ],
+      "Offset": [
+        -4.337609,
+        6.265435,
+        0.0
+      ],
+      "Color": [
+        109,
+        35,
+        28
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LavaCrack-1_0",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.40163,
+        4.819565,
+        0.722935
+      ],
+      "Offset": [
+        -7.39,
+        0.0,
+        -6.426087
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "RockPlate-1_0",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        1.124565,
+        3.534348,
+        2.570435
+      ],
+      "Offset": [
+        -7.470326,
+        1.44587,
+        -5.783478
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LavaCrack-1_1",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.40163,
+        4.819565,
+        0.722935
+      ],
+      "Offset": [
+        -7.39,
+        0.0,
+        -2.731087
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "RockPlate-1_1",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        1.124565,
+        3.534348,
+        2.570435
+      ],
+      "Offset": [
+        -7.470326,
+        1.44587,
+        -2.088478
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LavaCrack-1_2",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.40163,
+        4.819565,
+        0.722935
+      ],
+      "Offset": [
+        -7.39,
+        0.0,
+        0.963913
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "RockPlate-1_2",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        1.124565,
+        3.534348,
+        2.570435
+      ],
+      "Offset": [
+        -7.470326,
+        1.44587,
+        1.606522
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LavaCrack-1_3",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.40163,
+        4.819565,
+        0.722935
+      ],
+      "Offset": [
+        -7.39,
+        0.0,
+        4.658913
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "RockPlate-1_3",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        1.124565,
+        3.534348,
+        2.570435
+      ],
+      "Offset": [
+        -7.470326,
+        1.44587,
+        5.301522
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LavaCrack-1_4",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.40163,
+        4.819565,
+        0.722935
+      ],
+      "Offset": [
+        -7.39,
+        0.0,
+        8.353913
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "RockPlate-1_4",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        1.124565,
+        3.534348,
+        2.570435
+      ],
+      "Offset": [
+        -7.470326,
+        1.44587,
+        8.996522
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Teeth1_0",
+      "Group": "Head",
+      "Role": "Mouth",
+      "Size": [
+        0.963913,
+        0.963913,
+        0.481957
+      ],
+      "Offset": [
+        1.606522,
+        -1.606522,
+        -7.952283
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Teeth1_1",
+      "Group": "Head",
+      "Role": "Mouth",
+      "Size": [
+        0.963913,
+        0.963913,
+        0.481957
+      ],
+      "Offset": [
+        2.731087,
+        -1.606522,
+        -7.952283
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Teeth1_2",
+      "Group": "Head",
+      "Role": "Mouth",
+      "Size": [
+        0.963913,
+        0.963913,
+        0.481957
+      ],
+      "Offset": [
+        3.855652,
+        -1.606522,
+        -7.952283
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "HornNub1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        1.606522,
+        1.927826,
+        1.606522
+      ],
+      "Offset": [
+        4.337609,
+        6.265435,
+        0.0
+      ],
+      "Color": [
+        109,
+        35,
+        28
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LavaCrack1_0",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.40163,
+        4.819565,
+        0.722935
+      ],
+      "Offset": [
+        7.39,
+        0.0,
+        -6.426087
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "RockPlate1_0",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        1.124565,
+        3.534348,
+        2.570435
+      ],
+      "Offset": [
+        7.470326,
+        1.44587,
+        -5.783478
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LavaCrack1_1",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.40163,
+        4.819565,
+        0.722935
+      ],
+      "Offset": [
+        7.39,
+        0.0,
+        -2.731087
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "RockPlate1_1",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        1.124565,
+        3.534348,
+        2.570435
+      ],
+      "Offset": [
+        7.470326,
+        1.44587,
+        -2.088478
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LavaCrack1_2",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.40163,
+        4.819565,
+        0.722935
+      ],
+      "Offset": [
+        7.39,
+        0.0,
+        0.963913
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "RockPlate1_2",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        1.124565,
+        3.534348,
+        2.570435
+      ],
+      "Offset": [
+        7.470326,
+        1.44587,
+        1.606522
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LavaCrack1_3",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.40163,
+        4.819565,
+        0.722935
+      ],
+      "Offset": [
+        7.39,
+        0.0,
+        4.658913
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "RockPlate1_3",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        1.124565,
+        3.534348,
+        2.570435
+      ],
+      "Offset": [
+        7.470326,
+        1.44587,
+        5.301522
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LavaCrack1_4",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.40163,
+        4.819565,
+        0.722935
+      ],
+      "Offset": [
+        7.39,
+        0.0,
+        8.353913
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "RockPlate1_4",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        1.124565,
+        3.534348,
+        2.570435
+      ],
+      "Offset": [
+        7.470326,
+        1.44587,
+        8.996522
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "DorsalSpine0",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        2.891739,
+        2.570435,
+        2.24913
+      ],
+      "Offset": [
+        0.0,
+        5.462174,
+        -6.426087
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "DorsalSpine1",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        2.891739,
+        3.534348,
+        2.24913
+      ],
+      "Offset": [
+        0.0,
+        5.462174,
+        -3.213043
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "DorsalSpine2",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        2.891739,
+        2.570435,
+        2.24913
+      ],
+      "Offset": [
+        0.0,
+        5.462174,
+        0.0
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "DorsalSpine3",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        2.891739,
+        3.534348,
+        2.24913
+      ],
+      "Offset": [
+        0.0,
+        5.462174,
+        3.213043
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "DorsalSpine4",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        2.891739,
+        2.570435,
+        2.24913
+      ],
+      "Offset": [
+        0.0,
+        5.462174,
+        6.426087
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "DorsalSpine5",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        2.891739,
+        3.534348,
+        2.24913
+      ],
+      "Offset": [
+        0.0,
+        5.462174,
+        9.63913
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailChunk0",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        5.14087,
+        3.213043,
+        2.731087
+      ],
+      "Offset": [
+        0.0,
+        0.481957,
+        1.606522
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailSeam0",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        5.301522,
+        0.562283,
+        0.803261
+      ],
+      "Offset": [
+        0.0,
+        1.606522,
+        1.606522
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "TailChunk1",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        4.691043,
+        3.004196,
+        2.731087
+      ],
+      "Offset": [
+        0.0,
+        0.919883,
+        4.016304
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailSeam1",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        4.851696,
+        0.562283,
+        0.803261
+      ],
+      "Offset": [
+        0.0,
+        2.044448,
+        4.016304
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "TailChunk2",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        4.241217,
+        2.795348,
+        2.731087
+      ],
+      "Offset": [
+        0.0,
+        1.28867,
+        6.426087
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailSeam2",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        4.40187,
+        0.562283,
+        0.803261
+      ],
+      "Offset": [
+        0.0,
+        2.413235,
+        6.426087
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "TailChunk3",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        3.791391,
+        2.5865,
+        2.731087
+      ],
+      "Offset": [
+        0.0,
+        1.530095,
+        8.83587
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailSeam3",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        3.952043,
+        0.562283,
+        0.803261
+      ],
+      "Offset": [
+        0.0,
+        2.65466,
+        8.83587
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "TailChunk4",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        3.341565,
+        2.377652,
+        2.731087
+      ],
+      "Offset": [
+        0.0,
+        1.606042,
+        11.245652
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailSeam4",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        3.502217,
+        0.562283,
+        0.803261
+      ],
+      "Offset": [
+        0.0,
+        2.730607,
+        11.245652
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "TailChunk5",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.891739,
+        2.168804,
+        2.731087
+      ],
+      "Offset": [
+        0.0,
+        1.504521,
+        13.655435
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailSeam5",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        3.052391,
+        0.562283,
+        0.803261
+      ],
+      "Offset": [
+        0.0,
+        2.629086,
+        13.655435
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "TailChunk6",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.441913,
+        1.959957,
+        2.731087
+      ],
+      "Offset": [
+        0.0,
+        1.241559,
+        16.065217
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailSeam6",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.602565,
+        0.562283,
+        0.803261
+      ],
+      "Offset": [
+        0.0,
+        2.366124,
+        16.065217
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "TailChunk7",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        1.992087,
+        1.751109,
+        2.731087
+      ],
+      "Offset": [
+        0.0,
+        0.858673,
+        18.475
+      ],
+      "Color": [
+        161,
+        52,
+        32
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "TailSeam7",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        2.152739,
+        0.562283,
+        0.803261
+      ],
+      "Offset": [
+        0.0,
+        1.983238,
+        18.475
+      ],
+      "Color": [
+        187,
+        93,
+        24
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": true
+    }
+  ],
+  "AnimationNotes": []
+}

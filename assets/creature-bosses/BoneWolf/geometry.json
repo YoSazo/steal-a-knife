@@ -1,0 +1,2158 @@
+{
+  "Name": "BoneWolf",
+  "Zone": 3,
+  "Boss": "Sam",
+  "Title": "The Gravedigger",
+  "StandHeight": 15.5,
+  "PartCount": 89,
+  "FrontAxis": "-Z",
+  "Root": "floor centre under torso",
+  "Joints": {
+    "Body": {
+      "Awake": [
+        0.0,
+        7.970401,
+        0.0
+      ],
+      "Asleep": [
+        0.0,
+        2.898328,
+        0.0
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "Head": {
+      "Awake": [
+        0.0,
+        9.316054,
+        -4.140468
+      ],
+      "Asleep": [
+        0.0,
+        3.105351,
+        -5.175585
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "Tail": {
+      "Awake": [
+        0.0,
+        8.280936,
+        5.693144
+      ],
+      "Asleep": [
+        0.0,
+        3.105351,
+        5.693144
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "LegFrontLeft": {
+      "Awake": [
+        -3.043244,
+        6.210702,
+        -3.105351
+      ],
+      "Asleep": [
+        -3.043244,
+        1.552676,
+        -3.105351
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "LegFrontRight": {
+      "Awake": [
+        3.043244,
+        6.210702,
+        -3.105351
+      ],
+      "Asleep": [
+        3.043244,
+        1.552676,
+        -3.105351
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "LegBackLeft": {
+      "Awake": [
+        -3.043244,
+        6.210702,
+        4.140468
+      ],
+      "Asleep": [
+        -3.043244,
+        1.552676,
+        4.140468
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "LegBackRight": {
+      "Awake": [
+        3.043244,
+        6.210702,
+        4.140468
+      ],
+      "Asleep": [
+        3.043244,
+        1.552676,
+        4.140468
+      ],
+      "AsleepRotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "Blocks": [
+    {
+      "Name": "Torso",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        7.245819,
+        4.968562,
+        10.351171
+      ],
+      "Offset": [
+        0.0,
+        0.0,
+        1.035117
+      ],
+      "Color": [
+        51,
+        51,
+        65
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "BackCrown",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        5.796656,
+        0.931605,
+        9.316054
+      ],
+      "Offset": [
+        0.0,
+        2.74306,
+        1.035117
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Chest",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        4.709783,
+        3.105351,
+        2.070234
+      ],
+      "Offset": [
+        0.0,
+        -0.310535,
+        -4.968562
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "HeadCore",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        6.01403,
+        4.761538,
+        4.658027
+      ],
+      "Offset": [
+        0.0,
+        1.035117,
+        -0.207023
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Forehead",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        5.072074,
+        0.828094,
+        3.933445
+      ],
+      "Offset": [
+        0.0,
+        3.829933,
+        -0.207023
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Upper",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        2.691304,
+        3.602207,
+        2.691304
+      ],
+      "Offset": [
+        0.0,
+        -1.366355,
+        0.0
+      ],
+      "Color": [
+        51,
+        51,
+        65
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Lower",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        2.153043,
+        2.91903,
+        2.153043
+      ],
+      "Offset": [
+        0.0,
+        -4.161171,
+        0.0
+      ],
+      "Color": [
+        51,
+        51,
+        65
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Paw",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        3.283391,
+        1.138629,
+        3.498696
+      ],
+      "Offset": [
+        0.0,
+        -5.641388,
+        -0.362291
+      ],
+      "Color": [
+        51,
+        51,
+        65
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Toe0",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        0.834304,
+        0.931605,
+        0.672826
+      ],
+      "Offset": [
+        -1.022696,
+        -5.7449,
+        -2.153043
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Toe1",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        0.834304,
+        0.931605,
+        0.672826
+      ],
+      "Offset": [
+        0.0,
+        -5.7449,
+        -2.153043
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_Toe2",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        0.834304,
+        0.931605,
+        0.672826
+      ],
+      "Offset": [
+        1.022696,
+        -5.7449,
+        -2.153043
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Upper",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        2.691304,
+        3.602207,
+        2.691304
+      ],
+      "Offset": [
+        0.0,
+        -1.366355,
+        0.0
+      ],
+      "Color": [
+        51,
+        51,
+        65
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Lower",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        2.153043,
+        2.91903,
+        2.153043
+      ],
+      "Offset": [
+        0.0,
+        -4.161171,
+        0.0
+      ],
+      "Color": [
+        51,
+        51,
+        65
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Paw",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        3.283391,
+        1.138629,
+        3.498696
+      ],
+      "Offset": [
+        0.0,
+        -5.641388,
+        -0.362291
+      ],
+      "Color": [
+        51,
+        51,
+        65
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Toe0",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        0.834304,
+        0.931605,
+        0.672826
+      ],
+      "Offset": [
+        -1.022696,
+        -5.7449,
+        -2.153043
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Toe1",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        0.834304,
+        0.931605,
+        0.672826
+      ],
+      "Offset": [
+        0.0,
+        -5.7449,
+        -2.153043
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_Toe2",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        0.834304,
+        0.931605,
+        0.672826
+      ],
+      "Offset": [
+        1.022696,
+        -5.7449,
+        -2.153043
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Upper",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        2.691304,
+        3.602207,
+        2.691304
+      ],
+      "Offset": [
+        0.0,
+        -1.366355,
+        0.0
+      ],
+      "Color": [
+        51,
+        51,
+        65
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Lower",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        2.153043,
+        2.91903,
+        2.153043
+      ],
+      "Offset": [
+        0.0,
+        -4.161171,
+        0.0
+      ],
+      "Color": [
+        51,
+        51,
+        65
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Paw",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        3.283391,
+        1.138629,
+        3.498696
+      ],
+      "Offset": [
+        0.0,
+        -5.641388,
+        -0.362291
+      ],
+      "Color": [
+        51,
+        51,
+        65
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Toe0",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        0.834304,
+        0.931605,
+        0.672826
+      ],
+      "Offset": [
+        -1.022696,
+        -5.7449,
+        -2.153043
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Toe1",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        0.834304,
+        0.931605,
+        0.672826
+      ],
+      "Offset": [
+        0.0,
+        -5.7449,
+        -2.153043
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_Toe2",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        0.834304,
+        0.931605,
+        0.672826
+      ],
+      "Offset": [
+        1.022696,
+        -5.7449,
+        -2.153043
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Upper",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        2.691304,
+        3.602207,
+        2.691304
+      ],
+      "Offset": [
+        0.0,
+        -1.366355,
+        0.0
+      ],
+      "Color": [
+        51,
+        51,
+        65
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Lower",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        2.153043,
+        2.91903,
+        2.153043
+      ],
+      "Offset": [
+        0.0,
+        -4.161171,
+        0.0
+      ],
+      "Color": [
+        51,
+        51,
+        65
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Paw",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        3.283391,
+        1.138629,
+        3.498696
+      ],
+      "Offset": [
+        0.0,
+        -5.641388,
+        -0.362291
+      ],
+      "Color": [
+        51,
+        51,
+        65
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Toe0",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        0.834304,
+        0.931605,
+        0.672826
+      ],
+      "Offset": [
+        -1.022696,
+        -5.7449,
+        -2.153043
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Toe1",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        0.834304,
+        0.931605,
+        0.672826
+      ],
+      "Offset": [
+        0.0,
+        -5.7449,
+        -2.153043
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_Toe2",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        0.834304,
+        0.931605,
+        0.672826
+      ],
+      "Offset": [
+        1.022696,
+        -5.7449,
+        -2.153043
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Snout",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        3.105351,
+        1.863211,
+        4.140468
+      ],
+      "Offset": [
+        0.0,
+        0.207023,
+        -3.933445
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Nose",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        1.863211,
+        0.931605,
+        0.414047
+      ],
+      "Offset": [
+        0.0,
+        0.569314,
+        -6.107191
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Jaw",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        3.415886,
+        0.724582,
+        3.933445
+      ],
+      "Offset": [
+        0.0,
+        -1.293896,
+        -3.829933
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Mouth",
+      "Group": "Head",
+      "Role": "Mouth",
+      "Size": [
+        3.105351,
+        0.672826,
+        0.207023
+      ],
+      "Offset": [
+        0.0,
+        -0.724582,
+        -5.951923
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Ear-1_0",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        1.863211,
+        1.138629,
+        1.345652
+      ],
+      "Offset": [
+        -2.484281,
+        3.726421,
+        0.207023
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Ear-1_1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        1.397408,
+        1.138629,
+        1.345652
+      ],
+      "Offset": [
+        -2.484281,
+        4.658027,
+        0.207023
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Ear-1_2",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        0.931605,
+        1.138629,
+        1.345652
+      ],
+      "Offset": [
+        -2.484281,
+        5.589632,
+        0.207023
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibSide-1_0",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.569314,
+        3.829933,
+        0.828094
+      ],
+      "Offset": [
+        -3.778177,
+        0.103512,
+        -3.001839
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibTop-1_0",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        3.519398,
+        0.465803,
+        0.828094
+      ],
+      "Offset": [
+        -1.863211,
+        2.898328,
+        -3.001839
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibSide-1_1",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.569314,
+        3.829933,
+        0.828094
+      ],
+      "Offset": [
+        -3.778177,
+        0.103512,
+        -1.138629
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibTop-1_1",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        3.519398,
+        0.465803,
+        0.828094
+      ],
+      "Offset": [
+        -1.863211,
+        2.898328,
+        -1.138629
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibSide-1_2",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.569314,
+        3.829933,
+        0.828094
+      ],
+      "Offset": [
+        -3.778177,
+        0.103512,
+        0.724582
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibTop-1_2",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        3.519398,
+        0.465803,
+        0.828094
+      ],
+      "Offset": [
+        -1.863211,
+        2.898328,
+        0.724582
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibSide-1_3",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.569314,
+        3.829933,
+        0.828094
+      ],
+      "Offset": [
+        -3.778177,
+        0.103512,
+        2.587793
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibTop-1_3",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        3.519398,
+        0.465803,
+        0.828094
+      ],
+      "Offset": [
+        -1.863211,
+        2.898328,
+        2.587793
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibSide-1_4",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.569314,
+        3.829933,
+        0.828094
+      ],
+      "Offset": [
+        -3.778177,
+        0.103512,
+        4.451003
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibTop-1_4",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        3.519398,
+        0.465803,
+        0.828094
+      ],
+      "Offset": [
+        -1.863211,
+        2.898328,
+        4.451003
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Tooth-1_0",
+      "Group": "Head",
+      "Role": "Mouth",
+      "Size": [
+        0.465803,
+        0.517559,
+        0.362291
+      ],
+      "Offset": [
+        -1.138629,
+        -0.672826,
+        -3.933445
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Tooth-1_1",
+      "Group": "Head",
+      "Role": "Mouth",
+      "Size": [
+        0.465803,
+        0.517559,
+        0.362291
+      ],
+      "Offset": [
+        -1.138629,
+        -0.672826,
+        -4.761538
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Tooth-1_2",
+      "Group": "Head",
+      "Role": "Mouth",
+      "Size": [
+        0.465803,
+        0.517559,
+        0.362291
+      ],
+      "Offset": [
+        -1.138629,
+        -0.672826,
+        -5.589632
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Ear1_0",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        1.863211,
+        1.138629,
+        1.345652
+      ],
+      "Offset": [
+        2.484281,
+        3.726421,
+        0.207023
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Ear1_1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        1.397408,
+        1.138629,
+        1.345652
+      ],
+      "Offset": [
+        2.484281,
+        4.658027,
+        0.207023
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Ear1_2",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        0.931605,
+        1.138629,
+        1.345652
+      ],
+      "Offset": [
+        2.484281,
+        5.589632,
+        0.207023
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibSide1_0",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.569314,
+        3.829933,
+        0.828094
+      ],
+      "Offset": [
+        3.778177,
+        0.103512,
+        -3.001839
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibTop1_0",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        3.519398,
+        0.465803,
+        0.828094
+      ],
+      "Offset": [
+        1.863211,
+        2.898328,
+        -3.001839
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibSide1_1",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.569314,
+        3.829933,
+        0.828094
+      ],
+      "Offset": [
+        3.778177,
+        0.103512,
+        -1.138629
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibTop1_1",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        3.519398,
+        0.465803,
+        0.828094
+      ],
+      "Offset": [
+        1.863211,
+        2.898328,
+        -1.138629
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibSide1_2",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.569314,
+        3.829933,
+        0.828094
+      ],
+      "Offset": [
+        3.778177,
+        0.103512,
+        0.724582
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibTop1_2",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        3.519398,
+        0.465803,
+        0.828094
+      ],
+      "Offset": [
+        1.863211,
+        2.898328,
+        0.724582
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibSide1_3",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.569314,
+        3.829933,
+        0.828094
+      ],
+      "Offset": [
+        3.778177,
+        0.103512,
+        2.587793
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibTop1_3",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        3.519398,
+        0.465803,
+        0.828094
+      ],
+      "Offset": [
+        1.863211,
+        2.898328,
+        2.587793
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibSide1_4",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        0.569314,
+        3.829933,
+        0.828094
+      ],
+      "Offset": [
+        3.778177,
+        0.103512,
+        4.451003
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "RibTop1_4",
+      "Group": "Body",
+      "Role": "Body",
+      "Size": [
+        3.519398,
+        0.465803,
+        0.828094
+      ],
+      "Offset": [
+        1.863211,
+        2.898328,
+        4.451003
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Tooth1_0",
+      "Group": "Head",
+      "Role": "Mouth",
+      "Size": [
+        0.465803,
+        0.517559,
+        0.362291
+      ],
+      "Offset": [
+        1.138629,
+        -0.672826,
+        -3.933445
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Tooth1_1",
+      "Group": "Head",
+      "Role": "Mouth",
+      "Size": [
+        0.465803,
+        0.517559,
+        0.362291
+      ],
+      "Offset": [
+        1.138629,
+        -0.672826,
+        -4.761538
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Tooth1_2",
+      "Group": "Head",
+      "Role": "Mouth",
+      "Size": [
+        0.465803,
+        0.517559,
+        0.362291
+      ],
+      "Offset": [
+        1.138629,
+        -0.672826,
+        -5.589632
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "EyeLeftSocket_1.7_2_-1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        1.811455,
+        1.863211,
+        0.310535
+      ],
+      "Offset": [
+        -1.759699,
+        2.070234,
+        -2.794816
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "EyeLeftGlow_1.7_2_-1",
+      "Group": "Head",
+      "Role": "EyeLeft",
+      "Size": [
+        1.190385,
+        1.24214,
+        0.207023
+      ],
+      "Offset": [
+        -1.759699,
+        2.070234,
+        -3.053595
+      ],
+      "Color": [
+        90,
+        63,
+        146
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "EyeLeftShine_1.7_2_-1",
+      "Group": "Head",
+      "Role": "EyeLeft",
+      "Size": [
+        0.261885,
+        0.347799,
+        0.124214
+      ],
+      "Offset": [
+        -1.997776,
+        2.318662,
+        -3.229565
+      ],
+      "Color": [
+        255,
+        247,
+        224
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "EyeLeftLid_1.7_2_-1",
+      "Group": "Head",
+      "Role": "EyeLeft",
+      "Size": [
+        1.50092,
+        0.258779,
+        0.207023
+      ],
+      "Offset": [
+        -1.759699,
+        2.070234,
+        -3.053595
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Asleep",
+      "Angle": -5,
+      "Neon": false
+    },
+    {
+      "Name": "Brow_1.7_2_-1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        2.070234,
+        0.569314,
+        0.724582
+      ],
+      "Offset": [
+        -1.759699,
+        3.167458,
+        -2.898328
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Both",
+      "Angle": -13,
+      "Neon": false
+    },
+    {
+      "Name": "EyeRightSocket_1.7_2_1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        1.811455,
+        1.863211,
+        0.310535
+      ],
+      "Offset": [
+        1.759699,
+        2.070234,
+        -2.794816
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "EyeRightGlow_1.7_2_1",
+      "Group": "Head",
+      "Role": "EyeRight",
+      "Size": [
+        1.190385,
+        1.24214,
+        0.207023
+      ],
+      "Offset": [
+        1.759699,
+        2.070234,
+        -3.053595
+      ],
+      "Color": [
+        90,
+        63,
+        146
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "EyeRightShine_1.7_2_1",
+      "Group": "Head",
+      "Role": "EyeRight",
+      "Size": [
+        0.261885,
+        0.347799,
+        0.124214
+      ],
+      "Offset": [
+        1.521622,
+        2.318662,
+        -3.229565
+      ],
+      "Color": [
+        255,
+        247,
+        224
+      ],
+      "State": "Awake",
+      "Angle": 0,
+      "Neon": true
+    },
+    {
+      "Name": "EyeRightLid_1.7_2_1",
+      "Group": "Head",
+      "Role": "EyeRight",
+      "Size": [
+        1.50092,
+        0.258779,
+        0.207023
+      ],
+      "Offset": [
+        1.759699,
+        2.070234,
+        -3.053595
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Asleep",
+      "Angle": 5,
+      "Neon": false
+    },
+    {
+      "Name": "Brow_1.7_2_1",
+      "Group": "Head",
+      "Role": "Head",
+      "Size": [
+        2.070234,
+        0.569314,
+        0.724582
+      ],
+      "Offset": [
+        1.759699,
+        3.167458,
+        -2.898328
+      ],
+      "Color": [
+        25,
+        27,
+        35
+      ],
+      "State": "Both",
+      "Angle": 13,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_BoneShin",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        1.552676,
+        2.380769,
+        0.465803
+      ],
+      "Offset": [
+        0.0,
+        -3.519398,
+        -1.159331
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontLeft_KneeBone",
+      "Group": "LegFrontLeft",
+      "Role": "LegFrontLeft",
+      "Size": [
+        2.277258,
+        1.138629,
+        0.569314
+      ],
+      "Offset": [
+        0.0,
+        -1.397408,
+        -1.428462
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_BoneShin",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        1.552676,
+        2.380769,
+        0.465803
+      ],
+      "Offset": [
+        0.0,
+        -3.519398,
+        -1.159331
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegFrontRight_KneeBone",
+      "Group": "LegFrontRight",
+      "Role": "LegFrontRight",
+      "Size": [
+        2.277258,
+        1.138629,
+        0.569314
+      ],
+      "Offset": [
+        0.0,
+        -1.397408,
+        -1.428462
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_BoneShin",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        1.552676,
+        2.380769,
+        0.465803
+      ],
+      "Offset": [
+        0.0,
+        -3.519398,
+        -1.159331
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackLeft_KneeBone",
+      "Group": "LegBackLeft",
+      "Role": "LegBackLeft",
+      "Size": [
+        2.277258,
+        1.138629,
+        0.569314
+      ],
+      "Offset": [
+        0.0,
+        -1.397408,
+        -1.428462
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_BoneShin",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        1.552676,
+        2.380769,
+        0.465803
+      ],
+      "Offset": [
+        0.0,
+        -3.519398,
+        -1.159331
+      ],
+      "Color": [
+        238,
+        225,
+        189
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "LegBackRight_KneeBone",
+      "Group": "LegBackRight",
+      "Role": "LegBackRight",
+      "Size": [
+        2.277258,
+        1.138629,
+        0.569314
+      ],
+      "Offset": [
+        0.0,
+        -1.397408,
+        -1.428462
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Vertebra0",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        1.397408,
+        1.138629,
+        1.24214
+      ],
+      "Offset": [
+        0.0,
+        0.310535,
+        0.0
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Vertebra1",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        1.397408,
+        1.138629,
+        1.24214
+      ],
+      "Offset": [
+        0.0,
+        0.672826,
+        1.035117
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Vertebra2",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        1.397408,
+        1.138629,
+        1.24214
+      ],
+      "Offset": [
+        0.0,
+        1.035117,
+        2.070234
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Vertebra3",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        1.397408,
+        1.138629,
+        1.24214
+      ],
+      "Offset": [
+        0.0,
+        1.397408,
+        3.105351
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    },
+    {
+      "Name": "Vertebra4",
+      "Group": "Tail",
+      "Role": "Tail",
+      "Size": [
+        1.397408,
+        1.138629,
+        1.24214
+      ],
+      "Offset": [
+        0.0,
+        1.759699,
+        4.140468
+      ],
+      "Color": [
+        217,
+        207,
+        178
+      ],
+      "State": "Both",
+      "Angle": 0,
+      "Neon": false
+    }
+  ],
+  "AnimationNotes": []
+}
