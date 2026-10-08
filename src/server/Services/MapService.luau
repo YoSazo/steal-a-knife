@@ -173,6 +173,7 @@ local function buildLighting()
 	-- Clients restore these after a round (client/Effects)
 	Lighting:SetAttribute("HubAmbient", Lighting.Ambient)
 	Lighting:SetAttribute("HubOutdoor", Lighting.OutdoorAmbient)
+	Lighting:SetAttribute("HubShadows", Lighting.GlobalShadows)
 	for _, child in Lighting:GetChildren() do
 		if child:IsA("Atmosphere") or child:IsA("PostEffect") or child:IsA("Sky") then
 			child:Destroy()

@@ -1146,15 +1146,16 @@ function Effects.Init()
 		local inRound = player:GetAttribute("InRound") == true
 		local info = TweenInfo.new(1.2, Enum.EasingStyle.Quad)
 		-- (exposure, bloom and the rest of the mood: client/ZoneLighting)
-		-- Round maps are indoors with no lamps: rounds get warm, neutral room light, and the hub's
+		-- Round maps are indoors with no lamps: rounds get bright, neutral room light, and the hub's
 		-- own values (published by the server as Lighting attributes, MapService) come back after.
 		-- Never cache Lighting here: the client can start before the server has set it up.
 		local hubAmbient = Lighting:GetAttribute("HubAmbient")
 		local hubOutdoor = Lighting:GetAttribute("HubOutdoor")
+		Lighting.GlobalShadows = if inRound then false else Lighting:GetAttribute("HubShadows") == true
 		if inRound then
 			TweenService:Create(Lighting, info, {
-				Ambient = Color3.fromRGB(165, 160, 150),
-				OutdoorAmbient = Color3.fromRGB(170, 165, 155),
+				Ambient = Color3.fromRGB(210, 210, 200),
+				OutdoorAmbient = Color3.fromRGB(210, 210, 200),
 			}):Play()
 		elseif typeof(hubAmbient) == "Color3" and typeof(hubOutdoor) == "Color3" then
 			TweenService:Create(Lighting, info, { Ambient = hubAmbient, OutdoorAmbient = hubOutdoor }):Play()

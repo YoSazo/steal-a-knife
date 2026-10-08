@@ -75,7 +75,6 @@ Fixed in Studio:
 - An unused `info` in `showKill` (lint).
 
 Found, not fixed yet:
-- **Round maps look dark on phones** (goes with the murder maps item).
 - **A ~9 hour gap between pen slots 16 and 17** in pacing_sim (look at `Pens.SlotCosts`).
 
 Still to test (needs real input): tapping Speed / Cash on physical hardware, the chase glow ending at
@@ -89,6 +88,10 @@ sign up close.
   keeps its Speed / Money tab (the visibility handler previously reset it to Featured).
   Tested both tabs through Studio input on desktop (1648 x 843) and the owner's 640 x 320 phone
   preset (live viewport 640 x 300, safe HUD 640 x 242). Selene, StyLua and luau-lsp pass.
+- **Round lighting fixed:** neutral 210 / 210 / 200 ambient and no indoor shadows while in a
+  round; hub ambient and shadows restore afterward. Visually checked Office in the phone preset
+  and at desktop size after the role-reveal overlay faded. All three code checks pass. One
+  restart hit an existing timeout loading wheel geometry; the next boot was clean.
 - **Owner chose item 30 option B:** IntermissionTime 70, RoundTime 60, warning 10. Survival
   steps at 10 / 20 / 35 / 50 / 60 s, weights 1 / 2 / 4 / 7 / 12, banked immediately.
   Delivered coffins pay a small share of the next zone gap, deeper zones pay more, about one
