@@ -75,16 +75,26 @@ Fixed in Studio:
 - An unused `info` in `showKill` (lint).
 
 Found, not fixed yet:
-- **Tapping Speed / Cash may not open the shop on phones:** the block sits inside the zone Roblox's
-  dynamic thumbstick claims, so touches there can turn into movement. Still checking with a
-  real tap; if it's blocked, move the block clear of the thumbstick or put the shop on its own
-  button.
 - **Round maps look dark on phones** (goes with the murder maps item).
 - **A ~9 hour gap between pen slots 16 and 17** in pacing_sim (look at `Pens.SlotCosts`).
 
-Still to test (needs real input): tapping Speed / Cash on a real phone, the chase glow ending at
+Still to test (needs real input): tapping Speed / Cash on physical hardware, the chase glow ending at
 the safe line, the deeper-monster fling, the trail after several deliveries, a creature's speed
 sign up close.
+
+### Codex Studio continuation, 2026-10-08
+
+- **Phone shop fixed:** Speed / Cash rows clear the dynamic thumbstick's invisible 40%-width
+  rectangle and the bottom backpack area; each whole row is a 44 px tap target. Opening a row
+  keeps its Speed / Money tab (the visibility handler previously reset it to Featured).
+  Tested both tabs through Studio input on desktop (1648 x 843) and the owner's 640 x 320 phone
+  preset (live viewport 640 x 300, safe HUD 640 x 242). Selene, StyLua and luau-lsp pass.
+- **Owner chose item 30 option B:** IntermissionTime 70, RoundTime 60, warning 10. Survival
+  steps at 10 / 20 / 35 / 50 / 60 s, weights 1 / 2 / 4 / 7 / 12, banked immediately.
+  Delivered coffins pay a small share of the next zone gap, deeper zones pay more, about one
+  tenth of full survival, with the same flying shoes. Rescale coffin round counts and offline
+  seconds to preserve hatch minutes. Tune shares for Rare ~0.34 h, Epic ~1.2 h, Legendary ~4 h;
+  preserve the cycle unless a zone 2-3 run cannot fit the ~60 s stealing window (then 80-90 s).
 
 **Not started (next):** first **item 30** (rounds are the Speed: cut the Haunted Wheel, the
 survival ladder), since it changes the balance everything else sits on; then the hatch layer (items 13-17: see-through "x-ray" coffin - glass in the

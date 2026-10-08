@@ -284,7 +284,6 @@ function View.Build(actions: any): Frame
 	end
 	frame:GetPropertyChangedSignal("Visible"):Connect(function()
 		if frame.Visible then
-			selectTab("Featured")
 			refresh()
 		end
 	end)
@@ -299,6 +298,7 @@ function View.Build(actions: any): Frame
 		Size = UDim2.fromOffset(112, 44),
 		MaximumTextSize = 23,
 	}, function()
+		selectTab("Featured")
 		Ui.Menu.Toggle(frame)
 	end, "Shop")
 	local function visibility()
@@ -311,10 +311,10 @@ function View.Build(actions: any): Frame
 		if player:GetAttribute("InRound") then
 			return
 		end
-		selectTab(if pages[tab] then tab else "Featured")
 		if not frame.Visible then
 			Ui.Menu.Toggle(frame)
 		end
+		selectTab(if pages[tab] then tab else "Featured")
 	end
 	return frame
 end

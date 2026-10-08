@@ -1158,7 +1158,7 @@ function Hud.Init()
 	}, cashArt)
 	Ui.new("UICorner", { CornerRadius = UDim.new(1, 0) }, cashPlus)
 	Ui.new("UIStroke", { Thickness = 2, Color = Color3.fromRGB(20, 60, 30) }, cashPlus)
-	local function opensShop(art: GuiObject, tab: string)
+	local function opensShop(art: GuiObject, tab: string): TextButton
 		local tap = Ui.new("TextButton", {
 			Name = "OpenShop",
 			Size = UDim2.fromScale(1, 1),
@@ -1171,9 +1171,10 @@ function Hud.Init()
 				Ui.OpenShop(tab)
 			end
 		end)
+		return tap
 	end
-	opensShop(cashArt, "Money")
-	opensShop(speedArt, "Speed")
+	local cashTap = opensShop(cashArt, "Money")
+	local speedTap = opensShop(speedArt, "Speed")
 	for _, text in { speedLabel, cashLabel } do
 		text.TextScaled = false
 		text.Font = Enum.Font.LuckiestGuy
@@ -1192,21 +1193,28 @@ function Hud.Init()
 		local x = 12
 		if Ui.Phone then
 			local _, bounds = Ui.bounds()
-			local stick = if bounds.Y < 500 then 70 else 120
 			-- as big as the screen allows (Steal An Egg keeps them huge on phones too)
 			-- Steal An Egg keeps these small and tucked in: two short rows
 			size = math.clamp(math.floor(bounds.Y * 0.1), 30, 52) -- big and chunky, like theirs
-			icon, row = math.floor(size * 1.1), math.floor(size * 1.2)
-			x = 25 + stick + 12 -- just right of the thumbstick
+			icon, row = math.floor(size * 1.1), math.max(44, math.floor(size * 1.2))
+			-- The dynamic thumbstick owns the lower-left 40% of the viewport, far beyond
+			-- its visible circle. Put both complete tap targets outside that rectangle.
+			x = math.floor(bounds.X * 0.4) + 12
 		end
-		-- Speed over Cash
+		-- Speed over Cash. Phones keep both rows above the backpack's bottom touch area too.
 		local small = 0
-		stats.Position, stats.Size = UDim2.new(0, x, 1, -12), UDim2.fromOffset(icon + 8 + size * 6, small + row * 2)
+		stats.AnchorPoint = if Ui.Phone then Vector2.zero else Vector2.new(0, 1)
+		stats.Position = if Ui.Phone then UDim2.fromOffset(x, 46) else UDim2.new(0, x, 1, -12)
+		stats.Size = UDim2.fromOffset(icon + 8 + size * 6, small + row * 2)
 		speedArt.Position, speedArt.Size = UDim2.fromOffset(0, small + (row - icon) / 2), UDim2.fromOffset(icon, icon)
 		cashArt.Position, cashArt.Size =
 			UDim2.fromOffset(0, small + row + (row - icon) / 2), UDim2.fromOffset(icon, icon)
 		speedLabel.Position, speedLabel.Size = UDim2.fromOffset(icon + 8, small), UDim2.fromOffset(size * 6, row)
 		cashLabel.Position, cashLabel.Size = UDim2.fromOffset(icon + 8, small + row), UDim2.fromOffset(size * 6, row)
+		for _, tap in { speedTap, cashTap } do
+			tap.Position = UDim2.fromOffset(0, -(row - icon) / 2)
+			tap.Size = UDim2.fromOffset(icon + 8 + size * 6, row)
+		end
 		speedLabel.TextSize, cashLabel.TextSize = math.floor(size * 0.9), size
 	end
 	Ui.Layout.Changed:Connect(placeStats)
