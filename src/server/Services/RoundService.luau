@@ -1891,7 +1891,11 @@ local function endRound(round: Round)
 	}
 	for player in round.Names do
 		if player.Parent then
-			Net.Remotes.Effect:FireClient(player, "RoundCard", card)
+			-- (and your own result on it: did your side win, and the Speed you banked this round)
+			local mine = table.clone(card)
+			mine.YouWon = coffinWinners[player] == true
+			mine.YourSpeed = (player:GetAttribute("RoundSpeedBanked") or 0) :: number
+			Net.Remotes.Effect:FireClient(player, "RoundCard", mine)
 		end
 	end
 end

@@ -123,7 +123,7 @@ function Transitions.Init()
 	local card = Instance.new("Frame")
 	card.AnchorPoint = Vector2.new(0.5, 0.5)
 	card.Position = UDim2.fromScale(0.5, 0.55)
-	card.Size = UDim2.fromOffset(560, 280)
+	card.Size = UDim2.fromOffset(560, 330)
 	card.BackgroundColor3 = Color3.fromRGB(24, 18, 30)
 	card.BackgroundTransparency = 0.08
 	card.Visible = false
@@ -137,7 +137,7 @@ function Transitions.Init()
 	cardScale.Parent = card
 	local function fitCard()
 		local menu = Ui.Layout.get().Menu
-		cardScale.Scale = math.min(1, menu.X / 560, menu.Y / 290)
+		cardScale.Scale = math.min(1, menu.X / 560, menu.Y / 340)
 	end
 	Ui.Layout.Changed:Connect(fitCard)
 	fitCard()
@@ -214,6 +214,13 @@ function Transitions.Init()
 		})
 		return photo, name, detail, power
 	end
+	-- Your own result, the biggest line on the card: "YOU WON! +12K 👟" / "+1.2K 👟 banked"
+	local yours = label(card, {
+		Name = "YourResult",
+		Position = UDim2.fromOffset(12, 278),
+		Size = UDim2.new(1, -24, 0, 44),
+		ZIndex = 31,
+	})
 	local mPhoto, mName, mDetail, mPower = side(14, "MURDERER", Color3.fromRGB(255, 70, 80))
 	local hPhoto, hName, hDetail, hPower = side(326, "SHERIFF", Color3.fromRGB(90, 170, 255))
 	local cardToken = 0
@@ -266,6 +273,10 @@ function Transitions.Init()
 			setPhoto(hPhoto, tonumber(info.HeroId) or 0, info.HeroFace)
 		end
 		hPower.Text = ""
+		local speed = tonumber(info.YourSpeed) or 0
+		local gain = if speed > 0 then ` +{Format.Short(speed)} 👟` else ""
+		yours.Text = if info.YouWon == true then `YOU WON!{gain}` elseif speed > 0 then `{gain} banked` else ""
+		yours.TextColor3 = if info.YouWon == true then Color3.fromRGB(120, 255, 140) else Color3.fromRGB(120, 200, 255)
 		card.Visible = true
 		local scale = card:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
 		scale.Parent = card
