@@ -15,6 +15,7 @@ export type State = {
 	InRound: boolean,
 	CoffinsReady: number?,
 	Carrying: string?, -- the item string
+	InSafeZone: boolean?,
 	InVault: boolean, -- standing inside your own vault
 	FreePlate: boolean, -- a "Place Knife" plate is lit (carrying)
 	KnifeCount: number,
@@ -87,17 +88,17 @@ function NextAction.Pick(s: State): Action?
 	-- 1. Carrying something: get it home
 	local carrying = s.Carrying
 	if carrying and carrying ~= "" then
-		if full then
+		if full and (s.InSafeZone ~= false or s.InVault) then
 			if floorAffordable(s) then
 				return {
 					Id = "carry_bigger",
-					Text = PenMode.Words("Your vault is full! Make it <b>bigger</b>!"),
+					Text = "PEN FULL! Buy <b>+1 spot</b>!",
 					Target = "VaultSign",
 				}
 			end
 			return {
 				Id = "carry_full",
-				Text = PenMode.Words("Your vault is full! <b>Sell</b> a knife to make room!"),
+				Text = "PEN FULL! Sell a knife in <b>My Knives</b>!",
 				Target = if s.Spare ~= false then "Sell" else nil,
 				Ui = if s.Spare == false then "Knives" else nil,
 			}
@@ -105,8 +106,8 @@ function NextAction.Pick(s: State): Action?
 		if s.InVault then
 			return {
 				Id = "carry_place",
-				Text = "<b>Tap</b> where you want to put it!",
-				Short = "Tap where to put it!",
+				Text = "<b>Tap a green spot</b> to place your coffin!",
+				Short = "Tap a green spot!",
 				Target = "Home",
 			}
 		end
@@ -121,7 +122,7 @@ function NextAction.Pick(s: State): Action?
 	end
 
 	if (s.CoffinsReady or 0) > 0 then
-		return { Id = "coffin_ready", Text = "Open your <b>READY</b> coffin!", Target = "Coffin", Ui = "Knives" }
+		return { Id = "coffin_ready", Text = "Tap your <b>READY</b> coffin!", Target = "Coffin", Ui = "Knives" }
 	end
 	-- 2. Something waiting for you
 	if s.Gift and (s.InVault or s.GiftNearby) and not s.Committed then
@@ -159,7 +160,7 @@ function NextAction.Pick(s: State): Action?
 		if floorAffordable(s) then
 			return {
 				Id = "vault_bigger",
-				Text = PenMode.Words("Your vault is full! Make it <b>bigger</b>!"),
+				Text = "PEN FULL! Buy <b>+1 spot</b>!",
 				Target = "VaultSign",
 			}
 		end
@@ -182,7 +183,7 @@ function NextAction.Pick(s: State): Action?
 		end
 	end
 	if s.KnifeCount >= s.Slots * 0.8 and floorAffordable(s) then
-		return { Id = "vault_bigger", Text = "Make your vault <b>bigger</b>!", Target = "VaultSign" }
+		return { Id = "vault_bigger", Text = "Make your pen <b>bigger</b>!", Target = "VaultSign" }
 	end
 
 	local nextZone = (GameConfig.Zones :: any)[reach + 1]
@@ -207,7 +208,7 @@ function NextAction.Pick(s: State): Action?
 
 	-- 8. Empty stashes: survive the next round for Speed.
 	if nextZone then
-		return { Id = "round_wait", Text = "SURVIVE for Speed!" }
+		return { Id = "round_wait", Text = "Play the next MURDER ROUND for Speed!" }
 	end
 	if s.PendingCash > 0 and not s.AutoCollect then
 		return { Id = "collect_all", Text = "Grab your <b>money</b>!", Target = "Pad" }
@@ -215,12 +216,12 @@ function NextAction.Pick(s: State): Action?
 	if s.CanRebirth then
 		return {
 			Id = "rebirth",
-			Text = "More → Rebirth: see what starting over gives you",
-			Short = "More → Rebirth: your rewards",
+			Text = "More → Rebirth: restart to earn more!",
+			Short = "Rebirth: restart to earn more!",
 			Ui = "Rebirth",
 		}
 	end
-	return { Id = "round_wait", Text = "SURVIVE for Speed!" }
+	return { Id = "round_wait", Text = "Play the next MURDER ROUND for Speed!" }
 end
 
 return NextAction

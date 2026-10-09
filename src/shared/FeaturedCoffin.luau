@@ -19,21 +19,6 @@ function FeaturedCoffin.Current(now: number): (string?, number?)
 	return nil, nil
 end
 
--- The knife a late receipt still gets: the current one, else the latest week that has started
-function FeaturedCoffin.ForGrant(now: number): string?
-	local current = FeaturedCoffin.Current(now)
-	if current then
-		return current
-	end
-	local latest: string? = nil
-	for _, week in Config.Weeks do
-		if week.Starts <= now then
-			latest = week.Knife
-		end
-	end
-	return latest or (Config.Weeks[1] and Config.Weeks[1].Knife)
-end
-
 -- One roll of the shown odds: a mutation id ("" = none)
 function FeaturedCoffin.RollMutation(rng: Random): string
 	local pick = rng:NextNumber() * 100

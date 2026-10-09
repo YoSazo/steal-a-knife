@@ -47,9 +47,6 @@ export type Profile = {
 	Bought: { string }, -- one-time Robux products already bought (Starter Pack)
 	Claimed: { string }, -- one-time free rewards taken: codes ("code:RELEASE"), the group gift ("gift:group")
 	Pending: { number }, -- money waiting on each slot's cash pad (BaseService), collected by walking over it
-	Spins: number, -- Lucky Wheel spins banked (Gamble)
-	FreeSpinDay: number, -- UTC day number the free daily spin was used
-	MerchantBought: { string }, -- "rotation:slot" bought from the Mystery Merchant this rotation
 	Boosts: { [string]: number }, -- Robux timed boosts: name (Speed/Cash/Training) -> os.time() it ends
 	Charges: { [string]: number }, -- Robux charges: name (Escape/Insurance) -> how many left
 	LastOffline: number, -- the last offline payout (Double Offline Earnings pays it again, once)
@@ -120,9 +117,6 @@ local function defaultProfile(): Profile
 		Claimed = {},
 		TrailLevel = 0,
 		Pending = {},
-		Spins = 0,
-		FreeSpinDay = 0,
-		MerchantBought = {},
 		Boosts = {},
 		Charges = {},
 		LastOffline = 0,

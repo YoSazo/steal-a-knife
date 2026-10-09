@@ -66,12 +66,13 @@ function View.Build(): (Frame, () -> ())
 	})
 	local note = SimpleUi.text(body, "", {
 		Position = UDim2.fromOffset(0, 178),
-		Size = UDim2.new(1, 0, 0, 40),
-		Max = 32,
+		Size = UDim2.new(1, 0, 0, 72),
+		Max = 28,
+		TextWrapped = true,
 	})
 	-- Cash bar
 	local bar: Frame = Ui.new("Frame", {
-		Position = UDim2.fromOffset(0, 230),
+		Position = UDim2.fromOffset(0, 270),
 		Size = UDim2.new(1, 0, 0, 64),
 		BackgroundColor3 = Color3.fromRGB(26, 30, 44),
 		ZIndex = 6,
@@ -120,13 +121,14 @@ function View.Build(): (Frame, () -> ())
 			then "You've reached the final rebirth!"
 			else `Needs a <font color="{if hasNeed then "#78FF6E" else "#FF6E6E"}">{need} knife {if hasNeed
 				then "✓"
-				else "✗"}</font>  ·  you start over  ·  <font color="#78FF6E">more money forever</font>`
+				else "✗"}</font>\nResets Cash, Speed, knives and pen.`
 		local ratio = if maximum then 1 else math.clamp(cash / cost, 0, 1)
 		fill.Size = UDim2.new(ratio, -8 * ratio, 1, -8)
 		fill.Visible = ratio > 0
 		barText.Text = if maximum then "MAX REBIRTH!" else `${Ui.abbreviate(cash)} / ${Ui.abbreviate(cost)}`
 		local carrying = player:GetAttribute("Carrying")
 		local blocked = player:GetAttribute("InRound") == true
+			or player:GetAttribute("RunSaved") == true
 			or (carrying ~= nil and carrying ~= false and carrying ~= "")
 		local text = if maximum
 			then "MAX"
@@ -135,7 +137,7 @@ function View.Build(): (Frame, () -> ())
 			else "REBIRTH"
 		SimpleUi.set(action, text, PURPLE, not maximum and not blocked and hasNeed and cash >= cost)
 	end
-	for _, attribute in { "Cash", "Rebirths", "InRound", "Carrying", "Knives" } do
+	for _, attribute in { "Cash", "Rebirths", "InRound", "Carrying", "RunSaved", "Knives" } do
 		player:GetAttributeChangedSignal(attribute):Connect(refresh)
 	end
 	frame:GetPropertyChangedSignal("Visible"):Connect(function()

@@ -30,9 +30,9 @@ REBIRTH_NEEDS = ["Mythic", "Godly", "Godly", "Celestial", "Celestial", "Cosmic"]
 INTERMISSION, REVEAL, ROUND, RESULTS = 70, 3.6, 60, 8
 # A stolen knife's income doesn't count until its coffin's murder-round wait is over
 # (GameConfig.Coffins.Rounds; was 0/1/1/2/2/3/4/5).
-COFFIN_ROUNDS = {"Common": 0, "Rare": 30/13, "Epic": 60/13, "Legendary": 210/13, "Mythic": 390/13,
-                 "Godly": 720/13, "Celestial": 1200/13, "Cosmic": 1800/13, "Secret": 2400/13}
-SHARES = [0, 0.244545, 0.0581162, 0.0163412, 0.0138447, 0.008, 0.006, 0.004]
+COFFIN_ROUNDS = {"Common": 0, "Rare": 1, "Epic": 2, "Legendary": 3, "Mythic": 4,
+                 "Godly": 6, "Celestial": 8, "Cosmic": 10, "Secret": 12}
+SHARES = [0, 0.2501912, 0.0592422, 0.0168394, 0.0142217, 0.008, 0.006, 0.004]
 MIN_SPEED_PRIZE = 300  # GameConfig.RoundPrize.MinSpeed
 WIN_CHANCE = 0.65  # rough share of rounds a player ends up on the winning side
 ZONE_DEPTHS = [90, 130, 170, 210, 250, 290, 330, 370]
@@ -84,9 +84,12 @@ def simulate(hours, seed=1):
             elapsed=60 if survived else rng.uniform(5,55)
             parts=sum(p for at,p in zip([10,20,35,50,60],[1,2,4,7,12]) if at<=elapsed)
             speed+=full*max(1,parts)/26
-            speed+=full*.015 # typical shoe pickups
+            speed+=3 # typical round coins: each is exactly +1 Speed
             cash+=income()*(REVEAL+ROUND+RESULTS)
             t+=REVEAL+ROUND+RESULTS
+            if survived:
+                # Winners advance one extra hatch round (GameConfig.Coffins.WinRounds = 2).
+                wall=[(pay, rarity, max(t, ready-cycle)) if ready>t else (pay,rarity,ready) for pay,rarity,ready in wall]
             continue
         cost=REBIRTH_BASE*REBIRTH_GROWTH**rebirths
         need=REBIRTH_NEEDS[min(rebirths,len(REBIRTH_NEEDS)-1)]
@@ -114,6 +117,7 @@ def simulate(hours, seed=1):
                 if full: wall.remove(worst)
                 stolen = "Secret" if zone == 7 and rng.random() < SECRET_CHANCE else rarity
                 wall.append((INCOME[stolen],zone,t+dt+COFFIN_ROUNDS[stolen]*cycle))
+                speed+=2 # typical coins picked up along this biome run
                 note(f"first {stolen} knife",t+dt)
         else:
             dt=min(10,max(0,boundary-t))
@@ -139,7 +143,7 @@ def fit_shares():
             width = (high-low)/80
             low, high = max(.0001, best-width), best+width
         SHARES[zone] = round(best, 7)
-    print("ZoneShares = { " + ", ".join(f"[{i+1}] = {share:g}" for i,share in enumerate(SHARES) if i) + " },")
+    print("ZoneShares = { " + ", ".join(f"[{i+1}] = {share:.7f}" for i,share in enumerate(SHARES) if i) + " },")
 
 
 if __name__ == "__main__":

@@ -490,8 +490,8 @@ function Theme.shell(
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromOffset(designWidth, height),
-		BackgroundColor3 = Color3.fromRGB(14, 16, 26),
-		BackgroundTransparency = 0.25, -- see-through, Tsunami-simple
+		BackgroundColor3 = Color3.fromRGB(38, 28, 66),
+		BackgroundTransparency = 0, -- opaque so the text stays readable
 		Visible = false,
 		ZIndex = 5,
 	}, Ui.gui)

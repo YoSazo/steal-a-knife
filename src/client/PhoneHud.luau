@@ -21,13 +21,14 @@ local function caption(button: GuiObject, text: string)
 	end
 	local label = Instance.new("TextLabel")
 	label.Name = "Caption"
-	label.AnchorPoint = Vector2.new(0.5, 0)
-	label.Position = UDim2.new(0.5, 0, 1, 1)
-	label.Size = UDim2.new(1.6, 0, 0, CAPTION)
+	label.AnchorPoint = Vector2.new(1, 0)
+	label.Position = UDim2.new(1, 0, 1, 2)
+	label.Size = UDim2.fromOffset(84, 18)
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.FredokaOne
 	label.Text = text
-	label.TextScaled = true
+	label.TextScaled = false
+	label.TextSize = 15
 	label.TextColor3 = Color3.new(1, 1, 1)
 	label.ZIndex = button.ZIndex + 3
 	local stroke = Instance.new("UIStroke")

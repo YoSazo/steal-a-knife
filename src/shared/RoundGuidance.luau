@@ -21,8 +21,8 @@ function RoundGuidance.Pick(s: State): Action
 		if not s.HasKnife then
 			return {
 				Id = "murderer_grace",
-				Text = `Find someone to surprise - knife in {math.max(0, math.ceil(s.WeaponWait))}s`,
-				Short = `Knife in {math.max(0, math.ceil(s.WeaponWait))}s - get ready!`,
+				Text = `KNIFE IN {math.max(0, math.ceil(s.WeaponWait))}s`,
+				Short = `KNIFE IN {math.max(0, math.ceil(s.WeaponWait))}s`,
 			}
 		end
 		if not s.KnifeOut then
@@ -73,7 +73,7 @@ function RoundGuidance.Pick(s: State): Action
 	end
 	return {
 		Id = "innocent_coins",
-		Text = "Collect coins and stay safe!",
+		Text = "Get Speed coins! Stay alive!",
 		Target = "RoundCoin",
 	}
 end

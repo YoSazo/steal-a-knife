@@ -504,8 +504,40 @@ def build_coin(root):
     mesh_object("Eyes", eyes, material("Coin_Eyes", rgb(120, 70, 10), roughness=0.6), root)
 
 
+def build_speed_coin(root):
+    """A chunky blue Speed token with a white rim and raised sneaker on both faces."""
+    disc, rim, shoe, sole, laces, accent = [bmesh.new() for _ in range(6)]
+    cylinder(disc, 1.42, 0.36, (0, 0, 0), segments=32, rot=ROT_X90)
+    for y in (-0.20, 0.20):
+        torus(rim, 1.34, 0.075, (0, y, 0), segments=32, sides=6, rot=ROT_X90)
+    for i in range(24):
+        a = i / 24 * math.tau
+        add_box(accent, (0.045, 0.28, 0.10), (math.cos(a)*1.43, 0, math.sin(a)*1.43),
+                rot=Matrix.Rotation(-a, 4, "Y"))
+    def raised(bm, outline, y, thickness):
+        rows = [[bm.verts.new((x, y + d, z)) for x,z in outline] for d in (-thickness/2, thickness/2)]
+        bm.faces.new(list(reversed(rows[0])))
+        bm.faces.new(rows[1])
+        for i in range(len(outline)):
+            j=(i+1)%len(outline)
+            bm.faces.new((rows[0][i],rows[0][j],rows[1][j],rows[1][i]))
+    for side in (-1,1):
+        raised(sole, [(-.83,-.47),(.85,-.47),(1,-.36),(.95,-.20),(-.83,-.20)], side*.235,.09)
+        raised(shoe, [(-.78,-.20),(.88,-.20),(.92,-.08),(.63,.08),(.20,.20),(-.12,.64),(-.68,.70),(-.79,.47)], side*.28,.11)
+        add_box(sole,(.44,.06,.12),(-.44,side*.355,.53))
+        for x,z in ((-.10,.39),(.06,.27),(.22,.16)):
+            add_box(laces,(.24,.065,.075),(x,side*.36,z),rot=Matrix.Rotation(-.30,4,"Y"))
+        raised(accent,[(-.49,.16),(.01,-.01),(.55,.10),(.02,-.12),(-.49,.01)],side*.36,.065)
+    for name,bm,color,metal in [
+        ("Blue",disc,rgb(30,115,245),.3),("Rim",rim,rgb(245,250,255),.15),
+        ("Sneaker",shoe,rgb(70,225,255),.05),("Sole",sole,rgb(255,255,255),.05),
+        ("Laces",laces,rgb(255,255,255),.05),("Accent",accent,rgb(255,205,45),.25)]:
+        mesh_object(name,bm,material("SpeedCoin_"+name,color,metallic=metal,roughness=.32),root)
+
+
 PROPS = {
     "Coin": build_coin,
+    "SpeedCoin": build_speed_coin,
     "Pedestal": build_pedestal,
     "Chest": build_chest,
     "LootSack": build_loot_sack,
@@ -590,8 +622,28 @@ def main():
         print(f"exported {path}")
     if ONLY is None:
         (ROOT / "blender" / "props.json").write_text(json.dumps(manifest, indent=2))
-    render_sheet(PREVIEW_DIR / "props.png", roots)
-    bpy.ops.wm.save_as_mainfile(filepath=str(ROOT / "blender" / "props.blend"))
+    if ONLY == {"SpeedCoin"}:
+        scene=bpy.context.scene
+        scene.render.engine="BLENDER_WORKBENCH"
+        scene.display.shading.light="STUDIO"
+        scene.display.shading.color_type="MATERIAL"
+        scene.display.shading.show_cavity=True
+        scene.render.resolution_x=800
+        scene.render.resolution_y=800
+        scene.render.film_transparent=True
+        camera=bpy.data.objects.new("CoinCamera",bpy.data.cameras.new("CoinCamera"))
+        bpy.context.collection.objects.link(camera)
+        camera.location=(2,-7,2.4)
+        camera.rotation_euler=(-camera.location).to_track_quat("-Z","Y").to_euler()
+        camera.data.type="ORTHO"
+        camera.data.ortho_scale=3.9
+        scene.camera=camera
+        scene.render.filepath=str(PREVIEW_DIR / "speed_coin.png")
+        bpy.ops.render.render(write_still=True)
+        bpy.ops.wm.save_as_mainfile(filepath=str(ROOT / "blender" / "speed_coin.blend"))
+    elif ONLY is None:
+        render_sheet(PREVIEW_DIR / "props.png", roots)
+        bpy.ops.wm.save_as_mainfile(filepath=str(ROOT / "blender" / "props.blend"))
 
 
 main()

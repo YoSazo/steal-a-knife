@@ -18,8 +18,6 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Props = require(ReplicatedStorage.Shared.Props)
 local Toy = require(ReplicatedStorage.Shared.Toy)
 local SpriteFire = require(ReplicatedStorage.Shared.SpriteFire)
-local ToyBlockModel = require(ReplicatedStorage.Shared.ToyBlockModel)
-local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 
 local ManorDecor = {}
 
@@ -74,10 +72,6 @@ local function glow(p: BasePart, color: Color3, range: number, brightness: numbe
 	light.Brightness = brightness or 1.2
 	light.Shadows = false
 	light.Parent = p
-end
-
-local function at(x: number, y: number, z: number): CFrame
-	return CFrame.new(x, y, z)
 end
 
 -- Shared pieces -------------------------------------------------------------------------------
@@ -1007,58 +1001,6 @@ local function manor(center: Vector3)
 	glow(doorGlow, Color3.fromRGB(255, 60, 70), 40, 2)
 end
 
--- The board over the runway entrance; the client fills in the countdowns (Hud)
-local function eventBoard(z: number, _width: number)
-	local hardware = ToyBlockModel.Build("EventBoardDecor", true)
-	hardware:PivotTo(CFrame.new(0, 0, z))
-	hardware.Parent = folder
-	local boardWidth, boardHeight = 52, 15
-	local board = block(
-		"EventBoard",
-		Vector3.new(boardWidth, boardHeight, 1.4),
-		at(0, 29 - boardHeight / 2 + 0.8, z),
-		Color3.fromRGB(28, 38, 60)
-	)
-	local _, frontFace = WorldSignModel.Attach("EventBoard", board, Enum.NormalId.Front)
-	local backAnchor = board:Clone()
-	backAnchor:ClearAllChildren()
-	backAnchor.Name, backAnchor.Parent = "EventBoardBack", board
-	local _, backFace = WorldSignModel.Attach("EventBoard", backAnchor, Enum.NormalId.Back)
-	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
-		local gui = Instance.new("SurfaceGui")
-		gui.Adornee = if face == Enum.NormalId.Front then frontFace else backFace
-		gui.Name = `Lines{face.Name}`
-		gui.Face = Enum.NormalId.Back
-		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		gui.PixelsPerStud = 20
-		gui.LightInfluence = 0
-		gui.Brightness = 0.85 -- full-bright signs, a touch softer than pure white
-		gui.Parent = board
-		local layout = Instance.new("UIListLayout")
-		layout.VerticalAlignment = Enum.VerticalAlignment.Center
-		layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-		layout.Padding = UDim.new(0, 4)
-		layout.Parent = gui
-		for i = 1, 4 do
-			local line = Instance.new("TextLabel")
-			line.Name = `Line{i}`
-			line.LayoutOrder = i
-			line.Size = UDim2.fromScale(0.94, 0.21)
-			line.BackgroundTransparency = 1
-			line.Font = Enum.Font.FredokaOne
-			line.TextScaled = true
-			line.RichText = true
-			line.TextColor3 = Color3.new(1, 1, 1)
-			line.Text = ""
-			line.Parent = gui
-			local stroke = Instance.new("UIStroke")
-			stroke.Thickness = 3
-			stroke.Color = Color3.fromRGB(20, 12, 8)
-			stroke.Parent = line
-		end
-	end
-end
-
 -- Build -----------------------------------------------------------------------------------------
 
 -- Clears decoration out of a rectangle (the boss lairs, built after the decor)
@@ -1522,7 +1464,6 @@ function ManorDecor.Build(root: Instance, arena: Bounds, _hideaways: { Bounds })
 	end
 
 	-- The entrance: events board hanging over the start of the runway
-	eventBoard(-4, width)
 
 	-- The plaza: lamps along both sides, fireflies everywhere
 	fireflies(Vector3.new(0, 6, -95), Vector3.new(width - 6, 10, 170), Color3.fromRGB(255, 230, 140), 10)

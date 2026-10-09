@@ -1,7 +1,6 @@
 --!strict
 -- How much money everyone has, floating over their head (Tsunami style), with a gold "VIP" above it
--- for VIP pass owners. One tag, so the two never overlap. Shown in rounds too: the rich ones are the
--- juicy targets. Drawn on each client from the player's Cash and Pass_VIP attributes - and on round
+-- for VIP pass owners. One tag, so the two never overlap. Hidden during murder rounds. Drawn on each client from the player's Cash and Pass_VIP attributes - and on round
 -- bots from FakeCash / FakeVIP (RoundService), so a tag never tells a real player from a bot.
 
 local Players = game:GetService("Players")
@@ -61,6 +60,8 @@ local function attach(owner: Instance, character: Model)
 	stroke.Color = Color3.fromRGB(15, 60, 20)
 	stroke.Parent = text
 	local function refresh()
+		gui.Enabled = ReplicatedStorage:GetAttribute("Phase") ~= "Round"
+			and not (owner == Players.LocalPlayer and Ui.Phone)
 		-- (a shape-shifted Murderer shows their new person's money: DisguiseCash / DisguiseVIP)
 		local fake = owner:GetAttribute("DisguiseCash")
 		local cash = (if type(fake) == "number" then fake else owner:GetAttribute(cashKey) or 0) :: number
@@ -71,6 +72,7 @@ local function attach(owner: Instance, character: Model)
 	end
 	refresh()
 	local connections = {
+		ReplicatedStorage:GetAttributeChangedSignal("Phase"):Connect(refresh),
 		owner:GetAttributeChangedSignal(cashKey):Connect(refresh),
 		owner:GetAttributeChangedSignal(vipKey):Connect(refresh),
 		owner:GetAttributeChangedSignal("DisguiseCash"):Connect(refresh),

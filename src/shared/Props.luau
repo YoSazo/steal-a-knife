@@ -61,6 +61,27 @@ end
 
 -- Part-built stand-ins, roughly the same size and look as the meshes
 local fallbacks: { [string]: (Model) -> () } = {
+	SpeedCoin = function(m)
+		local face = CFrame.Angles(0, math.rad(90), 0)
+		local blue = part(m, "Blue", Vector3.new(0.36, 2.84, 2.84), face, Color3.fromRGB(30, 115, 245))
+		blue.Shape = Enum.PartType.Cylinder
+		for _, z in { -0.21, 0.21 } do
+			local rim =
+				part(m, "Rim", Vector3.new(0.08, 2.83, 2.83), CFrame.new(0, 0, z) * face, Color3.fromRGB(245, 250, 255))
+			rim.Shape = Enum.PartType.Cylinder
+			local inner = part(m, "Inset", Vector3.new(0.09, 2.58, 2.58), CFrame.new(0, 0, z * 1.2) * face, blue.Color)
+			inner.Shape = Enum.PartType.Cylinder
+			part(m, "Sole", Vector3.new(1.8, 0.18, 0.14), CFrame.new(0, -0.35, z * 1.5), Color3.new(1, 1, 1))
+			part(
+				m,
+				"Sneaker",
+				Vector3.new(1.7, 0.45, 0.16),
+				CFrame.new(0, -0.06, z * 1.5),
+				Color3.fromRGB(70, 225, 255)
+			)
+			part(m, "Heel", Vector3.new(0.65, 0.5, 0.16), CFrame.new(-0.5, 0.3, z * 1.5), Color3.fromRGB(70, 225, 255))
+		end
+	end,
 	Coin = function(m)
 		local face = CFrame.Angles(0, math.rad(90), 0) -- cylinder axis along Z: the coin faces -Z
 		local gold =

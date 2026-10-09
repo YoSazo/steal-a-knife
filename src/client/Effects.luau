@@ -193,7 +193,13 @@ local function trackCoin(coin: Instance)
 	local taken = false
 	hitbox.Touched:Connect(function(other)
 		local character = player.Character
-		if taken or not character or not other:IsDescendantOf(character) then
+		if
+			taken
+			or not character
+			or not other:IsDescendantOf(character)
+			or ((player:GetAttribute("RunResumeAt") or 0) :: number) > workspace:GetServerTimeNow()
+			or ((coin:GetAttribute("RoundOnly") == true) ~= (player:GetAttribute("InRound") == true))
+		then
 			return
 		end
 		local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -208,7 +214,7 @@ local function trackCoin(coin: Instance)
 		for _, d in coin:GetDescendants() do
 			if d:IsA("BasePart") then
 				d.LocalTransparencyModifier = 1
-			elseif d:IsA("ParticleEmitter") or d:IsA("Light") then
+			elseif d:IsA("ParticleEmitter") or d:IsA("Light") or d:IsA("BillboardGui") then
 				(d :: any).Enabled = false
 			end
 		end
@@ -658,6 +664,7 @@ local handlers: { [string]: (...any) -> () } = {
 		Effects.Burst(position, color, 12 + math.clamp(rank, 1, 9) * 5, 14 + rank * 2, 0.6)
 	end,
 	SpeedPickup = function(position: Vector3)
+		Effects.FloatText(position + Vector3.new(0, 1, 0), "+1 SPEED", Color3.fromRGB(120, 220, 255))
 		Effects.Sound(Sounds.PrizeLand, position, 0.5)
 	end,
 	Shield = function(position: Vector3)
@@ -868,6 +875,9 @@ function Effects.Init()
 		local gui = Instance.new("ScreenGui")
 		gui.Name = "ChaseVignette"
 		gui.IgnoreGuiInset = true
+		gui.ScreenInsets = Enum.ScreenInsets.None
+		gui.SafeAreaCompatibility = Enum.SafeAreaCompatibility.None
+		gui.ClipToDeviceSafeArea = false
 		gui.DisplayOrder = 15
 		gui.ResetOnSpawn = false
 		gui.Parent = player:WaitForChild("PlayerGui")
@@ -899,8 +909,12 @@ function Effects.Init()
 		local function refresh()
 			local character = player.Character
 			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-			local safe = root ~= nil and root.Position.Z < -2
-			local want = if player:GetAttribute("BossCarry") ~= nil and not safe then 0.55 else 1
+			local safe = root ~= nil and root.Position.Z <= 0
+			local want = if player:GetAttribute("BossCarry") ~= nil
+					and not safe
+					and player:GetAttribute("RunSaved") ~= true
+				then 0.55
+				else 1
 			if want == target then
 				return
 			end
@@ -984,6 +998,14 @@ function Effects.Init()
 			local bob = CFrame.new(0, math.sin(t * 2) * 0.3, 0)
 			local turn = CFrame.Angles(0, t * 2, 0)
 			local goal = CFrame.new(base.Position) * bob * turn * (base - base.Position)
+			if instance:HasTag("Coin") then
+				-- Keep the embossed sneaker upright and readable; a full spin showed thin edges.
+				local camera = workspace.CurrentCamera
+				local direction = Vector3.new(camera.CFrame.Position.X, base.Position.Y, camera.CFrame.Position.Z)
+				if (direction - base.Position).Magnitude > 0.01 then
+					goal = CFrame.lookAt(base.Position, direction) * bob * CFrame.Angles(0, math.sin(t) * 0.12, 0)
+				end
+			end
 			if instance:IsA("BasePart") then
 				instance.CFrame = goal
 			elseif instance:IsA("Model") then

@@ -138,8 +138,8 @@ function SimpleUi.window(name: string, title: string, icon: string, color: Color
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromOffset(size.X, size.Y),
-		BackgroundColor3 = Color3.fromRGB(14, 16, 26),
-		BackgroundTransparency = 0.25, -- see-through, like Tsunami's
+		BackgroundColor3 = Color3.fromRGB(38, 28, 66),
+		BackgroundTransparency = 0, -- opaque so the text stays readable
 		Visible = false,
 		ZIndex = 5,
 	}, Ui.gui)

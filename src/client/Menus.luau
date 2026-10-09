@@ -3,11 +3,10 @@
 --   Index    every knife in the game: silhouettes until you own one, and a reward to claim for each
 --   Knives   your wall (equip the one you fight / murder with, sell the rest)
 --   Rebirth  start over for a permanent multiplier
--- and the Lucky Wheel's panel, opened by standing on the ring in front of it (server PlazaWheel).
+-- Panels share one open/close policy.
 -- Knife cards show a live 3D model in a ViewportFrame built from the same KnifeModel as the game.
 
 local GuiService = game:GetService("GuiService")
-local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -427,51 +426,6 @@ function Menus.Init()
 		if inRound then
 			for _, p in panels do
 				p.Visible = false
-			end
-		end
-	end)
-
-	-- The Lucky Wheel (server PlazaWheel): stand on the glowing ring in front of it and its panel
-	-- opens; step off and it closes. Close it yourself and it stays shut until you step off.
-	local onRing: BasePart? = nil
-	local openedFrame: Frame? = nil
-	local nextCheck = 0
-	RunService.Heartbeat:Connect(function()
-		local now = os.clock()
-		if now < nextCheck then
-			return
-		end
-		nextCheck = now + 0.15
-		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
-		local standing: BasePart? = nil
-		if root and not player:GetAttribute("InRound") then
-			for _, instance in CollectionService:GetTagged("ShopRing") do
-				local ring = instance :: BasePart
-				local offset = root.Position - ring.Position
-				local radius = ring.Size.Y / 2 + 1.5
-				if Vector3.new(offset.X, 0, offset.Z).Magnitude < radius and math.abs(offset.Y) < 6 then
-					standing = ring
-					break
-				end
-			end
-		end
-		if standing == onRing then
-			return
-		end
-		-- Stepped off (or onto a different ring): close what this ring opened
-		if openedFrame and openedFrame.Visible then
-			openedFrame.Visible = false
-		end
-		openedFrame = nil
-		onRing = standing
-		if standing then
-			local which = standing:GetAttribute("ShopPanel")
-			local frame: Frame? = Ui.Panels[tostring(which)] :: any -- the Lucky Wheel (client/GambleUi)
-			if frame then
-				if not frame.Visible then
-					toggle(frame)
-				end
-				openedFrame = frame
 			end
 		end
 	end)

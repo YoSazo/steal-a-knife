@@ -54,6 +54,17 @@ local function buy(kind: string, key: string)
 		end
 		return
 	end
+	local product = if kind == "Product" then Monetization.ProductByKey[key] else nil
+	if
+		product
+		and product.FeaturedKnife
+		and product.FeaturedKnife ~= require(Shared.FeaturedCoffin).Current(os.time())
+	then
+		if Ui.Toast then
+			Ui.Toast("That coffin is not on sale now!", "info")
+		end
+		return
+	end
 	Telemetry.Prompt(kind, key)
 	if entry.Id > 0 then
 		if kind == "Pass" then

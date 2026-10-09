@@ -15,6 +15,7 @@ local DataService = require(script.Parent.DataService)
 local FreeRewards = require(script.Parent.FreeRewards)
 local Analytics = require(script.Parent.Analytics)
 
+local ToyBlockModel = require(ReplicatedStorage.Shared.ToyBlockModel)
 local GiftService = {}
 
 local KEY = "gift:group"
@@ -63,7 +64,7 @@ local function claim(player: Player): (boolean, string)
 		return false, "Already claimed!"
 	end
 	if not member then
-		return false, "Join the group first!"
+		return false, "Join our community first!"
 	end
 	DataService.Update(player, function(p)
 		table.insert(p.Claimed, KEY)
@@ -76,7 +77,73 @@ local function claim(player: Player): (boolean, string)
 	return true, message
 end
 
+local function sync(player: Player)
+	local profile = DataService.Get(player)
+	if profile then
+		player:SetAttribute("GiftClaimed", table.find(profile.Claimed, KEY) ~= nil)
+		player:SetAttribute("GiftSpeed", FreeRewards.SpeedShare(profile.Speed, GameConfig.GroupGift.Speed))
+	end
+end
+
+local function buildChest()
+	local chest = ToyBlockModel.Build("FreeChest", true)
+	chest.Name = "CommunityGiftChest"
+	chest:ScaleTo(3)
+	local box, size = chest:GetBoundingBox()
+	local bottom = box.Position.Y - size.Y / 2
+	chest:PivotTo(CFrame.new(-12, 0.2 - bottom, -72) * CFrame.Angles(0, math.pi, 0))
+	for _, part in chest:GetChildren() do
+		if part:IsA("BasePart") and part.Name == "Wood" then
+			part.Color = Color3.fromRGB(245, 225, 190)
+		end
+	end
+	local root = chest.PrimaryPart :: BasePart
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "FreeGiftLabel"
+	gui.Size = UDim2.fromScale(10, 2.4)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, size.Y / 2 + 3, 0)
+	gui.MaxDistance, gui.LightInfluence = 100, 0
+	gui.Parent = root
+	local title = Instance.new("TextLabel")
+	title.Name = "Title"
+	title.Size = UDim2.fromScale(1, 1)
+	title.BackgroundTransparency = 1
+	title.Font, title.TextScaled, title.Text = Enum.Font.FredokaOne, true, "FREE!"
+	title.TextColor3 = Color3.new(1, 1, 1)
+	title.Parent = gui
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 210, 30)),
+		ColorSequenceKeypoint.new(0.33, Color3.fromRGB(100, 255, 80)),
+		ColorSequenceKeypoint.new(0.66, Color3.fromRGB(50, 220, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 100, 230)),
+	})
+	gradient.Parent = title
+	local stroke = Instance.new("UIStroke")
+	stroke.Color, stroke.Thickness = Color3.fromRGB(20, 15, 30), 3
+	stroke.Parent = title
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name, prompt.ActionText, prompt.ObjectText = "CommunityGiftPrompt", "Open", "Free Gift"
+	prompt.HoldDuration, prompt.MaxActivationDistance, prompt.RequiresLineOfSight = 0, 12, false
+	prompt.Parent = root
+	chest.Parent = workspace:FindFirstChild("Map")
+end
+
 function GiftService.Init()
+	buildChest()
+	local function setup(player: Player)
+		player:GetAttributeChangedSignal("Speed"):Connect(function()
+			sync(player)
+		end)
+		player:GetAttributeChangedSignal("DataLoaded"):Connect(function()
+			sync(player)
+		end)
+		sync(player)
+	end
+	for _, player in Players:GetPlayers() do
+		setup(player)
+	end
+	Players.PlayerAdded:Connect(setup)
 	Net.Remotes.ClaimGift.OnServerInvoke = claim
 	DataService.PlayerLoaded:Connect(function(player: Player, profile: DataService.Profile)
 		player:SetAttribute("GiftClaimed", table.find(profile.Claimed, KEY) ~= nil)

@@ -18,7 +18,6 @@ local CartoonArt = require(ReplicatedStorage.Shared.Config.CartoonArt)
 
 local Ui = require(script.Parent.Ui)
 local TopLine = require(script.Parent.TopLine)
-local Favorite = require(script.Parent.Favorite)
 local GiftCard = require(script.Parent.GiftCard)
 local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 local VoxelKnives = require(ReplicatedStorage.Shared.Config.VoxelUi).Knives :: { [string]: string }
@@ -67,7 +66,12 @@ function Transitions.Init()
 	-- On the top line (client/TopLine), like the tutorial: "Gardens 🌸 · Needs 4K speed" - it was a
 	-- big title under the timer, over the middle of the screen
 	local function showZone(index: number)
-		if Ui.menuOpen() then
+		if
+			Ui.menuOpen()
+			or player:GetAttribute("Carrying")
+			or player:GetAttribute("RunSaved")
+			or player:GetAttribute("InRound")
+		then
 			return
 		end
 		local zone = GameConfig.Zones[index] :: any
@@ -119,175 +123,6 @@ function Transitions.Init()
 		TextTransparency = 1,
 		ZIndex = 11,
 	})
-	-- End-of-round VS card (MM2 style) --------------------------------------------------------------
-	local card = Instance.new("Frame")
-	card.AnchorPoint = Vector2.new(0.5, 0.5)
-	card.Position = UDim2.fromScale(0.5, 0.55)
-	card.Size = UDim2.fromOffset(560, 330)
-	card.BackgroundColor3 = Color3.fromRGB(24, 18, 30)
-	card.BackgroundTransparency = 0.08
-	card.Visible = false
-	card.ZIndex = 30
-	card.Name = "RoundResults"
-	Ui.TrackPresentation(card)
-	card.Parent = Ui.root
-	-- Shrink the WHOLE card to fit small screens (its panels are laid out in fixed sizes: resizing
-	-- only the card left them hanging out of the bottom on a phone)
-	local cardScale = Instance.new("UIScale")
-	cardScale.Parent = card
-	local function fitCard()
-		local menu = Ui.Layout.get().Menu
-		cardScale.Scale = math.min(1, menu.X / 560, menu.Y / 340)
-	end
-	Ui.Layout.Changed:Connect(fitCard)
-	fitCard()
-	Ui.registerMenu(card)
-	Ui.button(
-		{ Name = "Close", Text = "X", Position = UDim2.new(1, -52, 0, 6), Size = UDim2.fromOffset(44, 44), ZIndex = 33 },
-		card,
-		function()
-			card.Visible = false
-		end
-	)
-	local cardCorner = Instance.new("UICorner")
-	cardCorner.CornerRadius = UDim.new(0, 16)
-	cardCorner.Parent = card
-	local cardStroke = Instance.new("UIStroke")
-	cardStroke.Thickness = 2
-	cardStroke.Parent = card
-	local cardTitle = label(card, {
-		Position = UDim2.fromOffset(12, 8),
-		Size = UDim2.new(1, -80, 0, 38),
-		ZIndex = 31,
-	})
-	label(card, {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.55),
-		Size = UDim2.fromOffset(70, 50),
-		Text = "VS",
-		ZIndex = 31,
-	})
-	local function side(x: number, role: string, color: Color3)
-		local holder = Instance.new("Frame")
-		holder.Position = UDim2.fromOffset(x, 54)
-		holder.Size = UDim2.fromOffset(220, 216)
-		holder.BackgroundColor3 = Color3.fromRGB(40, 32, 50)
-		holder.ZIndex = 31
-		holder.Parent = card
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 12)
-		corner.Parent = holder
-		label(holder, {
-			Position = UDim2.fromOffset(6, 4),
-			Size = UDim2.new(1, -12, 0, 26),
-			Text = role,
-			TextColor3 = color,
-			ZIndex = 32,
-		})
-		local photo = Instance.new("ImageLabel")
-		photo.AnchorPoint = Vector2.new(0.5, 0)
-		photo.Position = UDim2.new(0.5, 0, 0, 34)
-		photo.Size = UDim2.fromOffset(96, 96)
-		photo.BackgroundColor3 = Color3.fromRGB(60, 50, 70)
-		photo.ZIndex = 32
-		photo.Parent = holder
-		local photoCorner = Instance.new("UICorner")
-		photoCorner.CornerRadius = UDim.new(0.5, 0)
-		photoCorner.Parent = photo
-		local name = label(holder, {
-			Position = UDim2.fromOffset(6, 134),
-			Size = UDim2.new(1, -12, 0, 24),
-			ZIndex = 32,
-		})
-		local detail = label(holder, {
-			Position = UDim2.fromOffset(6, 158),
-			Size = UDim2.new(1, -12, 0, 20),
-			TextColor3 = Color3.fromRGB(220, 220, 230),
-			ZIndex = 32,
-		})
-		-- Their power, big and gold: everyone sees where these two are at
-		local power = label(holder, {
-			Position = UDim2.fromOffset(6, 182),
-			Size = UDim2.new(1, -12, 0, 26),
-			TextColor3 = Color3.fromRGB(255, 215, 70),
-			ZIndex = 32,
-		})
-		return photo, name, detail, power
-	end
-	-- Your own result, the biggest line on the card: "YOU WON! +12K 👟" / "+1.2K 👟 banked"
-	local yours = label(card, {
-		Name = "YourResult",
-		Position = UDim2.fromOffset(12, 278),
-		Size = UDim2.new(1, -24, 0, 44),
-		ZIndex = 31,
-	})
-	local mPhoto, mName, mDetail, mPower = side(14, "MURDERER", Color3.fromRGB(255, 70, 80))
-	local hPhoto, hName, hDetail, hPower = side(326, "SHERIFF", Color3.fromRGB(90, 170, 255))
-	local cardToken = 0
-	local function setPhoto(image: ImageLabel, userId: number, face: any?)
-		image.Image = ""
-		image.BackgroundColor3 = Color3.fromRGB(60, 50, 70)
-		-- A bot: its disguise's face drawn on its skin colour
-		if userId <= 0 and type(face) == "table" then
-			image.BackgroundColor3 = if typeof(face.Skin) == "Color3" then face.Skin else Color3.fromRGB(230, 190, 150)
-			image.Image = if type(face.Face) == "string" then face.Face else ""
-			return
-		end
-		if userId > 0 then
-			task.spawn(function()
-				local ok, url = pcall(
-					Players.GetUserThumbnailAsync,
-					Players,
-					userId,
-					Enum.ThumbnailType.HeadShot,
-					Enum.ThumbnailSize.Size150x150
-				)
-				if ok then
-					image.Image = url
-				end
-			end)
-		end
-	end
-	local function showCard(info: { [string]: any })
-		cardToken += 1
-		local token = cardToken
-		local murdererWon = info.Won == "Murderer"
-		cardTitle.Text = tostring(info.Title or "")
-		cardTitle.TextColor3 = if murdererWon then Color3.fromRGB(255, 80, 90) else Color3.fromRGB(110, 200, 255)
-		cardStroke.Color = cardTitle.TextColor3
-		mName.Text = tostring(info.MurdererName or "?")
-		local knife = if type(info.Knife) == "string" then info.Knife else ""
-		mDetail.Text = `{if knife ~= "" then Items.DisplayName(knife) else "Knife"} · {info.Kills or 0} kills`
-		mDetail.TextColor3 = if knife ~= "" then Items.Color(knife) else Color3.new(1, 1, 1)
-		setPhoto(mPhoto, tonumber(info.MurdererId) or 0, info.MurdererFace)
-		-- (no Murderer powers any more: the card shows the knife they flexed, not a power line)
-		mPower.Visible = false
-		if info.SheriffName then
-			-- The Sheriff, whether or not they got the shot
-			hName.Text = tostring(info.SheriffName)
-			hDetail.Text = `Revolver · {info.SheriffStatus or ""}`
-			setPhoto(hPhoto, tonumber(info.SheriffId) or tonumber(info.HeroId) or 0, info.HeroFace)
-		else
-			hName.Text = if murdererWon then "Nobody stopped them" else "Survived!"
-			hDetail.Text = if murdererWon then "" else "The innocents made it"
-			setPhoto(hPhoto, tonumber(info.HeroId) or 0, info.HeroFace)
-		end
-		hPower.Text = ""
-		local speed = tonumber(info.YourSpeed) or 0
-		local gain = if speed > 0 then ` +{Format.Short(speed)} 👟` else ""
-		yours.Text = if info.YouWon == true then `YOU WON!{gain}` elseif speed > 0 then `{gain} banked` else ""
-		yours.TextColor3 = if info.YouWon == true then Color3.fromRGB(120, 255, 140) else Color3.fromRGB(120, 200, 255)
-		card.Visible = true
-		local scale = card:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
-		scale.Parent = card
-		scale.Scale = 0.7
-		TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-		task.delay(6, function()
-			if token == cardToken then
-				card.Visible = false
-			end
-		end)
-	end
 
 	local fadeToken = 0
 	-- The kill card: who got you, with what, and where that knife comes from - the "I need that"
@@ -299,7 +134,7 @@ function Transitions.Init()
 	kill.Position = UDim2.fromScale(0.5, 0.45)
 	kill.Size = UDim2.fromOffset(480, 260)
 	kill.BackgroundColor3 = Color3.fromRGB(22, 16, 28)
-	kill.BackgroundTransparency = 0.1
+	kill.BackgroundTransparency = 0
 	kill.Visible = false
 	kill.ZIndex = 40
 	kill.Parent = Ui.root
@@ -412,15 +247,9 @@ function Transitions.Init()
 		prizeCard.Position = UDim2.fromScale(0.5, 0.4)
 		prizeCard.Size = UDim2.fromOffset(440, if type(knife) == "string" then 260 else 150)
 		prizeCard.BackgroundColor3 = Color3.fromRGB(22, 16, 28)
-		prizeCard.BackgroundTransparency = 0.1
+		prizeCard.BackgroundTransparency = 0
 		prizeCard.ZIndex = 45
 		prizeCard.Parent = Ui.root
-		local jingle = Instance.new("Sound")
-		jingle.SoundId = Sounds.Win
-		jingle.Volume = 0.5
-		jingle.Parent = workspace.CurrentCamera
-		jingle:Play()
-		Debris:AddItem(jingle, 6)
 		Instance.new("UICorner", prizeCard).CornerRadius = UDim.new(0, 18)
 		local stroke = Instance.new("UIStroke")
 		stroke.Thickness = 4
@@ -536,7 +365,12 @@ function Transitions.Init()
 		end
 		unlockWaiting = true
 		task.spawn(function()
-			while player:GetAttribute("InRound") or Ui.gui:GetAttribute("FadeCover") do
+			while
+				player:GetAttribute("InRound")
+				or player:GetAttribute("Carrying")
+				or player:GetAttribute("RunSaved")
+				or Ui.gui:GetAttribute("FadeCover")
+			do
 				task.wait(0.3)
 			end
 			task.wait(1.5)
@@ -599,43 +433,35 @@ function Transitions.Init()
 			return
 		end
 		if kind == "RoundCard" then
-			-- the round is over: the VS card takes the middle, the death card makes way
+			-- Only the outcome text remains at round end; clear an older death card.
 			killToken += 1
 			kill.Visible = false
 			if type(text) == "table" then
-				showCard(text)
-				-- The payoff, big, once you're home (every role): "🎉 You won the murder round!
-				-- +12K 👟" with the shoe shower into the Speed readout
-				local speed = tonumber(text.YourSpeed) or 0
-				if speed > 0 then
-					local won = text.YouWon == true
-					task.spawn(function()
-						local started = os.clock()
-						task.wait(6.2) -- (the VS card's time)
-						while
-							(player:GetAttribute("InRound") or Ui.gui:GetAttribute("FadeCover"))
-							and os.clock() - started < 25
-						do
-							task.wait(0.2)
+				local outcome = if text.Won == "Murderer" then "MURDERER WINS!" else "INNOCENTS WIN!"
+				if not player:GetAttribute("RunSaved") and not player:GetAttribute("Carrying") then
+					TopLine.Show(outcome, 5.5, "RoundOutcome")
+				end
+				if (tonumber(text.YourSpeed) or 0) > 0 and not player:GetAttribute("RunSaved") then
+					task.delay(0.8, function()
+						if Ui.FlyIn then
+							Ui.FlyIn(false, nil, 12)
 						end
-						task.wait(0.6)
-						queueCard(4.8, function()
-							showPrize(
-								`+{Format.Short(speed)} 👟 Speed`,
-								"Speed",
-								nil,
-								false,
-								if won then "🎉 You won the murder round!" else "👟 Your Speed from the round"
-							)
-						end)
 					end)
 				end
 				-- you won it: the best moment of the first visit to ask for a favourite (once ever)
 				local murdererWon = text.Won == "Murderer"
 				local mine = tonumber(text.MurdererId) == Players.LocalPlayer.UserId
 				if murdererWon == mine then
-					task.delay(6.5, Favorite.Ask, if mine then "murderer_win" else "round_win", function()
-						task.delay(3, GiftCard.Offer)
+					task.spawn(function()
+						task.wait(6.5)
+						while
+							player:GetAttribute("Carrying")
+							or player:GetAttribute("RunSaved")
+							or player:GetAttribute("InRound")
+						do
+							task.wait(0.3)
+						end
+						GiftCard.Offer()
 					end)
 				end
 			end

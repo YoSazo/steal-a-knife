@@ -47,6 +47,8 @@ local CoffinService = require(script.Parent.CoffinService)
 local SurpriseGifts = require(script.Parent.SurpriseGifts)
 
 local Progress = require(script.Parent.RoundProgress)
+local SpeedCoinModel = require(ReplicatedStorage.Shared.SpeedCoinModel)
+
 local RoundService = {}
 
 -- The hub's top timer. Says what's coming, so a new player knows the Murder Mystery half exists.
@@ -874,41 +876,13 @@ local function coinPoint(round: Round): Vector3?
 	return best
 end
 
--- The Blender coin (Props "Coin": rim, notched edge, a skull on both faces) standing upright with
--- a soft gold glow and a few sparkles; an invisible ball around it is what you touch
-local function buildCoin(at: CFrame): (Model, BasePart)
-	local model = Instance.new("Model")
-	model.Name = "SpeedShoe"
-	local hitbox = Instance.new("Part")
-	hitbox.Name = "Hitbox"
-	hitbox.Size = Vector3.one * 3.4
-	hitbox.CFrame = at
-	hitbox.Anchored = true
-	hitbox.CanCollide = false
-	hitbox.Transparency = 1
-	hitbox.Parent = model
-	model.PrimaryPart = hitbox
-	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(52, 52)
-	gui.MaxDistance = 100
-	gui.LightInfluence = 0
-	gui.Parent = hitbox
-	local art = Instance.new("ImageLabel")
-	art.Size = UDim2.fromScale(1, 1)
-	art.BackgroundTransparency = 1
-	art.Image = require(ReplicatedStorage.Shared.Config.CartoonArt).Speed
-	art.Parent = gui
-	return model, hitbox
-end
-
 local function spawnCoin(round: Round)
 	local point = coinPoint(round)
 	if not point then
 		return
 	end
 	-- Face a random way so a room full of coins doesn't look stamped out
-	local coin, hitbox =
-		buildCoin(CFrame.new(point + Vector3.new(0, 2.1, 0)) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0))
+	local coin, hitbox = SpeedCoinModel.Build(CFrame.new(point + Vector3.new(0, 2.1, 0)), true)
 	coin:AddTag("Coin")
 	coin.Parent = round.Coins
 	hitbox.Touched:Connect(function(other)
@@ -1426,6 +1400,14 @@ giveWeapon = function(round: Round)
 end
 
 local function startRound(participants: { Player })
+	-- Save runs before disguises/streaming can change the body or delay the teleport.
+	local pausedRun = false
+	for _, player in participants do
+		pausedRun = StealService.EndForRound(player) or pausedRun
+	end
+	if pausedRun then
+		task.wait(2)
+	end
 	CoffinService.RoundStarted()
 	local built = MapService.BuildRoundMap() -- (a random map: the vote was cut)
 	ReplicatedStorage:SetAttribute("MapName", built.Name)
@@ -1552,8 +1534,6 @@ local function startRound(participants: { Player })
 			player:SetAttribute("RoundTeleport", nil)
 			continue
 		end
-		-- The night: a boss's knife you're carrying goes back to its wall (the 10 s warning said so)
-		StealService.EndForRound(player)
 		local isMurderer = player == round.Murderer
 		if not isMurderer then
 			table.insert(round.Innocents, player)
@@ -1738,14 +1718,6 @@ local function endRound(round: Round)
 	if round.GunTool then
 		round.GunTool:Destroy()
 	end
-	-- Bots have no Roblox photo: keep their disguise's face for the VS card before they're gone
-	local function botFace(bot: Bot?): { Face: string, Skin: Color3 }?
-		local head = bot and bot.Model:FindFirstChild("Head") :: BasePart?
-		local decal = head and head:FindFirstChildOfClass("Decal")
-		return if head then { Face = if decal then decal.Texture else "", Skin = head.Color } else nil
-	end
-	local murdererBotFace = botFace(round.MurdererBot)
-	local heroBotFace = botFace(round.HeroBot)
 	round.Coins:Destroy()
 	round.Bodies:Destroy()
 	round.BotFolder:Destroy()
@@ -1790,7 +1762,6 @@ local function endRound(round: Round)
 		end
 	end
 
-	local hero = round.Hero
 	-- Coffins: the murder rounds are their clock - one round off everyone's, two for the winners
 	-- One meaning of "you won", used by everything: the round card's YOU WON, the coffin clock,
 	-- Winner's Luck, the win count and the jackpot step. (A Murderer wins with at least one kill:
@@ -1813,19 +1784,31 @@ local function endRound(round: Round)
 		end
 	end
 
-	-- Everyone still in the round goes home as themselves, behind a fade (client/Transitions)
+	local outcome = if innocentsWon then "INNOCENTS WIN!" else "MURDERER WINS!"
+	ReplicatedStorage:SetAttribute("RoundOutcome", outcome)
+	setPhase("Results", GameConfig.ResultsTime, outcome)
+	-- Interrupted thieves return directly; everyone else goes back to their pen.
 	local fading = false
 	for player in round.Alive do
-		if player.Parent then
+		if player.Parent and not StealService.HasSavedRun(player) then
 			Net.Remotes.Effect:FireClient(player, "Fade", "🏠 Back to the hub")
 			fading = true
+		end
+	end
+	for player in round.Names do
+		if player.Parent and StealService.HasSavedRun(player) then
+			leaveRound(player)
+			if round.Alive[player] then
+				Disguises.Remove(player)
+			end
+			StealService.ReturnAfterRound(player)
 		end
 	end
 	if fading then
 		task.wait(0.35)
 	end
 	for player in round.Alive do
-		if player.Parent then
+		if player.Parent and not player:GetAttribute("RunSaved") then
 			leaveRound(player)
 			Disguises.Remove(player)
 			BaseService.TeleportHome(player)
@@ -1844,53 +1827,9 @@ local function endRound(round: Round)
 		end)
 	end
 
-	local murdererName = if murderer
-		then `{round.Names[murderer] or "?"} ({murderer.DisplayName})`
-		else `{if round.MurdererBot then round.MurdererBot.Name else "?"} (a bot)`
-	local status = if #round.Innocents == 0 and #round.Bots == 0
-		then "Solo test round over" -- Studio debug rounds have nobody to survive
-		elseif hero then `{round.Names[hero] or hero.DisplayName} shot the Murderer, {murdererName}!`
-		elseif innocentsWon then `Innocents win! The Murderer was {murdererName}`
-		else `The Murderer wins! It was {murdererName}`
-	setPhase("Results", GameConfig.ResultsTime, status)
-	-- The VS card: who was the Murderer, with which knife, and who stopped them (client/Transitions)
-	local heroName: string? = if hero
-		then `{round.Names[hero] or "?"} ({hero.DisplayName})`
-		elseif round.HeroBot then `{round.HeroBot.Name} (bot Sheriff)`
-		else nil
-	local sheriff: Player? = hero or round.Sheriff
-	local sheriffBot = if sheriff then nil else round.HeroBot or round.SheriffBot
-	local sheriffName: string? = if sheriff
-		then `{round.Names[sheriff] or "?"} ({sheriff.DisplayName})`
-		elseif sheriffBot then `{sheriffBot.Name} (bot)`
-		else nil
-	local sheriffId = if sheriff then sheriff.UserId else 0
-	local sheriffStatus = if hero or round.HeroBot
-		then "shot the Murderer!"
-		elseif sheriff and round.Alive[sheriff] then "survived"
-		elseif sheriff or sheriffBot then "was taken out"
-		else ""
 	local card = {
-		Title = if hero or round.HeroBot
-			then "The Sheriff saved the day!"
-			elseif innocentsWon then "The innocents survived!"
-			else "The Murderer wins!",
 		Won = if innocentsWon then "Innocents" else "Murderer",
-		MurdererName = if murderer
-			then `{round.Names[murderer] or "?"} ({murderer.DisplayName})`
-			elseif round.MurdererBot then `{round.MurdererBot.Name} (bot)`
-			else "?",
 		MurdererId = if murderer then murderer.UserId else 0,
-		Knife = round.WeaponKnife,
-		HeroName = heroName,
-		HeroId = if hero then hero.UserId else 0,
-		MurdererFace = murdererBotFace,
-		HeroFace = heroBotFace,
-		Kills = round.Kills,
-		-- The Murderer's knife power on show
-		SheriffName = sheriffName,
-		SheriffId = sheriffId,
-		SheriffStatus = sheriffStatus,
 	}
 	for player in round.Names do
 		if player.Parent then

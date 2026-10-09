@@ -65,7 +65,7 @@ local tip = label({
 local TIPS = {
 	"Steal a coffin from a monster and run it home!",
 	"What hatches from it makes you money!",
-	"Run in your wheel to get faster!",
+	"Play murder rounds to get more Speed!",
 	"Faster = outrun scarier monsters!",
 	"Win the Murder Round to get faster!",
 	"Be the Murderer: get everyone!",

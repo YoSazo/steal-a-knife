@@ -19,7 +19,7 @@ Payment receipt processing remains idempotent; retired product/pass receipt tabl
 - Clients request actions; the server checks ownership, state, range, cooldown and valid inputs.
 - DataService owns persistence, session locking and retrying UpdateAsync. Studio without API access
   uses temporary profiles. Item strings are Name|Mutation|Size.
-- MapService builds the runway, eight pens and round maps. PenWalls builds the low fences;
+- MapService builds the runway, six pens and round maps. PenWalls builds the low fences;
   BaseMarkers still uses the internal VaultGate marker. Room grows from 10 to 20 slots by one.
 - BaseService owns placement, character racks, income collection and RefreshWalkSpeed. Pending
   knife income is collected by entering your pen (or Auto Collect). Offline income is Cash.
@@ -27,6 +27,11 @@ Payment receipt processing remains idempotent; retired product/pass receipt tabl
   The safe line ends the chase glow; deeper creatures fling harder. Creature names are goals.
 - RoundService chooses one Murderer and one Sheriff, disguises everyone, validates stab/throw/gun
   actions, runs bots, returns players home, and restocks the monster stashes after each round.
+  Owner correction 2026-10-09: every carried coffin is saved across the round, including safe-zone
+  carries. Show reassurance before teleport. Return directly at round end to the same saved
+  position/item. On the runway, freeze player and creature through the dimmed 3-2-1, then release;
+  in the safe zone return without restarting a chase. Reserved slots never restock; leaving
+  releases them. Other players return to their pens. Do not add a "Back to your coffin" fade.
 - Vaults, Murderer powers, Classic and Double Trouble are deleted. Every knife uses tap to stab,
   hold to throw. Rarity/colour determine the cosmetic kill burst.
 - RoundProgress owns Speed: a frozen per-player round budget, banked steps, increasing kill
@@ -84,3 +89,11 @@ DebugService and its remotes are Studio-only; never use them for production admi
   a time. Owner can start an extra one. Friday countdown. Do not add the cut role twists.
 - Milestones govern Speed shares: Rare ~0.34h, Epic ~1.2h, Legendary ~4h, Mythic ~8h.
   Tune amounts with tools/pacing_sim.py; keep step timings and parts fixed.
+
+## Latest owner presentation/pacing choices (2026-10-09)
+- Six pens (4 back + 1 per side), server size 6. Entrance board and Lucky Wheel removed.
+- Coin pickups everywhere are +1 Speed, random scatter (40 hub / 26 each biome), no perfect rows.
+- Fast hatches: 1/2/3/4/6/8/10/12 rounds above Common; wins count twice; offline round 142 s.
+- No end-of-round roster modal or victory jingle. Persistent PEN FULL warning while home carrying.
+- Free gift chest/card uses real reward, Like screenshot, native Favorite and Join prompts.
+- Featured products have immutable per-character IDs; the tile uses the real dated rotation.

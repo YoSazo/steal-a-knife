@@ -72,7 +72,7 @@ return {
 	ThiefMoonTitle = id("129401343322650"), -- 1024x384, "THIEF MOON" baked in
 	CaseReward = id("96356444223481"), -- 256x256
 	-- HUD icons (256x256)
-	Speed = id("72545785110652"), -- includes its own + badge
+	Speed = id("74716351276486"), -- shoe only; pickup markers never show a shop +
 	Cash = id("95697938789361"),
 	Heat = id("72238436704158"),
 	MurdererChance = id("135933930646875"),

@@ -67,7 +67,6 @@ MapService.RoundMapSize = Vector2.new(150, 110)
 MapService.RoundLevels = 1 -- storeys in the current round map
 MapService.RoundStorey = 15 -- floor-to-floor height in the current round map (scaled)
 MapService.LobbySpawn = CFrame.new(0, 4, -110)
-MapService.LuckyWheelAt = nil :: Vector3? -- (pens: the far end of the hub lane, set by buildBases)
 -- Biomes dressed by a Codex-built shell (src/shared/Assets/<Name>Shell): zone index -> module name.
 -- Their old wall looks and ManorDecor's random props are switched off (ManorDecor reads this too).
 -- The first two biomes keep their Codex shell (low studded borders, shrubs, a pond). The deeper
@@ -281,7 +280,7 @@ local function buildArena()
 	line.CanCollide = false
 	line.CanQuery = false
 	-- SAFE ZONE painted on the plaza floor: bosses give up the chase past the line
-	local paint = block("SafeZone", Vector3.new(60, 0.05, 10), CFrame.new(0, 0.23, -12), Color3.new(), arena)
+	local paint = block("SafeZone", Vector3.new(28, 0.05, 5), CFrame.new(0, 0.24, -8), Color3.new(), arena)
 	paint.Transparency = 1
 	paint.CanCollide = false
 	paint.CanQuery = false
@@ -292,8 +291,12 @@ local function buildArena()
 	safeText.Font = Enum.Font.FredokaOne
 	safeText.TextScaled = true
 	safeText.TextColor3 = Color3.new(1, 1, 1)
-	safeText.TextTransparency = 0.15
+	safeText.TextTransparency = 0
+	safeText.TextWrapped = false
 	safeText.Text = "🛡 SAFE ZONE 🛡"
+	local safeStroke = Instance.new("UIStroke")
+	safeStroke.Color, safeStroke.Thickness = Color3.fromRGB(20, 18, 25), 4
+	safeStroke.Parent = safeText
 	safeText.Rotation = 180 -- reads the right way round walking up from the plaza
 	safeText.Parent = safeGui
 end
@@ -333,19 +336,21 @@ local function buildBases()
 	-- (a pen's full length, or a vault's depth: everything below is laid out from it)
 	local DEPTH = GameConfig.Pens.Depth
 	-- Pens wrap an open plaza in a "]" (Steal from the Rich): a row across the back wall facing the
-	-- way in, and one on each side wall facing the middle (8 pens: 6 + 1 + 1). The middle stays open
-	-- (the Lucky Wheel stands in it); each pen's upgrade sign stands in front of its gate.
+	-- way in, and one on each side wall facing the middle (6 pens: 4 + 1 + 1). The middle stays open
+	-- Each pen's upgrade sign stands in front of its gate.
 	-- The hub is just big enough for that, gaps kept tight: open ground is walking with nothing to
 	-- do. Numbered nearest-first, so players get the closest pen.
 	local penCentres: { Vector3 } = {}
 	local penFrames: { [Vector3]: CFrame } = {}
-	local PEN_GAP = 8 -- (between neighbouring pens)
-	local FRONT = 12 -- (the strip behind the safe line, before the side pens start)
-	local PLAZA = 20 -- (between the side pens' ends and the back row: the outer back gates open here)
+	local PEN_GAP = 4 -- (between neighbouring pens)
+	local FRONT = 6 -- (the strip behind the safe line, before the side pens start)
+	local PLAZA = 32 -- (between the side pens' ends and the back row: the outer back gates open here)
 	local sideCount = math.min(2, GameConfig.Pens.Count)
 	local backCount = GameConfig.Pens.Count - sideCount
 	local rowWidth = backCount * penWidth + (backCount - 1) * PEN_GAP
-	HUB_HALF = math.max(half, rowWidth / 2 + 4)
+	HUB_HALF = half
+	local backRowHalf = rowWidth / 2 + 4
+	HUB_STEP = { X = backRowHalf, Z = FRONT + penWidth + 4 }
 	local backZ = FRONT + penWidth + PLAZA + DEPTH / 2
 	for k = 0, backCount - 1 do
 		local centre = Vector3.new(-rowWidth / 2 + penWidth / 2 + k * (penWidth + PEN_GAP), 0, -backZ)
@@ -354,7 +359,7 @@ local function buildBases()
 	end
 	for k = 1, sideCount do
 		local side = if k == 1 then -1 else 1
-		local centre = Vector3.new(side * (HUB_HALF - 1 - DEPTH / 2), 0, -(FRONT + penWidth / 2))
+		local centre = Vector3.new(side * (16 + DEPTH / 2), 0, -(FRONT + penWidth / 2))
 		table.insert(penCentres, centre)
 		-- (turned to face the middle: the left one +X, the right one -X)
 		penFrames[centre] = CFrame.new(centre) * CFrame.Angles(0, math.rad(if side < 0 then 90 else -90), 0)
@@ -363,8 +368,6 @@ local function buildBases()
 		return a.Magnitude < b.Magnitude
 	end)
 	HUB_BACK = backZ + DEPTH / 2 + 2
-	-- (the Lucky Wheel in the open middle, facing the way in)
-	MapService.LuckyWheelAt = Vector3.new(0, 0, -(FRONT + penWidth * 0.6))
 	MapService.LobbySpawn = CFrame.new(0, 4, -14)
 	MapService.MaxBases = GameConfig.Pens.Count
 
@@ -580,7 +583,7 @@ local function buildBases()
 			Toy.DirtWall(
 				block(
 					"HubWall",
-					Vector3.new(HUB_HALF - step.X + WALL_THICK, WALL_HEIGHT, WALL_THICK),
+					Vector3.new(math.abs(HUB_HALF - step.X) + WALL_THICK, WALL_HEIGHT, WALL_THICK),
 					CFrame.new(side * (HUB_HALF + step.X + WALL_THICK) / 2, WALL_HEIGHT / 2, -step.Z - WALL_THICK / 2),
 					Toy.Dirt,
 					bases
@@ -805,6 +808,8 @@ function MapService.Init()
 	task.wait()
 	ManorDecor.ShellZones = BIOME_SHELLS
 	ManorDecor.Build(root, MapService.Arena :: Bounds, MapService.Hideaways)
+	-- Leave the boundary paint readable: raised floor tiles must not cover its letters.
+	ManorDecor.ClearArea(Vector3.new(0, 0, -8), 16, 6)
 	task.wait()
 	-- Nothing from the plaza decor in the way of the wheels outside the vault gates
 	for _, base in MapService.Bases do

@@ -7,6 +7,7 @@ local Theme = require(script.Parent.MenuTheme)
 local Config = ReplicatedStorage.Shared.Config
 local Monetization = require(Config.Monetization)
 local player = Players.LocalPlayer
+local FeaturedShop = require(script.Parent.FeaturedShop)
 local View = {}
 
 local function exactCash(amount: number): string
@@ -92,7 +93,6 @@ function View.Build(actions: any): Frame
 		Luck = "Luck",
 		OfflinePlus = "Rebirth",
 		ExtraFloor = "Upgrades",
-		Spins10 = "Spin",
 		SpeedPotion = "Speed",
 		SpeedPotionBig = "Speed",
 		CollectSession = "Cash",
@@ -181,16 +181,15 @@ function View.Build(actions: any): Frame
 		end
 	end
 
-	-- FEATURED: the Starter Pack (once), the passes, then luck and spins
+	-- FEATURED: the Starter Pack (once), the passes, then other featured offers
 	local featured = pages.Featured
+	FeaturedShop.Build(featured, actions)
 	title(featured, "PASSES", 3)
 	local passOrder = 4
 	for _, key in { "DoubleCash", "VIP", "Luck", "AutoCollect", "OfflinePlus", "ExtraFloor" } do
 		pass(featured, key, passOrder)
 		passOrder += 1
 	end
-	title(featured, "LUCK", 30)
-	product(featured, "Spins10", 31)
 
 	-- SPEED: the wheel's next level, Speed packs scaled to you, then the Speed passes and potions
 	local speed = pages.Speed

@@ -61,7 +61,7 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 		if profile.Rebirths >= GameConfig.Rebirth.Max then
 			return false, "You've reached the final rebirth!"
 		end
-		if player:GetAttribute("InRound") or player:GetAttribute("Carrying") then
+		if player:GetAttribute("InRound") or player:GetAttribute("Carrying") or player:GetAttribute("RunSaved") then
 			return false, "Get home first!"
 		end
 		if profile.Cash < cost then
@@ -90,12 +90,14 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 				p.Pending[slot] = 0
 			end
 			p.Knives = {}
+			p.Sealed = {}
 			p.Plates = {}
 			p.Equipped = ""
 			p.Slots = GameConfig.StartingSlots
 			p.Speed = 0
 		end)
 		BaseService.RefreshRack(player)
+		BaseService.RefreshWalkSpeed(player)
 		local title = GameConfig.RebirthTitle(profile.Rebirths) or ""
 		Net.Announce(
 			`{player.DisplayName} REBIRTHED! They are now a {title} (x{1 + profile.Rebirths * GameConfig.Rebirth.IncomeBonus} income)`,
@@ -110,12 +112,12 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			`Rebirth {profile.Rebirths}! Everything earns x{1 + profile.Rebirths * GameConfig.Rebirth.IncomeBonus}`
 	elseif kind == "Slot" then
 		if profile.Slots >= PenMode.MaxSlots() then
-			return false, "Your vault is as tall as it gets!"
+			return false, "Your pen has every spot!"
 		end
 		local cost, step, floorRebirths = PenMode.RoomUpgrade(profile.Slots)
 		if profile.Rebirths < floorRebirths then
-			Offers.Show(player, "Mount", "Want it now? Add the next floor instantly.")
-			return false, `The next floor needs Rebirth {floorRebirths}`
+			Offers.Show(player, "Mount", "Want the next spot now?")
+			return false, `The next spot needs Rebirth {floorRebirths}`
 		end
 		if not DataService.TrySpend(player, cost, "upgrade_floor") then
 			Offers.Show(player, "Mount", PenMode.Words("Want it now? Make your vault bigger instantly."))

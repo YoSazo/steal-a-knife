@@ -707,7 +707,7 @@ end
 local function onCharacterAdded(player: Player, character: Model)
 	character:WaitForChild("HumanoidRootPart")
 	task.defer(function()
-		if not player:GetAttribute("InRound") then
+		if not player:GetAttribute("InRound") and not player:GetAttribute("RunSaved") then
 			BaseService.TeleportHome(player)
 		end
 		BaseService.RefreshWalkSpeed(player)

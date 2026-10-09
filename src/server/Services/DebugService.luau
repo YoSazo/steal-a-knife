@@ -48,6 +48,14 @@ local commands: { [string]: (Player, ...any) -> any } = {
 		BaseService.RefreshRack(player)
 		return true
 	end,
+	Receipt = function(player: Player, productId: number, receipt: string)
+		return require(script.Parent.MonetizationService).ProcessReceipt({
+			PlayerId = player.UserId,
+			ProductId = productId,
+			PurchaseId = receipt,
+			CurrencySpent = 0,
+		}).Name
+	end,
 	-- The last n analytics events (newest last), each as "event {json props}"
 	-- raw = the exact JSON body the ingest server would get
 	Analytics = function(_player: Player, n: number?, raw: boolean?)
@@ -104,6 +112,14 @@ local commands: { [string]: (Player, ...any) -> any } = {
 		return true
 	end,
 	-- Steal from a boss's wall for real (the boss chases you): tests guard hits and thrown knives
+	RunPause = function(player: Player)
+		StealService.EndForRound(player)
+		return player:GetAttribute("RunSaved")
+	end,
+	RunResume = function(player: Player)
+		StealService.ReturnAfterRound(player)
+		return true
+	end,
 	Map = function(player: Player, name: string)
 		if ReplicatedStorage:GetAttribute("Phase") ~= "Intermission" then
 			return false

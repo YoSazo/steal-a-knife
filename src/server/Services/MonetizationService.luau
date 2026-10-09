@@ -23,7 +23,6 @@ local Items = require(ReplicatedStorage.Shared.Items)
 local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
-local Gamble = require(script.Parent.Gamble)
 local GuardService = require(script.Parent.GuardService)
 local Rewards = require(script.Parent.Rewards)
 local Analytics = require(script.Parent.Analytics)
@@ -207,9 +206,9 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 		end
 	end
 	if product.Featured then
-		-- This week's character (a late receipt gets the latest week's), each with the exact odds
-		-- the tile showed; no room for one = its coffin value instead (the tile warns about room)
-		local name = FeaturedCoffin.ForGrant(os.time())
+		-- A product id always grants its named character, even if its receipt arrives next week.
+		-- No room for one = its coffin value (shown on the tile).
+		local name = product.FeaturedKnife
 		local given, refunded = 0, 0
 		for _ = 1, product.Featured do
 			local item = if name then Items.Make(name, FeaturedCoffin.RollMutation(featuredRng), "") else nil
@@ -226,10 +225,6 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 			DataService.AddCash(player, refunded, "robux_coffin_value")
 			table.insert(got, Format.Cash(refunded))
 		end
-	end
-	if product.Spins then
-		Gamble.AddSpins(player, product.Spins)
-		table.insert(got, `{product.Spins} wheel spins`)
 	end
 	if product.Boost then
 		local boost = product.Boost
@@ -297,8 +292,9 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 		if Rewards.RestoreStreak(player) then
 			table.insert(got, "your daily streak back")
 		else
-			Gamble.AddSpins(player, 3) -- nothing to restore: never lose their Robux
-			table.insert(got, "3 wheel spins (your streak was fine)")
+			local cash = GameConfig.Pay({ Min = 1000, Seconds = 300 }, BaseService.RackIncome(player))
+			DataService.AddCash(player, cash, "robux_product")
+			table.insert(got, Format.Cash(cash))
 		end
 	end
 	if product.OneTime then

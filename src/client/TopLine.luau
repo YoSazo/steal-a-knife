@@ -46,6 +46,7 @@ end
 local function build()
 	local frame = Ui.new("Frame", {
 		Name = "TopLine",
+		BackgroundColor3 = Color3.fromRGB(8, 10, 22),
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.fromScale(0.5, 0),
 		BackgroundTransparency = 1,
@@ -82,6 +83,7 @@ local function fit(text: string, withPill: boolean)
 	if not frame or not words then
 		return
 	end
+	frame.BackgroundTransparency = if showing and showing.Key == "Zone" then 0.6 else 1
 	local _, bounds = Ui.bounds()
 	-- (big enough for a 5-year-old to read at a glance: was 18 / 20)
 	words.TextSize = if showing
@@ -163,10 +165,7 @@ local function fit(text: string, withPill: boolean)
 		pill.AnchorPoint = Vector2.new(0, 0.5)
 		pill.Position = UDim2.new(0, fade + lane + iconWidth + 8, 0.5, 0)
 	end
-	local top = if Ui.gui:GetAttribute("TutorialBar") == true and not tutorialInStrip
-		then ((Ui.gui:GetAttribute("TutorialBarHeight") or 36) :: number) + 2
-		elseif doLine and not doInStrip then ((Ui.gui:GetAttribute("DoLineHeight") or 38) :: number) + 2
-		else 0
+	local top = (Ui.gui:GetAttribute("MurderClockBottom") or Ui.messageTop() + 44) :: number
 	if strip then
 		frame.Position = UDim2.fromOffset(strip.X, strip.Y + (strip.H - tall) / 2)
 	else
@@ -264,7 +263,15 @@ function TopLine.Init()
 	-- Resting: redraw when the words change (the timer ticks once a second)
 	RunService.RenderStepped:Connect(function()
 		local frame, text = band, label
-		if not frame or not text or showing then
+		if not frame or not text then
+			return
+		end
+		if Ui.gui:GetAttribute("PenFullMessage") == true then
+			frame.Visible = false
+			return
+		end
+		if showing then
+			frame.Visible = true
 			return
 		end
 		local resting = TopLine.Resting
@@ -299,6 +306,7 @@ function TopLine.Init()
 		end
 	end
 	Ui.Layout.Changed:Connect(refit)
+	Ui.gui:GetAttributeChangedSignal("MurderClockBottom"):Connect(refit)
 	Ui.gui:GetAttributeChangedSignal("TutorialBar"):Connect(refit)
 	Ui.gui:GetAttributeChangedSignal("TutorialBarHeight"):Connect(refit)
 	Ui.gui:GetAttributeChangedSignal("TutorialInStrip"):Connect(refit)

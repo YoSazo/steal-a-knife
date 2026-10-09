@@ -78,6 +78,7 @@ local function state(): NextAction.State
 		CoffinsReady = (player:GetAttribute("CoffinsReady") or 0) :: number,
 		Carrying = if type(carrying) == "string" then carrying else nil,
 		InVault = root ~= nil and Places.InVault(root.Position),
+		InSafeZone = root ~= nil and root.Position.Z <= 0,
 		FreePlate = plateAt ~= nil,
 		KnifeCount = (player:GetAttribute("KnifeCount") or 0) :: number,
 		Slots = (player:GetAttribute("Slots") or GameConfig.StartingSlots) :: number,
@@ -176,25 +177,34 @@ local function roundAction(): NextAction.Action
 		then "Touch"
 		else if UserInputService.PreferredInput == Enum.PreferredInput.Gamepad then "Gamepad" else "Keyboard"
 	local reward = player:GetAttribute("RoundStepSpeed")
-	if type(reward) == "number" then
-		local kills = player:GetAttribute("RoundStepKills")
+	local wait = math.max(0, math.ceil(((player:GetAttribute("WeaponAt") or now) :: number) - now))
+	if player:GetAttribute("RoundHide") then
 		local due = player:GetAttribute("RoundStepAt")
-		if
-			player:GetAttribute("RoundHide")
-			or (not murderer and (not gun or toolWith("Revolver", true)))
-			or toolWith("MurderKnife", true)
-		then
-			-- One verb for the whole ladder: SURVIVE the countdown, get the shoes. (The Murderer's
-			-- countdown while everyone hides is its knife arriving; after that its steps are kills.)
-			local seconds = math.max(0, math.ceil((if type(due) == "number" then due else now) - now))
-			local step = if type(kills) == "number"
-				then `🔪 {kills}`
-				elseif murderer then `🔪 {seconds}s`
-				else `SURVIVE {seconds}s`
+		local seconds = if type(due) == "number" then math.max(0, math.ceil(due - now)) else wait
+		local title = if murderer
+			then "KNIFE IN"
+			elseif player:GetAttribute("Role") == "Sheriff" then "GUN IN"
+			else "HIDE!"
+		return {
+			Id = "round_speed",
+			Text = `{title} {seconds}s = +{Ui.abbreviate(if type(reward) == "number" then reward else 0)} SPEED`,
+		}
+	end
+	if type(reward) == "number" then
+		if murderer and toolWith("MurderKnife", true) then
+			return { Id = "round_speed", Text = `🔪 GET 1 PLAYER = +{Ui.abbreviate(reward)} SPEED` }
+		elseif not murderer and gun and toolWith("Revolver", true) then
+			local jackpot = player:GetAttribute("RoundStopSpeed")
 			return {
 				Id = "round_speed",
-				Text = `{step} → +{Ui.abbreviate(reward)} 👟`,
+				Text = if type(jackpot) == "number"
+					then `⭐ STOP THE MURDERER = +{Ui.abbreviate(jackpot)} SPEED`
+					else "⭐ STOP THE MURDERER!",
 			}
+		elseif not murderer and not gun then
+			local due = player:GetAttribute("RoundStepAt")
+			local seconds = math.max(0, math.ceil((if type(due) == "number" then due else now) - now))
+			return { Id = "round_speed", Text = `SURVIVE {seconds}s = +{Ui.abbreviate(reward)} SPEED` }
 		end
 	end
 	return RoundGuidance.Pick({
@@ -323,7 +333,7 @@ function Guide.Init()
 		local _, bounds = Ui.bounds()
 		-- (the objective: big, the first thing a kid reads - was 19 / 22)
 		label.TextSize = if Ui.Phone then 28 else 36
-		local strip = Ui.topStrip()
+		local strip: Ui.Strip? = nil
 		if Ui.Phone and displayAction and displayAction.Short then
 			shownText = displayAction.Short
 			label.Text = shownText
@@ -358,7 +368,7 @@ function Guide.Init()
 			height = math.min(height, strip.H)
 			band.Position = UDim2.fromOffset(strip.X, strip.Y + (strip.H - height) / 2)
 		else
-			band.Position = UDim2.fromScale(0.5, 0)
+			band.Position = UDim2.new(0.5, 0, 0, (Ui.gui:GetAttribute("MurderClockBottom") or 52) :: number)
 		end
 		band.Size = UDim2.fromOffset(math.min(width + 8, lane) + 2 * fade, height)
 		label.Size = UDim2.new(1, -2 * fade, 1, 0)
@@ -366,6 +376,7 @@ function Guide.Init()
 		Ui.gui:SetAttribute("DoLineHeight", height)
 	end
 	Ui.Layout.Changed:Connect(fit)
+	Ui.gui:GetAttributeChangedSignal("MurderClockBottom"):Connect(fit)
 
 	local current: NextAction.Action? = nil
 	local completedCurrent = false
@@ -565,6 +576,9 @@ function Guide.Init()
 			indexEntered = nil
 		end
 		local blocked = tutorial
+			or (player:GetAttribute("RunSaved") == true and not inRound and not player:GetAttribute("Carrying"))
+			or (ReplicatedStorage:GetAttribute("Phase") == "Results" and not player:GetAttribute("Carrying"))
+			or ((player:GetAttribute("RunResumeAt") or 0) :: number) > workspace:GetServerTimeNow()
 			or (Ui.menuOpen() and not indexOpen)
 			or Ui.gui:GetAttribute("FadeCover") == true
 			or Ui.gui:GetAttribute("Presenting") == true
@@ -709,7 +723,9 @@ function Guide.Init()
 				fit()
 			end
 		end
-		local messageVisible = visible and (inRound or Ui.gui:GetAttribute("TopLineNotice") ~= true)
+		local full = current ~= nil and (current.Id == "carry_full" or current.Id == "carry_bigger")
+		Ui.gui:SetAttribute("PenFullMessage", full and not blocked)
+		local messageVisible = visible and (inRound or full or Ui.gui:GetAttribute("TopLineNotice") ~= true)
 		local targetButton = uiTarget(current or menuAction)
 		if messageVisible and targetButton and rendered(targetButton) and not tutorial then
 			pulseButton(targetButton)

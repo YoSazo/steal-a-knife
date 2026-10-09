@@ -733,5 +733,30 @@
     "assetId": "138493039190721",
     "file": "assets/knife-characters/eye-styles-v2/Katana.png",
     "uploaded": "2026-10-07 12:40"
+  },
+  "Prop_SpeedCoin": {
+    "assetId": "88760594831841",
+    "file": "blender/exports/props/SpeedCoin.fbx",
+    "uploaded": "2026-10-09 15:01"
+  },
+  "Cartoon_Speed_NoBadge": {
+    "assetId": "80908349607922",
+    "file": "assets/ui/cartoon-pack-v2/Speed.png",
+    "uploaded": "2026-10-09 15:01"
+  },
+  "Featured_InfernoBanner": {
+    "assetId": "109982635719936",
+    "file": "assets/ui/featured-shop/inferno-banner.png",
+    "uploaded": "2026-10-09 15:18"
+  },
+  "Gift_SpeedBag": {
+    "assetId": "123907592022770",
+    "file": "assets/ui/featured-shop/speed-gift-bag.png",
+    "uploaded": "2026-10-09 15:36"
+  },
+  "Gift_LikeInstructions": {
+    "assetId": "93542820133062",
+    "file": "assets/ui/featured-shop/like-instructions.png",
+    "uploaded": "2026-10-09 16:09"
   }
 }

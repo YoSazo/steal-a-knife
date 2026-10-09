@@ -51,5 +51,4 @@ return {
 	LuckyCelestial = require(script.Parent.ToyGeometry.LuckyCelestial),
 	LuckyCosmic = require(script.Parent.ToyGeometry.LuckyCosmic),
 	FreeChest = require(script.Parent.ToyGeometry.FreeChest),
-	EventBoardDecor = require(script.Parent.ToyGeometry.EventBoardDecor),
 }

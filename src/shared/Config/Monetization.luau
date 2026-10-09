@@ -28,8 +28,8 @@ export type Product = {
 	Cash: { Min: number, Seconds: number }?, -- seconds of the buyer's income, at least Min
 	Speed: { Share: number, Min: number }?, -- Speed: this share of the buyer's Speed, at least Min
 	Coffin: string?, -- a coffin of this rarity (CoffinService.GiveRarity)
+	FeaturedKnife: string?, -- fixed for this product id, including delayed receipts
 	Featured: number?, -- this many of the week's featured coffin (Config/Featured, odds shown)
-	Spins: number?, -- Lucky Wheel spins
 	Hidden: boolean?, -- not listed in the Store grid
 	Tickets: number?,
 	OneTime: boolean?,
@@ -37,6 +37,7 @@ export type Product = {
 	Charge: { Name: string, Count: number }?, -- charges (profile.Charges): Escape, Insurance
 }
 
+local FeaturedCoffin = require(script.Parent.Parent.FeaturedCoffin)
 local Monetization = {}
 
 local function rgb(r: number, g: number, b: number): Color3
@@ -94,7 +95,7 @@ Monetization.Passes = {
 		Id = 2005341434,
 		Price = 299,
 		Name = "2x Luck",
-		Description = "Better knives in every coffin you get, forever.",
+		Description = "More chances for shiny knives in earned coffins.",
 		Icon = "🍀",
 		Color = rgb(80, 220, 90),
 	},
@@ -112,7 +113,7 @@ Monetization.Passes = {
 		Id = 2005371425,
 		Price = 249,
 		Name = "Extra Room",
-		Description = "+3 room in your pen, forever.",
+		Description = "+3 knife spots in your pen.",
 		Icon = "🏢",
 		Color = rgb(255, 170, 60),
 	},
@@ -142,7 +143,7 @@ Monetization.Products = {
 		Id = 3716624498,
 		Price = 29,
 		Name = "Pile of Cash",
-		Description = "10 minutes of your vault's income, right now.",
+		Description = "10 minutes of your pen's income, right now.",
 		Icon = "💵",
 		Color = rgb(90, 200, 100),
 		Cash = { Min = 110000, Seconds = 600 },
@@ -152,7 +153,7 @@ Monetization.Products = {
 		Id = 3716624500,
 		Price = 99,
 		Name = "Bag of Cash",
-		Description = "An hour of your vault's income, right now.",
+		Description = "An hour of your pen's income, right now.",
 		Icon = "💰",
 		Color = rgb(70, 190, 90),
 		Cash = { Min = 750000, Seconds = 3600 },
@@ -162,7 +163,7 @@ Monetization.Products = {
 		Id = 3716624502,
 		Price = 299,
 		Name = "Vault of Cash",
-		Description = "Four hours of your vault's income, right now.",
+		Description = "Four hours of your pen's income, right now.",
 		Icon = "🏦",
 		Color = rgb(50, 170, 80),
 		Cash = { Min = 4500000, Seconds = 14400 },
@@ -199,27 +200,6 @@ Monetization.Products = {
 		Color = rgb(40, 120, 255),
 		Speed = { Share = 4, Min = 120000 },
 	},
-	-- Lucky Wheel spins
-	{
-		Key = "Spins3",
-		Id = 3716624520,
-		Price = 49,
-		Name = "3 Wheel Spins",
-		Description = "Three spins of the Lucky Wheel.",
-		Icon = "🎡",
-		Color = rgb(255, 120, 200),
-		Spins = 3,
-	},
-	{
-		Key = "Spins10",
-		Id = 3716624522,
-		Price = 129,
-		Name = "10 Wheel Spins",
-		Description = "Ten spins of the Lucky Wheel.",
-		Icon = "🎡",
-		Color = rgb(255, 80, 170),
-		Spins = 10,
-	},
 	-- Gifts (bought from the gift picker for another player in the server)
 	-- Consumables: each fixes a friction you run into every session (GameConfig.Consumables)
 	{
@@ -247,7 +227,7 @@ Monetization.Products = {
 		Id = 3716624548,
 		Price = 49,
 		Name = "2x Cash Potion (15 min)",
-		Description = "Your vault earns double for 15 minutes. Stacks with everything else.",
+		Description = "2x money from your pen for 15 minutes.",
 		Icon = "💵",
 		Color = rgb(70, 200, 80),
 		Boost = { Name = "Cash", Seconds = 900 },
@@ -257,7 +237,7 @@ Monetization.Products = {
 		Id = 3716624549,
 		Price = 149,
 		Name = "2x Cash Potion (1 hour)",
-		Description = "Your vault earns double for a whole hour.",
+		Description = "2x money from your pen for 1 hour.",
 		Icon = "💵",
 		Color = rgb(40, 170, 60),
 		Boost = { Name = "Cash", Seconds = 3600 },
@@ -268,43 +248,117 @@ Monetization.Products = {
 		Price = 39,
 		Name = "Round Speed Potion (15 min)",
 		Description = "3x Speed from rounds for 15 minutes.",
-		Icon = "🎡",
+		Icon = "👟",
 		Color = rgb(90, 160, 255),
 		Boost = { Name = "RoundSpeed", Seconds = 900 },
 	},
-	-- The featured coffin (Config/Featured): this week's Mythic character with its odds shown.
-	-- Hidden from the plain grid: the shop's Featured tile sells them (with the odds + countdown).
+	-- Each weekly character has separate product ids, so delayed receipts never switch characters.
 	{
 		Key = "FeaturedCoffin1",
-		Id = 0,
+		Id = 3717514612,
 		Price = 99,
-		Name = "Featured Coffin",
-		Description = "This week's Mythic character, READY right away.",
+		Name = "1 Lenny Coffin",
+		Description = "Lenny (Mythic). READY right away.",
 		Icon = "⚰️",
 		Color = rgb(255, 110, 30),
 		Featured = 1,
+		FeaturedKnife = "InfernoFang",
 		Hidden = true,
 	},
 	{
 		Key = "FeaturedCoffin3",
-		Id = 0,
+		Id = 3717514614,
 		Price = 249,
-		Name = "3 Featured Coffins",
-		Description = "Three of this week's Mythic character, READY right away.",
+		Name = "3 Lenny Coffins",
+		Description = "Lenny (Mythic). READY right away.",
 		Icon = "⚰️",
-		Color = rgb(255, 90, 30),
+		Color = rgb(255, 110, 30),
 		Featured = 3,
+		FeaturedKnife = "InfernoFang",
 		Hidden = true,
 	},
 	{
 		Key = "FeaturedCoffin10",
-		Id = 0,
+		Id = 3717514616,
 		Price = 699,
-		Name = "10 Featured Coffins",
-		Description = "Ten of this week's Mythic character, READY right away.",
+		Name = "10 Lenny Coffins",
+		Description = "Lenny (Mythic). READY right away.",
 		Icon = "⚰️",
-		Color = rgb(255, 70, 30),
+		Color = rgb(255, 110, 30),
 		Featured = 10,
+		FeaturedKnife = "InfernoFang",
+		Hidden = true,
+	},
+	{
+		Key = "FeaturedHank1",
+		Id = 3717514621,
+		Price = 99,
+		Name = "1 Hank Coffin",
+		Description = "Hank (Mythic). READY right away.",
+		Icon = "⚰️",
+		Color = rgb(255, 110, 30),
+		Featured = 1,
+		FeaturedKnife = "MagmaCleaver",
+		Hidden = true,
+	},
+	{
+		Key = "FeaturedHank3",
+		Id = 3717514624,
+		Price = 249,
+		Name = "3 Hank Coffins",
+		Description = "Hank (Mythic). READY right away.",
+		Icon = "⚰️",
+		Color = rgb(255, 110, 30),
+		Featured = 3,
+		FeaturedKnife = "MagmaCleaver",
+		Hidden = true,
+	},
+	{
+		Key = "FeaturedHank10",
+		Id = 3717514627,
+		Price = 699,
+		Name = "10 Hank Coffins",
+		Description = "Hank (Mythic). READY right away.",
+		Icon = "⚰️",
+		Color = rgb(255, 110, 30),
+		Featured = 10,
+		FeaturedKnife = "MagmaCleaver",
+		Hidden = true,
+	},
+	{
+		Key = "FeaturedNina1",
+		Id = 3717514630,
+		Price = 99,
+		Name = "1 Nina Coffin",
+		Description = "Nina (Mythic). READY right away.",
+		Icon = "⚰️",
+		Color = rgb(255, 110, 30),
+		Featured = 1,
+		FeaturedKnife = "DemonHorn",
+		Hidden = true,
+	},
+	{
+		Key = "FeaturedNina3",
+		Id = 3717514632,
+		Price = 249,
+		Name = "3 Nina Coffins",
+		Description = "Nina (Mythic). READY right away.",
+		Icon = "⚰️",
+		Color = rgb(255, 110, 30),
+		Featured = 3,
+		FeaturedKnife = "DemonHorn",
+		Hidden = true,
+	},
+	{
+		Key = "FeaturedNina10",
+		Id = 3717514636,
+		Price = 699,
+		Name = "10 Nina Coffins",
+		Description = "Nina (Mythic). READY right away.",
+		Icon = "⚰️",
+		Color = rgb(255, 110, 30),
+		Featured = 10,
+		FeaturedKnife = "DemonHorn",
 		Hidden = true,
 	},
 	{
@@ -389,7 +443,7 @@ Monetization.Products = {
 		Id = 3716821469,
 		Price = 25,
 		Name = "Double Your Round Prize",
-		Description = "Win the next murder round and get double the prize - double the cash, Speed, knives, spins or boost.",
+		Description = "2x Speed from your next murder round. You keep every step you reach.",
 		Icon = "🎁",
 		Color = rgb(255, 200, 60),
 		Charge = { Name = "DoublePrize", Count = 1 },
@@ -416,6 +470,8 @@ end
 -- for one that arrives late (bought just before an update, or retried by Roblox) still pays: cash
 -- worth the Robux (MonetizationService.processReceipt), never a "never granted" purchase.
 Monetization.Retired = {
+	[3716624520] = 49, -- retired: 3 Wheel Spins
+	[3716624522] = 129, -- retired: 10 Wheel Spins
 	[3716826969] = 49, -- wheel upgrade
 	[3716624556] = 49, -- 3 Reroll Tokens (knife power rerolls)
 	[3716624560] = 129, -- 10 Reroll Tokens
@@ -447,6 +503,17 @@ for _, pass in Monetization.Passes do
 end
 for _, product in Monetization.Products do
 	Monetization.ProductByKey[product.Key] = product
+end
+
+-- The real scheduled offer: every product remains tied to its named character forever.
+function Monetization.FeaturedProduct(count: number, now: number): Product?
+	local name = FeaturedCoffin.Current(now)
+	for _, product in Monetization.Products do
+		if product.Featured == count and product.FeaturedKnife == name and product.Id > 0 then
+			return product
+		end
+	end
+	return nil
 end
 
 -- Contextual offers: at most one every OfferGap seconds, the same one at most every

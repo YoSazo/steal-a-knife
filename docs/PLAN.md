@@ -11,15 +11,15 @@ stop adding features.** Everything else waits for real player data.
    a rejoin. Console clean (F9 server + client). Fix only what breaks the loop.
 2. **Robux:** every product/pass in the shop has a real id and buys on the live game (one cheap
    test buy). The Featured coffin stays hidden until its tile exists (fine to launch without it).
-3. **Store page (owner):** title `[MURDER] Steal a Knife` and server size 8 are already set and verified via API. Owner supplies icon + 3 thumbnails
+3. **Store page (owner):** title `[MURDER] Steal a Knife` and server size 6 are already set and verified via API. Owner supplies icon + 3 thumbnails
    (a monster chase, a murder round, a pen of glowing characters), age questionnaire done, public.
 4. **Ads (owner):** Ads Manager sponsored-experience campaign on a small daily budget; judge it
    on D1 retention, average session length and CTR (analytics funnel, docs/ANALYTICS.md), not
    on visits.
 
 **Local launch checks (Codex):** update10.bundle merged with 5def7cc, preserving the publish
-settings. All 31 existing product/pass entries have valid Roblox IDs and matching default prices.
-The three Featured IDs are still 0 and hidden from the shop. Live gameplay, persistence and an
+settings. Current product/pass entries have real Roblox IDs, including all nine dated Featured products.
+The Featured tile hides outside its actual scheduled weeks. Live gameplay, persistence and an
 actual payment remain unverified until performed; Studio tests do not count as live tests.
 
 **After launch** (from the data, not before): the Featured coffin shop tile (item 21 server side
@@ -375,6 +375,73 @@ Bundle `update8.bundle` merged at 5626bd3 and pushed; both PLAN progress section
   pen (cash instead), `PaidRandomRestricted = true` (refused / cash).
 - **Title (item 24, in-game part):** loading screen "STEAL A KNIFE", console tags. The Roblox
   title "[MURDER] Steal a Knife" is set on the Creator Dashboard by the owner.
+
+### Current owner corrections, 2026-10-09 (implemented; publishing next)
+
+These owner choices supersede the older art freeze, eight-player layout, long hatch waits and
+return-after-results notes in this document.
+
+- Six-player server (Roblox place metadata verified): four back pens plus one on each side.
+  The two corner pens, entrance events board and Lucky Wheel are gone. All six gates have a
+  successful no-jump path from the safe boundary. Spin products are off sale; old receipts pay cash.
+- Interrupted carried coffins survive rounds in both the runway and safe zone. Before teleport,
+  the player sees "Your coffin is safe! You'll come back here after the round." The creature
+  stays exactly where it was. At round end the player returns directly, holding the same item;
+  outside the safe zone, both remain frozen while a dimmed screen counts 3, 2, 1, then releases.
+  Studio death/return test: return during Results, position error 0, item unchanged, creature
+  displacement 0 throughout round and countdown, player displacement 0 during countdown,
+  2.999 seconds grace, released afterward. Client observed 3/2/1/RUN and the pre-teleport notice.
+  A safe-zone carried coffin returned unchanged at position error 0, with no restarted chase.
+- PEN FULL is persistent even after learning to upgrade or sell, and overrides unrelated notices.
+  It directs the player to buy a spot or My Knives. Full-pen placement keeps the carried coffin.
+  Studio 13/13 occupied spots: warning visible, TextFits true despite learned guidance.
+- Round endings are only INNOCENTS WIN! / MURDERER WINS! No VS/photos/roster modal or victory
+  jingle. Murderer cue says GET 1 PLAYER = +X SPEED; Sheriff cue names the Murderer and actual
+  jackpot Speed. KNIFE IN / GUN IN / HIDE countdowns share the server deadline. Both weapons
+  were absent before hiding ended and present afterward. Cash/VIP overheads hide in rounds.
+- iPhone 13+ target: independent murder clock below Roblox controls, inward My Knives caption,
+  bottom-left Speed/Cash readouts. Short taps open the correct shop tab; joystick drags do not.
+  Chase tint covers the full screen. Menus are opaque; biome announcements retain their backdrop.
+  Rebirth states exactly what resets. Loading tips no longer mention the deleted wheel.
+- Blender SpeedCoin: blue token, white rim, raised sneaker on both faces; native mesh uploaded.
+  Always upright with a gentle turn/bob facing the camera. Floating shoe is 0.8 studs, no plus,
+  hidden beyond 60 studs. Round, safe-zone and biome pickups give exactly +1 Speed (Cash unchanged
+  in the actual touch test). Random placement: up to 40 hub coins and 26 per biome; kept clear
+  of pens, gates, the gift chest, safe lettering and lairs. Count reduced from the dense preview.
+- SAFE ZONE is one straight outlined line with shields. Its 28x5-stud paint fits the centre lane;
+  raised floor dressing is cleared away from the text.
+- Featured tile built: imagegen Inferno banner, native gold frame traced with build_boss_titles,
+  actual character previews, exact roll-table odds 60/25/10/4/1, real weekly countdown and
+  99/249/699 Robux buttons. Nine real products cover Lenny/Hank/Nina's three dated weeks.
+  Each ID permanently names its character, so delayed receipts do not swap the purchase to a
+  newer week. Three-coffin Studio receipt granted three READY paid coffins; repeat granted none.
+  Full pen and restricted regions retain the cash fallback. Tile remains hidden until its real
+  scheduled start (Lenny: Saturday October 10, 3 PM Eastern).
+- Free gift: a FREE chest in the hub opens the solid gift card with its server-calculated Speed
+  amount, Like/Favorite/Join instructions and CLAIM. Like displays the owner's exact screenshot;
+  Favorite invokes Roblox's prompt; Join invokes the community prompt. No fake limited-time text.
+  Server membership, one real win and one-time claim checks remain authoritative.
+- Fast hatches: Common 20 seconds; Rare/Epic/Legendary/Mythic/Godly/Celestial/Cosmic/Secret
+  1/2/3/4/6/8/10/12 rounds. Wins count as two. OfflineSecondsPerRound = 142, one current cycle.
+  The simulator now models +1 coin pickups and winners' extra hatch progress. Exact fitted shares:
+
+  | Next zone | Full ladder share of zone gap | First coffin in sim |
+  | --- | ---: | ---: |
+  | Rare | 25.01912% | 0.33 h |
+  | Epic | 5.92422% | 1.19 h |
+  | Legendary | 1.68394% | 4.02 h |
+  | Mythic | 1.42217% | 7.99 h |
+  | Godly | 0.8% | beyond this 12 h run |
+  | Celestial | 0.6% | beyond this 12 h run |
+  | Cosmic | 0.4% | beyond this 12 h run |
+
+  Timings 10/20/35/50/60, parts 1/2/4/7/12, intermission 70 and round 60 stay fixed. Delivery
+  remains roughly one tenth of baseline round Speed at each depth. These are modeled estimates,
+  not player telemetry. The fit output now preserves seven decimals instead of rounding away
+  a digit that changed a milestone by one round.
+- Static validation: StyLua, Selene, sourcemap and luau-lsp pass. Source/Blender/art files are
+  prepared for commit/push/publish. Physical live phone check belongs to the owner; live saving
+  across rejoin and one actual Robux transaction remain unverified.
 
 ### Codex UI/art brief, 2026-10-09
 

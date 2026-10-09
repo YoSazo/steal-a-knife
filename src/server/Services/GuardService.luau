@@ -178,6 +178,7 @@ local emptySlots: (Boss, number) -> number
 local bosses: { Boss } = {}
 local chasers: { Guard } = {} -- every guard currently chasing or walking back (bosses and shadows)
 local guardByModel: { [Model]: Guard } = {}
+local pausedChases: { [Player]: { Guard: Guard, Frame: CFrame } } = {}
 local projectiles: { Projectile } = {}
 local folder: Folder
 local projectileFolder: Folder
@@ -1294,7 +1295,7 @@ end
 -- Someone just took a knife off the wall: the boss (or a shadow of them) comes for them
 local function sendChaser(boss: Boss, thief: Player)
 	local guard = boss.Guard
-	if guard.Target ~= nil and guard.Target ~= thief then
+	if (guard.Target ~= nil and guard.Target ~= thief) or guard.Model:GetAttribute("PausedRun") ~= nil then
 		-- Already busy with someone else: a shadow steps out of the wall
 		guard = newGuard(boss, true, boss.Post)
 		Net.Remotes.Effect:FireAllClients("Smoke", boss.Post.Position)
@@ -1362,6 +1363,7 @@ local function sendChaser(boss: Boss, thief: Player)
 	-- (the alarm's big red RUN!! banner, the monster on your heels, the red glow and the guide's
 	-- RUN HOME line already say it: no extra toast)
 	Net.Remotes.Effect:FireClient(thief, "Alarm")
+	return guard
 end
 
 -- Hurt a thief (throws, and the snatch). Shields block it.
@@ -1674,6 +1676,9 @@ local function moveTowards(guard: Guard, destination: Vector3, speed: number, dt
 end
 
 local function step(guard: Guard, dt: number)
+	if guard.Model:GetAttribute("PausedRun") ~= nil then
+		return
+	end
 	local t = now()
 	if t < guard.BusyUntil then
 		animate(guard, "Idle")
@@ -2177,6 +2182,50 @@ function GuardService.Init()
 		end
 	end
 
+	StealService.OnPauseChase = function(player: Player): Vector3?
+		for _, guard in chasers do
+			if guard.Target == player then
+				pausedChases[player] = { Guard = guard, Frame = guard.Model:GetPivot() }
+				guard.Model:SetAttribute("PausedRun", player.UserId)
+				guard.Target, guard.Returning = nil, false
+				guard.Alert.Enabled = false
+				guard.WindupUntil = 0
+				guard.Model:SetAttribute("ChargeStart", nil)
+				return guard.Position
+			end
+		end
+		return nil
+	end
+	StealService.OnCancelPausedChase = function(player: Player)
+		local paused = pausedChases[player]
+		pausedChases[player] = nil
+		if paused and paused.Guard.Model.Parent then
+			paused.Guard.Model:SetAttribute("PausedRun", nil)
+			stopChase(paused.Guard, false)
+		end
+	end
+	StealService.OnResumeChase = function(player: Player, zone: number, position: Vector3?, seconds: number)
+		local boss = bosses[zone]
+		if not boss then
+			return
+		end
+		local paused = pausedChases[player]
+		pausedChases[player] = nil
+		local guard = if paused and paused.Guard.Model.Parent then paused.Guard else sendChaser(boss, player)
+		if paused then
+			guard.Model:PivotTo(paused.Frame)
+		end
+		if position then
+			guard.Position = position
+		end
+		guard.Model:SetAttribute("PausedRun", nil)
+		guard.Target, guard.Returning = player, false
+		guard.InChair, guard.ExitAt = false, nil
+		guard.Model:SetAttribute("WakeAt", nil)
+		guard.Model:SetAttribute("WakeEnd", nil)
+		guard.AlertUntil, guard.WakeUntil, guard.BusyUntil = now() + seconds, now() + seconds, now() + seconds
+		guard.ThrowReadyAt = now() + seconds + 2
+	end
 	StealService.OnBossCarryEnded = onBossCarryEnded
 
 	-- Restocks, once a second

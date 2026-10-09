@@ -18,7 +18,6 @@ local Ui = require(script.Parent.Ui)
 local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 local CartoonArt = require(ReplicatedStorage.Shared.Config.CartoonArt)
 local VoxelUi = require(ReplicatedStorage.Shared.Config.VoxelUi)
-local RoundPrize = require(ReplicatedStorage.Shared.RoundPrize)
 local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 local TopLine = require(script.Parent.TopLine)
 local Items = require(ReplicatedStorage.Shared.Items)
@@ -152,23 +151,16 @@ function Hud.Init()
 		if Ui.menuOpen() or Ui.gui:GetAttribute("FadeCover") then
 			return nil
 		end
-		local phase = ReplicatedStorage:GetAttribute("Phase")
-		local left = ((ReplicatedStorage:GetAttribute("PhaseEndsAt") or 0) :: number) - workspace:GetServerTimeNow()
-		if phase == "Round" then
-			return { Text = `🔪 {Ui.clock(left)} · 👥 {ReplicatedStorage:GetAttribute("Alive") or 0}` }
+		if
+			ReplicatedStorage:GetAttribute("Phase") == "Results"
+			and not player:GetAttribute("RunSaved")
+			and not player:GetAttribute("Carrying")
+		then
+			return { Text = (ReplicatedStorage:GetAttribute("RoundOutcome") or "ROUND OVER!") :: string, Large = true }
 		end
-		if phase == "Reveal" then
-			return nil
-		end
-		if phase == "Results" then
-			return { Text = "ROUND OVER!", Large = true }
-		end
-		return {
-			Text = `🔪 MURDER ROUND IN {Ui.clock(left)}`,
-			Large = true,
-			Pulse = phase == "Intermission" and left <= 10 and left > 0,
-		}
+		return nil
 	end
+
 	type SignLabels = { Title: TextLabel, Price: TextLabel, Count: TextLabel, Alert: TextLabel }
 	local function signLabels(surface: SurfaceGui): SignLabels?
 		-- The sign's labels are built in the world (MapService); this only fills them in
@@ -509,61 +501,13 @@ function Hud.Init()
 		if kind ~= "Announce" or type(text) ~= "string" then
 			return
 		end
+		-- World restocks/other players' loot do not interrupt a chase or a murder round.
+		if player:GetAttribute("Carrying") or player:GetAttribute("RunSaved") or player:GetAttribute("InRound") then
+			return
+		end
 		local tint = if typeof(color) == "Color3" then color:Lerp(Color3.new(1, 1, 1), 0.35) else Color3.new(1, 1, 1)
 		Effects.Sound(if (hype or 1) >= 2 then Sounds.Announce else Sounds.Coin, nil, 0.4)
 		TopLine.Show(`<font color="#{tint:ToHex()}">{text}</font>`, 2.4 + (hype or 1) * 0.4)
-	end)
-
-	-- The events board over the runway entrance: live countdowns, filled in on this client ------
-	task.spawn(function()
-		local board: Instance? = nil
-		while true do
-			task.wait(0.5)
-			if not board or not board.Parent then
-				local map = workspace:FindFirstChild("Map")
-				local decor = map and map:FindFirstChild("Decor")
-				board = decor and decor:FindFirstChild("EventBoard")
-				if not board then
-					continue
-				end
-			end
-			local phase = ReplicatedStorage:GetAttribute("Phase")
-			local now = workspace:GetServerTimeNow()
-			local left = (ReplicatedStorage:GetAttribute("PhaseEndsAt") or 0) - now
-			local status = ReplicatedStorage:GetAttribute("Status") or ""
-			-- Tsunami style: each event's name in its own colour, then the time in white
-			local function line(color: string, name: string, rest: string): string
-				return `<font color="{color}">{name}</font> {rest}`
-			end
-			local line1 = if phase == "Round"
-				then line("#FF5A5A", "MURDER ROUND", "NOW!")
-				elseif phase == "Results" then line("#FF5A5A", "MURDER ROUND", "OVER")
-				elseif status:find("Waiting") then line("#FF5A5A", string.upper(status), "")
-				else line("#FF5A5A", "MURDER ROUND", `IN {Ui.clock(left)}`)
-			-- (no Blood Moon any more: line 2 is what winning the round gets you)
-			local prize = RoundPrize.For(
-				"Speed",
-				"",
-				ReplicatedStorage:GetAttribute("PrizeJackpot") == true,
-				1,
-				RoundPrize.Stats(player),
-				false
-			)
-			local texts = {
-				line1,
-				line("#8CFF96", "SURVIVE:", `{string.upper(prize.Text)}`),
-				if prize.Rarity then line("#FFE14B", "FOR", `{string.upper(prize.Rarity)} KNIVES`) else "",
-				"", -- (no server goals any more)
-			}
-			for _, face in (board :: Instance):GetChildren() do
-				for i = 1, #texts do
-					local label = face:FindFirstChild(`Line{i}`) :: TextLabel?
-					if label then
-						label.Text = texts[i]
-					end
-				end
-			end
-		end
 	end)
 
 	-- The bosses' speed boards (server GuardService): green with a tick once YOU are fast enough
@@ -595,19 +539,21 @@ function Hud.Init()
 		local now = workspace:GetServerTimeNow()
 		local clock = Ui.clock(endsAt - now)
 		local inRound = player:GetAttribute("InRound")
-		timerFrame.Visible = false -- (the time is on the top line now: client/TopLine, TopLine.Resting)
+		timerFrame.Visible = phase ~= "Results" and not Ui.menuOpen() and Ui.gui:GetAttribute("FadeCover") ~= true
 		if phase == "Round" then
 			local map = ReplicatedStorage:GetAttribute("MapName") or ""
 			-- In a round the screen is for the game: just the time and who's left (MM2 shows less)
 			timerLabel.Text = if inRound
-				then `{clock}  ·  {ReplicatedStorage:GetAttribute("Alive") or 0} alive`
+				then if player:GetAttribute("Role") == "Murderer"
+					then `{clock} · {math.max(0, ((ReplicatedStorage:GetAttribute("Alive") or 0) :: number) - 1)} PLAYERS LEFT`
+					else `{clock} · {ReplicatedStorage:GetAttribute("Alive") or 0} ALIVE`
 				else `{map}  {clock}  ·  {ReplicatedStorage:GetAttribute("Alive") or 0} alive`
 			timerFrame.BackgroundColor3 = Color3.fromRGB(150, 30, 50)
 		elseif phase == "Results" or status:find("Waiting") then
 			timerLabel.Text = if phase == "Results" then "Round over!" else status
 			timerFrame.BackgroundColor3 = Ui.PANEL
 		else
-			timerLabel.Text = `MURDER ROUND in {clock}`
+			timerLabel.Text = `🔪 MURDER ROUND IN {clock}`
 			timerFrame.BackgroundColor3 = Ui.PANEL
 		end
 		-- The last 10 s before a round: the timer itself goes red and pulses (that IS the countdown;
@@ -719,10 +665,12 @@ function Hud.Init()
 		end
 		return bubble
 	end
-	local toastQueue: { { Text: string, Kind: string } } = {}
+	local toastQueue: { { Text: string, Kind: string, At: number } } = {}
 	local toastWorker = false
 	local function busy(): boolean
-		return Ui.gui:GetAttribute("Presenting") == true or Ui.gui:GetAttribute("FadeCover") == true
+		return Ui.gui:GetAttribute("Presenting") == true
+			or Ui.gui:GetAttribute("FadeCover") == true
+			or player.PlayerGui:FindFirstChild("Loading") ~= nil
 	end
 	local function toast(text: string, kind: string)
 		for _, entry in toastQueue do
@@ -730,7 +678,7 @@ function Hud.Init()
 				return
 			end
 		end
-		table.insert(toastQueue, { Text = text, Kind = kind })
+		table.insert(toastQueue, { Text = text, Kind = kind, At = os.clock() })
 		while #toastQueue > 4 do
 			table.remove(toastQueue, 1)
 		end
@@ -745,12 +693,14 @@ function Hud.Init()
 				while busy() or player:GetAttribute("InRound") do
 					task.wait(0.1)
 				end
-				local entry = table.remove(toastQueue, 1) :: { Text: string, Kind: string }
+				local entry = table.remove(toastQueue, 1) :: { Text: string, Kind: string, At: number }
+				if os.clock() - entry.At > 5 then
+					continue
+				end
 				local bubble = showToast(entry.Text, entry.Kind)
 				while bubble and bubble.Parent do
 					if busy() or player:GetAttribute("InRound") then
 						bubble:Destroy()
-						table.insert(toastQueue, 1, entry)
 						break
 					end
 					task.wait(0.05)
@@ -973,12 +923,12 @@ function Hud.Init()
 		end
 	end
 	-- Steal An Egg readout: a big icon and a big chunky number per row, Speed over Cash
-	local speedArt = Ui.art(stats, "Speed", { Image = CartoonArt.Speed }) -- the + badge is baked in
+	local speedArt = Ui.art(stats, "Speed", { Image = CartoonArt.Speed }) -- clean shoe; only HUD readouts receive shop badges
 	Ui.SpeedIcon = speedArt -- (the round prize's shoes fly into it: client/Transitions)
 	local cashArt = Ui.art(stats, "Cash", { Image = CartoonArt.Cash })
 	Ui.CashIcon = cashArt
 	-- The ➕ (Steal An Egg / Steal from the Rich): tap the Speed or the Cash readout to open the shop
-	-- on that tab. (The Speed art has its + drawn in; Cash gets a badge.)
+	-- on that tab. The badges belong to the HUD, never to world pickups.
 	local cashPlus = Ui.label({
 		Name = "Plus",
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -992,7 +942,12 @@ function Hud.Init()
 		BackgroundTransparency = 0,
 		ZIndex = cashArt.ZIndex + 1,
 	}, cashArt)
+	local speedPlus = cashPlus:Clone()
+	speedPlus.Parent = speedArt
+	speedPlus.ZIndex = speedArt.ZIndex + 1
 	Ui.new("UICorner", { CornerRadius = UDim.new(1, 0) }, cashPlus)
+	Ui.new("UICorner", { CornerRadius = UDim.new(1, 0) }, speedPlus)
+	Ui.new("UIStroke", { Thickness = 2, Color = Color3.fromRGB(20, 60, 30) }, speedPlus)
 	Ui.new("UIStroke", { Thickness = 2, Color = Color3.fromRGB(20, 60, 30) }, cashPlus)
 	local function opensShop(art: GuiObject, tab: string): TextButton
 		local tap = Ui.new("TextButton", {
@@ -1002,15 +957,11 @@ function Hud.Init()
 			Text = "",
 			ZIndex = art.ZIndex + 2,
 		}, stats) :: TextButton
-		tap.Activated:Connect(function()
-			if Ui.OpenShop then
-				Ui.OpenShop(tab)
-			end
-		end)
 		return tap
 	end
 	local cashTap = opensShop(cashArt, "Money")
 	local speedTap = opensShop(speedArt, "Speed")
+	require(script.Parent.ReadoutInput).Bind(stats, speedTap, cashTap)
 	for _, text in { speedLabel, cashLabel } do
 		local cap = text:FindFirstChildOfClass("UITextSizeConstraint")
 		if cap then
@@ -1027,31 +978,18 @@ function Hud.Init()
 	end
 	speedLabel.TextColor3 = Color3.new(1, 1, 1)
 	local function placeStats()
-		local _, bounds = Ui.bounds()
-		local horizontal = Ui.Phone and bounds.Y < 420
-		local icon, size, row = 60, 48, 68
-		if Ui.Phone then
-			size = math.clamp(math.floor(bounds.Y * 0.1), 30, 52)
-			icon, row = math.floor(size * 1.1), math.max(44, math.floor(size * 1.2))
-		end
-		local textWidth = if horizontal
-			then math.floor(size * 3.5)
-			elseif Ui.Phone then math.ceil(size * 4.5)
-			else size * 6
+		local icon, size, row = if Ui.Phone then 33 else 60, if Ui.Phone then 30 else 48, if Ui.Phone then 44 else 68
+		local textWidth = if Ui.Phone then 145 else size * 6
 		local rowWidth = icon + 8 + textWidth
-		local width = if horizontal then rowWidth * 2 + 8 else rowWidth
-		local x = if Ui.Phone then math.max(math.floor(bounds.X * 0.4) + 12, bounds.X - width - 72) else 12
-		local top = math.max(46, ((Ui.gui:GetAttribute("TopLineHeight") or 0) :: number) + 8)
-		stats.AnchorPoint = if Ui.Phone then Vector2.zero else Vector2.new(0, 1)
-		stats.Position = if Ui.Phone then UDim2.fromOffset(x, top) else UDim2.new(0, x, 1, -12)
-		stats.Size = UDim2.fromOffset(width, if horizontal then row else row * 2)
-		local cashX, cashY = if horizontal then rowWidth + 8 else 0, if horizontal then 0 else row
+		stats.AnchorPoint = Vector2.new(0, 1)
+		stats.Position = UDim2.new(0, 12, 1, -12)
+		stats.Size = UDim2.fromOffset(rowWidth, row * 2)
 		speedArt.Position, speedArt.Size = UDim2.fromOffset(0, (row - icon) / 2), UDim2.fromOffset(icon, icon)
-		cashArt.Position, cashArt.Size = UDim2.fromOffset(cashX, cashY + (row - icon) / 2), UDim2.fromOffset(icon, icon)
+		cashArt.Position, cashArt.Size = UDim2.fromOffset(0, row + (row - icon) / 2), UDim2.fromOffset(icon, icon)
 		speedLabel.Position, speedLabel.Size = UDim2.fromOffset(icon + 8, 0), UDim2.fromOffset(textWidth, row)
-		cashLabel.Position, cashLabel.Size = UDim2.fromOffset(cashX + icon + 8, cashY), UDim2.fromOffset(textWidth, row)
+		cashLabel.Position, cashLabel.Size = UDim2.fromOffset(icon + 8, row), UDim2.fromOffset(textWidth, row)
 		speedTap.Position, speedTap.Size = UDim2.new(), UDim2.fromOffset(rowWidth, row)
-		cashTap.Position, cashTap.Size = UDim2.fromOffset(cashX, cashY), UDim2.fromOffset(rowWidth, row)
+		cashTap.Position, cashTap.Size = UDim2.fromOffset(0, row), UDim2.fromOffset(rowWidth, row)
 		speedLabel.TextSize, cashLabel.TextSize = math.floor(size * 0.9), size
 	end
 	Ui.Layout.Changed:Connect(placeStats)
@@ -1066,7 +1004,6 @@ function Hud.Init()
 	end
 	local function layout()
 		local _, bounds = Ui.bounds()
-		local width = math.min(380, math.max(220, bounds.X - 300))
 		local center = bounds.X / 2
 		if Ui.Phone then
 			local right = math.min(center + 90, Ui.Layout.knifePosition().X - 12)
@@ -1082,16 +1019,20 @@ function Hud.Init()
 		-- (and under a TopLine notice: zone titles, announcements - client/TopLine)
 		-- Under the top line (and the tutorial's line above it): the Murderer chance, then the small
 		-- lines (revenge / events / server goal)
-		local top = (Ui.gui:GetAttribute("TopLineHeight") or 0) :: number
-		if top == 0 and Ui.gui:GetAttribute("TutorialBar") == true then
-			top = ((Ui.gui:GetAttribute("TutorialBarHeight") or 36) :: number) + 2
-		elseif top == 0 and Ui.gui:GetAttribute("DoLine") == true and Ui.gui:GetAttribute("DoLineInStrip") ~= true then
-			top = ((Ui.gui:GetAttribute("DoLineHeight") or 38) :: number) + 2
+		local top = Ui.messageTop()
+		local height = if Ui.Phone then 38 else 44
+		timerFrame.Position = UDim2.fromOffset(center, top)
+		timerFrame.Size = UDim2.fromOffset(math.min(bounds.X - 24, 600), height)
+		timerLabel.TextScaled = false
+		timerLabel.TextSize = if Ui.Phone then 26 else 36
+		if timerCap then
+			timerCap:Destroy()
+			timerCap = nil
 		end
-		timerFrame.Position, timerFrame.Size = UDim2.fromOffset(center, top + 18), UDim2.fromOffset(width, 40)
-		subLabel.Position, subLabel.Size = UDim2.fromOffset(center, top + 22), UDim2.fromOffset(width, 20)
-		subLabel.TextWrapped = false
-		Ui.gui:SetAttribute("HudTop", top) -- (under the top line: RoundIntro's rule line follows it)
+		Ui.gui:SetAttribute("MurderClockBottom", top + height + 4)
+		Ui.gui:SetAttribute("HudTop", top + height + 4)
+		subLabel.Visible = false
+
 		banner.Size = UDim2.fromOffset(math.min(600, bounds.X - 24), 44)
 		announceHolder.Size = UDim2.fromOffset(math.min(480, bounds.X - 24), 60)
 		if Ui.Phone then

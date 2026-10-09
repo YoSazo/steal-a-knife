@@ -70,6 +70,12 @@ local function award(player: Player, amount: number, entry: Entry?, boostLadder:
 end
 
 local function nextStep(player: Player, entry: Entry)
+	player:SetAttribute(
+		"RoundStopSpeed",
+		if not entry.Murderer and entry.Step < #TIMES
+			then ladderAmount(math.max(1, math.floor(entry.Full * PARTS[#PARTS] / TOTAL)))
+			else nil
+	)
 	if entry.Step == 0 then
 		player:SetAttribute("RoundHide", true)
 		player:SetAttribute("RoundStepAt", entry.Started + TIMES[1])
@@ -147,9 +153,9 @@ end
 
 function Progress.Coin(player: Player)
 	local entry = entries[player]
-	if entry and not entry.Finished and entry.Coins < 15 then
+	if entry and not entry.Finished then
 		entry.Coins += 1
-		award(player, math.max(1, math.floor(entry.Full * 0.01)), entry, false)
+		award(player, 1, entry, false)
 	end
 end
 
@@ -168,6 +174,7 @@ function Progress.Finish(player: Player, jackpot: boolean)
 	player:SetAttribute("RoundStepAt", nil)
 	player:SetAttribute("RoundStepKills", nil)
 	player:SetAttribute("RoundStepSpeed", nil)
+	player:SetAttribute("RoundStopSpeed", nil)
 end
 
 function Progress.Delivered(player: Player, zone: number)

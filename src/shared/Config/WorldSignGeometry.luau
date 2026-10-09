@@ -11,7 +11,6 @@ return {
 		ShopMortimer = require(script.Parent.WorldSigns.ShopMortimer),
 		ShopVesper = require(script.Parent.WorldSigns.ShopVesper),
 		SafeZone = require(script.Parent.WorldSigns.SafeZone),
-		EventBoard = require(script.Parent.WorldSigns.EventBoard),
 		GateHealth = require(script.Parent.WorldSigns.GateHealth),
 		ProjectorScreen = require(script.Parent.WorldSigns.ProjectorScreen),
 	},

@@ -46,7 +46,7 @@ local GameConfig = {
 	-- Each pen holds sealed coffins and unlocked characters. Room grows by one slot.
 	-- Characters grow with rarity; the glass coffins fit individual plates.
 	Pens = {
-		Count = 8, -- one pen per player: 8-player servers (Creator Dashboard -> Places -> Server size)
+		Count = 6, -- one pen per player: 6-player servers (Creator Dashboard -> Places -> Server size)
 		Width = 52, -- (was 64 x 60: the plaza between the pens was a big empty field)
 		-- (10 studs of grass between neighbouring pens: each one its own plot - MapService)
 		Depth = 50, -- every pen's length (all the same size)
@@ -74,26 +74,22 @@ local GameConfig = {
 	-- Winners count twice. Common/tutorial timers are short onboarding waits.
 	Coffins = {
 		Enabled = true, -- (coffins go with pens)
-		-- Longer waits for the rarer ones (was 0/1/1/2/2/3/4/5: a Cosmic coffin opened in under
-		-- 45 minutes). At the ~8.5 min murder-round cycle: Epic ~17m, Legendary ~34m, Mythic ~1.1h,
-		-- Godly ~2h, Celestial ~3.4h, Cosmic ~5h - a real wait, the way Steal An Egg's top eggs are.
-		-- (x1.7 when rounds came 1.7x as often - IntermissionTime 360 -> 180, RoundTime 150 -> 120 -
-		-- so the waits stay about the same in real time; Rare stays 1 round, now ~5 min)
+		-- Fast hatches (owner 2026-10-09): a win counts as two rounds, so early knives open quickly.
 		Rounds = {
 			Common = 0,
-			Rare = 30 / 13,
-			Epic = 60 / 13,
-			Legendary = 210 / 13,
-			Mythic = 390 / 13,
-			Godly = 720 / 13,
-			Celestial = 1200 / 13,
-			Cosmic = 1800 / 13,
-			Secret = 2400 / 13,
+			Rare = 1,
+			Epic = 2,
+			Legendary = 3,
+			Mythic = 4,
+			Godly = 6,
+			Celestial = 8,
+			Cosmic = 10,
+			Secret = 12,
 		},
 		CommonSeconds = 20,
 		TutorialSeconds = 6, -- a new player's first coffins: a short countdown, then it opens
 		WinRounds = 2,
-		OfflineSecondsPerRound = 234, -- 540 * 130 / 300; hatch minutes remain unchanged
+		OfflineSecondsPerRound = 142, -- one current cycle (70 + 3.6 + 60 + 8), rounded
 		WinnerLuck = 2, -- mutation roll weight boost until the next round starts
 		AnnounceFrom = "Mythic", -- coffins of this rarity and up are announced to the server
 	},
@@ -232,13 +228,13 @@ local GameConfig = {
 	RoundPrize = {
 		StepShare = 0.01,
 		ZoneShares = {
-			[2] = 0.244545,
-			[3] = 0.0581162,
-			[4] = 0.0163412,
-			[5] = 0.0138447,
-			[6] = 0.008,
-			[7] = 0.006,
-			[8] = 0.004,
+			[2] = 0.2501912,
+			[3] = 0.0592422,
+			[4] = 0.0168394,
+			[5] = 0.0142217,
+			[6] = 0.0080000,
+			[7] = 0.0060000,
+			[8] = 0.0040000,
 		},
 		PastLastShare = 0.03, -- past the last boss: of your Speed
 		MinSpeed = 300,
@@ -260,28 +256,13 @@ local GameConfig = {
 			{ Kind = "Cash", Seconds = 60, Weight = 30 },
 			{ Kind = "Cash", Seconds = 180, Weight = 20 },
 			{ Kind = "Cash", Seconds = 600, Weight = 8 },
-			{ Kind = "Spin", Count = 1, Weight = 16 },
-			{ Kind = "Spin", Count = 3, Weight = 4 },
+			{ Kind = "Cash", Seconds = 60, Weight = 16 },
+			{ Kind = "Cash", Seconds = 180, Weight = 4 },
 			{ Kind = "Cash", Seconds = 300, Weight = 8 },
 			{ Kind = "Coffin", Rarity = "Rare", Weight = 8 },
 			{ Kind = "Coffin", Rarity = "Epic", Weight = 4 },
 			{ Kind = "Coffin", Rarity = "Legendary", Weight = 1.5, Announce = true },
 			{ Kind = "Coffin", Rarity = "Mythic", Weight = 0.5, Announce = true },
-		} :: { any },
-	},
-	Spin = {
-		EarnEvery = 900,
-		RevealDelay = 4.2, -- the wheel's spin on the client; the prize lands when it stops
-		Prizes = {
-			{ Kind = "Cash", Seconds = 60, Weight = 26, Label = "$ Cash" },
-			{ Kind = "Spin", Count = 1, Weight = 14, Label = "+1 Spin" },
-			{ Kind = "Cash", Seconds = 300, Weight = 18, Label = "$$ Cash" },
-			{ Kind = "Cash", Seconds = 900, Weight = 12, Label = "$$ Cash" },
-			{ Kind = "Coffin", Tier = "Rare", Weight = 12, Label = "Rare Coffin" },
-			{ Kind = "Cash", Seconds = 1800, Weight = 7, Label = "$$$ CASH" },
-			{ Kind = "Coffin", Tier = "Epic", Weight = 6, Label = "Epic Coffin" },
-			{ Kind = "Coffin", Tier = "Legendary", Weight = 4.5, Label = "Legendary Coffin" },
-			{ Kind = "Coffin", Tier = "Mythic", Weight = 0.5, Label = "MYTHIC COFFIN" },
 		} :: { any },
 	},
 	-- The Index pays out once for every knife you've ever owned

@@ -440,7 +440,7 @@ Layout.bind(Ui.root)
 local cameraConnection: RBXScriptConnection? = nil
 local function resizeHeight()
 	local camera = workspace.CurrentCamera
-	if not camera then
+	if not camera or camera.ViewportSize.Y < 64 then
 		return
 	end
 	local scale = math.clamp(camera.ViewportSize.Y / 720, 1, 1.5)
@@ -505,6 +505,12 @@ end
 GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(function()
 	Layout.notify()
 end)
+
+-- Top messages start below Roblox's controls, never inside the notch/top-bar strip.
+function Ui.messageTop(): number
+	local inset = GuiService:GetGuiInset()
+	return math.max(8, (GuiService.TopbarInset.Max.Y + 10 - inset.Y) / Ui.Scale.Scale)
+end
 
 function Ui.bounds(): (Vector2, Vector2)
 	return Layout.bounds()

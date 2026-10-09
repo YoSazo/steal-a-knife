@@ -52,7 +52,20 @@ StealService.OnPickup = nil :: ((Player, number) -> ())?
 -- home (the slot restocks later); otherwise it goes straight back on the wall.
 StealService.OnBossCarryEnded = nil :: ((zone: number, slot: number, item: string, delivered: boolean) -> ())?
 
+StealService.OnCancelPausedChase = nil :: ((Player) -> ())?
+StealService.OnPauseChase = nil :: ((Player) -> Vector3?)?
+StealService.OnResumeChase = nil :: ((Player, number, Vector3?, number) -> ())?
 local carriers: { [Player]: Carry } = {}
+type SavedRun = {
+	Carry: Carry,
+	Frame: CFrame,
+	Health: number,
+	Chaser: Vector3?,
+	Elapsed: number,
+	Queued: boolean,
+	NeedsChase: boolean,
+}
+local savedRuns: { [Player]: SavedRun } = {}
 local dropFolder: Folder
 
 local function rootPart(player: Player): BasePart?
@@ -443,7 +456,7 @@ function StealService.StartCarry(
 	boss: { Zone: number, Slot: number }?,
 	source: string?
 )
-	if carriers[player] then
+	if carriers[player] or savedRuns[player] then
 		return
 	end
 	startCarry(player, kind, item, boss, source)
@@ -473,6 +486,11 @@ local function deposit(player: Player)
 		return
 	end
 	local profile = DataService.Get(player)
+	local needsCoffin = (carry.Boss ~= nil or carry.Source == "coffin") and CoffinService.On(player)
+	if profile and needsCoffin and not DataService.FreePlate(profile) then
+		Net.Notify(player, "PEN FULL! Buy a spot or sell a knife in My Knives.", "bad")
+		return -- keep the coffin in their hands while they make room
+	end
 	if not profile or #profile.Knives >= PenMode.Capacity(profile.Slots) then
 		Net.Notify(player, "Your vault is full! Sell a knife first.", "bad")
 		Offers.Show(player, "Mount", "Your vault is full! Get more room right now.")
@@ -481,7 +499,6 @@ local function deposit(player: Player)
 	end
 	-- (pen full, bag has room: it goes in the bag - no coffin to sit in the pen)
 	local toBag = #profile.Knives >= profile.Slots
-	local needsCoffin = (carry.Boss ~= nil or carry.Source == "coffin") and CoffinService.On(player)
 	if needsCoffin and not DataService.FreePlate(profile) then
 		Net.Notify(player, "Your pen is full! Make room before placing the coffin.", "bad")
 		return -- keep carrying it; storage must not turn a sealed coffin into an open knife
@@ -712,9 +729,138 @@ function StealService.IsCarrying(player: Player): boolean
 	return carriers[player] ~= nil
 end
 
--- Rounds pull everyone out of the arena, knockdowns knock it loose: whatever they carried drops-- Round start ends a carry: boss coffins return to their stash, loose drops stay on the ground.
-function StealService.EndForRound(player: Player)
+-- A stolen monster coffin waits through the round. Its reserved slot is never re-rolled.
+function StealService.EndForRound(player: Player): boolean
+	local carry, root = carriers[player], rootPart(player)
+	if carry and root then
+		local humanoid = (player.Character :: Model):FindFirstChildOfClass("Humanoid") :: Humanoid
+		local pause = StealService.OnPauseChase
+		savedRuns[player] = {
+			Carry = carry,
+			Frame = root.CFrame,
+			Health = humanoid.Health,
+			Chaser = if pause then pause(player) else nil,
+			Elapsed = os.clock() - carry.Started,
+			Queued = false,
+			NeedsChase = carry.Boss ~= nil
+				and root.Position.Z > 0
+				and math.abs(root.Position.X) < GameConfig.ArenaWidth / 2,
+		}
+		root.Anchored = true
+		root.AssemblyLinearVelocity, root.AssemblyAngularVelocity = Vector3.zero, Vector3.zero
+		carriers[player] = nil
+		task.delay(2, function()
+			carry.Visual:Destroy()
+		end)
+		player:SetAttribute("Carrying", nil)
+		player:SetAttribute("BossCarry", nil)
+		player:SetAttribute("PlaceReady", nil)
+		player:SetAttribute("RunSaved", true)
+		BaseService.RefreshWalkSpeed(player)
+		Net.Remotes.Effect:FireClient(player, "RunSaved")
+		local saved = savedRuns[player]
+		task.spawn(function()
+			while player.Parent and savedRuns[player] == saved do
+				pcall(player.RequestStreamAroundAsync, player, saved.Frame.Position, 1)
+				task.wait(8)
+			end
+		end)
+		return true
+	end
 	endCarry(player, false, nil, "round_reset")
+	return false
+end
+
+function StealService.HasSavedRun(player: Player): boolean
+	return savedRuns[player] ~= nil
+end
+
+function StealService.CancelSavedRun(player: Player)
+	local saved = savedRuns[player]
+	if not saved then
+		return
+	end
+	savedRuns[player] = nil
+	if StealService.OnCancelPausedChase then
+		StealService.OnCancelPausedChase(player)
+	end
+	player:SetAttribute("RunSaved", nil)
+	local boss = saved.Carry.Boss
+	local hook = StealService.OnBossCarryEnded
+	if boss and hook then
+		hook(boss.Zone, boss.Slot, saved.Carry.Item, false)
+	end
+end
+
+function StealService.ReturnAfterRound(player: Player)
+	local saved = savedRuns[player]
+	if not saved or saved.Queued then
+		return
+	end
+	saved.Queued = true
+	task.spawn(function()
+		-- The round is over: return directly to the saved scene, without a hub stop or fade.
+		if savedRuns[player] ~= saved or not player.Parent then
+			return
+		end
+		if not rootPart(player) then
+			pcall(player.LoadCharacterAsync, player)
+		end
+		local readyBy = os.clock() + 10
+		while savedRuns[player] == saved and player.Parent and not rootPart(player) and os.clock() < readyBy do
+			task.wait(0.05)
+		end
+		local root = rootPart(player)
+		if not root or not player.Character or savedRuns[player] ~= saved or not player.Parent then
+			saved.Queued = false
+			if player.Parent and savedRuns[player] == saved then task.delay(1, StealService.ReturnAfterRound, player) end
+			return
+		end
+		root.Anchored = true
+		player.Character:PivotTo(saved.Frame)
+		root.AssemblyLinearVelocity, root.AssemblyAngularVelocity = Vector3.zero, Vector3.zero
+		local humanoid = player.Character:FindFirstChildOfClass("Humanoid") :: Humanoid
+		humanoid.Health = math.clamp(saved.Health, 1, humanoid.MaxHealth)
+		savedRuns[player] = nil
+		local carry = saved.Carry
+		startCarry(player, carry.Kind, carry.Item, carry.Boss, carry.Source)
+		local live = carriers[player]
+		if not live then
+			local boss, hook = carry.Boss, StealService.OnBossCarryEnded
+			if boss and hook then
+				hook(boss.Zone, boss.Slot, carry.Item, false)
+			end
+			root.Anchored = false
+			if StealService.OnCancelPausedChase then StealService.OnCancelPausedChase(player) end
+			player:SetAttribute("RunSaved", nil)
+			return
+		end
+		live.Helpers, live.Started = carry.Helpers, os.clock() - saved.Elapsed
+		if not saved.NeedsChase then
+			root.Anchored = false
+			player:SetAttribute("RunSaved", nil)
+			if StealService.OnCancelPausedChase then
+				StealService.OnCancelPausedChase(player)
+			end
+			return
+		end
+		local deadline = workspace:GetServerTimeNow() + 3
+		player:SetAttribute("RunResumeAt", deadline)
+		local resume = StealService.OnResumeChase
+		if resume and carry.Boss then
+			resume(player, carry.Boss.Zone, saved.Chaser, 3)
+		end
+		Net.Remotes.Effect:FireClient(player, "RunResume", deadline)
+		task.delay(3, function()
+			if player:GetAttribute("RunResumeAt") == deadline then
+				player:SetAttribute("RunResumeAt", nil)
+				if root.Parent then
+					root.Anchored = false
+				end
+				player:SetAttribute("RunSaved", nil)
+			end
+		end)
+	end)
 end
 
 local function onRunway(position: Vector3): boolean
@@ -729,6 +875,7 @@ local function canHitCarrier(attacker: Player, victim: Player): boolean
 		or not carriers[victim]
 		or attacker:GetAttribute("InRound")
 		or victim:GetAttribute("InRound")
+		or ((victim:GetAttribute("RunResumeAt") or 0) :: number) > workspace:GetServerTimeNow()
 	then
 		return false
 	end
@@ -779,7 +926,11 @@ end
 -- The Drop button (Tsunami style): don't want it after all? A boss's knife goes straight back on
 -- its wall (the chase ends, nothing lost); anything else lands at your feet.
 function StealService.Drop(player: Player)
-	if not carriers[player] or player:GetAttribute("InRound") then
+	if
+		not carriers[player]
+		or player:GetAttribute("InRound")
+		or ((player:GetAttribute("RunResumeAt") or 0) :: number) > workspace:GetServerTimeNow()
+	then
 		return
 	end
 	local root = rootPart(player)
@@ -830,6 +981,7 @@ function StealService.Init()
 	dropFolder.Parent = workspace:FindFirstChild("Map")
 
 	Players.PlayerRemoving:Connect(function(player)
+		StealService.CancelSavedRun(player)
 		local carry = carriers[player]
 		endCarry(player, false, if carry then carry.LastPos else nil, "left")
 	end)

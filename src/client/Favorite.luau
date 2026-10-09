@@ -24,8 +24,8 @@ local function finish()
 		task.defer(callback)
 	end
 end
-function Favorite.Ask(moment: string, completed: (() -> ())?)
-	if asked or table.find(Ui.list(player:GetAttribute("TipsSeen")), "Favorite") then
+function Favorite.Ask(moment: string, completed: (() -> ())?, force: boolean?)
+	if pending or (not force and (asked or table.find(Ui.list(player:GetAttribute("TipsSeen")), "Favorite"))) then
 		if completed then
 			if pending then
 				table.insert(waiting, completed)
@@ -43,8 +43,11 @@ function Favorite.Ask(moment: string, completed: (() -> ())?)
 	ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Tutorial"):FireServer("Tip", "Favorite")
 	local service = game:GetService("AvatarEditorService")
 	local done: RBXScriptConnection? = nil
-	done = service.PromptSetFavoriteCompleted:Connect(function(result)
+	done = service.PromptSetFavoriteCompleted:Connect(function(result: Enum.AvatarPromptResult)
 		Telemetry.Track("favorite.prompt", { result = result.Name, moment = moment })
+		if result == Enum.AvatarPromptResult.Success then
+			player:SetAttribute("FavoriteConfirmed", true)
+		end
 		if done then
 			done:Disconnect()
 		end

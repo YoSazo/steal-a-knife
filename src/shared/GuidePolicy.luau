@@ -64,7 +64,7 @@ export type State = {
 	Help: boolean?,
 }
 function GuidePolicy.Visible(s: State): boolean
-	if s.Id == "round_speed" or s.Id == "coffin_ready" then
+	if s.Id == "round_speed" or s.Id == "coffin_ready" or s.Id == "carry_full" or s.Id == "carry_bigger" then
 		return true
 	end
 	if s.Mode == "Off" then

@@ -19,6 +19,56 @@ local function rgb(r: number, g: number, b: number): Color3
 end
 
 local PropMeshes: { [string]: { Spec } } = {
+	SpeedCoin = {
+		{
+			Name = "Blue",
+			MeshId = "rbxassetid://125019301542923",
+			Size = Vector3.new(2.84, 2.84, 0.36),
+			Offset = Vector3.new(0, 0, 0),
+			Color = rgb(30, 115, 245),
+			Material = "SmoothPlastic",
+		},
+		{
+			Name = "Rim",
+			MeshId = "rbxassetid://84749894041769",
+			Size = Vector3.new(2.83, 2.83, 0.529904),
+			Offset = Vector3.new(0, 0, 0),
+			Color = rgb(245, 250, 255),
+			Material = "SmoothPlastic",
+		},
+		{
+			Name = "Sneaker",
+			MeshId = "rbxassetid://124446007247502",
+			Size = Vector3.new(1.71, 0.9, 0.67),
+			Offset = Vector3.new(-0.065, 0.25, 0),
+			Color = rgb(70, 225, 255),
+			Material = "SmoothPlastic",
+		},
+		{
+			Name = "Sole",
+			MeshId = "rbxassetid://124270624900890",
+			Size = Vector3.new(1.83, 1.06, 0.77),
+			Offset = Vector3.new(-0.085, 0.06, 0),
+			Color = rgb(255, 255, 255),
+			Material = "SmoothPlastic",
+		},
+		{
+			Name = "Laces",
+			MeshId = "rbxassetid://108403349296120",
+			Size = Vector3.new(0.571445, 0.372575, 0.785),
+			Offset = Vector3.new(-0.06, 0.275, 0),
+			Color = rgb(255, 255, 255),
+			Material = "SmoothPlastic",
+		},
+		{
+			Name = "Accent",
+			MeshId = "rbxassetid://83183526078308",
+			Size = Vector3.new(2.905, 2.905, 0.785),
+			Offset = Vector3.new(0, 0, 0),
+			Color = rgb(255, 205, 45),
+			Material = "SmoothPlastic",
+		},
+	},
 	Pedestal = {
 		{
 			Name = "Stone",
