@@ -1,20 +1,6 @@
 --!strict
--- Coffins: Steal an Egg's egg, in our theme. A stolen boss knife lands on its plate SEALED in a
--- coffin (profile.Sealed). While sealed it earns nothing and can't be equipped or sold (BaseService
--- / InventoryService check DataService.IsSealedIndex).
---
--- THE MURDER ROUNDS ARE THE CLOCK: a coffin opens after GameConfig.Coffins.Rounds[rarity] murder
--- rounds (a Common after CommonSeconds). Every round that ends counts for everyone online, a
--- round you WIN counts WinRounds. All the coffins due open together right after the results - the
--- opening ceremony: every pen pops at once, the rare ones announced to the server. Offline there
--- are no rounds, so each round still owed is OfflineSecondsPerRound of real time (ReadyAt), and a
--- coffin that finished while you were away opens when you're back.
--- The owner can open one now for Robux (product CoffinOpen; the client names the coffin first with
--- Remotes.CoffinTarget). Opening = a burst and the knife on its plate.
--- Every other mystery knife (gifts, Lucky Wheel prizes, round loot, the daily streak, the Starter
--- Pack) also arrives as a coffin: CoffinService.Give / GiveRarity. On vault servers (coffins off)
--- the knife goes straight onto the wall.
--- Off unless GameConfig.Coffins.Enabled (Studio: ReplicatedStorage attribute DebugCoffins).
+-- Sealed characters earn nothing until their owner taps READY.
+-- Rounds advance the clock; timers/offline returns mark readiness without auto-opening.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -27,6 +13,7 @@ local DataService = require(script.Parent.DataService)
 local BaseService = require(script.Parent.BaseService)
 local Analytics = require(script.Parent.Analytics)
 local PenMode = require(ReplicatedStorage.Shared.PenMode)
+local CoffinState = require(ReplicatedStorage.Shared.CoffinState)
 
 local CoffinService = {}
 
@@ -166,16 +153,25 @@ function CoffinService.Open(player: Player, plate: number, how: string)
 	local entry = DataService.SealedEntry(profile, plate)
 	local index = DataService.IndexOnPlate(profile, plate)
 	local key = `{player.UserId}:{plate}`
-	if not entry or not index or popping[key] then
+	if not entry or not index or popping[key] or not CoffinState.Ready(entry.Rounds, entry.ReadyAt, os.time()) then
 		return
 	end
 	popping[key] = true
+	local openingItem = profile.Knives[index]
 	-- The pop (client/Coffins): everyone sees it shake harder and the lid fly open, then the reveal
 	local first = Items.Parse(profile.Knives[index])
 	Net.Remotes.Effect:FireAllClients("CoffinPop", player.UserId, plate, if first then first.Knife.Rarity else "Common")
 	task.delay(POP_TIME, function()
 		popping[key] = nil
-		if player.Parent then
+		local live = DataService.Get(player)
+		local liveIndex = live and DataService.IndexOnPlate(live, plate)
+		if
+			player.Parent
+			and live
+			and DataService.SealedEntry(live, plate) == entry
+			and liveIndex
+			and live.Knives[liveIndex] == openingItem
+		then
 			CoffinService.Reveal(player, plate, how)
 		end
 	end)
@@ -209,7 +205,11 @@ function CoffinService.Reveal(player: Player, plate: number, how: string)
 	local rarity = if parsed then parsed.Knife.Rarity else "Common"
 	-- (it pops out and flies into your hand, and hops back to its spot once you're in your pen;
 	-- the pen leaves it out meanwhile)
-	BaseService.HoldHatched(player, plate, item)
+	if not player:GetAttribute("InRound") then
+		BaseService.HoldHatched(player, plate, item)
+	else
+		BaseService.RefreshRack(player)
+	end
 	local base = BaseService.GetBase(player)
 	local at = if base and base.SlotCFrames[plate] then base.SlotCFrames[plate].Position else nil
 	if at then
@@ -222,13 +222,7 @@ function CoffinService.Reveal(player: Player, plate: number, how: string)
 		-- (Steal an Egg: what hatched pops up and flies into its owner - client Effects CoffinHatch)
 		Net.Remotes.Effect:FireAllClients("CoffinHatch", player, item, at)
 	end
-	Net.Notify(
-		player,
-		`🎉 Your coffin opened: {if isNew then "NEW! " else ""}{Items.DisplayName(item)}! +{Format.Cash(
-			Items.Income(item)
-		)}/s`,
-		"good"
-	)
+	Net.Notify(player, `🎉 {Items.DisplayName(item)} unlocked!`, "good")
 	-- the big ones are a server moment
 	local rank = table.find(Knives.Rarities, rarity) or 1
 	if rank >= (table.find(Knives.Rarities, CONFIG.AnnounceFrom) or 5) then
@@ -266,36 +260,20 @@ function CoffinService.OpenNow(player: Player): boolean
 	if not plate then
 		return false
 	end
-	CoffinService.Open(player, plate, "robux")
+	DataService.Update(player, function(p)
+		local entry = DataService.SealedEntry(p, plate :: number)
+		if entry then
+			entry.Rounds = 0
+			entry.ReadyAt = os.time()
+		end
+	end)
+	BaseService.RefreshRack(player)
+	Net.Notify(player, "⚰️ READY! Tap to unlock!", "good")
 	return true
 end
 
--- Opens every coffin of this player that's due (round-based ones at 0 rounds left), one after the
--- other so each gets its moment
-local function openDue(player: Player, how: string)
-	local profile = DataService.Get(player)
-	if not profile then
-		return
-	end
-	local due = {}
-	for _, entry in profile.Sealed do
-		if entry.Rounds ~= nil and entry.Rounds <= 0 then
-			table.insert(due, entry.Plate)
-		end
-	end
-	for i, plate in due do
-		task.delay((i - 1) * 0.6, function()
-			if player.Parent then
-				CoffinService.Open(player, plate, how)
-			end
-		end)
-	end
-end
-
--- A murder round just ended (RoundService, at the results): one round off every online player's
--- coffins, WinRounds for the winners; after the results, the opening ceremony.
+-- At results, winners advance twice as far. Due coffins wait for a tap.
 function CoffinService.RoundEnded(winners: { [Player]: boolean })
-	local anyDue = false
 	for _, player in Players:GetPlayers() do
 		local profile = DataService.Get(player)
 		if not profile or #profile.Sealed == 0 then
@@ -310,7 +288,6 @@ function CoffinService.RoundEnded(winners: { [Player]: boolean })
 					-- (the offline fallback follows: what's left, in real time from now)
 					entry.ReadyAt = os.time() + entry.Rounds * CONFIG.OfflineSecondsPerRound
 					changed = true
-					anyDue = anyDue or entry.Rounds == 0
 				end
 			end
 		end)
@@ -318,17 +295,42 @@ function CoffinService.RoundEnded(winners: { [Player]: boolean })
 			BaseService.RefreshRack(player) -- (the labels: "1 round left")
 		end
 	end
-	if anyDue then
-		-- everyone's back in the hub by then: every pen pops at once
-		task.delay(GameConfig.ResultsTime + 3, function()
-			for _, player in Players:GetPlayers() do
-				openDue(player, "round")
-			end
-		end)
+end
+
+local lastOpen: { [Player]: number } = {}
+local function requestOpen(player: Player, plate: unknown): (boolean, string)
+	if type(plate) ~= "number" or plate % 1 ~= 0 or plate < 1 or plate > GameConfig.Pens.MaxSlots then
+		return false, "Choose a coffin!"
 	end
+	if os.clock() - (lastOpen[player] or 0) < 0.25 then
+		return false, "Wait a moment!"
+	end
+	lastOpen[player] = os.clock()
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if player:GetAttribute("InRound") or player:GetAttribute("Carrying") or not humanoid or humanoid.Health <= 0 then
+		return false, "Get home first!"
+	end
+	local profile = DataService.Get(player)
+	local entry = profile and DataService.SealedEntry(profile, plate)
+	if not entry or not CoffinState.Ready(entry.Rounds, entry.ReadyAt, os.time()) then
+		return false, "Coffin isn't READY!"
+	end
+	if popping[`{player.UserId}:{plate}`] then
+		return false, "Unlocking!"
+	end
+	CoffinService.Open(player, plate, "tap")
+	return true, "Unlocking!"
 end
 
 function CoffinService.Init()
+	Net.Remotes.OpenCoffin.OnServerInvoke = requestOpen
+	BaseService.OnOpenCoffin = function(player, plate)
+		local ok, message = requestOpen(player, plate)
+		if not ok then
+			Net.Notify(player, message, "bad")
+		end
+	end
 	Net.Remotes.CoffinTarget.OnServerEvent:Connect(function(player: Player, plate: unknown)
 		if type(plate) == "number" and plate % 1 == 0 then
 			target[player] = plate
@@ -336,6 +338,7 @@ function CoffinService.Init()
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		target[player] = nil
+		lastOpen[player] = nil
 	end)
 	-- Back from being away: the rounds you missed passed as real time (OfflineSecondsPerRound each)
 	DataService.PlayerLoaded:Connect(function(player: Player)
@@ -356,22 +359,25 @@ function CoffinService.Init()
 				end
 			end
 		end)
-		task.delay(4, openDue, player, "offline") -- (once they've landed: a welcome-back reveal)
+		BaseService.RefreshRack(player)
 	end)
-	-- Commons (a timer, not rounds), and anything due left over (never during a round)
+	-- Refresh a due timer once so READY labels and the HUD badge update. No free income yet.
 	task.spawn(function()
 		while true do
 			task.wait(1)
-			local now = os.time()
 			for _, player in Players:GetPlayers() do
 				local profile = DataService.Get(player)
-				if not profile or #profile.Sealed == 0 or player:GetAttribute("InRound") then
+				if not profile then
 					continue
 				end
-				for _, entry in table.clone(profile.Sealed) do
-					if entry.Rounds == nil and entry.ReadyAt <= now then
-						CoffinService.Open(player, entry.Plate, "timer")
+				local count = 0
+				for _, entry in profile.Sealed do
+					if CoffinState.Ready(entry.Rounds, entry.ReadyAt, os.time()) then
+						count += 1
 					end
+				end
+				if count ~= (player:GetAttribute("CoffinsReady") or 0) then
+					BaseService.RefreshRack(player)
 				end
 			end
 		end

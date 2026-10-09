@@ -6,7 +6,6 @@
 -- and the Lucky Wheel's panel, opened by standing on the ring in front of it (server PlazaWheel).
 -- Knife cards show a live 3D model in a ViewportFrame built from the same KnifeModel as the game.
 
-local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -18,130 +17,11 @@ local Theme = require(script.Parent.MenuTheme)
 local IndexView = require(script.Parent.IndexView)
 local RebirthView = require(script.Parent.RebirthView)
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local GameConfig = require(Shared:WaitForChild("Config"):WaitForChild("GameConfig"))
-local Items = require(Shared:WaitForChild("Items"))
-local Knives = require(Shared.Config:WaitForChild("Knives"))
-local KnifeModel = require(Shared:WaitForChild("KnifeModel"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
 local new = Ui.new
 
 local Menus = {}
-
-local DARK = Ui.PANEL
-
--- A live 3D knife (or case) in a card; rotates slowly
-local spinning: { [ViewportFrame]: Model } = {}
-local function viewport(parent: Instance, build: () -> Model, dim: boolean?, size: UDim2?): ViewportFrame
-	local frame = new("ViewportFrame", {
-		Size = size or UDim2.fromScale(1, 0.55),
-		BackgroundTransparency = 1,
-		Ambient = Color3.fromRGB(200, 200, 200),
-		LightColor = Color3.new(1, 1, 1),
-		ImageColor3 = if dim then Color3.new(0, 0, 0) else Color3.new(1, 1, 1),
-		ZIndex = 6,
-	}, parent)
-	local model = build()
-	model:PivotTo(CFrame.Angles(0, 0, math.rad(-40))) -- flat of the blade to the camera, tilted
-	model.Parent = frame
-	local camera = new("Camera", { FieldOfView = 30 }, frame)
-	frame.CurrentCamera = camera
-	local cf, size3 = model:GetBoundingBox()
-	camera.CFrame = CFrame.lookAt(cf.Position + Vector3.new(0, 0, size3.Magnitude * 1.7), cf.Position)
-	spinning[frame] = model
-	return frame
-end
-RunService.RenderStepped:Connect(function(dt: number)
-	for frame, model in spinning do
-		if not frame.Parent then
-			spinning[frame] = nil
-		else
-			local visible = true
-			local ancestor: Instance? = frame
-			while ancestor do
-				if ancestor:IsA("GuiObject") and not ancestor.Visible then
-					visible = false
-					break
-				end
-				ancestor = ancestor.Parent
-			end
-			if visible and require(script.Parent.Lod).Profile == "High" then
-				model:PivotTo(model:GetPivot() * CFrame.Angles(0, dt * 0.8, 0))
-			end
-		end
-	end
-end)
-
-local function scrollGrid(parent: Instance, cell: Vector2): ScrollingFrame
-	local scroll = new("ScrollingFrame", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		ScrollBarThickness = 8,
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		CanvasSize = UDim2.new(),
-		ZIndex = 5,
-	}, parent)
-	new("UIGridLayout", {
-		CellSize = UDim2.fromOffset(cell.X, cell.Y),
-		CellPadding = UDim2.fromOffset(10, 10),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-	}, scroll)
-	Ui.padding(scroll, 4, 4)
-	local grid = scroll:FindFirstChildOfClass("UIGridLayout") :: UIGridLayout
-	local function reflow()
-		local width = math.max(140, scroll.AbsoluteSize.X - 16)
-		local columns = math.max(1, math.floor((width + 10) / (cell.X + 10)))
-		grid.CellSize = UDim2.fromOffset((width - (columns - 1) * 10) / columns, cell.Y)
-	end
-	scroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(reflow)
-	reflow()
-	return scroll
-end
-
-local function card(parent: Instance, order: number, color: Color3?): Frame
-	local tint = color or Color3.fromRGB(90, 90, 110)
-	local frame = new("Frame", {
-		LayoutOrder = order,
-		BackgroundColor3 = Color3.new(1, 1, 1),
-		ZIndex = 5,
-	}, parent)
-	Ui.corner(frame, 12)
-	Ui.gradient(frame, tint:Lerp(DARK, 0.35), tint:Lerp(DARK, 0.75))
-	new("UIStroke", { Color = tint, Thickness = 3 }, frame)
-	return frame
-end
-
-local function cardText(parent: Instance, y: number, height: number, text: string, color: Color3?): TextLabel
-	local label = Ui.label({
-		Position = UDim2.fromOffset(6, y),
-		Size = UDim2.new(1, -12, 0, height),
-		Text = text,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		TextColor3 = color or Color3.new(1, 1, 1),
-		ZIndex = 6,
-	}, parent)
-	Ui.textStroke(label, 1.5)
-	return label
-end
-
--- The knife's Murderer perk: its Blender badge in the card's top corner
-
-local function smallButton(
-	parent: Instance,
-	y: UDim,
-	height: number,
-	color: Color3,
-	text: string,
-	onClick: () -> ()
-): TextButton
-	return Ui.chunky({
-		Position = UDim2.new(0, 6, y.Scale, y.Offset),
-		Size = UDim2.new(1, -12, 0, height),
-		BackgroundColor3 = color,
-		Text = text,
-		ZIndex = 7,
-	}, parent, nil, onClick)
-end
 
 function Menus.Init()
 	-- Left column of big buttons
@@ -184,95 +64,9 @@ function Menus.Init()
 	local indexFrame, refreshIndexView = IndexView.Build()
 	table.insert(panels, indexFrame)
 
-	-- KNIVES: your wall ----------------------------------------------------------------------------
-	local knivesFrame, knivesBody =
-		Theme.shell("My Knives", "My Knives", Color3.fromRGB(130, 80, 230), "Knives", 650, 960)
-	table.insert(panels, knivesFrame)
-	local rackGrid = scrollGrid(knivesBody, Vector2.new(150, 254))
-
-	-- POWERS ---------------------------------------------------------------------------------------
-
 	-- REBIRTH --------------------------------------------------------------------------------------
 	local rebirthFrame, refreshRebirth = RebirthView.Build()
 	table.insert(panels, rebirthFrame)
-
-	-- Refreshers ------------------------------------------------------------------------------------
-	local function clearGrid(grid: Instance)
-		for _, child in grid:GetChildren() do
-			if child:IsA("Frame") then
-				child:Destroy()
-			end
-		end
-	end
-
-	local function refreshRack()
-		clearGrid(rackGrid)
-		local owned = Ui.list(player:GetAttribute("Knives"))
-		local equipped = player:GetAttribute("Equipped") or ""
-		local sealed: { [number]: boolean } = {}
-		for _, i in Ui.list(player:GetAttribute("SealedKnives")) do
-			sealed[tonumber(i) or 0] = true
-		end
-		if #owned == 0 or #owned == #Ui.list(player:GetAttribute("SealedKnives")) then
-			local empty = card(rackGrid, 1)
-			cardText(empty, 20, 120, "Steal a coffin from a monster and run it home!")
-			return
-		end
-		local equippedShown = false -- two copies of the same knife: only one says "Equipped"
-		for index, item in owned do
-			local parsed = Items.Parse(item)
-			if not parsed or sealed[index] then
-				continue
-			end
-			local knife = parsed.Knife
-			local c = card(rackGrid, index, Items.Color(item))
-			Ui.art(c, knife.Name, { Size = UDim2.new(1, 0, 0, 84), ZIndex = 6 })
-			local previewButton = new(
-				"TextButton",
-				{ Name = "Preview", Text = "", Size = UDim2.new(1, 0, 0, 84), BackgroundTransparency = 1, ZIndex = 7 },
-				c
-			)
-			previewButton.Activated:Connect(function()
-				local selected, body =
-					Theme.shell("Knife Preview", knife.DisplayName, Items.Color(item), knife.Name, 380, 460)
-				viewport(body, function()
-					return KnifeModel.Build(item, true)
-				end, false, UDim2.new(1, 0, 1, -44))
-				cardText(body, 0, 24, Items.DisplayName(item), Items.Color(item)).Position = UDim2.new(0, 6, 1, -36)
-				selected.Visible = true
-				selected:GetPropertyChangedSignal("Visible"):Connect(function()
-					if not selected.Visible then
-						selected:Destroy()
-					end
-				end)
-			end)
-			cardText(c, 88, 20, Items.DisplayName(item), Items.Color(item))
-			cardText(c, 108, 16, knife.Rarity, Knives.RarityColors[knife.Rarity])
-			cardText(c, 124, 18, `+${Ui.abbreviate(Items.Income(item))}/s`, Color3.fromRGB(120, 255, 140))
-			local isEquipped = item == equipped and not equippedShown
-			equippedShown = equippedShown or isEquipped
-			smallButton(
-				c,
-				UDim.new(1, -98),
-				44,
-				if isEquipped then Color3.fromRGB(70, 200, 100) else Color3.fromRGB(80, 150, 240),
-				if isEquipped then "Equipped" else "Equip",
-				function()
-					Remotes.Equip:InvokeServer(if isEquipped then "" else item)
-				end
-			)
-			smallButton(
-				c,
-				UDim.new(1, -48),
-				44,
-				Color3.fromRGB(230, 150, 50),
-				`Sell ${Ui.abbreviate(Items.Income(item) * GameConfig.SellSeconds)}`,
-				function()
-					Remotes.Sell:InvokeServer(index)
-				end
-			)
-		end
-	end
 
 	local indexBadge: TextLabel? = nil
 	local function refreshIndex()
@@ -289,9 +83,6 @@ function Menus.Init()
 
 	for attribute, refresh in
 		{
-			Knives = refreshRack,
-			SealedKnives = refreshRack,
-			Equipped = refreshRack,
 			Discovered = refreshIndex,
 			IndexClaimed = refreshIndex,
 			Rebirths = refreshRebirth,
@@ -336,12 +127,11 @@ function Menus.Init()
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
 		SortOrder = Enum.SortOrder.LayoutOrder,
 	}, moreList)
-	local moreOrder = { Knives = 1, Invite = 2, Rebirth = 3, Stats = 4 }
+	local moreOrder = { Rebirth = 1, Invite = 2, Stats = 3 }
 	local moreColors = {
-		Knives = Theme.Gold,
-		Invite = Theme.Cyan,
 		Rebirth = Theme.Purple,
 		Stats = Theme.Green,
+		Invite = Theme.Cyan,
 	}
 	-- (a 2x2 of Knives, Invite, Rebirth, Stats; Guidance and How to play along the bottom)
 	local function moreButton(name: string, icon: string, frame: Frame, refresh: () -> ())
@@ -368,7 +158,6 @@ function Menus.Init()
 			word.Size = UDim2.fromScale(0.56, 0.7)
 		end
 	end
-	moreButton("Knives", "Katana", knivesFrame, refreshRack)
 	moreButton("Rebirth", "Rebirth", rebirthFrame, refreshRebirth)
 
 	-- Invite friends (friends here = more cash: Social): Roblox's own invite, one tap
@@ -433,35 +222,11 @@ function Menus.Init()
 		Ui.textStroke(name, 1.5)
 		tiles[key] = { Frame = frame, Value = value }
 	end
-	tile("Income", 1, "💰", "Income per second", Color3.fromRGB(120, 255, 140))
-	tile("Speed", 2, "👟", "Walk speed", Color3.fromRGB(120, 200, 255))
-	tile("Rebirths", 3, "🔁", "Rebirths", Color3.fromRGB(200, 140, 255))
-	tile("Kills", 5, "🔪", "Murderer kills", Color3.fromRGB(255, 110, 120))
-	tile("Wins", 6, "🏆", "Rounds won", Color3.fromRGB(255, 215, 80))
-	tile("Stolen", 7, "🔪", "Knives stolen", Color3.fromRGB(255, 120, 120))
-	tile("Friends", 10, "👥", "Friend boost", Color3.fromRGB(120, 230, 200))
-	tile("Shield", 12, "🛡️", "Knives safe for", Color3.fromRGB(140, 220, 255))
-	tile("Boost", 13, "⚡", "Cash boost", Color3.fromRGB(120, 255, 140))
+	tile("Rebirths", 1, "🔁", "Rebirths", Color3.fromRGB(200, 140, 255))
+	tile("Wins", 2, "🏆", "Rounds won", Color3.fromRGB(255, 215, 80))
 	local function refreshDetails()
-		local function set(key: string, text: string, show: boolean?)
-			tiles[key].Value.Text = text
-			tiles[key].Frame.Visible = show ~= false
-		end
-		local now = workspace:GetServerTimeNow()
-		set("Income", `${Ui.abbreviate(player:GetAttribute("Income") or 0)}/s`)
-		set("Speed", tostring(math.floor(GameConfig.WalkSpeedFor((player:GetAttribute("Speed") or 0) :: number))))
-		set("Rebirths", tostring(player:GetAttribute("Rebirths") or 0))
-		set("Kills", Ui.abbreviate(player:GetAttribute("Kills") or 0))
-		set("Wins", Ui.abbreviate(player:GetAttribute("Wins") or 0))
-		set("Stolen", Ui.abbreviate(player:GetAttribute("KnivesStolen") or 0))
-		set("Friends", `+{(player:GetAttribute("FriendsHere") or 0) * 10}%`)
-		set("Shield", Ui.clock(player:GetAttribute("ShieldLeft") or 0), player:GetAttribute("Shielded") == true)
-		local boost = player:GetAttribute("BoostUntil")
-		set(
-			"Boost",
-			if type(boost) == "number" and boost > now then Ui.clock(boost - now) else "",
-			type(boost) == "number" and boost > now
-		)
+		tiles.Rebirths.Value.Text = tostring(player:GetAttribute("Rebirths") or 0)
+		tiles.Wins.Value.Text = Ui.abbreviate(player:GetAttribute("Wins") or 0)
 	end
 	moreButton("Stats", "Trophy", statsFrame, refreshDetails)
 	local guidanceButton: TextButton
@@ -636,7 +401,6 @@ function Menus.Init()
 		end
 	end
 
-	refreshRack()
 	refreshIndex()
 	refreshRebirth()
 
@@ -652,15 +416,6 @@ function Menus.Init()
 			end
 		end
 	end)
-
-	-- Keyboard / gamepad shortcut: K = knives (gamepad: L1)
-	ContextActionService:BindAction("ToggleKnives", function(_, state)
-		if state == Enum.UserInputState.Begin and column.Visible then
-			refreshRack()
-			toggle(knivesFrame)
-		end
-		return Enum.ContextActionResult.Pass
-	end, false, Enum.KeyCode.K, Enum.KeyCode.ButtonL1)
 
 	-- The Lucky Wheel (server PlazaWheel): stand on the glowing ring in front of it and its panel
 	-- opens; step off and it closes. Close it yourself and it stays shut until you step off.

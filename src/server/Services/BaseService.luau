@@ -19,6 +19,7 @@ local Social = require(script.Parent.Social)
 local MapService = require(script.Parent.MapService)
 local Analytics = require(script.Parent.Analytics)
 local CoffinModel = require(ReplicatedStorage.Shared.CoffinModel)
+local CoffinState = require(ReplicatedStorage.Shared.CoffinState)
 local PenMode = require(ReplicatedStorage.Shared.PenMode)
 local PenWalls = require(script.Parent.PenWalls)
 local KnifeHaze = require(ReplicatedStorage.Shared.KnifeHaze)
@@ -111,6 +112,7 @@ BaseService.OnSellPrompt = nil :: ((Player, number) -> ())?
 BaseService.OnEquipPrompt = nil :: ((Player, string) -> ())?
 -- Set by StealService: the owner pressed Place on their next empty plate while carrying a knife
 BaseService.OnPlacePrompt = nil :: ((Player, number) -> ())?
+BaseService.OnOpenCoffin = nil :: ((Player, number) -> ())?
 -- Set by UpgradeService: the owner pressed Upgrade Base at the sign by their gate
 BaseService.OnUpgradeBase = nil :: ((Player) -> ())?
 
@@ -536,16 +538,34 @@ function BaseService.RefreshRack(player: Player)
 			-- (round-based: how many murder rounds are left - the label shows that, not a clock)
 			local sealed = DataService.SealedEntry(profile, slot)
 			coffin:SetAttribute("RoundsLeft", if sealed and sealed.Rounds then math.ceil(sealed.Rounds) else nil)
+			local ready = sealed ~= nil and CoffinState.Ready(sealed.Rounds, sealed.ReadyAt, os.time())
+			coffin:SetAttribute("Ready", ready)
 			coffin:AddTag("Coffin")
 			-- (whole or not at all: client/Coffins swings and shatters every lid piece it finds)
 			coffin.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 			coffin.Parent = folder
 			local open = makePrompt(pad, {
-				ActionText = "Open now",
+				ActionText = if ready then "READY! Open" else "Unlock R$19",
 				ObjectText = `{parsed.Knife.Rarity} Coffin`,
 			})
 			open:SetAttribute("Owner", player.UserId)
 			open:SetAttribute("CoffinPlate", slot)
+			local body = coffin.PrimaryPart :: BasePart
+			body.CanQuery = true
+			local click = Instance.new("ClickDetector")
+			click.MaxActivationDistance = 18
+			click.Parent = body
+			click.MouseClick:Connect(function(who)
+				local root = who.Character and who.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if
+					who == player
+					and root
+					and (root.Position - body.Position).Magnitude <= 20
+					and BaseService.OnOpenCoffin
+				then
+					BaseService.OnOpenCoffin(who, slot)
+				end
+			end)
 		elseif
 			unlocked
 			and index
@@ -578,10 +598,14 @@ function BaseService.RefreshRack(player: Player)
 	-- Your waiting coffins for the Coffins panel (client/CoffinList): "plate,rarity,roundsLeft,opensAt;..."
 	-- (roundsLeft -1 = a plain timer; opensAt in server time, the offline fallback / timer)
 	local coffins = {}
+	local readyCount = 0
 	for _, entry in profile.Sealed do
 		local index = DataService.IndexOnPlate(profile, entry.Plate)
 		local parsed = if index then Items.Parse(profile.Knives[index]) else nil
 		if parsed then
+			if CoffinState.Ready(entry.Rounds, entry.ReadyAt, os.time()) then
+				readyCount += 1
+			end
 			local opensAt = workspace:GetServerTimeNow() + (entry.ReadyAt - os.time())
 			table.insert(
 				coffins,
@@ -592,6 +616,7 @@ function BaseService.RefreshRack(player: Player)
 		end
 	end
 	player:SetAttribute("CoffinList", table.concat(coffins, ";"))
+	player:SetAttribute("CoffinsReady", readyCount)
 	-- (the Knives menu hides these: a coffin's knife stays a secret until it opens)
 	local sealedKnives = {}
 	for i in profile.Knives do

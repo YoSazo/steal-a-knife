@@ -2,9 +2,8 @@
 -- The first minutes, for new players, Steal An Egg style: red arrows on the ground running from you
 -- to where you need to go, a bouncing arrow over the spot, and one short line of text in a slim
 -- see-through bar under the timer (never a big box over the game). Learn by doing:
---   1. steal a knife off Frank's wall    2. run it home and place it (caught? back to 1)
---   3. collect its cash pad               rounds earn Speed for deeper monsters
--- then the "Your knife's power" showcase. (Upgrades and Equip steps were cut: only 2 of 11 new
+--   1. steal a monster's coffin  2. run home and place it  3. tap READY  4. collect Cash
+-- (Upgrades and Equip steps were cut: only 2 of 11 new
 -- players got through them; Upgrades is found anyway, and your best knife is auto-equipped.)
 -- Progress is saved (player TutorialStep), so leaving midway resumes there. More > How to play
 -- replays it (Ui.ReplayTutorial). The murder rounds and everything later are taught by one-time
@@ -146,6 +145,16 @@ local function run(startAt: number, replay: boolean)
 			end,
 		},
 		{
+			Text = "Open your READY coffin!",
+			Target = function(): Vector3?
+				local coffin = Places.ReadyCoffin()
+				return if coffin then coffin:GetPivot().Position else homeSpot()
+			end,
+			Done = function()
+				return banked and #Ui.list(player:GetAttribute("SealedKnives")) == 0
+			end,
+		},
+		{
 			-- (a pen: being in it collects your money - no pads)
 			Text = "Your knife makes money! Stay in your pen to collect it.",
 			Target = cashPad,
@@ -250,11 +259,6 @@ local function run(startAt: number, replay: boolean)
 			return
 		end
 		banner:Destroy()
-		local me = root()
-		if me then
-			Effects.FloatText(me.Position + Vector3.new(0, 3, 0), "+Speed!", Color3.fromRGB(120, 255, 140))
-		end
-		-- (its own sound: the power-reveal sting here made equipping sound like the steal again)
 	end
 
 	local function showStep()
@@ -262,6 +266,7 @@ local function run(startAt: number, replay: boolean)
 		local compact = {
 			"Follow the arrows!",
 			"RUN HOME!",
+			"Open your READY coffin!",
 			"Collect your cash!",
 		}
 

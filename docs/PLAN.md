@@ -183,8 +183,19 @@ The creature's speed sign is readable up close at 640 x 320.
   Coffins use their character's name; Index and inventory read the same catalog. All code checks
   pass. Free Gift group ID confirmed by owner: 857947897, stored in GameConfig.
 
-**Next:** remaining hatch layer (items 15-17:
-manual READY opening, Winner's Luck, fuse machine), then Secret, maps, shop and remaining work.
+- **Item 15 + HUD fold complete:** timer/round/offline completion marks READY without opening.
+  One `My Knives` button (owner's preferred name) contains waiting coffins and unlocked knives;
+  READY entries sort first and the red badge counts READY only. Waiting entries can pay to become
+  READY, then use the same free tap. Duplicate inventory/Coffins screens and their button removed.
+  World clicks/prompts and menu taps are server-validated; only the first READY coffin bounces.
+  Early, invalid and in-round requests rejected. A Common stayed sealed 35 s beyond its timer
+  with no income; a phone tap unlocked it. Desktop tap revealed the exact saved Diamond mutation
+  once, and income began only afterward. A fresh phone tutorial progressed carry/place → READY
+  → tap → collect and finished. Code checks pass; no game script errors (Studio input emitted
+  a CoreGUI-position warning while injecting test input).
+  More's stats values are now only rebirths and wins; full UI-kit/grid migration remains item 7.
+
+**Next:** remaining hatch layer (items 16-17: Winner's Luck, fuse machine), then Secret, maps, shop and remaining work.
 
 ---
 

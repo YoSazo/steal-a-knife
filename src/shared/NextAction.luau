@@ -13,6 +13,7 @@ local NextAction = {}
 
 export type State = {
 	InRound: boolean,
+	CoffinsReady: number?,
 	Carrying: string?, -- the item string
 	InVault: boolean, -- standing inside your own vault
 	FreePlate: boolean, -- a "Place Knife" plate is lit (carrying)
@@ -119,6 +120,9 @@ function NextAction.Pick(s: State): Action?
 		}
 	end
 
+	if (s.CoffinsReady or 0) > 0 then
+		return { Id = "coffin_ready", Text = "Open your <b>READY</b> coffin!", Target = "Coffin", Ui = "Knives" }
+	end
 	-- 2. Something waiting for you
 	if s.Gift and (s.InVault or s.GiftNearby) and not s.Committed then
 		return { Id = "gift", Text = "Open your <b>gift</b>!", Target = "Gift" }

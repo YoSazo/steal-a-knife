@@ -39,14 +39,8 @@ local GameConfig = {
 	-- with a {cash} parameter), set NOTIFY_MESSAGE_ID on Render, give the API key
 	-- user.user-notification:write, then Enabled = true.
 	Notify = { Enabled = true, AskAfterRounds = 2, SendAfterHours = 22 },
-	-- Coffins (Steal an Egg's egg): a stolen boss knife lands on its plate SEALED in a coffin and opens
-	-- after HatchSeconds[rarity] - even while you're offline (come back to see it). Sealed = no income,
-	-- no equip/sell. "Open now" = Robux product CoffinOpen. Off until Enabled (Studio: ReplicatedStorage
-	-- attribute DebugCoffins = true). The tutorial's first knife never gets a coffin.
-	-- Pens instead of vaults (Shared/PenMode): Count pens (5 down each side of the plaza), each Width
-	-- along the row x Depth deep, holding up to MaxSlots knives (start StartingSlots; the upgrade adds
-	-- SlotsPerFloor). Knife characters are drawn Scale[rarity] x their 2.4-stud size (Common ~5 studs,
-	-- Cosmic ~48: over the hub walls, seen from spawn).
+	-- Each pen holds sealed coffins and unlocked characters. Room grows by one slot.
+	-- Characters grow with rarity; the glass coffins fit individual plates.
 	Pens = {
 		Count = 8, -- one pen per player: 8-player servers (Creator Dashboard -> Places -> Server size)
 		Width = 64,
@@ -71,9 +65,8 @@ local GameConfig = {
 			Cosmic = 20,
 		},
 	},
-	-- The MURDER ROUNDS are the coffins' clock: a coffin opens after Rounds[rarity] rounds (a won
-	-- round counts WinRounds), all together right after the results (the opening ceremony). Offline,
-	-- each round still owed is OfflineSecondsPerRound of real time. A Common just takes CommonSeconds.
+	-- Round progress and offline elapsed time make coffins READY; the owner taps to unlock.
+	-- Winners count twice. Common/tutorial timers are short onboarding waits.
 	Coffins = {
 		Enabled = true, -- (coffins go with pens)
 		-- Longer waits for the rarer ones (was 0/1/1/2/2/3/4/5: a Cosmic coffin opened in under

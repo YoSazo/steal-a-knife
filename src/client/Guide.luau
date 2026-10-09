@@ -75,6 +75,7 @@ local function state(): NextAction.State
 	end
 	return {
 		InRound = player:GetAttribute("InRound") == true,
+		CoffinsReady = (player:GetAttribute("CoffinsReady") or 0) :: number,
 		Carrying = if type(carrying) == "string" then carrying else nil,
 		InVault = root ~= nil and Places.InVault(root.Position),
 		FreePlate = plateAt ~= nil,
@@ -219,6 +220,9 @@ local function place(action: NextAction.Action): (Vector3?, Vector3?, Instance?)
 			return at + Vector3.new(0, 1, 0), nil, model
 		end
 		return Places.HomeSpot(), nil, nil
+	elseif kind == "Coffin" then
+		local coffin = Places.ReadyCoffin()
+		return if coffin then coffin:GetPivot().Position else Places.HomeSpot(), nil, coffin
 	elseif kind == "Home" then
 		return Places.HomeSpot(), nil, nil
 	elseif kind == "Vault" then

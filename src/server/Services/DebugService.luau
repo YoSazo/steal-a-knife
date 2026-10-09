@@ -136,6 +136,17 @@ local commands: { [string]: (Player, ...any) -> any } = {
 				else CoffinService.GiveRarity(player, rarity or "Epic", "Studio")
 		) ~= nil
 	end,
+	Ready = function(player: Player, plate: number)
+		DataService.Update(player, function(p)
+			local entry = DataService.SealedEntry(p, plate)
+			if entry then
+				entry.Rounds = 0
+				entry.ReadyAt = os.time()
+			end
+		end)
+		BaseService.RefreshRack(player)
+		return true
+	end,
 	BotRound = function(player: Player, role: string)
 		if ReplicatedStorage:GetAttribute("Phase") ~= "Intermission" then
 			Net.Notify(player, "Wait for this round to end first", "bad")

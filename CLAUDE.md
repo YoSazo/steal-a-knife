@@ -36,8 +36,10 @@ Payment receipt processing remains idempotent; retired product/pass receipt tabl
   Steps 10/20/35/50/60 seconds, parts 1/2/4/7/12. Dying keeps banked Speed; early deaths get a
   small participation amount. Per-zone shares in GameConfig.RoundPrize.ZoneShares; baseline
   delivery is one tenth of the round budget, reduced when farming shallower monsters.
-- CoffinService owns sealed knives and their round/timer clock. The see-through hatch layer,
-  human names, manual READY opening, Winner's Luck and fuse machine are the next PLAN work.
+- CoffinService owns sealed knives and their round/timer clock. Glass coffins show a silhouette;
+  exact mutations stay server-side until the owner taps READY. Human display names include rarity
+  and mutation, never size. The owner chose My Knives for the combined inventory. Winner's Luck
+  and the fuse machine are the next PLAN work.
 - MonetizationService handles passes/products and validates paid-random policy. FastWheel is the
   stable pass key, now labelled 2x Round Speed. SpeedUpgrade is retired. Potions use RoundSpeed.
 
