@@ -176,7 +176,14 @@ The creature's speed sign is readable up close at 640 x 320.
   Add/seal is atomic so its contents never briefly replicate before sealing. Luck upgrades
   preserve the original mutation rank. Selene, StyLua, sourcemap and luau-lsp pass.
 
-**Next:** remaining hatch layer (items 14-17: human names,
+- **Item 14 complete:** all 24 characters have distinct plain human names, checked against every
+  boss/disguise name. Internal item IDs stay the same; art metadata and catalog names agree.
+  All item display strings are `[Mutation] [Rarity] [Name]` with size omitted. Death flex now
+  shows `Killed by` / `Rainbow Cosmic Bob`, tested on desktop and phone without clipping.
+  Coffins use their character's name; Index and inventory read the same catalog. All code checks
+  pass. Free Gift group ID confirmed by owner: 857947897, stored in GameConfig.
+
+**Next:** remaining hatch layer (items 15-17:
 manual READY opening, Winner's Luck, fuse machine), then Secret, maps, shop and remaining work.
 
 ---

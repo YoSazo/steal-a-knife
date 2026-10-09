@@ -450,12 +450,13 @@ function Transitions.Init()
 	end
 
 	local killToken = 0
-	local function showKill()
+	local function showKill(info: any)
 		killToken += 1
 		local token = killToken
-		killTitle.Text = "The Murderer got you!"
-		killWhere.Text = "Your knives are safe. Go steal while they play!"
-		killWhere.TextColor3 = Color3.fromRGB(140, 240, 150)
+		killTitle.Text = "Killed by"
+		local item = if type(info) == "table" and type(info.Knife) == "string" then info.Knife else ""
+		killWhere.Text = if Items.Parse(item) then Items.DisplayName(item) else "The Murderer"
+		killWhere.TextColor3 = if Items.Parse(item) then Items.Color(item) else Color3.fromRGB(255, 90, 100)
 		killWhere.Position = UDim2.fromOffset(12, 64) -- (inside the short card)
 		kill.Size = UDim2.fromOffset(480, 120)
 		kill.Visible = true
@@ -496,7 +497,7 @@ function Transitions.Init()
 			return
 		end
 		if kind == "KillCard" then
-			showKill()
+			showKill(text)
 			return
 		end
 		if kind == "RoundCard" then

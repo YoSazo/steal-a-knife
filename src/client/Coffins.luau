@@ -75,7 +75,9 @@ function Coffins.Init()
 		title.BackgroundTransparency = 1
 		title.Font = Enum.Font.FredokaOne
 		title.TextScaled = true
-		title.Text = `{string.upper(rarity)} COFFIN`
+		title.Text = `{if model:GetAttribute("Special") then "✨ " else ""}{rarity} {model:GetAttribute(
+			"CharacterName"
+		) or "Coffin"}`
 		title.TextColor3 = Knives.RarityColors[rarity] or Color3.new(1, 1, 1)
 		title.Parent = gui
 		local label = Instance.new("TextLabel")

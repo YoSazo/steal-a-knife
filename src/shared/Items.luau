@@ -177,7 +177,7 @@ function Items.Damage(item: string): number
 	return math.floor(p.Knife.Damage * p.Mutation.Damage * p.Size.Damage)
 end
 
--- "Gold Huge Sakura Katana"
+-- "Gold Legendary Wendy": size affects income, not the character's name.
 function Items.DisplayName(item: string): string
 	local p = Items.Parse(item)
 	if not p then
@@ -187,9 +187,7 @@ function Items.DisplayName(item: string): string
 	if p.Mutation.DisplayName ~= "" then
 		table.insert(parts, p.Mutation.DisplayName)
 	end
-	if p.Size.DisplayName ~= "" then
-		table.insert(parts, p.Size.DisplayName)
-	end
+	table.insert(parts, p.Knife.Rarity)
 	table.insert(parts, p.Knife.DisplayName)
 	return table.concat(parts, " ")
 end

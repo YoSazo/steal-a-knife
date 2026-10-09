@@ -66,109 +66,21 @@ end
 
 local list: { Knife } = {
 	-- Common: The Courtyard
-	knife(
-		"RustyShank",
-		"Rusty Shank",
-		"Common",
-		75,
-		25,
-		1.6,
-		0.45,
-		rgb(170, 110, 70),
-		rgb(110, 90, 80),
-		rgb(120, 75, 40)
-	),
-	knife(
-		"KitchenKnife",
-		"Kitchen Knife",
-		"Common",
-		110,
-		30,
-		2.0,
-		0.6,
-		rgb(225, 230, 235),
-		rgb(40, 40, 45),
-		rgb(35, 35, 40)
-	),
-	knife(
-		"PocketKnife",
-		"Pocket Knife",
-		"Common",
-		160,
-		35,
-		1.6,
-		0.4,
-		rgb(210, 215, 220),
-		rgb(170, 30, 30),
-		rgb(200, 40, 40)
-	),
+	knife("RustyShank", "Steve", "Common", 75, 25, 1.6, 0.45, rgb(170, 110, 70), rgb(110, 90, 80), rgb(120, 75, 40)),
+	knife("KitchenKnife", "Chris", "Common", 110, 30, 2.0, 0.6, rgb(225, 230, 235), rgb(40, 40, 45), rgb(35, 35, 40)),
+	knife("PocketKnife", "Pete", "Common", 160, 35, 1.6, 0.4, rgb(210, 215, 220), rgb(170, 30, 30), rgb(200, 40, 40)),
 	-- Rare: The Gardens
-	knife(
-		"HunterBlade",
-		"Hunter Blade",
-		"Rare",
-		900,
-		50,
-		2.2,
-		0.55,
-		rgb(200, 210, 220),
-		rgb(190, 140, 60),
-		rgb(110, 60, 25)
-	),
-	knife(
-		"Switchblade",
-		"Switchblade",
-		"Rare",
-		1300,
-		55,
-		1.9,
-		0.4,
-		rgb(120, 200, 255),
-		rgb(30, 60, 120),
-		rgb(40, 90, 170)
-	),
-	knife(
-		"ThornDagger",
-		"Thorn Dagger",
-		"Rare",
-		1900,
-		62,
-		2.2,
-		0.5,
-		rgb(120, 220, 110),
-		rgb(60, 110, 40),
-		rgb(70, 45, 25)
-	),
+	knife("HunterBlade", "Gary", "Rare", 900, 50, 2.2, 0.55, rgb(200, 210, 220), rgb(190, 140, 60), rgb(110, 60, 25)),
+	knife("Switchblade", "Ricky", "Rare", 1300, 55, 1.9, 0.4, rgb(120, 200, 255), rgb(30, 60, 120), rgb(40, 90, 170)),
+	knife("ThornDagger", "Linda", "Rare", 1900, 62, 2.2, 0.5, rgb(120, 220, 110), rgb(60, 110, 40), rgb(70, 45, 25)),
 	-- Epic: The Crypts
-	knife("Cleaver", "Cleaver", "Epic", 12000, 90, 1.8, 1.2, rgb(210, 215, 225), rgb(60, 60, 70), rgb(150, 40, 40)),
-	knife(
-		"Machete",
-		"Jungle Machete",
-		"Epic",
-		17000,
-		100,
-		2.8,
-		0.7,
-		rgb(190, 120, 255),
-		rgb(60, 30, 90),
-		rgb(80, 160, 70)
-	),
-	knife(
-		"BoneCarver",
-		"Bone Carver",
-		"Epic",
-		25000,
-		112,
-		2.6,
-		0.6,
-		rgb(235, 225, 200),
-		rgb(120, 110, 95),
-		rgb(70, 60, 55)
-	),
+	knife("Cleaver", "Tony", "Epic", 12000, 90, 1.8, 1.2, rgb(210, 215, 225), rgb(60, 60, 70), rgb(150, 40, 40)),
+	knife("Machete", "Chad", "Epic", 17000, 100, 2.8, 0.7, rgb(190, 120, 255), rgb(60, 30, 90), rgb(80, 160, 70)),
+	knife("BoneCarver", "Kelly", "Epic", 25000, 112, 2.6, 0.6, rgb(235, 225, 200), rgb(120, 110, 95), rgb(70, 60, 55)),
 	-- Legendary: The Catacombs
 	knife(
 		"GoldenDagger",
-		"Golden Dagger",
+		"Doug",
 		"Legendary",
 		170000,
 		160,
@@ -180,7 +92,7 @@ local list: { Knife } = {
 	),
 	knife(
 		"Katana",
-		"Sakura Katana",
+		"Wendy",
 		"Legendary",
 		250000,
 		180,
@@ -190,22 +102,11 @@ local list: { Knife } = {
 		rgb(255, 205, 50),
 		rgb(40, 20, 40)
 	),
-	knife(
-		"Reaper",
-		"Catacomb Reaper",
-		"Legendary",
-		360000,
-		200,
-		2.8,
-		0.7,
-		rgb(60, 60, 70),
-		rgb(255, 200, 60),
-		rgb(25, 20, 25)
-	),
+	knife("Reaper", "Carl", "Legendary", 360000, 200, 2.8, 0.7, rgb(60, 60, 70), rgb(255, 200, 60), rgb(25, 20, 25)),
 	-- Mythic: The Inferno
 	knife(
 		"InfernoFang",
-		"Inferno Fang",
+		"Lenny",
 		"Mythic",
 		2400000,
 		300,
@@ -218,7 +119,7 @@ local list: { Knife } = {
 	),
 	knife(
 		"MagmaCleaver",
-		"Magma Cleaver",
+		"Hank",
 		"Mythic",
 		3600000,
 		330,
@@ -231,7 +132,7 @@ local list: { Knife } = {
 	),
 	knife(
 		"DemonHorn",
-		"Demon Horn",
+		"Nina",
 		"Mythic",
 		5200000,
 		360,
@@ -245,7 +146,7 @@ local list: { Knife } = {
 	-- Godly: Mount Olympus
 	knife(
 		"ZeusBolt",
-		"Zeus Bolt",
+		"Daisy",
 		"Godly",
 		38000000,
 		500,
@@ -258,7 +159,7 @@ local list: { Knife } = {
 	),
 	knife(
 		"AthenaBlade",
-		"Athena's Blade",
+		"Paul",
 		"Godly",
 		56000000,
 		550,
@@ -271,7 +172,7 @@ local list: { Knife } = {
 	),
 	knife(
 		"OlympusEdge",
-		"Olympus Edge",
+		"Quinn",
 		"Godly",
 		85000000,
 		600,
@@ -285,7 +186,7 @@ local list: { Knife } = {
 	-- Celestial: The Heavens
 	knife(
 		"HaloBlade",
-		"Halo Blade",
+		"Tina",
 		"Celestial",
 		650000000,
 		850,
@@ -298,7 +199,7 @@ local list: { Knife } = {
 	),
 	knife(
 		"SeraphSword",
-		"Seraph Sword",
+		"Uma",
 		"Celestial",
 		1000000000,
 		950,
@@ -311,7 +212,7 @@ local list: { Knife } = {
 	),
 	knife(
 		"AngelFeather",
-		"Angel Feather",
+		"Vince",
 		"Celestial",
 		1500000000,
 		1050,
@@ -325,7 +226,7 @@ local list: { Knife } = {
 	-- Cosmic: Outer Space
 	knife(
 		"VoidEdge",
-		"Void Edge",
+		"Bob",
 		"Cosmic",
 		11000000000,
 		1500,
@@ -338,7 +239,7 @@ local list: { Knife } = {
 	),
 	knife(
 		"StarCleaver",
-		"Star Cleaver",
+		"Yara",
 		"Cosmic",
 		17000000000,
 		1700,
@@ -351,7 +252,7 @@ local list: { Knife } = {
 	),
 	knife(
 		"GalaxyKatana",
-		"Galaxy Katana",
+		"Zane",
 		"Cosmic",
 		28000000000,
 		2000,
