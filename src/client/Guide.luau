@@ -556,6 +556,7 @@ function Guide.Init()
 			indexEntered = nil
 		end
 		local blocked = tutorial
+			or (not inRound and Ui.gui:GetAttribute("TopLineNotice") == true)
 			or (Ui.menuOpen() and not indexOpen)
 			or Ui.gui:GetAttribute("FadeCover") == true
 			or Ui.gui:GetAttribute("Presenting") == true

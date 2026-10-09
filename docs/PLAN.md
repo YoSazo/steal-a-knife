@@ -203,6 +203,10 @@ The creature's speed sign is readable up close at 640 x 320.
   exact. Studio win attributes, phone bonus display, READY opening and next Reveal clearing
   tested; a Diamond coffin remained Diamond. Exact banner payload visually checked on desktop and phone. All code checks pass, including the removed unused menu import.
 
+- **Announcement readability (item 28):** notices no longer shrink to the 14 px top-bar clock.
+  Winner's Luck is a large 32/36 px line, checked at phone/desktop sizes; the hub objective yields
+  while the notice is up. The redundant Murderer-chance line is deleted. Static checks pass.
+
 **Next:** the fuse machine (item 17), then Secret, maps, shop and remaining work.
 
 ---

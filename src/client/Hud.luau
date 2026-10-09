@@ -248,64 +248,6 @@ function Hud.Init()
 		end
 	end)
 
-	-- "Your chance to be the Murderer: 6%" (MM2 style), between rounds
-	local chanceLabel = Ui.label({
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 98),
-		Size = UDim2.fromOffset(420, 22),
-		Text = "",
-		TextColor3 = Color3.fromRGB(255, 110, 120),
-	}, gui)
-	Ui.textStroke(chanceLabel, 1.5)
-	local roundPrizeIcon = Ui.art(chanceLabel, "RoundPrizeSpeed", {
-		Image = CartoonArt.Speed,
-		Size = UDim2.fromOffset(14, 14),
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.fromScale(1, 0.5),
-		Visible = false,
-	})
-	-- (plain text, centred: no icon beside it)
-	local function refreshChance()
-		local chance = player:GetAttribute("MurdererChance")
-		local inRound = player:GetAttribute("InRound") == true
-		-- (in a round the status line already says "SURVIVE = +1.1K 👟": no second prize line)
-		roundPrizeIcon.Visible = false
-		if inRound then
-			chanceLabel.Visible = false
-			return
-		end
-		chanceLabel.TextColor3 = Color3.fromRGB(255, 110, 120)
-		chanceLabel.TextXAlignment = Enum.TextXAlignment.Center
-		local chanceStrip = Ui.topStrip("Chance")
-		if chanceStrip then
-			chanceLabel.Position = UDim2.fromOffset(chanceStrip.X, chanceStrip.Y)
-			chanceLabel.Size = UDim2.fromOffset(chanceStrip.W, chanceStrip.H)
-		else
-			local _, bounds = Ui.bounds()
-			chanceLabel.Size = UDim2.fromOffset(math.min(420, bounds.X - 24), 20)
-		end
-		-- (only after your first round: before that it's a number about something you haven't seen)
-		chanceLabel.Visible = type(chance) == "number"
-			and Ui.inHub()
-			and ((player:GetAttribute("RoundsPlayed") or 0) :: number) > 0
-		-- (words, not a percentage: "42%" means nothing to a young kid)
-		chanceLabel.Text = if (chance or 0) >= 30
-			then "🔪 You'll probably be the Murderer next!"
-			elseif (chance or 0) >= 15 then "🔪 You might be the Murderer next!"
-			else "🔪 Could you be the Murderer next?"
-	end
-	player:GetAttributeChangedSignal("RoundsPlayed"):Connect(refreshChance)
-	player:GetAttributeChangedSignal("MurdererChance"):Connect(refreshChance)
-	player:GetAttributeChangedSignal("InRound"):Connect(refreshChance)
-	Ui.Layout.Changed:Connect(refreshChance)
-	local chanceChecked = 0
-	RunService.Heartbeat:Connect(function()
-		if os.clock() - chanceChecked >= 0.25 then
-			chanceChecked = os.clock()
-			refreshChance() -- returning home changes position after InRound clears
-		end
-	end)
-	refreshChance()
 	Ui.textStroke(subLabel, 2)
 
 	-- Bottom centre: health, big and easy to see (Roblox's own bar sits top right where nobody looks)
@@ -1051,9 +993,9 @@ function Hud.Init()
 	placeStats()
 	healthFrame.AnchorPoint, healthFrame.Position, healthFrame.Size =
 		Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -12), UDim2.fromOffset(180, 20)
-	for _, text in { healthText, chanceLabel, subLabel } do
+	for _, text in { healthText, subLabel } do
 		text.TextScaled = false
-		text.TextSize = if text == chanceLabel then 17 else 14
+		text.TextSize = 14
 		text.TextTruncate = Enum.TextTruncate.AtEnd
 	end
 	local function layout()
@@ -1080,14 +1022,6 @@ function Hud.Init()
 		elseif top == 0 and Ui.gui:GetAttribute("DoLine") == true and Ui.gui:GetAttribute("DoLineInStrip") ~= true then
 			top = ((Ui.gui:GetAttribute("DoLineHeight") or 38) :: number) + 2
 		end
-		chanceLabel.Position, chanceLabel.Size = UDim2.fromOffset(center, top), UDim2.fromOffset(width, 20)
-		local chanceStrip = Ui.topStrip("Chance")
-		if chanceStrip then
-			chanceLabel.Position = UDim2.fromOffset(chanceStrip.X, chanceStrip.Y)
-			chanceLabel.Size = UDim2.fromOffset(chanceStrip.W, chanceStrip.H)
-			chanceLabel.TextSize = 14
-		end
-		refreshChance()
 		timerFrame.Position, timerFrame.Size = UDim2.fromOffset(center, top + 18), UDim2.fromOffset(width, 40)
 		subLabel.Position, subLabel.Size = UDim2.fromOffset(center, top + 22), UDim2.fromOffset(width, 20)
 		subLabel.TextWrapped = false
