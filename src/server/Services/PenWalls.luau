@@ -1,6 +1,6 @@
 --!strict
 -- A pen's fence (Shared/PenMode): Steal an Egg's low orange X-rail fence with dark posts all round,
--- a gap in the front middle for the gate. Same contract as VaultWalls: an invisible, walk-through
+-- a gap in the front middle for the gate. An invisible, walk-through
 -- "Blocker" across the gate gap marks the pen (tag VaultGate; attributes Owner, Tier, Floors,
 -- PenDepth). Built in the pen's frame (local +Z = the gate side).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

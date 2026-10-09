@@ -10,19 +10,16 @@ local SignTheme = require(ReplicatedStorage.Shared.SignTheme)
 local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
-local KnifePowers = require(ReplicatedStorage.Shared.Config.KnifePowers)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
-local KnifeAura = require(ReplicatedStorage.Shared.KnifeAura)
 local Net = require(script.Parent.Parent.Remotes)
 local DataService = require(script.Parent.DataService)
 local Offers = require(script.Parent.Offers)
 local Social = require(script.Parent.Social)
 local MapService = require(script.Parent.MapService)
 local Analytics = require(script.Parent.Analytics)
-local VaultWalls = require(script.Parent.VaultWalls)
-local VaultModel = require(ReplicatedStorage.Shared.VaultModel)
 local CoffinModel = require(ReplicatedStorage.Shared.CoffinModel)
+local CoffinState = require(ReplicatedStorage.Shared.CoffinState)
 local PenMode = require(ReplicatedStorage.Shared.PenMode)
 local PenWalls = require(script.Parent.PenWalls)
 local KnifeHaze = require(ReplicatedStorage.Shared.KnifeHaze)
@@ -115,18 +112,14 @@ BaseService.OnSellPrompt = nil :: ((Player, number) -> ())?
 BaseService.OnEquipPrompt = nil :: ((Player, string) -> ())?
 -- Set by StealService: the owner pressed Place on their next empty plate while carrying a knife
 BaseService.OnPlacePrompt = nil :: ((Player, number) -> ())?
+BaseService.OnOpenCoffin = nil :: ((Player, number) -> ())?
 -- Set by UpgradeService: the owner pressed Upgrade Base at the sign by their gate
 BaseService.OnUpgradeBase = nil :: ((Player) -> ())?
--- Set by UpgradeService: the owner clicked the Upgrade Wheel sign in front of their Haunted Wheel
-BaseService.OnUpgradeWheel = nil :: ((Player) -> ())?
 
 -- Rebirths multiply everything a vault earns
 -- Consumable bookkeeping (for offers and boost expiry)
-local trainedFor: { [Player]: number } = {}
-local hadBoost: { [Player]: boolean } = {}
 local hadSpeed: { [Player]: boolean } = {}
 local padWalks: { [Player]: number } = {}
-local trainingSince: { [Player]: number } = {} -- analytics: how long each wheel session lasts
 -- A knife fresh out of its coffin flies into you and waits in your hotbar (Steal an Egg) until you
 -- tap where it goes in your pen. Not saved: leave and it's simply on its spot next time.
 local hatching: { [Player]: { { Plate: number, Item: string } } } = {}
@@ -145,7 +138,7 @@ local function heldOn(player: Player, plate: number): boolean
 	return false
 end
 Players.PlayerRemoving:Connect(function(player)
-	trainedFor[player], hadBoost[player], hadSpeed[player], padWalks[player] = nil, nil, nil, nil
+	hadSpeed[player], padWalks[player] = nil, nil
 	hatching[player], hoppedIn[player] = nil, nil
 end)
 
@@ -195,15 +188,6 @@ local roundPick: { [Player]: string } = {}
 Players.PlayerRemoving:Connect(function(player)
 	roundPick[player] = nil
 end)
-local function powerScore(item: string): number
-	local parsed = Items.Parse(item)
-	local id = parsed and parsed.Perk
-	local entry = id and KnifePowers.ById[id]
-	if not entry then
-		return 0
-	end
-	return KnifePowers.TierRank(entry.Tier)
-end
 function BaseService.BestKnife(player: Player): string?
 	local profile = DataService.Get(player)
 	if not profile then
@@ -223,14 +207,14 @@ function BaseService.BestKnife(player: Player): string?
 	if equippedAt and not DataService.IsSealedIndex(profile, equippedAt) then
 		pick = profile.Equipped
 	else
-		local bestScore, bestDamage = -1, -1
+		local bestDamage = -1
 		for i, item in profile.Knives do
 			if DataService.IsSealedIndex(profile, i) then
 				continue -- (can't fight with a knife still in its coffin)
 			end
-			local score, damage = powerScore(item), Items.Damage(item)
-			if score > bestScore or (score == bestScore and damage > bestDamage) then
-				pick, bestScore, bestDamage = item, score, damage
+			local damage = Items.Damage(item)
+			if damage > bestDamage then
+				pick, bestDamage = item, damage
 			end
 		end
 	end
@@ -263,26 +247,16 @@ end
 function BaseService.RefreshWalls(base: MapService.BaseSite)
 	local owner = owners[base.Index]
 	local profile = owner and DataService.Get(owner)
-	local tier = if profile then profile.WallLevel else 1
-	local floors = if profile then GameConfig.FloorsFor(profile.Slots) else 1
-	MapService.SetFloors(base, floors)
+	local tier = 1
 	local penDepth = PenMode.Depth(if profile then profile.Slots else GameConfig.StartingSlots)
-	if PenMode.On() then
-		MapService.FitPen(base, penDepth)
-	end
-	local built = if PenMode.On()
-		then PenWalls.Build(base.WallFolder, base.Frame, base.Color, tier, penDepth)
-		else VaultWalls.Build(base.WallFolder, base.Frame, base.Color, tier, floors)
-	MapService.SetVaultTier(base, tier)
+	MapService.FitPen(base, penDepth)
+	local built = PenWalls.Build(base.WallFolder, base.Frame, base.Color, tier, penDepth)
 	base.Gate = built.Gate
 	base.Blocker = built.Blocker
 	base.Blocker:SetAttribute("Owner", if owner then owner.UserId else nil)
 	base.Blocker:SetAttribute("OwnerName", if owner then owner.DisplayName else nil)
 	-- (no wall upgrades any more: vaults are open, Tsunami style)
-	-- The Upgrade Base sign by the gate (the next floor) and the Upgrade Wheel sign in front of the
-	-- Haunted Wheel (the next wheel or trail). Same as the sell sign: click the sign itself (its green
-	-- pill is the button), no separate hold-E prompt to explain. The wheel sign's small Robux board
-	-- (RobuxBoard) gets a click detector too; the owner's client turns that click into the purchase.
+	-- The pen room sign is its own click target.
 	local function signClick(signName: string, partName: string, clickName: string, onClick: ((Player) -> ())?)
 		local sign = base.Folder:FindFirstChild(signName)
 		local part = sign and sign:FindFirstChild(partName) :: BasePart?
@@ -311,12 +285,6 @@ function BaseService.RefreshWalls(base: MapService.BaseSite)
 			BaseService.OnUpgradeBase(player)
 		end
 	end)
-	signClick("WheelUpgradeSign", "Board", "UpgradeWheel", function(player)
-		if BaseService.OnUpgradeWheel then
-			BaseService.OnUpgradeWheel(player)
-		end
-	end)
-	signClick("WheelUpgradeSign", "RobuxBoard", "BuyWheel", nil)
 	-- The vault's sign rides on top of its back wall
 	base.SignPart.CFrame = base.Frame * CFrame.new(0, built.BackHeight + 2.4, -22)
 	WorldSignModel.MoveAttached(base.SignPart)
@@ -454,7 +422,6 @@ function BaseService.RefreshWalkSpeed(player: Player)
 			else GameConfig.RoundWalkSpeed
 		-- Sneakers and knife perks (both set by RoundService, cleared when the round ends)
 		speed += (player:GetAttribute("RoundSpeedBonus") or 0) :: number
-		speed += (player:GetAttribute("PerkSpeed") or 0) :: number
 	else
 		-- Speed Potion (Robux consumable): hub only, never in rounds
 		if profile and DataService.BoostActive(profile, "Speed") and not player:GetAttribute("SlowMode") then
@@ -474,95 +441,9 @@ end
 
 -- The label floating over a knife on its pedestal (Steal a Brainrot style): its name in its
 -- colour, its rarity, and what it earns
-local function nameplate(parent: Instance, adornee: BasePart, item: string, perSecond: number)
-	local parsed = Items.Parse(item) :: Items.Item
-	local perk = parsed.Perk and GameConfig.Perks[parsed.Perk]
-	SignTheme.knifeLabel(
-		parent,
-		adornee,
-		Items.DisplayName(item),
-		parsed.Knife.Rarity,
-		Knives.RarityColors[parsed.Knife.Rarity],
-		`{Format.Cash(math.floor(perSecond * 10 + 0.5) / 10)}/s`,
-		if perk then `🔪 {perk.DisplayName}` else nil,
-		45
-	)
-end
 
 -- The aura a mounted knife gives off. Better knives (rarity, mutation, size) get a wider, more
 -- dramatic upright flame. The floor ring still shows the unchanged slowdown radius.
-local function aura(folder: Instance, model: Model, base: MapService.BaseSite, item: string, color: Color3)
-	local power = Items.AuraPower(item)
-	local boxCF, boxSize = model:GetBoundingBox()
-	local anchor = Instance.new("Part")
-	anchor.Name = "Aura"
-	anchor.Anchored = true
-	anchor.CanCollide = false
-	anchor.CanQuery = false
-	anchor.CanTouch = false
-	anchor.Transparency = 1
-	anchor.Size = Vector3.new(0.2, 0.2, 0.2)
-	-- The flame grows out of the guard (fallback: a bit under the middle of the knife)
-	local guard = model:FindFirstChild("Guard", true)
-	anchor.CFrame = if guard and guard:IsA("BasePart")
-		then CFrame.new(guard.Position)
-		else CFrame.new(boxCF.Position - Vector3.new(0, boxSize.Y * 0.2, 0))
-	anchor.Parent = folder
-	local clearance: number? = nil
-	local level = math.floor((boxCF.Position.Y - base.Frame.Position.Y) / MapService.FloorHeight) + 1
-	if level < MapService.Floors then
-		clearance = base.Frame.Position.Y + level * MapService.FloorHeight - 1.5 - anchor.Position.Y
-	end
-	local blade = model:FindFirstChild("Blade", true)
-	KnifeAura.Mount(
-		anchor,
-		KnifeAura.Power(item),
-		clearance,
-		KnifeAura.Variation(item),
-		if blade and blade:IsA("BasePart") then blade else nil
-	)
-	if power >= 1 then
-		-- How far it reaches, as a faint glowing circle on the floor
-		local radius = Items.AuraRadius(power)
-		local floorPoint = (base.Frame * CFrame.new(0, 0.62, 0)).Position
-		local center = Vector3.new(boxCF.Position.X, floorPoint.Y, boxCF.Position.Z)
-		local ring = Instance.new("Part")
-		ring.Name = "AuraRing"
-		ring.Shape = Enum.PartType.Cylinder
-		ring.Anchored = true
-		ring.CanCollide = false
-		ring.CanQuery = false
-		ring.CanTouch = false
-		ring.CastShadow = false
-		ring.Material = Enum.Material.Neon
-		ring.Color = color
-		ring.Transparency = 0.95
-		ring.Size = Vector3.new(0.05, radius * 2, radius * 2)
-		ring.CFrame = CFrame.new(center) * CFrame.Angles(0, 0, math.rad(90))
-		ring.Parent = folder
-		ring:AddTag("AuraRing")
-		ring:SetAttribute("Power", power)
-		-- A glowing dashed edge marks exactly where the slowdown starts
-		local dashes = math.clamp(math.floor(radius * 1.6), 12, 40)
-		for i = 0, dashes - 1 do
-			local angle = i / dashes * math.pi * 2
-			local dash = Instance.new("Part")
-			dash.Name = "AuraEdge"
-			dash.Anchored = true
-			dash.CanCollide = false
-			dash.CanQuery = false
-			dash.CanTouch = false
-			dash.CastShadow = false
-			dash.Material = Enum.Material.Neon
-			dash.Color = color
-			dash.Transparency = 0.35
-			dash.Size = Vector3.new(0.25, 0.08, 2 * math.pi * radius / dashes * 0.55)
-			dash.CFrame = CFrame.new(center + Vector3.new(math.cos(angle) * radius, 0.03, math.sin(angle) * radius))
-				* CFrame.Angles(0, -angle, 0)
-			dash.Parent = folder
-		end
-	end
-end
 
 local function makePrompt(parent: Instance, props: { [string]: any }): ProximityPrompt
 	local p = Instance.new("ProximityPrompt")
@@ -582,97 +463,10 @@ local function carryingKnife(player: Player): boolean
 end
 
 -- Worth a second tap before it's sold: rare knives, mutations, big sizes
-local function precious(item: string): boolean
-	local parsed = Items.Parse(item)
-	return parsed ~= nil
-		and (Knives.Rank(parsed.Knife.Rarity) >= 4 or parsed.Mutation.Rank > 0 or parsed.Size.Rank >= 2)
-end
 
 -- Tsunami-style sell sign: a thin board standing between the plate and its cash pad, leaning back a
 -- little, "SELL $11K". Tap / click it to sell (precious knives ask for a second tap).
 local sellSignPressed: { [Instance]: (Player) -> () } = {}
-
-local function sellSign(
-	folder: Instance,
-	base: MapService.BaseSite,
-	owner: Player,
-	plate: number,
-	index: number,
-	item: string
-)
-	local pad = base.CashPads[plate]
-	local stone = base.SlotPads[plate]
-	if not pad or not stone then
-		return
-	end
-	local toPlate = (stone.Position - pad.Position) * Vector3.new(1, 0, 1)
-	if toPlate.Magnitude < 0.1 then
-		return
-	end
-	toPlate = toPlate.Unit
-	local at = pad.Position + toPlate * 2.9 + Vector3.new(0, 1.1, 0)
-	local board = Instance.new("Part")
-	board.Name = "SellSign"
-	board.Anchored = true
-	board.CanCollide = false
-	board.CanTouch = false
-	board.CastShadow = false
-	board.Size = Vector3.new(5.6, 1.9, 0.16) -- a Tsunami pill, bigger and easier to read
-	-- Standing straight up (not leaning back like an easel) so it reads clearly, front face
-	-- toward the walkway
-	board.CFrame = CFrame.lookAt(at, at - toPlate)
-	board.Color = Color3.fromRGB(255, 160, 40)
-	board.Material = Enum.Material.SmoothPlastic
-	board.Transparency = 1
-	board.Parent = folder
-	-- Tsunami pill: "Sell $6.4K" in one line
-	local gui = SignTheme.face(board, Enum.NormalId.Front, 50, 60)
-	local price = math.floor(Items.Income(item) * GameConfig.SellSeconds)
-	local label = SignTheme.cashPill(gui)
-	label.Name = "SalePrice"
-	label.Text = `Sell {Format.Cash(price)}`
-	local click = Instance.new("ClickDetector")
-	click.MaxActivationDistance = 28
-	click.Parent = board
-	board:SetAttribute("SellOwner", owner.UserId)
-	board:SetAttribute("KnifeItem", item)
-	board:SetAttribute("Plate", plate)
-	local armedUntil = 0
-	local function pressed(who: Player)
-		if who ~= owner or owner:GetAttribute("InRound") then
-			return
-		end
-		local profile = DataService.Get(owner)
-		-- Still the same knife on this plate? (the wall may have changed since the sign was made)
-		if not profile or DataService.IndexOnPlate(profile, plate) ~= index or profile.Knives[index] ~= item then
-			return
-		end
-		if precious(item) and os.clock() > armedUntil then
-			armedUntil = os.clock() + 3
-			label.Text = "Tap again to sell"
-			task.delay(3, function()
-				if label.Parent and os.clock() >= armedUntil then
-					label.Text = `Sell {Format.Cash(price)}`
-				end
-			end)
-			return
-		end
-		-- Off the plate with a puff and a burst of cash, then the wall updates
-		local spot = base.SlotCFrames[plate].Position
-		Net.Remotes.Effect:FireAllClients("Smoke", spot)
-		Net.Remotes.Effect:FireClient(owner, "CashBurst", spot, price)
-		if BaseService.OnSellPrompt then
-			BaseService.OnSellPrompt(owner, index)
-		end
-	end
-	click.MouseClick:Connect(pressed)
-	-- With a knife in hand Roblox doesn't fire ClickDetectors: the client spots the tap itself
-	-- (client/Effects) and sends this sign (Remotes.SellSign)
-	sellSignPressed[board] = pressed
-	board.Destroying:Connect(function()
-		sellSignPressed[board] = nil
-	end)
-end
 
 function BaseService.RefreshRack(player: Player)
 	local base = baseOf[player]
@@ -681,19 +475,17 @@ function BaseService.RefreshRack(player: Player)
 		return
 	end
 	-- Room in the pen again (sold one / bigger pen): knives waiting in the bag move in
-	if PenMode.On() then
-		DataService.Update(player, function(p)
-			for i in p.Knives do
-				if (p.Plates[i] or i) > p.Slots then
-					local free = DataService.FreePlate(p)
-					if not free then
-						break
-					end
-					p.Plates[i] = free
+	DataService.Update(player, function(p)
+		for i in p.Knives do
+			if (p.Plates[i] or i) > p.Slots then
+				local free = DataService.FreePlate(p)
+				if not free then
+					break
 				end
+				p.Plates[i] = free
 			end
-		end)
-	end
+		end
+	end)
 	local folder = rackModels[player]
 	folder:ClearAllChildren()
 	for _, pad in base.SlotPads do
@@ -705,41 +497,24 @@ function BaseService.RefreshRack(player: Player)
 	end
 	-- Bought a floor: the vault grows (and its frame with it)
 	-- (a pen bought longer, or a vault a floor taller: rebuild the walls to fit)
-	if
-		if PenMode.On()
-			then base.Blocker:GetAttribute("PenDepth") ~= PenMode.Depth(profile.Slots)
-			else base.Blocker:GetAttribute("Floors") ~= GameConfig.FloorsFor(profile.Slots)
-	then
+	if base.Blocker:GetAttribute("PenDepth") ~= PenMode.Depth(profile.Slots) then
 		BaseService.RefreshWalls(base)
 	end
 	-- Every plate where its owner put it down (profile.Spots; after the walls, which re-lay the pen)
-	if PenMode.On() then
-		for plate in base.SlotPads do
-			BaseService.ApplySpot(player, plate)
-		end
+	for plate in base.SlotPads do
+		BaseService.ApplySpot(player, plate)
 	end
-	local equipped = profile.Equipped
 	local multiplier = BaseService.IncomeMultiplier(player)
 	for slot, pad in base.SlotPads do
 		local rim = base.SlotRims[slot]
 		local unlocked = slot <= profile.Slots
-		-- Reference-built plates stay cyan; grey and white still communicate rack state.
-		local vaultInset = pad:GetAttribute("VaultInset")
-		rim.Color = if unlocked
-			then (if pad:GetAttribute("BlockPlate")
-				then Color3.fromRGB(49, 218, 220)
-				else (if typeof(vaultInset) == "Color3" then vaultInset else Color3.fromRGB(30, 160, 215)))
-			else Color3.fromRGB(150, 150, 160)
-		rim.Material = if unlocked then Enum.Material.Neon else Enum.Material.SmoothPlastic
-		if PenMode.On() then
-			-- (a pen has no plates: knives and coffins stand on the grass; the pad stays as an
-			-- invisible anchor for prompts)
-			for _, part in { pad, rim } do
-				part.Transparency = 1
-				for _, d in part:GetDescendants() do
-					if d:IsA("BasePart") or d:IsA("Decal") or d:IsA("Texture") then
-						(d :: any).Transparency = 1
-					end
+		-- (a pen has no plates: knives and coffins stand on the grass; the pad stays as an
+		-- invisible anchor for prompts)
+		for _, part in { pad, rim } do
+			part.Transparency = 1
+			for _, d in part:GetDescendants() do
+				if d:IsA("BasePart") or d:IsA("Decal") or d:IsA("Texture") then
+					(d :: any).Transparency = 1
 				end
 			end
 		end
@@ -752,34 +527,50 @@ function BaseService.RefreshRack(player: Player)
 			-- Still in its coffin (CoffinService): the coffin, its countdown, "Open now" for the owner.
 			-- No income, no equip / sell / steal until it opens. (client/Coffins: countdown, rattle)
 			local slotCF = base.SlotCFrames[slot]
-			local grass = if PenMode.On() then base.Folder:FindFirstChild("Floor") :: BasePart? else nil
+			local grass = base.Folder:FindFirstChild("Floor") :: BasePart?
 			local floorY = if grass then grass.Position.Y + grass.Size.Y / 2 else pad.Position.Y + pad.Size.Y / 2
 			local floorCF = CFrame.new(pad.Position.X, floorY, pad.Position.Z) * slotCF.Rotation
-			local coffin = CoffinModel.Build(parsed.Knife.Rarity, floorCF)
-			KnifeHaze.Add(coffin, parsed.Knife.Rarity) -- (a glow on it from the start: you can see it's worth something)
+			local coffin = CoffinModel.Build(parsed.Knife.Rarity, floorCF, item)
 			coffin:SetAttribute("Owner", player.UserId)
 			coffin:SetAttribute("Plate", slot)
 			-- (server time, so every client counts down to the same moment)
 			coffin:SetAttribute("OpensAt", workspace:GetServerTimeNow() + (readyAt - os.time()))
 			-- (round-based: how many murder rounds are left - the label shows that, not a clock)
 			local sealed = DataService.SealedEntry(profile, slot)
-			coffin:SetAttribute("RoundsLeft", if sealed then sealed.Rounds else nil)
+			coffin:SetAttribute("RoundsLeft", if sealed and sealed.Rounds then math.ceil(sealed.Rounds) else nil)
+			local ready = sealed ~= nil and CoffinState.Ready(sealed.Rounds, sealed.ReadyAt, os.time())
+			coffin:SetAttribute("Ready", ready)
 			coffin:AddTag("Coffin")
 			-- (whole or not at all: client/Coffins swings and shatters every lid piece it finds)
 			coffin.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 			coffin.Parent = folder
 			local open = makePrompt(pad, {
-				ActionText = "Open now",
+				ActionText = if ready then "READY! Open" else "Unlock R$19",
 				ObjectText = `{parsed.Knife.Rarity} Coffin`,
 			})
 			open:SetAttribute("Owner", player.UserId)
 			open:SetAttribute("CoffinPlate", slot)
+			local body = coffin.PrimaryPart :: BasePart
+			body.CanQuery = true
+			local click = Instance.new("ClickDetector")
+			click.MaxActivationDistance = 18
+			click.Parent = body
+			click.MouseClick:Connect(function(who)
+				local root = who.Character and who.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if
+					who == player
+					and root
+					and (root.Position - body.Position).Magnitude <= 20
+					and BaseService.OnOpenCoffin
+				then
+					BaseService.OnOpenCoffin(who, slot)
+				end
+			end)
 		elseif
 			unlocked
 			and index
 			and item
 			and parsed
-			and PenMode.On()
 			and not heldOn(player, slot) -- (in your hand right now)
 		then
 			-- A pen: the knife is a character hopping around (equip / sell from the Knives menu)
@@ -789,7 +580,6 @@ function BaseService.RefreshRack(player: Player)
 			-- client/PenKnives; the tag shows up close)
 			local perSecond = Items.Income(item) * multiplier
 			penModel:SetAttribute("Income", perSecond)
-			local perk = parsed.Perk and GameConfig.Perks[parsed.Perk]
 			local tag = SignTheme.knifeLabel(
 				folder,
 				labelAnchor,
@@ -797,80 +587,36 @@ function BaseService.RefreshRack(player: Player)
 				parsed.Knife.Rarity,
 				Knives.RarityColors[parsed.Knife.Rarity],
 				`{Format.Cash(math.floor(perSecond * 10 + 0.5) / 10)}/s`,
-				if perk then `🔪 {perk.DisplayName}` else nil,
+				nil,
 				40 -- (only up close: from afar a pen is just its knives and their money pops, Steal an Egg)
 			)
 			-- Steal an Egg's labels: the same small size on screen, shown only when you're close
-			tag.Size = UDim2.fromOffset(130, if perk then 62 else 52)
-		elseif unlocked and index and item and parsed and not PenMode.On() then
-			local model = KnifeModel.Build(item, true)
-			-- Bigger items float bigger (a Colossal towers over its pedestal)
-			KnifeModel.FitLength(model, 4 * (1 + (parsed.Size.Scale - 1) * 0.5)) -- universal display size (was 6)
-			-- Centre the blade over the pedestal, then let clients bob and turn it (tag Spin)
-			model:PivotTo(base.SlotCFrames[slot])
-			local boxCF = model:GetBoundingBox()
-			model:PivotTo(model:GetPivot() + (base.SlotCFrames[slot].Position - boxCF.Position))
-			model:AddTag("Spin")
-			model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- spun whole on clients
-			model.Parent = folder
-			local glow = Items.Color(item)
-			-- The knife you fight with lights its plate up white
-			if item == equipped then
-				rim.Color = Color3.new(1, 1, 1)
-				rim.Material = Enum.Material.Neon
-			end
-			-- Fire supplies the pedestal glow; an opaque beam would hide its long wisps.
-			local anchor = model.PrimaryPart :: BasePart
-			nameplate(folder, anchor, item, Items.Income(item) * multiplier)
-			aura(folder, model, base, item, glow)
-
-			-- One prompt per knife (the client hides prompts with someone else's Owner): Equip.
-			-- Selling is the thin sign standing by the plate (sellSign).
-			local name = Items.DisplayName(item)
-			local equip = makePrompt(pad, {
-				ActionText = if item == equipped then "Equipped" else "Equip",
-				ObjectText = name,
-			})
-			equip:SetAttribute("Owner", player.UserId)
-			equip.Triggered:Connect(function(who)
-				if who == player and BaseService.OnEquipPrompt then
-					BaseService.OnEquipPrompt(player, item)
-				end
-			end)
-			sellSign(folder, base, player, slot, index, item)
-		elseif unlocked and not index and not PenMode.On() then
-			-- (a pen has no plates to aim for: walking in with a knife drops it in - StealService)
-			-- An empty plate takes the knife you're carrying (any of them, not just the next one)
-			local place = makePrompt(pad, {
-				ActionText = "Place Knife",
-				ObjectText = "",
-				HoldDuration = 0,
-			})
-			place:SetAttribute("Owner", player.UserId)
-			place:SetAttribute("Place", true)
-			place.Enabled = carryingKnife(player)
-			local plate = slot
-			place.Triggered:Connect(function(who)
-				if who == player and BaseService.OnPlacePrompt then
-					BaseService.OnPlacePrompt(player, plate)
-				end
-			end)
+			tag.Size = UDim2.fromOffset(130, 52)
 		end
-		VaultModel.SetPlateGlow(rim)
 	end
 	player:SetAttribute("Income", rackIncome(player))
 	-- Your waiting coffins for the Coffins panel (client/CoffinList): "plate,rarity,roundsLeft,opensAt;..."
 	-- (roundsLeft -1 = a plain timer; opensAt in server time, the offline fallback / timer)
 	local coffins = {}
+	local readyCount = 0
 	for _, entry in profile.Sealed do
 		local index = DataService.IndexOnPlate(profile, entry.Plate)
 		local parsed = if index then Items.Parse(profile.Knives[index]) else nil
 		if parsed then
+			if CoffinState.Ready(entry.Rounds, entry.ReadyAt, os.time()) then
+				readyCount += 1
+			end
 			local opensAt = workspace:GetServerTimeNow() + (entry.ReadyAt - os.time())
-			table.insert(coffins, `{entry.Plate},{parsed.Knife.Rarity},{entry.Rounds or -1},{math.floor(opensAt)}`)
+			table.insert(
+				coffins,
+				`{entry.Plate},{parsed.Knife.Rarity},{if entry.Rounds then math.ceil(entry.Rounds) else -1},{math.floor(
+					opensAt
+				)}`
+			)
 		end
 	end
 	player:SetAttribute("CoffinList", table.concat(coffins, ";"))
+	player:SetAttribute("CoffinsReady", readyCount)
 	-- (the Knives menu hides these: a coffin's knife stays a secret until it opens)
 	local sealedKnives = {}
 	for i in profile.Knives do
@@ -879,7 +625,6 @@ function BaseService.RefreshRack(player: Player)
 		end
 	end
 	player:SetAttribute("SealedKnives", table.concat(sealedKnives, ","))
-	MapService.SetWheelTier(base, profile.TreadmillLevel)
 end
 
 local function claimBase(player: Player)
@@ -887,7 +632,7 @@ local function claimBase(player: Player)
 		if not owners[i] then
 			owners[i] = player
 			baseOf[player] = base
-			base.Sign.Text = `{player.DisplayName}'s Vault`
+			base.Sign.Text = `{player.DisplayName}'s Pen`
 			local folder = Instance.new("Folder")
 			folder.Name = `Rack_{player.Name}`
 			folder.Parent = workspace:FindFirstChild("Map")
@@ -936,7 +681,7 @@ local function releaseBase(player: Player)
 	local base = baseOf[player]
 	if base then
 		owners[base.Index] = nil
-		base.Sign.Text = "Empty Vault"
+		base.Sign.Text = "Empty Pen"
 		for _, pad in base.SlotPads do
 			pad.Color = Color3.fromRGB(40, 38, 46)
 			for _, prompt in pad:GetChildren() do
@@ -948,7 +693,6 @@ local function releaseBase(player: Player)
 		for _, rim in base.SlotRims do
 			rim.Color = Color3.fromRGB(30, 28, 34)
 			rim.Material = Enum.Material.SmoothPlastic
-			VaultModel.SetPlateGlow(rim)
 		end
 	end
 	if rackModels[player] then
@@ -957,8 +701,6 @@ local function releaseBase(player: Player)
 	baseOf[player] = nil
 	rackModels[player] = nil
 	if base then
-		base.Wheel:SetAttribute("Spinning", nil)
-		MapService.SetWheelTier(base, 1)
 		BaseService.RefreshWalls(base)
 	end
 end
@@ -1009,18 +751,16 @@ end
 -- CoffinService.Reveal: the knife pops out, flies into you (client Effects CoffinHatch) and waits
 -- in your hotbar until you tap where it goes in your pen (Steal an Egg)
 function BaseService.HoldHatched(player: Player, plate: number, item: string)
-	if PenMode.On() then
-		local list = hatching[player] or {}
-		hatching[player] = list
-		local held = { Plate = plate, Item = item }
-		table.insert(list, held)
-		task.delay(HATCH_FLIGHT, function()
-			if player.Parent and table.find(list, held) then
-				giveHatchTool(player, held, true)
-				player:SetAttribute("HoldingHatch", #list)
-			end
-		end)
-	end
+	local list = hatching[player] or {}
+	hatching[player] = list
+	local held = { Plate = plate, Item = item }
+	table.insert(list, held)
+	task.delay(HATCH_FLIGHT, function()
+		if player.Parent and table.find(list, held) then
+			giveHatchTool(player, held, true)
+			player:SetAttribute("HoldingHatch", #list)
+		end
+	end)
 	BaseService.RefreshRack(player)
 end
 
@@ -1153,17 +893,8 @@ function BaseService.Init()
 		watchCharacters(player)
 	end
 	Players.PlayerRemoving:Connect(releaseBase)
-	DataService.Changed:Connect(function(player: Player, profile: DataService.Profile)
+	DataService.Changed:Connect(function(player: Player, _profile: DataService.Profile)
 		BaseService.RefreshWalkSpeed(player)
-		-- New walls go up when the tier changes
-		local base = baseOf[player]
-		if base then
-			MapService.SetWheelTier(base, profile.TreadmillLevel)
-		end
-		if base and base.Blocker:GetAttribute("Tier") ~= profile.WallLevel then
-			BaseService.RefreshWalls(base)
-			BaseService.RefreshRack(player) -- restore equipped/locked plate finishes after the theme swap
-		end
 	end)
 	-- The equipped knife's plaque glows white
 	local function watchEquipped(player: Player)
@@ -1176,82 +907,6 @@ function BaseService.Init()
 		watchEquipped(player)
 	end
 
-	-- Haunted Wheel: stand inside your vault's wheel to train Speed (AFK is fine)
-	task.spawn(function()
-		local last = os.clock()
-		while true do
-			task.wait(0.25)
-			local now = os.clock()
-			local dt = now - last
-			last = now
-			for player, base in baseOf do
-				local profile = DataService.Get(player)
-				local character = player.Character
-				local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-				local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-				local on = false
-				if profile and root and humanoid and humanoid.Health > 0 and not player:GetAttribute("InRound") then
-					local localPos = base.Treadmill.CFrame:PointToObjectSpace(root.Position)
-					local size = base.Treadmill.Size
-					on = math.abs(localPos.X) < size.X / 2 + 0.5
-						and math.abs(localPos.Z) < size.Z / 2 + 0.5
-						and localPos.Y > 0
-						and localPos.Y < 6
-				end
-				if player:GetAttribute("Training") ~= (on or nil) then
-					if on then
-						trainingSince[player] = os.clock()
-						Analytics.Milestone(player, "wheel_trained")
-					elseif trainingSince[player] then
-						Analytics.Track(player, "wheel.session", {
-							seconds = math.floor(os.clock() - trainingSince[player]),
-							speed_after = profile and math.floor(profile.Speed),
-						})
-						trainingSince[player] = nil
-					end
-					player:SetAttribute("Training", on or nil)
-					base.Wheel:SetAttribute("Spinning", on or nil) -- clients spin it
-					if on and root and profile then
-						-- Face the way the rungs roll, so it looks like running up the steps
-						local hub = (base.Wheel.PrimaryPart :: BasePart).CFrame
-						local forward = hub:VectorToWorldSpace(Vector3.zAxis)
-						root.CFrame = CFrame.lookAt(root.Position, root.Position + forward)
-					end
-				end
-				-- Better wheels spin faster (and the runner's legs keep up, see Moves)
-				if on and profile then
-					base.Wheel:SetAttribute("SpinRate", 1.4 + profile.TreadmillLevel * 0.55)
-				end
-				if on and profile then
-					local rate = GameConfig.TrainRate(
-						profile.TreadmillLevel,
-						profile.Rebirths,
-						profile.TrailLevel,
-						player:GetAttribute("Pass_PhantomTrail") == true,
-						player:GetAttribute("Pass_FastWheel") == true,
-						DataService.BoostActive(profile, "Training")
-					)
-					DataService.Update(player, function(p)
-						p.Speed += rate * dt
-					end)
-					-- A long stint on the wheel: that's the grind a Training Potion cuts
-					trainedFor[player] = (trainedFor[player] or 0) + dt
-					if
-						trainedFor[player] > GameConfig.Consumables.TrainingOfferAfter
-						and not DataService.BoostActive(profile, "Training")
-					then
-						trainedFor[player] = 0
-						Offers.Show(
-							player,
-							"TrainingPotion",
-							"Training takes ages? 3x Speed from the wheel for 15 minutes."
-						)
-					end
-				end
-			end
-		end
-	end)
-
 	-- Every knife earns onto its own cash pad once a second (Tsunami style); the pads show what's
 	-- waiting
 	task.spawn(function()
@@ -1263,20 +918,6 @@ function BaseService.Init()
 					continue
 				end
 				local multiplier = BaseService.IncomeMultiplier(player)
-				local boostUntil = player:GetAttribute("BoostUntil")
-				local boosted = type(boostUntil) == "number" and workspace:GetServerTimeNow() < boostUntil
-				if boosted then
-					multiplier *= GameConfig.BoostMultiplier
-				end
-				-- The free 2x (survivor) just ran out: that's when a Cash Potion feels best
-				if hadBoost[player] and not boosted and not DataService.BoostActive(profile, "Cash") then
-					Offers.Show(
-						player,
-						"CashPotion",
-						"Your 2x boost ran out! Keep your vault on 2x for 15 more minutes."
-					)
-				end
-				hadBoost[player] = boosted
 				-- A Speed Potion just ended: back to normal speed
 				local speedOn = DataService.BoostActive(profile, "Speed")
 				if speedOn ~= (hadSpeed[player] or false) then
@@ -1324,44 +965,33 @@ function BaseService.Init()
 					continue
 				end
 				-- a pen: being anywhere inside it collects everything (Steal an Egg); no pads to walk over
-				local pen = PenMode.On()
 				for slot, pad in base.CashPads do
 					local waiting = profile.Pending[slot] or 0
 					if waiting <= 0 or not pad.Parent or not pad:IsDescendantOf(workspace) then
 						continue
 					end
-					local offset = pad.CFrame:PointToObjectSpace(root.Position)
-					if
-						auto
-						or pen
-						or math.abs(offset.X) < pad.Size.X / 2 + 0.8
-							and math.abs(offset.Z) < pad.Size.Z / 2 + 0.8
-							and offset.Y > 0
-							and offset.Y < 6
-					then
-						DataService.Update(player, function(p)
-							p.Pending[slot] = 0
-						end)
-						pad:SetAttribute("Waiting", 0)
-						DataService.AddCash(player, waiting, "income")
-						Analytics.Milestone(player, "cash_collected")
-						Analytics.Count(player, if auto then "pad_auto" else "pad_walks")
-						base.CashLabels[slot].Text = ""
-						player:SetAttribute(
-							"PendingCash",
-							math.max(0, ((player:GetAttribute("PendingCash") or 0) :: number) - math.floor(waiting))
-						)
-						Net.Remotes.Effect:FireClient(player, "CashBurst", pad.Position, waiting, auto)
-						-- Lots of pad-walking this visit: offer to do it for them
-						if not auto then
-							padWalks[player] = (padWalks[player] or 0) + 1
-							if padWalks[player] % 15 == 0 then
-								Offers.Show(
-									player,
-									"CollectSession",
-									"Tired of walking over every pad? Collect everything automatically this visit."
-								)
-							end
+					DataService.Update(player, function(p)
+						p.Pending[slot] = 0
+					end)
+					pad:SetAttribute("Waiting", 0)
+					DataService.AddCash(player, waiting, "income")
+					Analytics.Milestone(player, "cash_collected")
+					Analytics.Count(player, if auto then "pad_auto" else "pad_walks")
+					base.CashLabels[slot].Text = ""
+					player:SetAttribute(
+						"PendingCash",
+						math.max(0, ((player:GetAttribute("PendingCash") or 0) :: number) - math.floor(waiting))
+					)
+					Net.Remotes.Effect:FireClient(player, "CashBurst", pad.Position, waiting, auto)
+					-- Lots of pad-walking this visit: offer to do it for them
+					if not auto then
+						padWalks[player] = (padWalks[player] or 0) + 1
+						if padWalks[player] % 15 == 0 then
+							Offers.Show(
+								player,
+								"CollectSession",
+								"Tired of walking over every pad? Collect everything automatically this visit."
+							)
 						end
 					end
 				end

@@ -132,6 +132,7 @@ end
 
 -- The window. `size` is the design size; it scales to fit. Returns (frame, body).
 function SimpleUi.window(name: string, title: string, icon: string, color: Color3, size: Vector2): (Frame, Frame)
+	local headerH = if size.Y <= 300 then 52 else 84
 	local frame: Frame = Ui.new("Frame", {
 		Name = name,
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -147,7 +148,7 @@ function SimpleUi.window(name: string, title: string, icon: string, color: Color
 	local scale = Ui.new("UIScale", { Scale = 1 }, frame)
 	local header: Frame = Ui.new("Frame", {
 		Name = "Header",
-		Size = UDim2.new(1, 0, 0, 84),
+		Size = UDim2.new(1, 0, 0, headerH),
 		BackgroundColor3 = Color3.new(1, 1, 1),
 		ZIndex = 6,
 	}, frame)
@@ -157,15 +158,15 @@ function SimpleUi.window(name: string, title: string, icon: string, color: Color
 	Ui.new("ImageLabel", {
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(14, 6),
-		Size = UDim2.fromOffset(72, 72),
+		Size = UDim2.fromOffset(headerH - 12, headerH - 12),
 		Image = icon,
 		ScaleType = Enum.ScaleType.Fit,
 		ZIndex = 7,
 	}, header)
 	SimpleUi.text(header, title, {
 		Name = "Title",
-		Position = UDim2.fromOffset(98, 10),
-		Size = UDim2.new(1, -200, 1, -20),
+		Position = UDim2.fromOffset(headerH + 14, 6),
+		Size = UDim2.new(1, -(headerH * 2 + 40), 1, -12),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Max = 56,
 	})
@@ -173,7 +174,7 @@ function SimpleUi.window(name: string, title: string, icon: string, color: Color
 		Name = "Close",
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -10, 0.5, 0),
-		Size = UDim2.fromOffset(78, 68),
+		Size = if headerH == 52 then UDim2.fromOffset(48, 48) else UDim2.fromOffset(headerH - 6, headerH - 12),
 		ZIndex = 8,
 		Max = 52,
 	}, function()
@@ -181,8 +182,8 @@ function SimpleUi.window(name: string, title: string, icon: string, color: Color
 	end)
 	local body: Frame = Ui.new("Frame", {
 		Name = "Body",
-		Position = UDim2.fromOffset(16, 98),
-		Size = UDim2.new(1, -32, 1, -112),
+		Position = UDim2.fromOffset(16, headerH + 10),
+		Size = UDim2.new(1, -32, 1, -(headerH + 22)),
 		BackgroundTransparency = 1,
 		ZIndex = 6,
 	}, frame)

@@ -31,7 +31,6 @@ export type Bot = {
 	NextThink: number, -- RoundService's per-bot timers
 	NextStab: number,
 	IdleUntil: number,
-	StunnedUntil: number,
 	Knife: Model?,
 	Gun: Tool?, -- the Revolver, when this bot is the Sheriff
 	NextShot: number,
@@ -122,7 +121,6 @@ function RoundBots.Spawn(at: CFrame, role: string, taken: { [string]: boolean },
 		NextThink = 0,
 		NextStab = 0,
 		IdleUntil = 0,
-		StunnedUntil = 0,
 		Knife = nil,
 		Gun = nil,
 		NextShot = 0,
@@ -220,9 +218,8 @@ function RoundBots.Step(bot: Bot)
 		return
 	end
 	local root, humanoid = bot.Root, bot.Humanoid
-	local stunned = workspace:GetServerTimeNow() < bot.StunnedUntil
 	local goal = bot.Goal
-	if stunned or not goal then
+	if not goal then
 		humanoid:MoveTo(root.Position)
 	elseif clearPath(root.Position, goal) then
 		bot.Waypoints = {}
@@ -250,7 +247,7 @@ function RoundBots.Step(bot: Bot)
 	-- Hop like a player: now and then while running (more when running for its life), and
 	-- straight away when it's walking into something and not getting anywhere
 	local now = os.clock()
-	local moving = goal ~= nil and not stunned
+	local moving = goal ~= nil
 	if moving and speed < 1 then
 		bot.StuckSince = bot.StuckSince or now
 	else

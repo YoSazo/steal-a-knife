@@ -2,9 +2,8 @@
 -- The first minutes, for new players, Steal An Egg style: red arrows on the ground running from you
 -- to where you need to go, a bouncing arrow over the spot, and one short line of text in a slim
 -- see-through bar under the timer (never a big box over the game). Learn by doing:
---   1. steal a knife off Frank's wall    2. run it home and place it (caught? back to 1)
---   3. collect its cash pad               4. run in your wheel (Speed = deeper biomes)
--- then the "Your knife's power" showcase. (Upgrades and Equip steps were cut: only 2 of 11 new
+--   1. steal a monster's coffin  2. run home and place it  3. tap READY  4. collect Cash
+-- (Upgrades and Equip steps were cut: only 2 of 11 new
 -- players got through them; Upgrades is found anyway, and your best knife is auto-equipped.)
 -- Progress is saved (player TutorialStep), so leaving midway resumes there. More > How to play
 -- replays it (Ui.ReplayTutorial). The murder rounds and everything later are taught by one-time
@@ -14,7 +13,6 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local PenMode = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PenMode"))
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("GameConfig"))
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -43,7 +41,7 @@ end
 local running = false
 
 -- (where things are: client/Places, shared with the guide)
-local cashPad, wheel, homeSpot = Places.CashPad, Places.Wheel, Places.HomeSpot
+local cashPad, homeSpot = Places.CashPad, Places.HomeSpot
 local freePlate, knifeOver = Places.FreePlate, Places.KnifeOver
 
 -- Go directly to a stocked side knife. The lair approach is only a fallback while it streams in.
@@ -113,7 +111,6 @@ local function run(startAt: number, replay: boolean)
 	end))
 	local chosenPad: BasePart? = nil
 	local lastScan = 0
-	local trainingSince: number? = nil
 	local steps: { Step } = {
 		{
 			Text = `Follow the arrows to the {string.upper(GameConfig.MonsterName(1))}'s coffins!`,
@@ -148,25 +145,21 @@ local function run(startAt: number, replay: boolean)
 			end,
 		},
 		{
-			-- (a pen: being in it collects your money - no pads)
-			Text = if PenMode.On()
-				then "Your knife makes money! Stay in your pen to collect it."
-				else "Your knife makes money! Walk on the green pad to get it.",
-			Target = cashPad,
+			Text = "Open your READY coffin!",
+			Target = function(): Vector3?
+				local coffin = Places.ReadyCoffin()
+				return if coffin then coffin:GetPivot().Position else homeSpot()
+			end,
 			Done = function()
-				return collected
+				return banked and #Ui.list(player:GetAttribute("SealedKnives")) == 0
 			end,
 		},
 		{
-			Text = "Run in your wheel to get faster! Faster = better knives!",
-			Target = wheel,
+			-- (a pen: being in it collects your money - no pads)
+			Text = "Your knife makes money! Stay in your pen to collect it.",
+			Target = cashPad,
 			Done = function()
-				if player:GetAttribute("Training") and Ui.inHub() then
-					trainingSince = trainingSince or os.clock()
-					return os.clock() - (trainingSince :: number) >= 3
-				end
-				trainingSince = nil
-				return false
+				return collected
 			end,
 		},
 	}
@@ -266,11 +259,6 @@ local function run(startAt: number, replay: boolean)
 			return
 		end
 		banner:Destroy()
-		local me = root()
-		if me then
-			Effects.FloatText(me.Position + Vector3.new(0, 3, 0), "+Speed!", Color3.fromRGB(120, 255, 140))
-		end
-		-- (its own sound: the power-reveal sting here made equipping sound like the steal again)
 	end
 
 	local function showStep()
@@ -278,8 +266,8 @@ local function run(startAt: number, replay: boolean)
 		local compact = {
 			"Follow the arrows!",
 			"RUN HOME!",
+			"Open your READY coffin!",
 			"Collect your cash!",
-			"Run in your wheel!",
 		}
 
 		stepLabel.Text = `{current}/{#steps}  {if Ui.Phone or Ui.Layout.get().Compact

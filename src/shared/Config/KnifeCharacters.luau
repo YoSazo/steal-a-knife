@@ -12,7 +12,7 @@ export type Character = {
 }
 local names: { [string]: Character } = {
 	RustyShank = {
-		Display = "Rusty Steve",
+		Display = "Steve",
 		Personality = "derpy",
 		Rarity = "Common",
 		Height = 2.4,
@@ -22,7 +22,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "None",
 	},
 	KitchenKnife = {
-		Display = "Chef Choppy",
+		Display = "Chris",
 		Personality = "derpy",
 		Rarity = "Common",
 		Height = 2.4,
@@ -32,7 +32,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "None",
 	},
 	PocketKnife = {
-		Display = "Pocket Pete",
+		Display = "Pete",
 		Personality = "derpy",
 		Rarity = "Common",
 		Height = 2.4,
@@ -42,7 +42,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "None",
 	},
 	HunterBlade = {
-		Display = "Happy Camper",
+		Display = "Gary",
 		Personality = "cheerful",
 		Rarity = "Rare",
 		Height = 2.4,
@@ -52,7 +52,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "None",
 	},
 	Switchblade = {
-		Display = "Clicky Ricky",
+		Display = "Ricky",
 		Personality = "cheerful",
 		Rarity = "Rare",
 		Height = 2.4,
@@ -62,7 +62,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "None",
 	},
 	ThornDagger = {
-		Display = "Prickle Pickle",
+		Display = "Linda",
 		Personality = "cheerful",
 		Rarity = "Rare",
 		Height = 2.4,
@@ -72,7 +72,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "None",
 	},
 	Cleaver = {
-		Display = "Chop Goblin",
+		Display = "Tony",
 		Personality = "cool",
 		Rarity = "Epic",
 		Height = 2.4,
@@ -82,7 +82,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "None",
 	},
 	Machete = {
-		Display = "Bushwhack Bob",
+		Display = "Chad",
 		Personality = "cool",
 		Rarity = "Epic",
 		Height = 2.4,
@@ -92,7 +92,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "None",
 	},
 	BoneCarver = {
-		Display = "Bony Tony",
+		Display = "Kelly",
 		Personality = "cool",
 		Rarity = "Epic",
 		Height = 2.4,
@@ -102,7 +102,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "None",
 	},
 	GoldenDagger = {
-		Display = "Goldie Locks",
+		Display = "Doug",
 		Personality = "smug",
 		Rarity = "Legendary",
 		Height = 2.4,
@@ -112,7 +112,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "Pupil",
 	},
 	Katana = {
-		Display = "Sir Slicealot",
+		Display = "Wendy",
 		Personality = "smug",
 		Rarity = "Legendary",
 		Height = 2.4,
@@ -122,7 +122,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "Pupil",
 	},
 	Reaper = {
-		Display = "Grimothy",
+		Display = "Carl",
 		Personality = "smug",
 		Rarity = "Legendary",
 		Height = 2.4,
@@ -132,7 +132,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "Pupil",
 	},
 	InfernoFang = {
-		Display = "Toasty Terry",
+		Display = "Lenny",
 		Personality = "fierce",
 		Rarity = "Mythic",
 		Height = 2.4,
@@ -142,7 +142,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "Pupil",
 	},
 	MagmaCleaver = {
-		Display = "Lava Lenny",
+		Display = "Hank",
 		Personality = "fierce",
 		Rarity = "Mythic",
 		Height = 2.4,
@@ -152,7 +152,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "Pupil",
 	},
 	DemonHorn = {
-		Display = "Spicy Spike",
+		Display = "Nina",
 		Personality = "fierce",
 		Rarity = "Mythic",
 		Height = 2.4,
@@ -162,7 +162,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "Pupil",
 	},
 	ZeusBolt = {
-		Display = "Zappy Zeus",
+		Display = "Daisy",
 		Personality = "royal",
 		Rarity = "Godly",
 		Height = 2.4,
@@ -172,7 +172,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "Rim",
 	},
 	AthenaBlade = {
-		Display = "Queen Cutlery",
+		Display = "Paul",
 		Personality = "royal",
 		Rarity = "Godly",
 		Height = 2.4,
@@ -182,7 +182,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "Pupil",
 	},
 	OlympusEdge = {
-		Display = "Lord Edgeward",
+		Display = "Quinn",
 		Personality = "royal",
 		Rarity = "Godly",
 		Height = 2.4,
@@ -192,7 +192,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "Pupil",
 	},
 	HaloBlade = {
-		Display = "Saint Slice",
+		Display = "Tina",
 		Personality = "serene",
 		Rarity = "Celestial",
 		Height = 2.4,
@@ -202,7 +202,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "Pupil",
 	},
 	SeraphSword = {
-		Display = "Seraphina Slice",
+		Display = "Uma",
 		Personality = "serene",
 		Rarity = "Celestial",
 		Height = 2.4,
@@ -212,7 +212,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "Pupil",
 	},
 	AngelFeather = {
-		Display = "Feather Fred",
+		Display = "Vince",
 		Personality = "serene",
 		Rarity = "Celestial",
 		Height = 2.4,
@@ -222,7 +222,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "Pupil",
 	},
 	VoidEdge = {
-		Display = "Void Lloyd",
+		Display = "Bob",
 		Personality = "unhinged",
 		Rarity = "Cosmic",
 		Height = 2.4,
@@ -232,7 +232,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "Pupil",
 	},
 	StarCleaver = {
-		Display = "Cosmic Carl",
+		Display = "Yara",
 		Personality = "unhinged",
 		Rarity = "Cosmic",
 		Height = 2.4,
@@ -242,7 +242,7 @@ local names: { [string]: Character } = {
 		GlowStyle = "Pupil",
 	},
 	GalaxyKatana = {
-		Display = "Galaxy Gary",
+		Display = "Zane",
 		Personality = "unhinged",
 		Rarity = "Cosmic",
 		Height = 2.4,

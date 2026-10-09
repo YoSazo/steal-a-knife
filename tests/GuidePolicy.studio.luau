@@ -65,24 +65,11 @@ return function(t)
 			false
 		)
 	end)
-	t.test("another Murderer power gets its own first-use coaching", function()
-		local a = {
-			Mode = "Auto",
-			Id = "murderer_perk",
-			Skill = Policy.Skill("murderer_perk", "Snare"),
-			Learned = { ["perk:Snare"] = 1 },
-			Age = 0,
-			Started = false,
-		}
-		t.expect.equal(Policy.Visible(a), false)
-		a.Skill = Policy.Skill("murderer_perk", "FlashKnife")
-		t.expect.equal(Policy.Visible(a), true)
-	end)
 	t.test("saved learning parses, clamps and rejects unknown lessons", function()
 		local learned = Policy.Parse("delivery=900,index=1,perk:Snare=1,nonsense=55")
 		t.expect.equal(learned.delivery, 3)
 		t.expect.equal(learned.index, 1)
-		t.expect.equal(learned["perk:Snare"], 1)
+		t.expect.equal(learned["perk:Snare"], nil)
 		t.expect.equal(learned.nonsense, nil)
 	end)
 	t.test("a long idle can restore familiar help", function()

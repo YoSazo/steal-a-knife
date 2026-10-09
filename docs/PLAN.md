@@ -18,7 +18,7 @@ right.** Each is its own commit on `main-eftg5w`, so a bad one can be reverted a
 
 Done:
 - **Item 2 (switch):** pens + coffins everywhere, Pens.Count = 8, both A/B tests gone (pens/vaults
-  split, prize_pick). Not done: deleting the dormant vault code.
+  split, prize_pick). Dormant vault code deleted in the Codex continuation.
 - **Item 3:** no knife loot / AtRisk / Insurance (leftover charges refunded once), Classic and
   Double Trouble off (code dormant), map vote gone (random map).
 - **Item 1:** shells only for zones 1-2; deep biomes back to the dirt wall + ManorDecor props + floor
@@ -30,8 +30,8 @@ Done:
   goal line ("outrun the FLOWER TOAD").
 - **Item 28:** round moments shown in rounds (`Net.Notify(..., inRound)`), bigger top line /
   toasts, pen wording, rewrites. Not done: the two-line prize layout + moving the x2 pill.
-- **Item 4:** powers off at the source (`Items.Parse` Perk = nil), PowerShowcase gone. Not done:
-  deleting the dormant power code; the per-rarity kill effect.
+- **Item 4:** Murderer powers and their dormant code deleted; rarity kill bursts added in the
+  Codex continuation below.
 - **Item 6 (HUD):** the guide's DO line is the big objective (36 px, phones 28); the core loop's
   line and red trail never retire (tests/GuidePolicy updated); Speed / Cash bigger, tap either to
   open the shop on its tab (`Ui.OpenShop`), a + badge on Cash.
@@ -74,23 +74,144 @@ Fixed in Studio:
 - **Three messages at once on join:** the "Come back tomorrow" line is gone (not part of the loop).
 - An unused `info` in `showKill` (lint).
 
-Found, not fixed yet:
-- **Tapping Speed / Cash may not open the shop on phones:** the block sits inside the zone Roblox's
-  dynamic thumbstick claims, so touches there can turn into movement. Still checking with a
-  real tap; if it's blocked, move the block clear of the thumbstick or put the shop on its own
-  button.
-- **Round maps look dark on phones** (goes with the murder maps item).
-- **A ~9 hour gap between pen slots 16 and 17** in pacing_sim (look at `Pens.SlotCosts`).
+Found and fixed in the continuation:
+- **Minimum-Speed getaway:** creatures caught newcomers within 0.8 s of stealing. Their first
+  three deliveries now get a 1.5 s wake-up instead of 0.25 s. At the advertised minimum Speed,
+  zone 2 / 3 round trips brought coffins home with full health in 24.4 / 21.9 s on phone; a
+  desktop zone 2 steal and placement completed in 24.9 s. Keep the owner's 70 s intermission.
 
-Still to test (needs real input): tapping Speed / Cash on a real phone, the chase glow ending at
-the safe line, the deeper-monster fling, the trail after several deliveries, a creature's speed
-sign up close.
+Still to test on physical hardware: tapping Speed / Cash. Studio checks: chase glow reaches
+transparency 1 at the safe line while still carrying; zone 1 / 8 fling velocity magnitudes
+70.7 / 139.3; four deliveries cap learned delivery at 3 and still show all 44 red chevron parts.
+The creature's speed sign is readable up close at 640 x 320.
 
-**Not started (next):** first **item 30** (rounds are the Speed: cut the Haunted Wheel, the
-survival ladder), since it changes the balance everything else sits on; then the hatch layer (items 13-17: see-through "x-ray" coffin - glass in the
-rarity colour with a glowing knife shape inside, Diamond+ a second sparkle glow; human names;
-manual opening; Winner's Luck; the fuse machine), the shop rebuild (item 20), deleting the dormant
-vault / power / Classic code, and the rest of the plan below.
+### Codex Studio continuation, 2026-10-08
+
+- **Phone shop fixed:** Speed / Cash rows clear the dynamic thumbstick's invisible 40%-width
+  rectangle and the bottom backpack area; each whole row is a 44 px tap target. Opening a row
+  keeps its Speed / Money tab (the visibility handler previously reset it to Featured).
+  Tested both tabs through Studio input on desktop (1648 x 843) and the owner's 640 x 320 phone
+  preset (live viewport 640 x 300, safe HUD 640 x 242). Selene, StyLua and luau-lsp pass.
+  The rows now sit beside the centre view so they do not cover a monster's speed sign.
+- **Item 2 deletion:** VaultModel / VaultWalls, all vault floors / ladders / plates and base
+  layout branches, floor config, wall tiers and the pen-mode switch removed (~1,500 net lines).
+  Pens retain their entrance marker for BaseMarkers. DataService preserves old knives in the bag
+  and normalizes pen room to individual slots instead of whole floors. Placement, held knife,
+  room purchases tested in Studio at phone and desktop sizes; console clean after fixing the
+  dynamic KnifeModel pen-mode call. Selene, StyLua and luau-lsp pass. CLAUDE.md updated.
+- **Item 4 deletion:** all Murderer perks, Spam / Hellfire / stun / traps / power reveal, Decoy,
+  Stealth, Shift, perk catalog / icons / cards / button removed (~1,500 lines). Every knife uses
+  tap to stab and hold to throw; higher rarities have larger coloured kill bursts. The later zero-player decision removed legacy four-field
+  parsing and refunds. Studio desktop hold threw once and tap killed a bot;
+  phone THROW button works repeatedly and tap killed a bot. Old Spam requests were rejected.
+  Studio solo debugging bypasses join grace after giving a knife; empty profiles cannot join.
+  Selene, StyLua and luau-lsp pass; no game script errors. CLAUDE.md updated.
+- **Item 3 deletion:** Classic / Double Trouble config, partner views / outlines / messages,
+  second Sheriff / gun paths and UI removed. Studio round setup had exactly one Murderer and one
+  Revolver; role and round UI checked at phone and desktop sizes. Console had no game script
+  errors. Selene, StyLua and luau-lsp pass.
+- **Round lighting fixed:** neutral 210 / 210 / 200 ambient and no indoor shadows while in a
+  round; hub ambient and shadows restore afterward. Visually checked Office in the phone preset
+  and at desktop size after the role-reveal overlay faded. All three code checks pass. One
+  restart hit an existing timeout loading wheel geometry; the next boot was clean.
+- **Pen price cliff fixed:** slots 17-20 now cost 30B / 60B / 120B / 240B. pacing_sim gives
+  slot 16 at 6.50 h, slot 17 at 7.92 h; Rare 0.34 h, Epic 1.18 h, Legendary 4.01 h. Later
+  unique-slot milestones can still cross a rebirth, which resets the pen. Verified server purchases
+  through slot 17 on phone and slot 18 at desktop size; Selene, StyLua and luau-lsp pass.
+- **Owner chose item 30 option B:** IntermissionTime 70, RoundTime 60, warning 10. Survival
+  steps at 10 / 20 / 35 / 50 / 60 s, weights 1 / 2 / 4 / 7 / 12, banked immediately.
+  Delivered coffins pay a small share of the next zone gap, deeper zones pay more, about one
+  tenth of full survival, with the same flying shoes. Rescale coffin round counts and offline
+  seconds to preserve hatch minutes. Tune shares for Rare ~0.34 h, Epic ~1.2 h, Legendary ~4 h;
+  preserve the cycle unless a zone 2-3 run cannot fit the ~60 s stealing window (then 80-90 s).
+- **Owner choices for later:** paid featured coffin after items 13-17: fixed Mythic Inferno knife,
+  weights None/Gold/Diamond/Rainbow/Void = 60/25/10/4/1, 1/3/10 bundles = 99/249/699 R$,
+  immediately READY, a real weekly expiry, permanently retired old feature. Godly+ stay earned.
+  Roblox title "[MURDER] Steal a Knife"; internal title "Steal a Knife".
+  Owner-only admin events, automatic Saturday 15:00 America/New_York for one hour; cycle Golden
+  Round (2x ladder), Luck Storm (boosted opening odds), Speed Rush (2x delivery Speed). One event
+  and banner at a time; admin may start an extra event. Friday countdown on the events board.
+
+- **Item 30 complete:** Haunted Wheel geometry, models, signs, training ticks, tutorial step,
+  upgrades and UI deleted (~10,000 lines). Rounds bank Speed through DataService; shoe pickups
+  pay Speed, never Cash; delivered coffins pay 1/10 of a baseline full ladder, reduced for
+  shallower farming. Cosmetic trails remain a cash sink; their obsolete Speed multiplier is gone.
+  2x Round Speed keeps the existing pass ID; the wheel upgrade product is retired. No profile
+  migrations or refunds: the owner confirmed zero players. Payment receipts remain supported.
+- **Hiding and ladder:** reveal 3.6 s, then hide 10 s. One shared server deadline controls the
+  reveal, first bank and both weapons. Everyone, including Murderer, banks hiding step 1.
+  Steps 10 / 20 / 35 / 50 / 60 s; parts 1 / 2 / 4 / 7 / 12. Desktop/phone HIDE line checked;
+  full survival banked at 10.02 / 20.05 / 35.12 / 50.02 / 60.04 s. A death after step 3 kept
+  the bank. Before hide ended no weapons; afterward both knife and revolver were present.
+  Murderer stab banked its next kill reward; a shoe pickup added 21 Speed with Cash unchanged.
+  Valid-knife rerun console clean. Selene, StyLua, sourcemap and luau-lsp pass.
+- **Item 30 pacing:** `python tools/pacing_sim.py 12 --fit` solves the first four zone shares;
+  the model includes the 3.6 s reveal and 8 s results, with estimated 65% survival and failed
+  steals. These are modeled first-delivery times, not measured player telemetry.
+
+  | Next zone | Full ladder share of zone gap | First coffin in sim |
+  | --- | ---: | ---: |
+  | 2 · Rare | 24.4545% | 0.33 h |
+  | 3 · Epic | 5.81162% | 1.19 h |
+  | 4 · Legendary | 1.63412% | 4.02 h |
+  | 5 · Mythic | 1.38447% | 8.03 h |
+  | 6 · Godly | 0.8% | 20.66 h |
+  | 7 · Celestial | 0.6% | beyond 24 h |
+  | 8 · Cosmic | 0.4% | beyond 24 h |
+
+  `GameConfig.RoundPrize.ZoneShares` mirrors the simulator. The first four meet the owner's
+  ~0.34 / 1.2 / 4 / 8 h targets. Coffin round counts ×30/13; OfflineSecondsPerRound 234
+  preserves the old minute deadlines. Repeated minimum-Speed zone 2 / 3 deliveries with four
+  owned knives took 24.85 / 20.87 s at full health; regular creature wake time is now 1.5 s too.
+  Keep intermission 70 s, ladder 60 s, warning 10 s. Pen slots 16 / 17 occur at 5.90 / 7.36 h;
+  later unique slot milestones cross rebirths, which reset the pen.
+
+- **Item 13 complete:** native glass coffins with a visible rarity-coloured knife silhouette,
+  matching carried/dropped/gift coffins. Diamond+ alone gets a white second glow and sparkles;
+  the same mutation threshold controls monster-stash announcements, which keep the mutation
+  hidden. Stash labels show the character and `1 in 50 Rainbow roll`, calculated through the
+  exact mutation weight function used by Items.Roll. Normal Rainbow 2%, Gold 12.5% verified.
+  Fixed bloom that obscured the silhouette. Desktop and fresh 640×320 phone checked, console
+  clean. A sealed `ThornDagger|Diamond|Huge` remained server-side; clients saw `ThornDagger`.
+  Add/seal is atomic so its contents never briefly replicate before sealing. Luck upgrades
+  preserve the original mutation rank. Selene, StyLua, sourcemap and luau-lsp pass.
+
+- **Item 14 complete:** all 24 characters have distinct plain human names, checked against every
+  boss/disguise name. Internal item IDs stay the same; art metadata and catalog names agree.
+  All item display strings are `[Mutation] [Rarity] [Name]` with size omitted. Death flex now
+  shows `Killed by` / `Rainbow Cosmic Bob`, tested on desktop and phone without clipping.
+  Coffins use their character's name; Index and inventory read the same catalog. All code checks
+  pass. Free Gift group ID confirmed by owner: 857947897, stored in GameConfig.
+
+- **Item 15 + HUD fold complete:** timer/round/offline completion marks READY without opening.
+  One `My Knives` button (owner's preferred name) contains waiting coffins and unlocked knives;
+  READY entries sort first and the red badge counts READY only. Waiting entries can pay to become
+  READY, then use the same free tap. Duplicate inventory/Coffins screens and their button removed.
+  World clicks/prompts and menu taps are server-validated; only the first READY coffin bounces.
+  Early, invalid and in-round requests rejected. A Common stayed sealed 35 s beyond its timer
+  with no income; a phone tap unlocked it. Desktop tap revealed the exact saved Diamond mutation
+  once, and income began only afterward. A fresh phone tutorial progressed carry/place → READY
+  → tap → collect and finished. Code checks pass; no game script errors (Studio input emitted
+  a CoreGUI-position warning while injecting test input).
+  More's stats values are now only rebirths and wins; full UI-kit/grid migration remains item 7.
+
+- **Item 16 complete:** round winners receive Winner's Luck through the
+  following stealing break; the next round start clears it for everyone. A delayed surprise
+  `🍀 WINNER'S LUCK x2!` banner follows results; the active bonus appears in My Knives. Luck now
+  rolls at the READY tap (snapshot before the lid animation), preserving an existing stronger
+  mutation/size. Paid roll entries bypass further luck changes so their shown odds can remain
+  exact. Studio win attributes, phone bonus display, READY opening and next Reveal clearing
+  tested; a Diamond coffin remained Diamond. Exact banner payload visually checked on desktop and phone. All code checks pass, including the removed unused menu import.
+
+- **Announcement readability (item 28):** notices no longer shrink to the 14 px top-bar clock.
+  Winner's Luck is a large 32/36 px line, checked at phone/desktop sizes; the hub objective yields
+  while the notice is up. The redundant Murderer-chance line is deleted. Static checks pass.
+
+- **Item 17 cut at the owner's request:** fusing removed completely, including its machine,
+  UI, remotes, charge rewards, profile field and shared rules. This item is deferred and is no
+  longer required for this launch. The completed round/hatch/luck work remains.
+
+**Next:** Secret (item 18), maps, shop and remaining work.
 
 ---
 
@@ -215,7 +336,7 @@ vault / power / Classic code, and the rest of the plan below.
     Knives button) instead of popping in the ceremony (`CoffinService.RoundEnded` / `Open`).
 16. **Winner's Luck.** A round win gives boosted mutation odds on coffins you open before the next
     round starts. A surprise banner ("🍀 WINNER'S LUCK x2!"), not part of the pre-round promise.
-17. **Fuse Machine** (in your pen). 3 identical unlocked knives -> the same knife one mutation up
+17. **DEFERRED — Fuse Machine** (owner cut it on 2026-10-08; no launch implementation). Original idea: 3 identical unlocked knives -> the same knife one mutation up
     (None -> Gold -> Diamond -> Rainbow -> Void). Each fuse costs one ⚡ charge, earned per round win
     (capped). Only `DataService.RemoveKnife` / `AddKnife`.
 18. **Secret rarity** above Cosmic: a tiny roll from the Cosmic boss only, "???" + silhouette in the

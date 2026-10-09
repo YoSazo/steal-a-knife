@@ -65,8 +65,8 @@ Monetization.Passes = {
 		Key = "FastWheel",
 		Id = 2005863459,
 		Price = 299,
-		Name = "2x Speed Training",
-		Description = "Your wheel makes you faster 2x quicker. Reach the deep bosses sooner.",
+		Name = "2x Round Speed",
+		Description = "2x Speed from rounds.",
 		Icon = "🎡",
 		Color = rgb(70, 160, 255),
 	},
@@ -75,7 +75,7 @@ Monetization.Passes = {
 		Id = 2006913350,
 		Price = 349,
 		Name = "Phantom Trail",
-		Description = "Glowing knives follow you, and your wheel makes you faster 10x quicker.",
+		Description = "Glowing knives follow you.",
 		Icon = "👻",
 		Color = rgb(170, 70, 255),
 	},
@@ -262,14 +262,14 @@ Monetization.Products = {
 		Boost = { Name = "Cash", Seconds = 3600 },
 	},
 	{
-		Key = "TrainingPotion",
+		Key = "RoundSpeedPotion",
 		Id = 3716624552,
 		Price = 39,
-		Name = "Training Potion (15 min)",
-		Description = "Your wheel makes you faster 3x quicker, for 15 minutes.",
+		Name = "Round Speed Potion (15 min)",
+		Description = "3x Speed from rounds for 15 minutes.",
 		Icon = "🎡",
 		Color = rgb(90, 160, 255),
-		Boost = { Name = "Training", Seconds = 900 },
+		Boost = { Name = "RoundSpeed", Seconds = 900 },
 	},
 	{
 		-- (Id 0 until created: Studio fakes it; analytics/ npm run setup creates it on Roblox)
@@ -358,16 +358,6 @@ Monetization.Products = {
 		Color = rgb(255, 200, 60),
 		Charge = { Name = "DoublePrize", Count = 1 },
 	},
-	{
-		-- The Robux button on the "Upgrade Wheel" sign (Steal An Egg's treadmill sign: cash or R$)
-		Key = "SpeedUpgrade",
-		Id = 3716826969,
-		Price = 49,
-		Name = "Upgrade Wheel",
-		Description = "Your Haunted Wheel's next speed upgrade, right now: you train Speed faster.",
-		Icon = "⚡",
-		Color = rgb(80, 200, 255),
-	},
 } :: { Product }
 
 -- Paid random items (Roblox policy): a coffin bought with Robux (the Starter Pack's). Refused for
@@ -390,6 +380,7 @@ end
 -- for one that arrives late (bought just before an update, or retried by Roblox) still pays: cash
 -- worth the Robux (MonetizationService.processReceipt), never a "never granted" purchase.
 Monetization.Retired = {
+	[3716826969] = 49, -- wheel upgrade
 	[3716624556] = 49, -- 3 Reroll Tokens (knife power rerolls)
 	[3716624560] = 129, -- 10 Reroll Tokens
 	[3716624504] = 49, -- Epic Case (cases)

@@ -54,17 +54,4 @@ return {
 		ShockRing = { Id = "rbxassetid://125086362106104" },
 		LightRays = { Id = "rbxassetid://88911631872318" },
 	},
-	-- Murderer perk badges (blender/scripts/make_icons.py)
-	PerkIcons = {
-		Fury = "rbxassetid://84497392515820",
-		Identifier = "rbxassetid://114749869904247",
-		Bulletproof = "rbxassetid://72004794067050",
-		ShapeShifter = "rbxassetid://87566964486559",
-		SpamKnife = "rbxassetid://79390759693486",
-		GhostKnife = "rbxassetid://132874441064554",
-		Invisiknife = "rbxassetid://102166172630486",
-		LaserKnife = "rbxassetid://76151515289505",
-		ExplodingKnife = "rbxassetid://130020986918800",
-		Hellfire = "rbxassetid://93051345463571",
-	} :: { [string]: string },
 }

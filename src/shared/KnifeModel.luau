@@ -246,10 +246,6 @@ end
 -- (Shared/PenMode; in Studio also ReplicatedStorage DebugCharacters = true). Returns false if this
 -- knife has no character yet (then the normal model is used).
 local function characterTool(tool: Tool, knifeName: string): boolean
-	local penMode = require(script.Parent.PenMode) :: any
-	if not (penMode.On() or (RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugCharacters") == true)) then
-		return false
-	end
 	local shared = script.Parent
 	local assetsFolder = shared:FindFirstChild("Assets")
 	local assetsModule = assetsFolder and assetsFolder:FindFirstChild("KnifeCharacterAssets")

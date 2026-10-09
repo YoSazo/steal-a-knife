@@ -1,19 +1,6 @@
 --!strict
--- The round prize (shared): ONE simple promise, the same for everyone - "Win the round: +1.9K
--- Speed". Whoever ends up on the winning side gets it (Murderer, Sheriff, Innocent, even if you died),
--- in your own numbers: a share of the way to the next boss you can't outrun yet, so a win makes your
--- stealing better ("enough to outrun Ivy!"). The client shows it (a line 60 s before the round) and
--- the server pays it (RoundService, once winners are home) with the SAME numbers: both read the
--- player's Speed attribute through this module.
---
--- Size: a fixed share (GameConfig.RoundPrize.StepShare) of the step from the last boss's Speed to the
--- next one's - so every win on the way to a boss is worth the same, about 1/StepShare wins per boss
--- (not a share of what's LEFT, which shrank as you got close).
---
--- (The cash-or-Speed pick card was an A/B test; Speed-only won the plan: one promise, no choice.)
---
--- (Was five prize types with a different prize per side - cash, speed, a knife, a boost, spins -
--- too much to follow, and the knives skipped players past bosses they hadn't beaten yet.)
+-- Shared next-zone Speed budget. RoundProgress banks its parts on the server.
+-- A share of the full zone gap keeps each round's budget steady until the next zone.
 local Items = require(script.Parent.Items)
 local Knives = require(script.Parent.Config.Knives)
 local Format = require(script.Parent.Format)
@@ -74,20 +61,17 @@ end
 function RoundPrize.For(
 	_kind: string,
 	_side: string,
-	jackpot: boolean,
+	_jackpot: boolean,
 	_seed: number,
 	stats: Stats,
 	doubled: boolean?
 ): Prize
-	local x = (if jackpot then CONFIG.JackpotMultiplier else 1) * (if doubled then 2 else 1)
+	local x = if doubled then 2 else 1
 	local need, boss, zone, previous = nextBoss(stats.Speed)
-	local base = if need then (need - previous) * CONFIG.StepShare else stats.Speed * CONFIG.PastLastShare
+	local base = if need
+		then (need - previous) * (CONFIG.ZoneShares[zone or 0] or CONFIG.StepShare)
+		else stats.Speed * CONFIG.PastLastShare
 	local amount = math.floor(math.max(base, CONFIG.MinSpeed) * x)
-	-- Your FIRST win ever takes you all the way to the Rare boss: a Rare knife inside the first
-	-- visit is one of the best predictors of coming back (23% vs 11%), and it took a median 7 min.
-	if need and zone == 2 and (stats.Wins or 0) == 0 then
-		amount = math.max(amount, math.ceil(need - stats.Speed))
-	end
 	local left = if need then math.max(0, need - (stats.Speed + amount)) else 0
 	return {
 		Kind = "Speed",
@@ -101,9 +85,9 @@ function RoundPrize.For(
 	}
 end
 
--- This round's prize: always Speed; sometimes a JACKPOT (x3)
+-- Every round banks Speed.
 function RoundPrize.Roll(rng: Random): (string, boolean, number)
-	return "Speed", rng:NextNumber() < CONFIG.JackpotChance, rng:NextInteger(1, 1000000)
+	return "Speed", false, rng:NextInteger(1, 1000000)
 end
 
 return RoundPrize

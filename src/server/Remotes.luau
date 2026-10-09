@@ -44,6 +44,7 @@ local Remotes = {
 	SellSign = event("SellSign"), -- client -> server: (sign: BasePart) tapped a Sell sign with a tool in hand
 	SlowMode = event("SlowMode"), -- client -> server: (on: boolean) walk at normal speed in the hub
 	PlaceAt = event("PlaceAt"), -- client -> server: (position) put what you carry down here in your pen
+	OpenCoffin = func("OpenCoffin"), -- (owned plate) -> (ok, message); READY only, in the hub
 	CoffinTarget = event("CoffinTarget"), -- client -> server: (plate) the coffin "Open now" (Robux) is for
 	NotifyAsked = event("NotifyAsked"), -- client -> server: () Roblox's notifications opt-in was shown
 	Drop = event("Drop"), -- client -> server: () put down what you're carrying (boss knives go back on the wall)

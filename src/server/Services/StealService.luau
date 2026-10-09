@@ -13,7 +13,6 @@ local RunService = game:GetService("RunService")
 local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
-local KnifePowers = require(ReplicatedStorage.Shared.Config.KnifePowers)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local Net = require(script.Parent.Parent.Remotes)
@@ -44,6 +43,7 @@ type Carry = {
 	Zone: number, -- zone it was picked up in, 0 = outside the biomes (analytics)
 }
 
+local Progress = require(script.Parent.RoundProgress)
 local StealService = {}
 
 -- Set by GuardService: (player, zoneIndex) when someone picks something up in the arena
@@ -223,7 +223,7 @@ function StealService.DropKnife(item: string, position: Vector3, sealed: boolean
 	local at = Vector3.new(position.X, floorY + 2.2, position.Z)
 	local coffin = sealed == true and PenMode.Coffins()
 	local model = if coffin
-		then CoffinModel.Build(parsed.Knife.Rarity, CFrame.identity)
+		then CoffinModel.Build(parsed.Knife.Rarity, CFrame.identity, item)
 		else KnifeModel.Build(item, true)
 	if not coffin then
 		KnifeModel.FitItem(model, item, 3.2)
@@ -357,7 +357,7 @@ startCarry = function(
 	if (boss or source == "coffin") and PenMode.Coffins() then
 		-- a boss's coffin, held over your head (what's in it stays a secret until it opens)
 		local parsed = Items.Parse(item)
-		visual = CoffinModel.Build(if parsed then parsed.Knife.Rarity else "Common", CFrame.identity)
+		visual = CoffinModel.Build(if parsed then parsed.Knife.Rarity else "Common", CFrame.identity, item)
 		CoffinModel.Weld(visual) -- (all of it rides on your head, not just one piece)
 		-- (full size, as it lay in the graveyard: a big one is a big haul, and everyone sees it)
 		local _, size = visual:GetBoundingBox()
@@ -428,14 +428,14 @@ startCarry = function(
 		end
 	end
 	Net.Animate(character, "Pickup")
-	player:SetAttribute("Carrying", item)
+	player:SetAttribute("Carrying", if boss or source == "coffin" then Items.Name(item) else item)
 	player:SetAttribute("BossCarry", if boss then boss.Zone else nil) -- (a boss is after you)
 	BaseService.RefreshWalkSpeed(player)
 	-- (a boss steal gets no toast: GuardService already says "<BOSS> IS COMING! RUN HOME!")
 	if boss then
 		return
 	else
-		Net.Notify(player, `You got a {Items.DisplayName(item)}! RUN HOME!`, "good")
+		Net.Notify(player, `{if source == "coffin" then "Coffin!" else Items.DisplayName(item)} RUN HOME!`, "good")
 	end
 end
 
@@ -492,17 +492,14 @@ local function deposit(player: Player)
 	-- The tutorial's first knife always gets the starter power (Shadow: vanish), so every new player
 	-- starts with the same simple, easy-to-show power; after that it's the knife type's own power
 	local starter = not profile.TutorialDone and profile.TutorialStep <= 2 and #profile.Knives <= 1
-	local item = if starter then Items.WithPower(carry.Item, KnifePowers.Starter) else carry.Item
+	local item = carry.Item
 	local parsed = Items.Parse(item) :: Items.Item
 	local isNew = not table.find(profile.Discovered, parsed.Name)
 	-- A boss's knife comes home in a COFFIN that opens later (CoffinService) - never in the tutorial
 	local sealed = needsCoffin
 	-- (the tutorial's coffin: it lands and counts down a few seconds - Steal an Egg's egg - then opens)
 	local quick = sealed and (starter or not profile.TutorialDone)
-	if sealed and not quick then
-		item = CoffinService.LuckyContents(player, item)
-		parsed = Items.Parse(item) :: Items.Item
-	end
+
 	if carry.Boss then
 		ChanceMeter.Add(player, 1)
 		-- 🤝 Whoever helped (near you when you grabbed it, or your teammate) shares the glory
@@ -513,8 +510,17 @@ local function deposit(player: Player)
 		end
 	end
 	local placedPlate: number? = nil
+	local opensIn: string? = nil
 	DataService.Update(player, function(p)
 		placedPlate = DataService.AddKnife(p, item, carry.Plate)
+		if sealed then
+			opensIn = CoffinService.SealInto(
+				p,
+				placedPlate :: number,
+				item,
+				if quick then GameConfig.Coffins.TutorialSeconds else nil
+			)
+		end
 		-- Save placement with the inventory change, even if the client leaves before step 3 appears.
 		if not p.TutorialDone then
 			p.TutorialStep = math.max(p.TutorialStep, 3)
@@ -529,10 +535,7 @@ local function deposit(player: Player)
 	-- Only this successful carried-knife deposit confirms placement. Unboxes use the cosmetic
 	-- Deposit effect too, so the tutorial must not infer success from that effect or inventory size.
 	-- Publish the exact mounted item/plate before confirmation, so the guide can point at it.
-	local opensIn = if sealed and placedPlate
-		then CoffinService.Seal(player, placedPlate, item, if quick then GameConfig.Coffins.TutorialSeconds else nil)
-		else nil
-	player:SetAttribute("LastPlacedKnife", item)
+	player:SetAttribute("LastPlacedKnife", if sealed then Items.Name(item) else item)
 	player:SetAttribute("LastPlacedKnifePlate", placedPlate)
 	local placementSerial = (player:GetAttribute("KnifePlacementSerial") or 0) :: number
 	player:SetAttribute("KnifePlacementSerial", placementSerial + 1)
@@ -541,7 +544,6 @@ local function deposit(player: Player)
 		rarity = parsed.Knife.Rarity,
 		mutation = parsed.Mutation.Id,
 		size = parsed.Size.Id,
-		power = parsed.Perk,
 		new = isNew,
 		value = Items.Income(item),
 		plate = carry.Plate,
@@ -552,6 +554,9 @@ local function deposit(player: Player)
 	if isNew and not sealed then
 		Analytics.Milestone(player, "discovered_" .. parsed.Knife.Rarity)
 	end
+	if carry.Boss or carry.Source == "coffin" then
+		Progress.Delivered(player, if carry.Boss then carry.Boss.Zone else Knives.Rank(parsed.Knife.Rarity))
+	end
 	endCarry(player, true)
 	local name = Items.DisplayName(item)
 	BaseService.RefreshRack(player)
@@ -560,8 +565,8 @@ local function deposit(player: Player)
 		Net.Notify(player, `Pen full! {name} is in your bag.`, "info")
 		Offers.Show(player, "Mount", "Your pen is full! Get more room right now.")
 	elseif opensIn then
-		Net.Notify(player, `⚰️ {parsed.Knife.Rarity} Coffin! It opens {opensIn}`, "good")
-	elseif not parsed.Perk then
+		Net.Notify(player, `⚰️ {parsed.Knife.DisplayName} coffin delivered!`, "good")
+	else
 		Net.Notify(player, `{if isNew then "NEW! " else ""}{name} +{Format.Cash(Items.Income(item))}/s`, "good")
 	end
 	Net.Remotes.Effect:FireAllClients("Deposit", player, parsed.Knife.Rarity)
@@ -579,11 +584,11 @@ function StealService.PlaceAt(player: Player, position: Vector3)
 	local root = rootPart(player)
 	local profile = DataService.Get(player)
 	local base = BaseService.GetBase(player)
-	if PenMode.On() and not carry then
+	if not carry then
 		BaseService.PlaceHatched(player, position) -- (a knife fresh out of its coffin, in your hand)
 		return
 	end
-	if not PenMode.On() or not carry or carry.Kind ~= "Knife" or not root or not profile or not base then
+	if not carry or carry.Kind ~= "Knife" or not root or not profile or not base then
 		return
 	end
 	if not BaseService.IsInOwnBase(player, root.Position) or not MapService.InBounds(base.Bounds, position, -2) then
@@ -663,32 +668,19 @@ local function tick()
 		if BaseService.IsInOwnBase(player, pos) then
 			-- A pen: you tap where to put it down (client/PlaceTap -> Remotes.PlaceAt). A full pen
 			-- (bag only) takes it straight away; and nobody stands holding it forever (PlaceAfter)
-			if PenMode.On() then
-				local profile = DataService.Get(player)
-				if profile and not DataService.FreePlate(profile) then
-					deposit(player)
-					continue
-				end
-				if not player:GetAttribute("PlaceReady") then
-					player:SetAttribute("PlaceReady", true)
-					carry.ReadySince = now
-					Net.Notify(player, "Tap where you want to put it!", "good")
-				elseif now - (carry.ReadySince or now) > GameConfig.Pens.PlaceAfter then
-					deposit(player)
-				end
+			local profile = DataService.Get(player)
+			if profile and not DataService.FreePlate(profile) then
+				deposit(player)
 				continue
 			end
-			-- Knives: you put them on a plate yourself (Tsunami style), StealService.Place
 			if not player:GetAttribute("PlaceReady") then
 				player:SetAttribute("PlaceReady", true)
-				local profile = DataService.Get(player)
-				if profile and #profile.Knives >= profile.Slots then
-					Net.Notify(player, "Your vault is full! Sell a knife first.", "bad")
-					Offers.Show(player, "Mount", "Your vault is full! Get more room right now.")
-				else
-					Net.Notify(player, "Walk to a glowing plate to put it down!", "good")
-				end
+				carry.ReadySince = now
+				Net.Notify(player, "Tap where you want to put it!", "good")
+			elseif now - (carry.ReadySince or now) > GameConfig.Pens.PlaceAfter then
+				deposit(player)
 			end
+			continue
 		elseif player:GetAttribute("PlaceReady") then
 			player:SetAttribute("PlaceReady", nil)
 		end

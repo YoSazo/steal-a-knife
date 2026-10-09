@@ -12,8 +12,7 @@ local SQUARE, SQUARE_GAP = 46, 6
 -- Phones: a small outlined word under each square ("how do I upgrade?" - icons alone weren't enough)
 local CAPTION = 14
 local CAPTIONS: { [string]: string } = {
-	KnivesButton = "Knives",
-	CoffinsButton = "Coffins",
+	KnivesButton = "My Knives",
 }
 
 local function caption(button: GuiObject, text: string)
@@ -61,7 +60,7 @@ function PhoneHud.Init()
 	local gui = Ui.root or Ui.gui
 	local right: { GuiObject } = {}
 	-- (Coffins first: the coffin loop is the game; only on coffin servers)
-	for _, name in { "CoffinsButton", "KnivesButton" } do
+	for _, name in { "KnivesButton" } do
 		local button = gui:FindFirstChild(name, true)
 		if button and button:IsA("GuiObject") then
 			if phone then

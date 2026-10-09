@@ -1,11 +1,6 @@
 --!strict
--- Coffins in pens (server CoffinService, tag "Coffin": attributes Owner, Plate, Rarity, OpensAt =
--- server time, RoundsLeft): a small countdown over each one, a rattle now and then (something's in
--- there!), the seam glow pulsing, the owner's "Open now" prompt (Robux product CoffinOpen), and the
--- OPENING: glowing eyes peek out of the crack when it's about to open (1 round / 10 s left), then
--- the "CoffinPop" effect - it shakes harder and harder, the lid flies open on its hinge in a burst
--- of light with a beam up into the sky (bigger and louder the rarer it is) - and one beat later the
--- server shows the knife (CoffinService.Reveal -> Effects CoffinHatch).
+-- Coffin readiness, one READY bounce, and the cosmetic lid burst after an owner tap.
+-- Server attributes drive readiness; OpenCoffin validates the tap before unlocking.
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
@@ -13,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
+local CoffinState = require(ReplicatedStorage.Shared.CoffinState)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local Sounds = require(ReplicatedStorage.Shared.Config.Sounds)
@@ -65,9 +61,9 @@ function Coffins.Init()
 		local rarity = tostring(model:GetAttribute("Rarity") or "")
 		local gui = Instance.new("BillboardGui")
 		gui.Name = "CoffinTimer"
-		gui.Size = UDim2.fromOffset(170, 44) -- (a fixed small size on screen, like Steal an Egg's "Egg 35s")
+		gui.Size = UDim2.fromOffset(240, 64) -- (a fixed small size on screen, like Steal an Egg's "Egg 35s")
 		gui.StudsOffsetWorldSpace = Vector3.new(0, body.Size.Y * 2.2 + 1.5, 0)
-		gui.MaxDistance = 220
+		gui.MaxDistance = 90
 		gui.LightInfluence = 0
 		gui.Adornee = body
 		local title = Instance.new("TextLabel")
@@ -75,7 +71,9 @@ function Coffins.Init()
 		title.BackgroundTransparency = 1
 		title.Font = Enum.Font.FredokaOne
 		title.TextScaled = true
-		title.Text = `{string.upper(rarity)} COFFIN`
+		title.Text = `{if model:GetAttribute("Special") then "✨ " else ""}{rarity} {model:GetAttribute(
+			"CharacterName"
+		) or "Coffin"}`
 		title.TextColor3 = Knives.RarityColors[rarity] or Color3.new(1, 1, 1)
 		title.Parent = gui
 		local label = Instance.new("TextLabel")
@@ -290,6 +288,12 @@ function Coffins.Init()
 	RunService.RenderStepped:Connect(function()
 		local now = os.clock()
 		local serverNow = workspace:GetServerTimeNow()
+		local readyPlate = math.huge
+		for model in tracked do
+			if model:GetAttribute("Owner") == player.UserId and model:GetAttribute("Ready") then
+				readyPlate = math.min(readyPlate, (model:GetAttribute("Plate") or math.huge) :: number)
+			end
+		end
 		for model, info in tracked do
 			if not model.Parent then
 				tracked[model] = nil
@@ -298,18 +302,14 @@ function Coffins.Init()
 			local left = ((model:GetAttribute("OpensAt") or serverNow) :: number) - serverNow
 			-- the murder rounds are its clock: "2 murder rounds left" (a Common counts down in seconds)
 			local rounds = model:GetAttribute("RoundsLeft")
-			local close = false
-			if type(rounds) == "number" then
-				info.Label.Text = if rounds <= 0
-					then "Opening!"
-					elseif rounds == 1 then "1 murder round left"
-					else `{rounds} murder rounds left`
-				left = if rounds <= 0 then 0 else 999 -- (the rattle speeds up when it's about to open)
-				close = rounds <= 1
-			else
-				info.Label.Text = if left > 0.5 then Format.Duration(left) else "Opening!"
-				close = left < 10
-			end
+			local ready = model:GetAttribute("Ready") == true
+				or CoffinState.Ready(if type(rounds) == "number" then rounds else nil, serverNow + left, serverNow)
+			local close = ready
+			info.Label.Text = if ready
+				then "READY! Tap to unlock"
+				elseif type(rounds) == "number" then `Unlocks after {rounds} rounds`
+				else `Unlocks in {Format.Duration(math.max(0, left))}`
+			info.Label.TextColor3 = if ready then Color3.fromRGB(120, 255, 140) else Color3.new(1, 1, 1)
 			local popping = info.PopAt ~= nil
 			-- the seam pulses, faster near the end
 			local speed = if close or popping then 10 else 3
@@ -348,6 +348,20 @@ function Coffins.Init()
 					local lidT = math.clamp((t - SHAKE_TIME) / LID_TIME, 0, 1)
 					setLid(info, OPEN_DEGREES * easeOutBack(lidT))
 				end
+				continue
+			end
+			if ready then
+				model:PivotTo(
+					info.Home
+						* CFrame.new(
+							0,
+							if model:GetAttribute("Owner") == player.UserId
+									and model:GetAttribute("Plate") == readyPlate
+								then 0.1 + 0.1 * math.sin(now * 5)
+								else 0,
+							0
+						)
+				)
 				continue
 			end
 			-- a rattle every few seconds (all the time near the end): something wants out
@@ -394,6 +408,20 @@ function Coffins.Init()
 	ProximityPromptService.PromptTriggered:Connect(function(prompt, who)
 		local plate = prompt:GetAttribute("CoffinPlate")
 		if who ~= player or type(plate) ~= "number" or prompt:GetAttribute("Owner") ~= player.UserId then
+			return
+		end
+		local ready = false
+		for _, coffin in CollectionService:GetTagged("Coffin") do
+			if coffin:GetAttribute("Owner") == player.UserId and coffin:GetAttribute("Plate") == plate then
+				ready = coffin:GetAttribute("Ready") == true
+				break
+			end
+		end
+		if ready then
+			local ok, message = Remotes:WaitForChild("OpenCoffin"):InvokeServer(plate)
+			if not ok and Ui.Toast then
+				Ui.Toast(message, "bad")
+			end
 			return
 		end
 		Remotes:WaitForChild("CoffinTarget"):FireServer(plate)

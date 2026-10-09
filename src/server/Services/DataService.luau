@@ -12,7 +12,6 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local GuidePolicy = require(ReplicatedStorage.Shared.GuidePolicy)
-local LegacyProgress = require(ReplicatedStorage.Shared.LegacyProgress)
 
 export type Profile = {
 	Cash: number,
@@ -29,16 +28,11 @@ export type Profile = {
 	NotifyAsked: boolean, -- shown Roblox's notifications opt-in (NotifyService plans "come back" messages)
 	-- knives still in their coffin (CoffinService): Rounds = murder rounds left (nil = a plain timer);
 	-- ReadyAt (os.time) = when it opens anyway, the offline fallback
-	Sealed: { { Plate: number, ReadyAt: number, Rounds: number? } },
+	Sealed: { { Plate: number, ReadyAt: number, Rounds: number?, Paid: boolean? } },
 	Equipped: string, -- item you fight with / bring into rounds as the Murderer; "" = best owned
 	Discovered: { string }, -- every catalog knife ever owned (plain names), for the collection book
 	-- (old saves: the cut Innocent Powers, kept only so InventoryService can refund them once)
-	Powers: { [string]: number },
-	Loadout: { string },
-	PowerSlots: number,
 	Speed: number, -- trained on the vault treadmill; turned into walk speed by GameConfig.WalkSpeedFor
-	TreadmillLevel: number,
-	WallLevel: number, -- GameConfig.Walls tier: wall height and gate health
 	Rebirths: number,
 	TutorialDone: boolean,
 	KnivesStolen: number, -- from other players' vaults in raids
@@ -48,14 +42,11 @@ export type Profile = {
 	DailyStreak: number, -- day of the 7-day login streak last claimed (0 = none yet)
 	LastDaily: number, -- the UTC day number it was claimed on
 	TrailLevel: number, -- highest knife trail bought (GameConfig.Trails), 0 = none
-	HealthLevel: number, -- max health upgrades bought (GameConfig.Health)
 	Receipts: { string }, -- recent Robux PurchaseIds already granted (ProcessReceipt is idempotent)
 	Bought: { string }, -- one-time Robux products already bought (Starter Pack)
 	Pending: { number }, -- money waiting on each slot's cash pad (BaseService), collected by walking over it
-	Heat: number, -- 0-10, boosts income and power luck (server Fuel)
 	Spins: number, -- Lucky Wheel spins banked (Gamble)
 	FreeSpinDay: number, -- UTC day number the free daily spin was used
-	LuckUntil: number, -- (retired: luck potions were cut; LegacyProgress zeroes it)
 	MerchantBought: { string }, -- "rotation:slot" bought from the Mystery Merchant this rotation
 	Boosts: { [string]: number }, -- Robux timed boosts: name (Speed/Cash/Training) -> os.time() it ends
 	Charges: { [string]: number }, -- Robux charges: name (Escape/Insurance) -> how many left
@@ -113,12 +104,7 @@ local function defaultProfile(): Profile
 		Sealed = {},
 		Equipped = "",
 		Discovered = {},
-		Powers = {},
-		Loadout = {},
-		PowerSlots = 2,
 		Speed = 0,
-		TreadmillLevel = 1,
-		WallLevel = 1,
 		Rebirths = 0,
 		TutorialDone = false,
 		KnivesStolen = 0,
@@ -130,12 +116,9 @@ local function defaultProfile(): Profile
 		Receipts = {},
 		Bought = {},
 		TrailLevel = 0,
-		HealthLevel = 0,
 		Pending = {},
-		Heat = 0,
 		Spins = 0,
 		FreeSpinDay = 0,
-		LuckUntil = 0,
 		MerchantBought = {},
 		Boosts = {},
 		Charges = {},
@@ -163,15 +146,10 @@ local function reconcile(data: any): Profile
 			end
 		end
 	end
-	-- Whole floors only (older saves bought single mounts: round up to the floor they started)
-	profile.Slots = math.clamp(
-		math.ceil(profile.Slots / GameConfig.SlotsPerFloor) * GameConfig.SlotsPerFloor,
-		GameConfig.StartingSlots,
-		GameConfig.MaxSlots
-	)
+	profile.Slots = math.clamp(math.floor(profile.Slots), GameConfig.StartingSlots, GameConfig.Pens.MaxSlots)
 	-- One number per slot, never negative or broken (a dense array saves cleanly)
 	local pending: { number } = {}
-	for slot = 1, GameConfig.MaxSlots do
+	for slot = 1, GameConfig.Pens.MaxSlots + GameConfig.Pens.Bag do
 		local value = profile.Pending[slot]
 		pending[slot] = if type(value) == "number"
 				and value == value
@@ -220,30 +198,12 @@ local function reconcile(data: any): Profile
 			learned[skill] = math.clamp(math.floor(count), 0, limit)
 		end
 	end
-	-- Existing saves already prove these actions; adding coaching must not restart their learning.
-	learned.delivery =
-		math.max(learned.delivery or 0, if firsts.second_knife_home then 2 elseif firsts.knife_home then 1 else 0)
-	if firsts.cash_collected then
-		learned.collect = 1
-	end
-	if firsts.wheel_trained then
-		learned.train = 1
-	end
-	if profile.TreadmillLevel > 1 or profile.TrailLevel > 0 then
-		learned.wheel = 1
-	end
-	if #profile.IndexClaimed > 0 then
-		learned.index = 1
-	end
 	profile.GuidanceLearned = learned
 	profile.Source = profile.Source:sub(1, 300)
 	profile.Speed = math.max(0, profile.Speed)
-	profile.TreadmillLevel = math.clamp(math.floor(profile.TreadmillLevel), 1, #GameConfig.Treadmills)
 	profile.Cash = math.max(0, profile.Cash)
-	profile.WallLevel = math.clamp(math.floor(profile.WallLevel), 1, #GameConfig.Walls)
 	profile.Rebirths = math.clamp(math.floor(profile.Rebirths), 0, GameConfig.Rebirth.Max)
 	profile.TrailLevel = math.clamp(math.floor(profile.TrailLevel), 0, #GameConfig.Trails)
-	LegacyProgress.Apply(profile)
 	-- Drop knives that were removed from the catalog so nothing downstream sees an unknown name
 	-- Each kept knife keeps its plate (older saves: plates in list order); duplicates or bad plates
 	-- get the first free one
@@ -252,7 +212,12 @@ local function reconcile(data: any): Profile
 		if Items.Valid(item) then
 			table.insert(items, item)
 			local plate = profile.Plates[i]
-			if type(plate) == "number" and plate >= 1 and plate <= GameConfig.MaxSlots and not used[plate] then
+			if
+				type(plate) == "number"
+				and plate >= 1
+				and plate <= GameConfig.Pens.MaxSlots + GameConfig.Pens.Bag
+				and not used[plate]
+			then
 				plate = math.floor(plate)
 			else
 				plate = 0
@@ -286,15 +251,6 @@ local function reconcile(data: any): Profile
 	if profile.Equipped ~= "" and not table.find(profile.Knives, profile.Equipped) then
 		profile.Equipped = ""
 	end
-	-- Old Innocent Powers (refunded once by InventoryService): plain numbers only
-	local powers: { [string]: number } = {}
-	for id, level in profile.Powers do
-		if type(id) == "string" and type(level) == "number" and level >= 1 then
-			powers[id] = math.clamp(math.floor(level), 1, 3)
-		end
-	end
-	profile.Powers = powers
-	profile.PowerSlots = math.clamp(profile.PowerSlots, 2, 3)
 	return profile
 end
 
@@ -392,12 +348,15 @@ function DataService.IsSealedIndex(profile: Profile, index: number): boolean
 	return plate ~= nil and DataService.SealedReadyAt(profile, plate) ~= nil
 end
 
-function DataService.Seal(profile: Profile, plate: number, readyAt: number, rounds: number?)
+function DataService.Seal(profile: Profile, plate: number, readyAt: number, rounds: number?, paid: boolean?)
 	DataService.Unseal(profile, plate)
-	table.insert(profile.Sealed, { Plate = plate, ReadyAt = readyAt, Rounds = rounds })
+	table.insert(profile.Sealed, { Plate = plate, ReadyAt = readyAt, Rounds = rounds, Paid = paid })
 end
 
-function DataService.SealedEntry(profile: Profile, plate: number): { Plate: number, ReadyAt: number, Rounds: number? }?
+function DataService.SealedEntry(
+	profile: Profile,
+	plate: number
+): { Plate: number, ReadyAt: number, Rounds: number?, Paid: boolean? }?
 	for _, entry in profile.Sealed do
 		if entry.Plate == plate then
 			return entry
@@ -521,7 +480,7 @@ local function saveAsync(player: Player, profile: Profile, release: boolean): bo
 	return false
 end
 
-local BOOSTS = { "Speed", "Cash", "Training" }
+local BOOSTS = { "Speed", "Cash", "RoundSpeed" }
 local CHARGES = { "Escape", "Insurance", "DoublePrize" }
 
 -- Mirror the profile onto the player so the HUD and leaderboard can read it (read-only for clients)
@@ -535,17 +494,25 @@ local function publish(player: Player, profile: Profile)
 	player:SetAttribute("Cash", math.floor(profile.Cash))
 	player:SetAttribute("Slots", profile.Slots)
 	player:SetAttribute("KnifeCount", #profile.Knives)
+	player:SetAttribute("KnifePlates", table.concat(profile.Plates, ","))
 	player:SetAttribute("Speed", math.floor(profile.Speed))
-	player:SetAttribute("TreadmillLevel", profile.TreadmillLevel)
 	player:SetAttribute("Luck", profile.Luck)
 	player:SetAttribute("Tickets", profile.Tickets)
-	player:SetAttribute("Knives", table.concat(profile.Knives, ","))
+	local publicKnives, sealed = {}, {}
+	for index, item in profile.Knives do
+		local hidden = DataService.IsSealedIndex(profile, index)
+		table.insert(publicKnives, if hidden then Items.Name(item) else item)
+		if hidden then
+			table.insert(sealed, index)
+		end
+	end
+	player:SetAttribute("SealedKnives", table.concat(sealed, ","))
+	player:SetAttribute("Knives", table.concat(publicKnives, ","))
 	player:SetAttribute("Equipped", profile.Equipped)
 	player:SetAttribute("Discovered", table.concat(profile.Discovered, ","))
 	player:SetAttribute("Kills", profile.TotalKills)
 	player:SetAttribute("Wins", profile.RoundsWon)
 	player:SetAttribute("RoundsPlayed", profile.RoundsPlayed)
-	player:SetAttribute("WallLevel", profile.WallLevel)
 	player:SetAttribute("Rebirths", profile.Rebirths)
 	player:SetAttribute("Title", GameConfig.RebirthTitle(profile.Rebirths))
 	player:SetAttribute("TutorialDone", profile.TutorialDone)

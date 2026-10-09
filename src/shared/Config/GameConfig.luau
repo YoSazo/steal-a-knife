@@ -19,12 +19,9 @@ local DAILY: { DailyReward } = {
 local GameConfig = {
 	-- Economy / progression
 	StartingCash = 0,
-	-- Vaults grow a floor at a time (Tsunami style): 10 plates per floor, up to 4 floors
-	SlotsPerFloor = 10,
+	CommunityGroupId = 857947897,
+	-- Pens start with ten individual plates.
 	StartingSlots = 10,
-	MaxSlots = 40,
-	FloorCosts = { 1.5e6, 2e10, 1e14 }, -- the 2nd, 3rd and 4th floor
-	FloorRebirths = { 0, 1, 3 }, -- rebirths needed before the 2nd, 3rd and 4th floor (Steal a Brainrot style)
 	-- Speed -> walk speed: walk = BaseWalkSpeed + SpeedCurve * log2(1 + Speed / 500). Lower = every
 	-- deeper biome needs a lot more Speed (the long climb; tools/pacing_sim.py checks the hours)
 	SpeedCurve = 3.6,
@@ -42,16 +39,9 @@ local GameConfig = {
 	-- with a {cash} parameter), set NOTIFY_MESSAGE_ID on Render, give the API key
 	-- user.user-notification:write, then Enabled = true.
 	Notify = { Enabled = true, AskAfterRounds = 2, SendAfterHours = 22 },
-	-- Coffins (Steal an Egg's egg): a stolen boss knife lands on its plate SEALED in a coffin and opens
-	-- after HatchSeconds[rarity] - even while you're offline (come back to see it). Sealed = no income,
-	-- no equip/sell. "Open now" = Robux product CoffinOpen. Off until Enabled (Studio: ReplicatedStorage
-	-- attribute DebugCoffins = true). The tutorial's first knife never gets a coffin.
-	-- Pens instead of vaults (Shared/PenMode): Count pens (5 down each side of the plaza), each Width
-	-- along the row x Depth deep, holding up to MaxSlots knives (start StartingSlots; the upgrade adds
-	-- SlotsPerFloor). Knife characters are drawn Scale[rarity] x their 2.4-stud size (Common ~5 studs,
-	-- Cosmic ~48: over the hub walls, seen from spawn).
+	-- Each pen holds sealed coffins and unlocked characters. Room grows by one slot.
+	-- Characters grow with rarity; the glass coffins fit individual plates.
 	Pens = {
-		Enabled = true, -- one version of the game: pens everywhere (the vault/pen A/B is over)
 		Count = 8, -- one pen per player: 8-player servers (Creator Dashboard -> Places -> Server size)
 		Width = 64,
 		-- (10 studs of grass between neighbouring pens: each one its own plot - MapService)
@@ -60,7 +50,7 @@ local GameConfig = {
 		-- Steal An Egg's pen: room grows one knife at a time, the first upgrade nearly free (an
 		-- instant first purchase), then steeper. Cost of the upgrade from 10, 11, ... 19 slots.
 		-- (Was one +10 jump at the vault's 2nd-floor price, $1.5M.)
-		SlotCosts = { 1e3, 2.5e5, 5e6, 7.5e7, 1e9, 1.5e10, 2.5e11, 4e12, 6e13, 1e15 },
+		SlotCosts = { 1e3, 2.5e5, 5e6, 7.5e7, 1e9, 1.5e10, 3e10, 6e10, 1.2e11, 2.4e11 },
 		PassRoom = 3, -- the Extra Room pass (Monetization ExtraFloor) adds this many on pens
 		PlaceAfter = 30, -- carrying something in your pen this long without tapping: it goes down anyway
 		Bag = 10, -- with the pen full, this many more wait in your bag (Knives menu), never lost
@@ -75,9 +65,8 @@ local GameConfig = {
 			Cosmic = 20,
 		},
 	},
-	-- The MURDER ROUNDS are the coffins' clock: a coffin opens after Rounds[rarity] rounds (a won
-	-- round counts WinRounds), all together right after the results (the opening ceremony). Offline,
-	-- each round still owed is OfflineSecondsPerRound of real time. A Common just takes CommonSeconds.
+	-- Round progress and offline elapsed time make coffins READY; the owner taps to unlock.
+	-- Winners count twice. Common/tutorial timers are short onboarding waits.
 	Coffins = {
 		Enabled = true, -- (coffins go with pens)
 		-- Longer waits for the rarer ones (was 0/1/1/2/2/3/4/5: a Cosmic coffin opened in under
@@ -85,11 +74,21 @@ local GameConfig = {
 		-- Godly ~2h, Celestial ~3.4h, Cosmic ~5h - a real wait, the way Steal An Egg's top eggs are.
 		-- (x1.7 when rounds came 1.7x as often - IntermissionTime 360 -> 180, RoundTime 150 -> 120 -
 		-- so the waits stay about the same in real time; Rare stays 1 round, now ~5 min)
-		Rounds = { Common = 0, Rare = 1, Epic = 2, Legendary = 7, Mythic = 13, Godly = 24, Celestial = 40, Cosmic = 60 },
+		Rounds = {
+			Common = 0,
+			Rare = 30 / 13,
+			Epic = 60 / 13,
+			Legendary = 210 / 13,
+			Mythic = 390 / 13,
+			Godly = 720 / 13,
+			Celestial = 1200 / 13,
+			Cosmic = 1800 / 13,
+		},
 		CommonSeconds = 20,
 		TutorialSeconds = 6, -- a new player's first coffins: a short countdown, then it opens
 		WinRounds = 2,
-		OfflineSecondsPerRound = 540, -- (a round every ~5 min now: was 900)
+		OfflineSecondsPerRound = 234, -- 540 * 130 / 300; hatch minutes remain unchanged
+		WinnerLuck = 2, -- mutation roll weight boost until the next round starts
 		AnnounceFrom = "Mythic", -- coffins of this rarity and up are announced to the server
 	},
 	Daily = DAILY,
@@ -99,179 +98,87 @@ local GameConfig = {
 	MaxTickets = 5,
 	TicketWeight = 3, -- one ticket spent in a round = this much extra Murderer weight
 
-	-- Movement. Speed is a big number trained by running in your vault's Haunted Wheel; it turns
+	-- Movement. Banked round and delivery Speed turns
 	-- into running speed on a curve (WalkSpeedFor). Each zone needs a certain Speed: there's no
 	-- barrier, but below it that zone's guards will run you down on the way home.
 	BaseWalkSpeed = 16,
 	MaxWalkSpeed = 135,
 	CarrySpeedMultiplier = 0.9,
-	-- Haunted Wheel tiers (the code calls it the treadmill): Rate = Speed per second while running
-	-- in it; Cost to buy that tier
-	-- Checked against Steal An Egg's own published treadmill table: rate grows ~2.4x a tier there
-	-- (ours was ~3.1x) and its best treadmill is tiny next to its hardest biome's need (ratio
-	-- 4.3e-7); ours was 21x more generous at the equivalent comparison even after the cost fix
-	-- below. Rate rescaled to the same ratio; cost now escalates tier to tier (10x,12x,14x...)
-	-- the way theirs does (16.7x,20x,24x,25x,40x...), not a flat multiple. tools/pacing_sim.py
-	-- validates this against Steal An Egg-paced milestones - keep both in step.
-	Treadmills = {
-		-- Money gates the early game again (Steal An Egg: the 2nd treadmill takes ~10+ min of a new
-		-- player's income). Our early incomes are ~10-20x theirs, so at $15K the 2nd wheel took ~1
-		-- min and every early upgrade felt free. Tiers 2-5 (and trails 1-4) cost x8 / x5 / x3 / x2;
-		-- tier 6 up is unchanged.
-		{ Name = "Creaky Wheel", Rate = 10, Cost = 0 },
-		{ Name = "Iron Wheel", Rate = 25, Cost = 120000 }, -- (early tiers x8 / x5 / x3 / x2: see below)
-		{ Name = "Steam Wheel", Rate = 60, Cost = 900000 },
-		{ Name = "Haunted Wheel", Rate = 150, Cost = 7.56e6 },
-		{ Name = "Cursed Wheel", Rate = 350, Cost = 80.6e6 },
-		{ Name = "Bone Wheel", Rate = 850, Cost = 726e6 },
-		{ Name = "Thief Moon Wheel", Rate = 2000, Cost = 14.5e9 },
-		{ Name = "Phantom Wheel", Rate = 5000, Cost = 319e9 },
-		{ Name = "Infernal Wheel", Rate = 12000, Cost = 7.66e12 },
-		{ Name = "Olympian Wheel", Rate = 29000, Cost = 199e12 },
-		{ Name = "Angelic Wheel", Rate = 70000, Cost = 5.58e15 },
-		{ Name = "Celestial Wheel", Rate = 170000, Cost = 167e15 },
-		{ Name = "Cosmic Wheel", Rate = 400000, Cost = 5.36e18 },
-	},
-	-- Knife Trails (Steal An Egg style): bought with cash, each one multiplies the Speed your wheel
-	-- trains and sends a stream of that knife spinning off behind you when you run
+	-- Cosmetic knife trails, bought with Cash and retained through rebirth.
 	Trails = {
 		{
 			Name = "Rusty Trail",
 			Knife = "RustyShank",
-			Multiplier = 1.5,
+
 			Cost = 160000,
 			Color = Color3.fromRGB(190, 150, 120),
 		},
 		{
 			Name = "Kitchen Trail",
 			Knife = "KitchenKnife",
-			Multiplier = 2,
+
 			Cost = 1.25e6,
 			Color = Color3.fromRGB(200, 225, 255),
 		},
 		{
 			Name = "Hunter Trail",
 			Knife = "HunterBlade",
-			Multiplier = 3,
+
 			Cost = 9e6,
 			Color = Color3.fromRGB(110, 230, 140),
 		},
 		{
 			Name = "Thorn Trail",
 			Knife = "ThornDagger",
-			Multiplier = 4,
+
 			Cost = 80e6,
 			Color = Color3.fromRGB(120, 220, 110),
 		},
 		{
 			Name = "Cleaver Trail",
 			Knife = "Cleaver",
-			Multiplier = 6,
+
 			Cost = 500e6,
 			Color = Color3.fromRGB(190, 110, 255),
 		},
 		{
 			Name = "Golden Trail",
 			Knife = "GoldenDagger",
-			Multiplier = 8,
+
 			Cost = 7e9,
 			Color = Color3.fromRGB(255, 205, 60),
 		},
 		{
 			Name = "Inferno Trail",
 			Knife = "InfernoFang",
-			Multiplier = 12,
+
 			Cost = 100e9,
 			Color = Color3.fromRGB(255, 110, 30),
 		},
 		{
 			Name = "Olympus Trail",
 			Knife = "ZeusBolt",
-			Multiplier = 16,
+
 			Cost = 1.5e12,
 			Color = Color3.fromRGB(255, 240, 90),
 		},
 		{
-			-- Multiplier trimmed from 22/30 (was 1.56x more generous than Steal An Egg combined with
-			-- the Cosmic Wheel's own fixed rate - see GameConfig.Treadmills): top combined ceiling
-			-- now matches its ratio against our hardest zone's Speed need.
 			Name = "Halo Trail",
 			Knife = "HaloBlade",
-			Multiplier = 17,
+
 			Cost = 25e12,
 			Color = Color3.fromRGB(255, 250, 220),
 		},
 		{
 			Name = "Galaxy Trail",
 			Knife = "GalaxyKatana",
-			Multiplier = 20,
+
 			Cost = 400e12,
 			Color = Color3.fromRGB(255, 90, 230),
 		},
 	},
 	-- The Robux trail (Monetization pass "PhantomTrail"): void knives and a x10 multiplier
-	PhantomTrail = { Name = "Phantom Trail", Knife = "VoidEdge", Multiplier = 10, Color = Color3.fromRGB(170, 70, 255) },
-
-	-- Vault wall looks (profile.WallLevel; no longer sold: players keep the tier they bought while
-	-- raids existed). The frame, pillars and trim of a vault (VaultWalls / VaultModel).
-	Walls = {
-		{
-			Name = "Starter Lasers",
-			Height = 16,
-			Color = Color3.fromRGB(60, 64, 110),
-			Material = Enum.Material.WoodPlanks,
-			Trim = Color3.fromRGB(255, 170, 70),
-		},
-		{
-			Name = "Twin Lasers",
-			Height = 21,
-			Color = Color3.fromRGB(60, 70, 120),
-			Material = Enum.Material.Cobblestone,
-			Trim = Color3.fromRGB(120, 200, 255),
-		},
-		{
-			Name = "Iron Grid",
-			Height = 26,
-			Color = Color3.fromRGB(70, 74, 96),
-			Material = Enum.Material.DiamondPlate,
-			Trim = Color3.fromRGB(220, 230, 240),
-		},
-		{
-			Name = "Red Alert",
-			Height = 31,
-			Color = Color3.fromRGB(80, 40, 70),
-			Material = Enum.Material.Limestone,
-			Trim = Color3.fromRGB(255, 70, 80),
-		},
-		{
-			Name = "Plasma Wall",
-			Height = 36,
-			Color = Color3.fromRGB(60, 30, 100),
-			Material = Enum.Material.Basalt,
-			Trim = Color3.fromRGB(190, 90, 255),
-		},
-		{
-			Name = "Void Field",
-			Height = 41,
-			Color = Color3.fromRGB(20, 30, 60),
-			Material = Enum.Material.Glass,
-			Trim = Color3.fromRGB(90, 255, 240),
-		},
-		{
-			Name = "Golden Gate",
-			Height = 46,
-			Color = Color3.fromRGB(90, 80, 60),
-			Material = Enum.Material.Marble,
-			Trim = Color3.fromRGB(255, 215, 90),
-		},
-		{
-			Name = "Star Shield",
-			Height = 52,
-			Color = Color3.fromRGB(40, 26, 90),
-			Material = Enum.Material.Glass,
-			Trim = Color3.fromRGB(255, 120, 240),
-		},
-	},
+	PhantomTrail = { Name = "Phantom Trail", Knife = "VoidEdge", Color = Color3.fromRGB(170, 70, 255) },
 
 	-- Rebirth: start over (cash, knives, slots, Speed, wheel) for a permanent multiplier on
 	-- income and Speed training, a title, and better coffin luck
@@ -314,19 +221,20 @@ local GameConfig = {
 		Celestial = 220e9,
 		Cosmic = 3.5e12,
 	} :: { [string]: number },
-	-- The Lucky Wheel (Gamble): a free spin a day, one per EarnEvery seconds played, Robux packs
-	-- The round prize (Shared/RoundPrize): "Win the round: +X Speed", the same promise for everyone
-	-- on the winning side, sized to the next boss you can't outrun yet
+	-- The full bankable survival budget is a fixed share of the next zone's Speed gap.
 	RoundPrize = {
-		-- of the step from the last boss's Speed to the next boss's (was 0.2 / 0.1: ~5 wins cleared
-		-- a boss outright, so the round prize alone carried a player through the whole game in a
-		-- couple of hours - a committed kid found it "too easy"; the wheel is the engine now,
-		-- tools/pacing_sim.py validates this against Steal An Egg-paced milestones)
-		StepShare = 0.03, -- (0.05 at a round every ~8.5 min: rounds come 1.7x as often now)
+		StepShare = 0.01,
+		ZoneShares = {
+			[2] = 0.244545,
+			[3] = 0.0581162,
+			[4] = 0.0163412,
+			[5] = 0.0138447,
+			[6] = 0.008,
+			[7] = 0.006,
+			[8] = 0.004,
+		},
 		PastLastShare = 0.03, -- past the last boss: of your Speed
 		MinSpeed = 300,
-		JackpotChance = 0.1, -- a JACKPOT round: x3
-		JackpotMultiplier = 3,
 		-- "Win the round: +X Speed" shows this many seconds before the round (leaving ramps up from
 		-- ~240 s before a round, so it lands just before most people go)
 		AnnounceAt = 240,
@@ -560,7 +468,7 @@ local GameConfig = {
 	-- carried boss knives go back, everyone comes home, every stash restocks - and rounds are pure
 	-- gain (they unlock coffins and pay Speed), so they can come often. (Was 360 / 150: a round
 	-- every ~8.5 min, back when a round could cost you a knife.)
-	IntermissionTime = 180,
+	IntermissionTime = 70,
 	NightWarning = 10, -- "Murder round in 10!" - a carried boss knife goes back when it starts
 	-- A first-time player's first knife home pulls the next round in to at most NewcomerRoundIn (s),
 	-- but never to a hub break shorter than NewcomerMinBreak (s) for everyone else. (Were 100 / 240:
@@ -569,10 +477,11 @@ local GameConfig = {
 	NewcomerRoundIn = 45,
 	FirstRoundMurdererUnder = 1200, -- a player's first round makes them the Murderer if they've played less than this (s)
 	NewcomerSheriffRounds = 2, -- then their next rounds (2nd..this+1th) make them the Sheriff
-	NewcomerMinBreak = 90, -- (was 180: the whole break is 180 now)
-	RoundJoinGrace = 90, -- nobody is pulled into a round in their first this many seconds in a server
-	RoundTime = 120,
+	NewcomerMinBreak = 70, -- (was 180: the whole break is 180 now)
+	RoundJoinGrace = 60, -- nobody is pulled into a round in their first this many seconds in a server
+	RoundTime = 60,
 	ResultsTime = 8,
+	RoleRevealSeconds = 3.6,
 	MurdererGrace = 10, -- seconds before the Murderer gets their knife (same as the classic)
 	MinPlayers = 2,
 	AttackRange = 7,
@@ -582,21 +491,8 @@ local GameConfig = {
 
 	-- Round rewards scale with what your vault earns (Seconds of your income per second), never
 	-- below Min, so a round is worth playing at every stage (GameConfig.Pay)
-	RoundPay = {
-		Coin = { Min = 300, Seconds = 2 },
-		Survive = { Min = 7500, Seconds = 45 },
-		LastAlive = { Min = 11000, Seconds = 45 }, -- extra for survivors when only a few made it
-		Kill = { Min = 3000, Seconds = 15 },
-		Hero = { Min = 19000, Seconds = 90 },
-		TeamWin = { Min = 3000, Seconds = 20 }, -- innocents who died, but their side won
-		Wipe = { Min = 15000, Seconds = 30 }, -- the Murderer got everyone...
-		WipePerVictim = { Min = 5600, Seconds = 15 }, -- ...plus this for every real player they got
-	},
-	BotRoundPay = 0.5, -- rounds with fewer than two real players pay this fraction (no bot farming)
-	BotKillPay = 0.5, -- a bot kill pays this fraction of a player kill
 	LastAliveFraction = 0.3,
 	-- A full wipe also hands the Murderer a coffin: better in bigger lobbies (real players only)
-	WipeCoffin = { Small = "Rare", Big = "Epic", BigLobby = 6 },
 
 	-- Live servers: bots top every round up to this many people, so a round can start as soon as one
 	-- real player is around. With one real player, a bot is sometimes the Murderer.
@@ -624,11 +520,11 @@ local GameConfig = {
 	BossWake = {
 		-- Steal An Egg: the guardian is up and running almost the instant you grab one - no long
 		-- get-up to wait through. How fair a chase is comes from the boss's run speed, not a head start.
-		Time = 0.4,
-		Newcomer = 0.4, -- (same for everyone now)
+		Time = 1.5,
+		Newcomer = 1.5, -- let the first three deliveries clear the creature before its chase
 		NewcomerKnives = 3,
-		HoundTime = 0.25,
-		HoundNewcomer = 0.25,
+		HoundTime = 1.5,
+		HoundNewcomer = 1.5,
 	},
 	-- How a boss gets out of / back into his chair: he hops out forward over his footstool and hops
 	-- back in backwards. Shares of the wake time (client/Moves poses, GuardService flies the body):
@@ -689,9 +585,8 @@ local GameConfig = {
 	Consumables = {
 		SpeedMultiplier = 1.25, -- Speed Potion: walk speed in the hub (outrun a boss one zone deeper)
 		CashMultiplier = 2, -- Cash Potion: vault income
-		TrainingMultiplier = 3, -- Training Potion: Haunted Wheel training
+		RoundSpeedMultiplier = 3, -- banked round Speed
 		EscapeStun = 3, -- Escape Token: seconds the boss is stunned when you break free
-		TrainingOfferAfter = 90, -- seconds on the wheel before the Training Potion is offered
 		RestockOfferRange = 45, -- studs from a lair where an empty wall offers the restock
 	},
 	-- The Murderer meter (server ChanceMeter, profile.Luck): grows each round you aren't picked
@@ -700,108 +595,8 @@ local GameConfig = {
 		Cap = 3, -- nobody's chance can be more than 3x the server average
 	},
 
-	-- CLASSIC rounds (no Murderer power, ClassicPay) and DOUBLE TROUBLE (two Murderers, two
-	-- Sheriffs) are cut: one Murderer, one Sheriff, every round - the MM2 rules kids already know.
-	-- (Two Murderers is kept for an admin event later: docs/PLAN.md item 25.)
-	DoubleTrouble = { Always = math.huge, Chance = 0 },
-	ClassicChance = 0,
-	ClassicPay = 1.5,
-
 	-- The Murderer's thrown knife (everyone's, whatever the perk)
 	MurderThrow = { Range = 2000, Speed = 110 }, -- flies until it hits something
-
-	-- Knife perks (The Mad Murderer's classics): the Murderer's equipped knife gives them one.
-	-- Active perks go on Q / the ability button; passive ones just work.
-	Perks = {
-		Fury = {
-			DisplayName = "Fury",
-			Description = "Every kill makes your throws faster",
-			Passive = true,
-			PerKill = 0.2, -- +20% throw speed per kill
-		},
-		Identifier = {
-			DisplayName = "Sense",
-			Description = "Reveal who's holding the Revolver (3 per round)",
-			Uses = 3,
-			Cooldown = 5,
-			Duration = 4,
-		},
-		Bulletproof = {
-			DisplayName = "Bulwark",
-			Description = "Survive one Revolver shot",
-			Passive = true,
-		},
-		ShapeShifter = {
-			DisplayName = "Disguise",
-			Description = "Turn into someone else (once per round)",
-			Uses = 1,
-			Cooldown = 3,
-		},
-		SpamKnife = {
-			DisplayName = "Spam Knife",
-			Description = "Q: for a few seconds every click throws a knife where you aim (twice a round)",
-			Uses = 2,
-			Cooldown = 10,
-			Duration = 8,
-			Interval = 0.25, -- server floor between two spam throws
-			Range = 2000,
-		},
-		GhostKnife = {
-			DisplayName = "Phantom",
-			Description = "Thrown knives fly through up to 5 people",
-			Passive = true,
-			Pierce = 5,
-		},
-		Invisiknife = {
-			DisplayName = "Shadow",
-			Description = "Turn invisible for a few seconds after every kill",
-			Passive = true,
-			Duration = 4,
-		},
-		LaserKnife = {
-			DisplayName = "Laser",
-			Description = "Fully charged throws fly lightning fast",
-			Passive = true,
-			Speed = 480,
-		},
-		ExplodingKnife = {
-			DisplayName = "Blast",
-			Description = "Throw kills explode, taking out anyone close by",
-			Passive = true,
-			Radius = 9,
-		},
-		-- Murderer sides that only come on knives (docs/POWERS.md)
-		Snare = {
-			DisplayName = "Snare",
-			Description = "Q: drop a hidden snare: the next innocent to step in is stuck",
-			Uses = 2,
-			Cooldown = 4,
-			Duration = 2, -- seconds stuck
-		},
-		DecoyKnife = {
-			DisplayName = "Decoy",
-			Description = "Q: a fake you runs off - bait the Sheriff",
-			Uses = 1,
-			Cooldown = 10,
-			Duration = 6,
-		},
-		FlashKnife = {
-			DisplayName = "Flash",
-			Description = "Q: blind the innocents in front of you",
-			Uses = 2,
-			Cooldown = 12,
-			Duration = 1.4,
-			Range = 24,
-		},
-		Hellfire = {
-			DisplayName = "Hellfire",
-			Description = "Q: for a few seconds every click throws a flaming knife that explodes on a kill",
-			Cooldown = 22,
-			Duration = 4,
-			Interval = 0.15,
-			Radius = 7,
-		},
-	} :: { [string]: any },
 
 	-- Anti-cheat
 	SpeedTolerance = 1.6, -- carriers moving faster than walkspeed * this drop their knife
@@ -886,10 +681,6 @@ function GameConfig.BossLairCenter(index: number): Vector3
 end
 
 -- What the next floor costs for someone who has `slots` plates now
-function GameConfig.SlotCost(slots: number): number
-	local floors = math.max(1, math.ceil(slots / GameConfig.SlotsPerFloor))
-	return GameConfig.FloorCosts[floors] or math.huge
-end
 
 -- The rarity a rebirth from `rebirths` needs on your plates
 function GameConfig.RebirthNeeds(rebirths: number): string
@@ -898,10 +689,6 @@ function GameConfig.RebirthNeeds(rebirths: number): string
 end
 
 -- Rebirths needed before buying the floor after `slots`
-function GameConfig.FloorRebirthsFor(slots: number): number
-	local floors = math.max(1, math.ceil(slots / GameConfig.SlotsPerFloor))
-	return GameConfig.FloorRebirths[floors] or 0
-end
 
 -- The deepest biome's rarity your Speed can outrun (cash cases / blocks only go up to this)
 function GameConfig.RarityReached(speed: number): string
@@ -914,70 +701,11 @@ function GameConfig.RarityReached(speed: number): string
 	return reached
 end
 
-function GameConfig.FloorsFor(slots: number): number
-	return math.clamp(math.ceil(slots / GameConfig.SlotsPerFloor), 1, GameConfig.MaxSlots // GameConfig.SlotsPerFloor)
-end
-
 -- Speed stat -> walk speed. Every doubling of Speed is worth +4.4 walk speed (16 at 0, ~30 at 4K,
 -- ~54 at 180K, ~79 at 10M, ~105 at 650M, ~128 at 31B), up to MaxWalkSpeed.
 function GameConfig.WalkSpeedFor(speed: number): number
 	local walk = GameConfig.BaseWalkSpeed + GameConfig.SpeedCurve * math.log(1 + math.max(speed, 0) / 500, 2)
 	return math.min(walk, GameConfig.MaxWalkSpeed)
-end
-
--- Speed per second your wheel really trains (tier x rebirths x trail x Fast Wheel pass x Training
--- Potion): what the server adds, and what every number about the wheel shows (a kid read the bare
--- tier rate, "+20 speed", and thought upgrades were worthless)
-function GameConfig.TrainRate(
-	level: number,
-	rebirths: number,
-	trailLevel: number,
-	phantom: boolean,
-	fastWheel: boolean,
-	training: boolean
-): number
-	local tier = GameConfig.Treadmills[math.clamp(level, 1, #GameConfig.Treadmills)]
-	return tier.Rate
-		* (1 + rebirths * GameConfig.Rebirth.SpeedBonus)
-		* (if fastWheel then 2 else 1)
-		* (if training then GameConfig.Consumables.TrainingMultiplier else 1)
-		* GameConfig.TrailMultiplier(trailLevel, phantom)
-end
-
--- Speed training multiplier from your knife trail (and the Phantom Trail pass)
-function GameConfig.TrailMultiplier(level: number, phantom: boolean?): number
-	local trail = GameConfig.Trails[level]
-	local multiplier = if trail then trail.Multiplier else 1
-	if phantom then
-		multiplier = math.max(multiplier, GameConfig.PhantomTrail.Multiplier)
-	end
-	return multiplier
-end
-
--- The "Upgrade Wheel" sign by your Haunted Wheel (Steal An Egg's treadmill sign): one button, one
--- level number. Each press buys whichever is cheaper of the next wheel and the next knife trail, so
--- the economy is the same as buying both separately (the Upgrades menu is gone).
-export type SpeedUpgrade = { Kind: string, Name: string, Cost: number, Level: number, MaxLevel: number }
-function GameConfig.SpeedLevel(treadmillLevel: number, trailLevel: number): number
-	return treadmillLevel + trailLevel
-end
-function GameConfig.NextSpeedUpgrade(treadmillLevel: number, trailLevel: number): SpeedUpgrade?
-	local wheel = GameConfig.Treadmills[treadmillLevel + 1]
-	local trail = GameConfig.Trails[trailLevel + 1]
-	local level = GameConfig.SpeedLevel(treadmillLevel, trailLevel)
-	local maxLevel = #GameConfig.Treadmills + #GameConfig.Trails
-	if wheel and (not trail or wheel.Cost <= trail.Cost) then
-		return { Kind = "Treadmill", Name = wheel.Name, Cost = wheel.Cost, Level = level, MaxLevel = maxLevel }
-	elseif trail then
-		return {
-			Kind = "Trail",
-			Name = `{trail.Name} (x{trail.Multiplier})`,
-			Cost = trail.Cost,
-			Level = level,
-			MaxLevel = maxLevel,
-		}
-	end
-	return nil
 end
 
 return GameConfig

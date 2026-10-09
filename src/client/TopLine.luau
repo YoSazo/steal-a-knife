@@ -91,8 +91,8 @@ local function fit(text: string, withPill: boolean)
 	end
 	local _, bounds = Ui.bounds()
 	-- (big enough for a 5-year-old to read at a glance: was 18 / 20)
-	words.TextSize = if Ui.Phone then 24 else 28
-	local compactStrip = Ui.topStrip("Status")
+	words.TextSize = if showing then (if Ui.Phone then 32 else 36) else (if Ui.Phone then 24 else 28)
+	local compactStrip = if showing then nil else Ui.topStrip("Status")
 	-- (a line that won't fit Roblox's narrow phone top bar even at 14 goes under it, full width,
 	-- instead of being cut off: "⚡ GOLDEN GRIFFIN · ...")
 	if compactStrip then
@@ -108,7 +108,9 @@ local function fit(text: string, withPill: boolean)
 		if withPill and pill and not compactStrip then pill.AbsoluteSize.X / math.max(Ui.Scale.Scale, 0.01) + 8 else 0
 	) + iconWidth
 	-- (phones: keep the words between the left and right button columns)
-	local maxLane = math.max(160, math.min(860, bounds.X - (if Ui.Phone then 2 * 175 else 2 * FADE + 24)) - pillWidth)
+	local maxLane = if showing
+		then bounds.X - 40
+		else math.max(160, math.min(860, bounds.X - (if Ui.Phone then 2 * 175 else 2 * FADE + 24)) - pillWidth)
 	local plain = text:gsub("<[^>]->", "") -- (RichText tags take no space)
 	-- Phones: up in Roblox's top bar (Ui.topStrip) when the tutorial isn't using it and the line
 	-- fits there on one line (at 14 or bigger) - it frees a whole row in the middle of the screen
@@ -117,8 +119,8 @@ local function fit(text: string, withPill: boolean)
 	-- (the guide's DO line comes first: the status line goes under it - client/Guide)
 	local doLine = Ui.gui:GetAttribute("DoLine") == true
 	local doInStrip = doLine and Ui.gui:GetAttribute("DoLineInStrip") == true
-	local strip = compactStrip or (if tutorialInStrip or doInStrip then nil else Ui.topStrip())
-	local fade = FADE
+	local strip = if showing then nil else compactStrip or (if tutorialInStrip or doInStrip then nil else Ui.topStrip())
+	local fade = if showing then 16 else FADE
 	if strip then
 		local stripLane = strip.W - 2 * 16 - pillWidth
 		local smallest = TextService:GetTextSize(plain, 14, words.Font, Vector2.new(4000, 1000)).X
@@ -182,6 +184,7 @@ local function nextOne()
 	showing = table.remove(queue, 1)
 	token += 1
 	local entry = showing
+	Ui.gui:SetAttribute("TopLineNotice", entry ~= nil)
 	if not entry then
 		shownText = "" -- (back to resting: the next tick redraws it)
 		return

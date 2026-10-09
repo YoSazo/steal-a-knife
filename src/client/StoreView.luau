@@ -4,7 +4,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Ui = require(script.Parent.Ui)
 local Theme = require(script.Parent.MenuTheme)
-local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Config = ReplicatedStorage.Shared.Config
 local Monetization = require(Config.Monetization)
 local player = Players.LocalPlayer
@@ -102,8 +101,7 @@ function View.Build(actions: any): Frame
 		CashSmall = "Cash",
 		CashMedium = "Cash",
 		CashBig = "Cash",
-		TrainingPotion = "Speed",
-		SpeedUpgrade = "Upgrades",
+		RoundSpeedPotion = "Speed",
 		SpeedSmall = "Speed",
 		SpeedMedium = "Speed",
 		SpeedBig = "Speed",
@@ -196,13 +194,6 @@ function View.Build(actions: any): Frame
 
 	-- SPEED: the wheel's next level, Speed packs scaled to you, then the Speed passes and potions
 	local speed = pages.Speed
-	product(speed, "SpeedUpgrade", 1, function()
-		local nextUpgrade = GameConfig.NextSpeedUpgrade(
-			(player:GetAttribute("TreadmillLevel") or 1) :: number,
-			(player:GetAttribute("TrailLevel") or 0) :: number
-		)
-		return if nextUpgrade then `Wheel Level {nextUpgrade.Level} > {nextUpgrade.Level + 1}` else "Wheel maxed"
-	end)
 	for i, key in { "SpeedSmall", "SpeedMedium", "SpeedBig" } do
 		local entry = Monetization.ProductByKey[key]
 		product(speed, key, 1 + i, function()
@@ -212,7 +203,7 @@ function View.Build(actions: any): Frame
 	end
 	pass(speed, "FastWheel", 10)
 	pass(speed, "PhantomTrail", 11)
-	product(speed, "TrainingPotion", 12)
+	product(speed, "RoundSpeedPotion", 12)
 	product(speed, "SpeedPotion", 13)
 	product(speed, "SpeedPotionBig", 14)
 
@@ -284,7 +275,6 @@ function View.Build(actions: any): Frame
 	end
 	frame:GetPropertyChangedSignal("Visible"):Connect(function()
 		if frame.Visible then
-			selectTab("Featured")
 			refresh()
 		end
 	end)
@@ -299,6 +289,7 @@ function View.Build(actions: any): Frame
 		Size = UDim2.fromOffset(112, 44),
 		MaximumTextSize = 23,
 	}, function()
+		selectTab("Featured")
 		Ui.Menu.Toggle(frame)
 	end, "Shop")
 	local function visibility()
@@ -311,10 +302,10 @@ function View.Build(actions: any): Frame
 		if player:GetAttribute("InRound") then
 			return
 		end
-		selectTab(if pages[tab] then tab else "Featured")
 		if not frame.Visible then
 			Ui.Menu.Toggle(frame)
 		end
+		selectTab(if pages[tab] then tab else "Featured")
 	end
 	return frame
 end

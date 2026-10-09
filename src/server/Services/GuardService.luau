@@ -28,7 +28,6 @@ local KnifeAura = require(ReplicatedStorage.Shared.KnifeAura)
 local SignTheme = require(ReplicatedStorage.Shared.SignTheme)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local CoffinModel = require(ReplicatedStorage.Shared.CoffinModel)
-local KnifeHaze = require(ReplicatedStorage.Shared.KnifeHaze)
 local PenMode = require(ReplicatedStorage.Shared.PenMode)
 local ToyBlockModel = require(ReplicatedStorage.Shared.ToyBlockModel)
 local BossTitleModel = require(ReplicatedStorage.Shared.BossTitleModel)
@@ -669,7 +668,7 @@ end
 local function setSlot(boss: Boss, slot: Slot, item: string)
 	clearDisplay(slot)
 	slot.Item = item
-	slot.Pad:SetAttribute("KnifeItem", item)
+	slot.Pad:SetAttribute("KnifeItem", Items.Name(item))
 	slot.Pad:SetAttribute("Zone", boss.Index)
 	slot.Pad:SetAttribute("Slot", slot.Index)
 	slot.Out = false
@@ -683,12 +682,21 @@ local function setSlot(boss: Boss, slot: Slot, item: string)
 	if PenMode.Coffins() then
 		local rarity = parsed.Knife.Rarity
 		local floor = CFrame.new(slot.Pad.Position + Vector3.new(0, slot.Pad.Size.Y / 2, 0)) * slot.Spot.Rotation
-		local coffin = CoffinModel.Build(rarity, floor) -- (straight on the floor, no tray)
-		KnifeHaze.Add(coffin, rarity)
+		local coffin = CoffinModel.Build(rarity, floor, item) -- (straight on the floor, no tray)
 		coffin.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 		coffin.Parent = boss.Folder
 		slot.Display = coffin
-		-- (no label: like Steal an Egg's eggs, the coffin speaks for itself; the prompt names it)
+		local special = parsed.Mutation.Rank >= 2
+		SignTheme.knifeLabel(
+			coffin,
+			coffin.PrimaryPart :: BasePart,
+			`{if special then "✨ SPECIAL " else ""}{parsed.Knife.DisplayName}`,
+			rarity,
+			Knives.RarityColors[rarity],
+			`✨ 1 in {math.round(1 / Items.MutationOdds("Rainbow"))} Rainbow roll`,
+			nil,
+			70
+		)
 		slot.Prompt.ObjectText = `{rarity} Coffin`
 		slot.Prompt.Enabled = true
 		return
@@ -749,10 +757,10 @@ end
 -- A restock worth shouting about: a strong mutation or a huge size
 local function announceIfRare(boss: Boss, item: string)
 	local parsed = Items.Parse(item)
-	if parsed and (parsed.Mutation.Rank >= 2 or parsed.Size.Rank >= 3) then
+	if parsed and parsed.Mutation.Rank >= 2 then
 		Net.Announce(
-			`💎 A {Items.DisplayName(item)} just appeared at the {GameConfig.MonsterName(boss.Index)} in {boss.Config.Title}!`,
-			Items.Color(item),
+			`✨ SPECIAL {parsed.Knife.DisplayName} at the {GameConfig.MonsterName(boss.Index)}!`,
+			Knives.RarityColors[parsed.Knife.Rarity],
 			2
 		)
 	end

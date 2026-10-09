@@ -1,5 +1,5 @@
 --!strict
--- Cash purchases (Haunted Wheel tiers, vault walls, rack slots, Murderer tickets, Rebirth). Clients only send the name of what they
+-- Cash purchases (cosmetic trails, pen room, Murderer tickets, rebirth). Clients only send what they
 -- want; price and limits come from GameConfig on the server. Tickets are in-game cash only, never
 -- Robux.
 
@@ -40,46 +40,7 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 		return false, "Not ready yet"
 	end
 
-	-- The "Upgrade Wheel" sign: the cheaper of the next wheel and the next trail
-	if kind == "Speed" then
-		local nextUpgrade = GameConfig.NextSpeedUpgrade(profile.TreadmillLevel, profile.TrailLevel)
-		if not nextUpgrade then
-			return false, "Your wheel is maxed!"
-		end
-		lastRequest[player] = 0
-		return purchase(player, nextUpgrade.Kind)
-	end
-
-	if kind == "Treadmill" then
-		local nextTier = GameConfig.Treadmills[profile.TreadmillLevel + 1]
-		if not nextTier then
-			return false, "Your Haunted Wheel is maxed!"
-		end
-		if not DataService.TrySpend(player, nextTier.Cost, "upgrade_wheel") then
-			return short(player, nextTier.Cost)
-		end
-		local function trains(level: number): number
-			return GameConfig.TrainRate(
-				level,
-				profile.Rebirths,
-				profile.TrailLevel,
-				player:GetAttribute("Pass_PhantomTrail") == true,
-				player:GetAttribute("Pass_FastWheel") == true,
-				false
-			)
-		end
-		local before = trains(profile.TreadmillLevel)
-		DataService.Update(player, function(p)
-			p.TreadmillLevel += 1
-		end)
-		BaseService.RefreshRack(player) -- updates the wheel's sign
-		local after = trains(profile.TreadmillLevel)
-		-- (what you really get now, and how much faster that is - never the bare tier number)
-		return true,
-			`{nextTier.Name}! Now +{Format.Short(after)} Speed every second ({string
-				.format("%.1f", after / math.max(before, 1))
-				:gsub("%.0$", "")}x faster)`
-	elseif kind == "Trail" then
+	if kind == "Trail" then
 		local nextTrail = GameConfig.Trails[profile.TrailLevel + 1]
 		if not nextTrail then
 			return false, "You have the best knife trail!"
@@ -94,7 +55,7 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 		if root then
 			Net.Remotes.Effect:FireAllClients("Deposit", player, "Epic")
 		end
-		return true, `{nextTrail.Name}! Your wheel now trains Speed x{nextTrail.Multiplier}`
+		return true, `{nextTrail.Name} unlocked!`
 	elseif kind == "Rebirth" then
 		local cost = GameConfig.RebirthCost(profile.Rebirths)
 		if profile.Rebirths >= GameConfig.Rebirth.Max then
@@ -133,7 +94,6 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			p.Equipped = ""
 			p.Slots = GameConfig.StartingSlots
 			p.Speed = 0
-			p.TreadmillLevel = 1
 		end)
 		BaseService.RefreshRack(player)
 		local title = GameConfig.RebirthTitle(profile.Rebirths) or ""
@@ -206,9 +166,6 @@ function UpgradeService.Init()
 	Net.Remotes.Purchase.OnServerInvoke = buy
 	BaseService.OnUpgradeBase = function(player: Player)
 		buy(player, "Slot")
-	end
-	BaseService.OnUpgradeWheel = function(player: Player)
-		buy(player, "Speed")
 	end
 	game:GetService("Players").PlayerRemoving:Connect(function(player)
 		lastRequest[player] = nil

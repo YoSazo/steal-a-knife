@@ -50,6 +50,24 @@ function Places.Init()
 	workspace.DescendantRemoving:Connect(unindex)
 end
 
+function Places.ReadyCoffin(): Model?
+	local first: Model? = nil
+	local plate = math.huge
+	for _, model in CollectionService:GetTagged("Coffin") do
+		local slot = (model:GetAttribute("Plate") or math.huge) :: number
+		if
+			model:IsA("Model")
+			and model:GetAttribute("Owner") == player.UserId
+			and model:GetAttribute("Ready")
+			and slot < plate
+		then
+			first = model
+			plate = slot
+		end
+	end
+	return first
+end
+
 function Places.Root(): BasePart?
 	local character = player.Character
 	return character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -107,12 +125,6 @@ function Places.CashPad(): Vector3?
 		return best.Position
 	end
 	return Places.VaultDoor()
-end
-
-function Places.Wheel(): Vector3?
-	local vault = Places.Vault()
-	local plate = vault and vault:FindFirstChild("WheelFloor") :: BasePart?
-	return plate and plate.Position
 end
 
 function Places.SpareSale(): (BasePart?, string?)

@@ -244,7 +244,7 @@ function Transitions.Init()
 		cardToken += 1
 		local token = cardToken
 		local murdererWon = info.Won == "Murderer"
-		cardTitle.Text = (if info.Classic then "CLASSIC · " else "") .. tostring(info.Title or "")
+		cardTitle.Text = tostring(info.Title or "")
 		cardTitle.TextColor3 = if murdererWon then Color3.fromRGB(255, 80, 90) else Color3.fromRGB(110, 200, 255)
 		cardStroke.Color = cardTitle.TextColor3
 		mName.Text = tostring(info.MurdererName or "?")
@@ -278,77 +278,6 @@ function Transitions.Init()
 	end
 
 	local fadeToken = 0
-	-- "THE MURDERER HAS SPAM KNIFE": the first time the Murderer's power shows itself. It names the
-	-- power, never the player. Everyone in the round (and anyone spectating) sees it.
-	-- A slim strip under the round timer (it was a big card in the middle of the screen - too much
-	-- in the way mid-round): small knife icon, "Murderer has" + the power, one line on what it does
-	local phone = Ui.Phone
-	local stripH = if phone then 54 else 66
-	local reveal = Instance.new("Frame")
-	reveal.Name = "PowerReveal"
-	reveal.AnchorPoint = Vector2.new(0.5, 0)
-	reveal.Size = UDim2.fromOffset(if phone then 300 else 380, stripH)
-	reveal.BackgroundColor3 = Color3.fromRGB(30, 8, 12)
-	reveal.BackgroundTransparency = 0.3
-	reveal.Visible = false
-	reveal.ZIndex = 40
-	reveal.Parent = Ui.root
-	local function placeReveal()
-		reveal.Position = UDim2.new(0.5, 0, 0, ((Ui.gui:GetAttribute("HudTop") or 40) :: number) + 2)
-	end
-	Ui.gui:GetAttributeChangedSignal("HudTop"):Connect(placeReveal)
-	placeReveal()
-	Instance.new("UICorner", reveal).CornerRadius = UDim.new(0, 10)
-	local revealStroke = Instance.new("UIStroke")
-	revealStroke.Color, revealStroke.Thickness = Color3.fromRGB(255, 60, 70), 2
-	revealStroke.Parent = reveal
-	local icon = stripH - 12
-	local revealArt = Ui.art(reveal, "", {
-		Position = UDim2.fromOffset(6, 6),
-		Size = UDim2.fromOffset(icon, icon),
-		ZIndex = 41,
-	})
-	local textX = icon + 14
-	local revealName = label(reveal, {
-		Position = UDim2.fromOffset(textX, 4),
-		Size = UDim2.new(1, -(textX + 8), 0, stripH * 0.52),
-		TextColor3 = Color3.fromRGB(255, 90, 100),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		RichText = true,
-		ZIndex = 41,
-	})
-	local revealText = label(reveal, {
-		Position = UDim2.fromOffset(textX, stripH * 0.56),
-		Size = UDim2.new(1, -(textX + 8), 0, stripH * 0.36),
-		TextColor3 = Color3.fromRGB(230, 230, 240),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 41,
-	})
-	local revealToken = 0
-	local function showReveal(info: { [string]: any })
-		if not player:GetAttribute("InRound") and not player:GetAttribute("Spectating") then
-			return
-		end
-		revealToken += 1
-		local token = revealToken
-		local knife = if type(info.Knife) == "string" then info.Knife else ""
-		local parsed = Items.Parse(knife)
-		revealArt.Image = if parsed then (VoxelKnives[parsed.Name] or KnifeIcons[parsed.Name] or "") else ""
-		revealName.Text = `<font color="#FFC8C8">🔪 Murderer has</font> {string.upper(tostring(info.Name or "?"))}`
-		revealText.Text = tostring(info.Description or "")
-		reveal.Visible = true
-		local scale = reveal:FindFirstChild("Pop") :: UIScale? or Instance.new("UIScale")
-		scale.Name = "Pop"
-		scale.Parent = reveal
-		scale.Scale = 1.15
-		TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-		task.delay(3, function()
-			if token == revealToken then
-				reveal.Visible = false
-			end
-		end)
-	end
-
 	-- The kill card: who got you, with what, and where that knife comes from - the "I need that"
 	-- moment (right after dying in a round)
 	local kill = Instance.new("Frame")
@@ -383,7 +312,7 @@ function Transitions.Init()
 	-- The death card, in plain words: the Murderer got you, and your knives are always safe
 	-- The Speed prize's payoff: ~30 shoes burst out of the "You won!" card and fly into the Speed
 	-- shoe at the bottom left (Ui.SpeedIcon), which pops with every one that lands
-	local function shoeShower(fromCard: GuiObject, cash: boolean?)
+	local function shoeShower(fromCard: GuiObject, cash: boolean?, amount: number?)
 		local target = (if cash then Ui.CashIcon else Ui.SpeedIcon) :: GuiObject?
 		if not target or not target.Parent or not fromCard.Parent then
 			return
@@ -400,7 +329,7 @@ function Transitions.Init()
 		local bump = target:FindFirstChild("ShoeBump") :: UIScale? or Instance.new("UIScale")
 		bump.Name = "ShoeBump"
 		bump.Parent = target
-		local count = 30
+		local count = amount or 30
 		for i = 1, count do
 			local shoe = Instance.new("ImageLabel")
 			shoe.Name = "PrizeShoe"
@@ -521,12 +450,13 @@ function Transitions.Init()
 	end
 
 	local killToken = 0
-	local function showKill()
+	local function showKill(info: any)
 		killToken += 1
 		local token = killToken
-		killTitle.Text = "The Murderer got you!"
-		killWhere.Text = "Your knives are safe. Go steal while they play!"
-		killWhere.TextColor3 = Color3.fromRGB(140, 240, 150)
+		killTitle.Text = "Killed by"
+		local item = if type(info) == "table" and type(info.Knife) == "string" then info.Knife else ""
+		killWhere.Text = if Items.Parse(item) then Items.DisplayName(item) else "The Murderer"
+		killWhere.TextColor3 = if Items.Parse(item) then Items.Color(item) else Color3.fromRGB(255, 90, 100)
 		killWhere.Position = UDim2.fromOffset(12, 64) -- (inside the short card)
 		kill.Size = UDim2.fromOffset(480, 120)
 		kill.Visible = true
@@ -546,14 +476,28 @@ function Transitions.Init()
 	end
 
 	Remotes:WaitForChild("Effect").OnClientEvent:Connect(function(kind: string, text: any, extra: any, ...)
-		if kind == "PowerReveal" then
-			if type(text) == "table" then
-				showReveal(text)
-			end
+		if kind == "SpeedBank" and type(text) == "number" then
+			local source = Ui.new(
+				"Frame",
+				{ Size = UDim2.fromOffset(1, 1), Position = UDim2.fromScale(0.5, 0.5), BackgroundTransparency = 1 },
+				Ui.root
+			)
+			shoeShower(source, false, 6)
+			local pop = label(source, {
+				Size = UDim2.fromOffset(240, 40),
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Text = `+{Ui.abbreviate(text)} 👟`,
+				TextSize = 28,
+				TextScaled = false,
+				ZIndex = 61,
+			})
+			TweenService:Create(pop, TweenInfo.new(1.2), { Position = UDim2.fromOffset(0, -40), TextTransparency = 1 })
+				:Play()
+			Debris:AddItem(source, 2)
 			return
 		end
 		if kind == "KillCard" then
-			showKill()
+			showKill(text)
 			return
 		end
 		if kind == "RoundCard" then

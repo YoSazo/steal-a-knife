@@ -10,7 +10,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
-local KnifePowers = require(ReplicatedStorage.Shared.Config.KnifePowers)
 local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
@@ -97,7 +96,6 @@ local function sell(player: Player, index: unknown): boolean
 	Analytics.Track(player, "knife.sold", {
 		knife = Items.Name(name),
 		rarity = if soldParsed then soldParsed.Knife.Rarity else nil,
-		power = if soldParsed then soldParsed.Perk else nil,
 		price = price,
 	})
 	DataService.Update(player, function(p)
@@ -113,77 +111,28 @@ local function sell(player: Player, index: unknown): boolean
 end
 
 -- The power on the knife you fight with (the Murderer's power in rounds)
-local function publishKnifePower(player: Player)
+local function publishFightingKnife(player: Player)
 	local item = BaseService.ProtectedItem(player)
-	local parsed = item and Items.Parse(item)
-	local id = parsed and parsed.Perk
-	local entry = id and KnifePowers.ById[id]
 	local function set(name: string, value: any)
 		if player:GetAttribute(name) ~= value then
 			player:SetAttribute(name, value)
 		end
 	end
-	set("PowerId", id)
 	set("FightingKnife", item)
-	set("PowerName", if entry then entry.Name else nil)
 end
-
--- Old saves: Innocent Powers were once bought with cash (and later cut). That cash comes back once.
--- (their prices, frozen here: cost x 8^level per level, and the third loadout slot)
-local OLD_POWER_COSTS: { [string]: number } = {
-	Vanish = 150000,
-	Radar = 25000,
-	Trap = 900000,
-	Shield = 6000000,
-	Decoy = 250000000,
-	Flash = 40000000,
-	Barricade = 2000000000,
-	Mimic = 15000000000,
-}
-local function refundOldPowers(player: Player, profile: DataService.Profile)
-	if table.find(profile.Bought, "PowerRefund") then
-		return
-	end
-	local refund = 0
-	for id, level in profile.Powers do
-		local cost = OLD_POWER_COSTS[id]
-		if cost then
-			for l = 0, level - 1 do
-				refund += cost * 8 ^ l
-			end
-		end
-	end
-	refund += math.max(0, profile.PowerSlots - 2) * 25000000
-	DataService.CashFlow(player, refund, "power_refund")
-	DataService.Update(player, function(p)
-		table.insert(p.Bought, "PowerRefund")
-		p.Powers = {}
-		p.Loadout = {}
-		p.Cash += refund
-	end)
-	if refund > 0 then
-		task.delay(8, function()
-			if player.Parent then
-				Net.Notify(player, `Old powers refunded: +{Format.Cash(refund)}!`, "good")
-			end
-		end)
-	end
-end
-InventoryService.DebugRefund = refundOldPowers
 
 function InventoryService.Init()
-	DataService.PlayerLoaded:Connect(function(player: Player, profile: DataService.Profile)
-		refundOldPowers(player, profile)
-		publishKnifePower(player)
+	DataService.PlayerLoaded:Connect(function(player: Player, _profile: DataService.Profile)
+		publishFightingKnife(player)
 	end)
 	DataService.Changed:Connect(function(player: Player)
-		publishKnifePower(player)
+		publishFightingKnife(player)
 	end)
 	local function watch(player: Player)
 		-- (leaving a round can change the knife you fight with)
 		player:GetAttributeChangedSignal("InRound"):Connect(function()
 			if not player:GetAttribute("InRound") then
-				publishKnifePower(player)
+				publishFightingKnife(player)
 			end
 		end)
 	end

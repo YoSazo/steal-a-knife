@@ -13,7 +13,6 @@ local TweenService = game:GetService("TweenService")
 
 local Knives = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Knives"))
 local Sounds = require(ReplicatedStorage.Shared.Config:WaitForChild("Sounds"))
-local GameConfig = require(ReplicatedStorage.Shared.Config:WaitForChild("GameConfig"))
 local Props = require(ReplicatedStorage.Shared:WaitForChild("Props"))
 local Format = require(ReplicatedStorage.Shared:WaitForChild("Format"))
 local Items = require(ReplicatedStorage.Shared:WaitForChild("Items"))
@@ -381,7 +380,7 @@ local function flyKnife(
 	character: boolean?,
 	coffin: string? -- a rarity: fly its coffin instead (the knife inside stays a secret)
 )
-	local model = if coffin then CoffinModel.Build(coffin, CFrame.identity) else buildFlying(item, character)
+	local model = if coffin then CoffinModel.Build(coffin, CFrame.identity, item) else buildFlying(item, character)
 	if coffin then
 		CoffinModel.Weld(model)
 	else
@@ -413,31 +412,6 @@ local function flyKnife(
 end
 
 local handlers: { [string]: (...any) -> () } = {
-	-- Double Trouble: your fellow Murderer, outlined red for you only, for the round
-	Partner = function(character: Model?, name: string)
-		if not character then
-			return
-		end
-		local highlight = Instance.new("Highlight")
-		highlight.Name = "PartnerOutline"
-		highlight.FillTransparency = 1
-		highlight.OutlineColor = Color3.fromRGB(255, 40, 60)
-		highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-		highlight.Adornee = character
-		highlight.Parent = character
-		Effects.FloatText(
-			(character:GetPivot()).Position + Vector3.new(0, 5, 0),
-			`🔪 Partner: {name}`,
-			Color3.fromRGB(255, 80, 90)
-		)
-		local connection: RBXScriptConnection
-		connection = player:GetAttributeChangedSignal("InRound"):Connect(function()
-			if not player:GetAttribute("InRound") then
-				connection:Disconnect()
-				highlight:Destroy()
-			end
-		end)
-	end,
 	-- Putting a stolen knife on your plate: it flies from your hands and lands with a burst
 	PlaceKnife = function(from: Vector3, to: Vector3, item: string, coffin: string?)
 		if not Lod.Near(to) then
@@ -477,13 +451,8 @@ local handlers: { [string]: (...any) -> () } = {
 		end
 		-- Your own screen: one line on the top line (client/TopLine) - the knife's name in its colour
 		-- and its Murderer power. (It was three big lines in a card in the middle of the screen.)
-		local parsed = Items.Parse(item)
-		local perk = parsed and parsed.Perk and GameConfig.Perks[parsed.Perk]
 		local tint = Items.Color(item):Lerp(Color3.new(1, 1, 1), 0.25)
 		local text = `⚔️ Equipped <font color="#{tint:ToHex()}"><b>{Items.DisplayName(item)}</b></font>`
-		if perk then
-			text ..= `  <font color="#FF8C9E">🔪 {perk.DisplayName}</font>`
-		end
 		TopLine.Show(text, 2.4, "Equipped")
 	end,
 	-- A coffin opened (CoffinService.Reveal): the knife stands where it was, full size, with a white
@@ -683,6 +652,12 @@ local handlers: { [string]: (...any) -> () } = {
 	Hit = function(position: Vector3)
 		-- Cartoon impact sparks (no blood: keeps the game rated for younger players)
 		Effects.Burst(position, Color3.fromRGB(255, 235, 120), 24, 16, 0.6)
+	end,
+	KnifeKill = function(position: Vector3, color: Color3, rank: number)
+		Effects.Burst(position, color, 12 + math.clamp(rank, 1, 9) * 5, 14 + rank * 2, 0.6)
+	end,
+	SpeedPickup = function(position: Vector3)
+		Effects.Sound(Sounds.PrizeLand, position, 0.5)
 	end,
 	Shield = function(position: Vector3)
 		Effects.Burst(position, Color3.fromRGB(90, 190, 255), 40, 20, 0.9)
@@ -1052,109 +1027,22 @@ function Effects.Init()
 	end)
 
 	-- Haunted Wheels turn while their owner runs inside (local only, pivoting around the hub)
-	local wheels: { [Model]: CFrame } = {}
-	local function trackWheel(wheel: Instance)
-		local pivot = wheel:GetAttribute("Pivot")
-		if wheel:IsA("Model") and typeof(pivot) == "CFrame" then
-			wheels[wheel] = pivot -- the server's resting position, not whatever has streamed in yet
-		end
-	end
-	for _, wheel in CollectionService:GetTagged("HauntedWheel") do
-		trackWheel(wheel)
-	end
-	CollectionService:GetInstanceAddedSignal("HauntedWheel"):Connect(trackWheel)
-	local wheelAngles: { [Model]: number } = {}
-	local WHEEL_SEGMENT = math.pi * 2 / 24 -- the repeating rim / tread pattern (WheelTiers)
-	-- Segments turned per frame, by wheel tier. Up to ~0.45 the eye follows it forwards (that's as
-	-- fast as a wheel can LOOK); around 0.5 it strobes; past that it reads as rolling backwards,
-	-- faster the further below 1 it is (0.7 = a fast backwards roll). Per frame, not per second, so
-	-- it reads the same on a 30 fps phone and a 144 Hz PC.
-	local WHEEL_STEPS = { 0.12, 0.17, 0.22, 0.27, 0.32, 0.36, 0.40, 0.43, 0.46, 0.5, 0.55, 0.64, 0.7 }
-	-- Sparks spraying off the tread under the runner's feet: none on the first wheels, a fountain on
-	-- the top ones (an invisible anchored emitter part per wheel, at the inside bottom of the rim)
-	local sparks: { [Model]: ParticleEmitter } = {}
-	local sparkFolder = Instance.new("Folder")
-	sparkFolder.Name = "WheelSparks"
-	sparkFolder.Parent = workspace
-	local function sparksFor(wheel: Model, base: CFrame): ParticleEmitter
-		local existing = sparks[wheel]
-		if existing then
-			return existing
-		end
-		local anchor = Instance.new("Part")
-		anchor.Name = "Sparks"
-		anchor.Anchored, anchor.CanCollide, anchor.CanQuery, anchor.CanTouch = true, false, false, false
-		anchor.Transparency = 1
-		anchor.Size = Vector3.new(2.5, 0.2, 0.6)
-		anchor.CFrame = base * CFrame.new(0, -5.1, 0)
-		anchor.Parent = sparkFolder
-		local p = Instance.new("ParticleEmitter")
-		p.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-		p.Color = ColorSequence.new(Color3.fromRGB(255, 250, 210), Color3.fromRGB(255, 170, 60))
-		p.LightEmission = 1
-		p.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0) })
-		p.Lifetime = NumberRange.new(0.25, 0.55)
-		p.Speed = NumberRange.new(14, 26)
-		p.SpreadAngle = Vector2.new(35, 35)
-		p.Acceleration = Vector3.new(0, -60, 0)
-		p.EmissionDirection = Enum.NormalId.Top
-		p.Drag = 2
-		p.Rate = 0
-		p.Parent = anchor
-		sparks[wheel] = p
-		wheel.Destroying:Once(function()
-			sparks[wheel] = nil
-			anchor:Destroy()
-		end)
-		return p
-	end
-	local rumbleAt = 0
-	RunService.RenderStepped:Connect(function(_dt: number)
-		for wheel, spark in sparks do
-			if not wheel.Parent or not wheel:GetAttribute("Spinning") then
-				spark.Rate = 0
-			end
-		end
-		for wheel, base in wheels do
-			if not wheel.Parent then
-				wheels[wheel] = nil
-				wheelAngles[wheel] = nil
-			elseif wheel:GetAttribute("Spinning") and wheel.PrimaryPart and Lod.Near(base.Position) then
-				-- Faster wheel tiers spin faster; the rungs roll back under the runner's feet. Steal An
-				-- Egg's trick at the top: every wheel has 24 identical segments, so turning by just under
-				-- one segment a frame reads as the wheel rolling BACKWARDS (it's really flying round),
-				-- and a bit less than that reads as a strobing blur - at any frame rate
-				local tier = math.clamp((wheel:GetAttribute("Tier") or 1) :: number, 1, #WHEEL_STEPS)
-				local step = WHEEL_SEGMENT * WHEEL_STEPS[tier]
-				local angle = (wheelAngles[wheel] or 0) + step
-				wheelAngles[wheel] = angle
-				wheel:PivotTo(base * CFrame.Angles(angle, 0, 0))
-				sparksFor(wheel, base).Rate = math.max(0, tier - 2) * 9
-			end
-		end
-		-- Your own wheel, top tiers: the camera rumbles like the wheel is shaking under you
-		local level = (player:GetAttribute("TreadmillLevel") or 1) :: number
-		if player:GetAttribute("Training") and level >= 7 and os.clock() >= rumbleAt then
-			rumbleAt = os.clock() + 0.12
-			Effects.Shake(0.4 + (level - 7) * 0.15, 0.2) -- degrees: ~0.4 on wheel 7, ~1.3 on the Cosmic Wheel
-		end
-	end)
-
 	-- Keep exposure steady across joins and round teleports; room lamps supply the mood.
 	local Lighting = game:GetService("Lighting")
 	local function roundLighting()
 		local inRound = player:GetAttribute("InRound") == true
 		local info = TweenInfo.new(1.2, Enum.EasingStyle.Quad)
 		-- (exposure, bloom and the rest of the mood: client/ZoneLighting)
-		-- Round maps are indoors with no lamps: rounds get warm, neutral room light, and the hub's
+		-- Round maps are indoors with no lamps: rounds get bright, neutral room light, and the hub's
 		-- own values (published by the server as Lighting attributes, MapService) come back after.
 		-- Never cache Lighting here: the client can start before the server has set it up.
 		local hubAmbient = Lighting:GetAttribute("HubAmbient")
 		local hubOutdoor = Lighting:GetAttribute("HubOutdoor")
+		Lighting.GlobalShadows = if inRound then false else Lighting:GetAttribute("HubShadows") == true
 		if inRound then
 			TweenService:Create(Lighting, info, {
-				Ambient = Color3.fromRGB(165, 160, 150),
-				OutdoorAmbient = Color3.fromRGB(170, 165, 155),
+				Ambient = Color3.fromRGB(210, 210, 200),
+				OutdoorAmbient = Color3.fromRGB(210, 210, 200),
 			}):Play()
 		elseif typeof(hubAmbient) == "Color3" and typeof(hubOutdoor) == "Color3" then
 			TweenService:Create(Lighting, info, { Ambient = hubAmbient, OutdoorAmbient = hubOutdoor }):Play()
@@ -1162,47 +1050,6 @@ function Effects.Init()
 	end
 	player:GetAttributeChangedSignal("InRound"):Connect(roundLighting)
 	roundLighting()
-
-	-- While training you keep facing the way you run (the server turns you once you step in)
-	player:GetAttributeChangedSignal("Training"):Connect(function()
-		local character = player.Character
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid.AutoRotate = not player:GetAttribute("Training")
-		end
-	end)
-
-	-- Every stride on your own wheel pops a "+Speed" number and a soft footstep
-	local strideTimer = 0
-	RunService.RenderStepped:Connect(function(dt: number)
-		if not player:GetAttribute("Training") then
-			strideTimer = 0
-			return
-		end
-		local level = (player:GetAttribute("TreadmillLevel") or 1) :: number
-		local stride = 0.6 / (1 + level * 0.12) -- quicker steps on better wheels
-		strideTimer += dt
-		if strideTimer < stride then
-			return
-		end
-		strideTimer = 0
-		local character = player.Character
-		local head = character and character:FindFirstChild("Head") :: BasePart?
-		if head then
-			local rate = GameConfig.TrainRate(
-				level,
-				(player:GetAttribute("Rebirths") or 0) :: number,
-				(player:GetAttribute("TrailLevel") or 0) :: number,
-				player:GetAttribute("Pass_PhantomTrail") == true,
-				player:GetAttribute("Pass_FastWheel") == true,
-				false
-			)
-			local gained = math.max(1, math.floor(rate * stride))
-			local jitter = Vector3.new(math.random(-10, 10) / 10, 2.5, math.random(-10, 10) / 10)
-			Effects.FloatText(head.Position + jitter, `+{Format.Short(gained)} ⚡`, Color3.fromRGB(120, 200, 255))
-			Effects.Sound("rbxasset://sounds/action_footsteps_plastic.mp3", head.Position, 0.25)
-		end
-	end)
 
 	-- Flickering lamps in the round maps: electric lights cut out for a blink now and then,
 	-- flames (candles, fireplaces; attribute "Flame") waver softly all the time
