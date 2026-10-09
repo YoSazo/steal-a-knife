@@ -100,7 +100,6 @@ local commands: { [string]: (Player, ...any) -> any } = {
 		return true
 	end,
 	Home = function(player: Player)
-		BaseService.SetReturnSpot(player, nil)
 		BaseService.TeleportHome(player)
 		return true
 	end,
@@ -122,11 +121,6 @@ local commands: { [string]: (Player, ...any) -> any } = {
 	end,
 	Pickup = function(player: Player, model: Model)
 		return StealService.TakeDrop(player, model)
-	end,
-	SuspendResume = function(player: Player)
-		StealService.Suspend(player)
-		StealService.Resume(player)
-		return true
 	end,
 	-- A mystery coffin, as a gift / wheel prize / daily streak would give it
 	Coffin = function(player: Player, rarity: string?)

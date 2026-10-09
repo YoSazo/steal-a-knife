@@ -211,6 +211,19 @@ The creature's speed sign is readable up close at 640 x 320.
   UI, remotes, charge rewards, profile field and shared rules. This item is deferred and is no
   longer required for this launch. The completed round/hatch/luck work remains.
 
+- **Owner split (starting now):** cloud owns items 22 (group gift), 25 (Saturday events/admin),
+  26 (weekly drop/codes), and 27 (safe-zone PvP). Codex skips implementing those four, then
+  applies the supplied bundle and tests them in Studio. Codex owns 18-21, 7-8, 24/28, and 9/23.
+  Paid rotation/event-board integration will use the bundle's real weekly switch time.
+
+- **Item 9 cleanup complete:** saved return spots, carry Suspend/Resume storage/loop and creature
+  resume hooks deleted (~180 net lines). Boss carry returns to its stash at round start; a loose
+  carried coffin drops on the ground. Every return/respawn uses the pen. Phone: actual zone 2
+  boss steal lost its carry at Reveal and returned to the pen after the round. Desktop: loose
+  coffin carry became exactly one ground drop; death returned to the pen. Static checks pass,
+  no game script errors. PvP predicates preserved unchanged for the cloud-owned item 27.
+  Announcement text yields briefly while the red floor trail remains active.
+
 **Next:** Secret (item 18), maps, shop and remaining work.
 
 ---

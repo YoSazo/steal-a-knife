@@ -1567,7 +1567,6 @@ local function startRound(participants: { Player })
 
 		-- (no saved spot any more: after the round everyone comes home to their pen, like Steal An
 		-- Egg after the night - BaseService.TeleportHome)
-		BaseService.SetReturnSpot(player, nil)
 		local target = spawns[(i - 1) % #spawns + 1]
 		-- Off any seat first (a seat weld would hold you in the hub), and out of a boss tumble
 		humanoid.Sit = false

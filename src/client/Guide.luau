@@ -556,7 +556,6 @@ function Guide.Init()
 			indexEntered = nil
 		end
 		local blocked = tutorial
-			or (not inRound and Ui.gui:GetAttribute("TopLineNotice") == true)
 			or (Ui.menuOpen() and not indexOpen)
 			or Ui.gui:GetAttribute("FadeCover") == true
 			or Ui.gui:GetAttribute("Presenting") == true
@@ -701,11 +700,12 @@ function Guide.Init()
 				fit()
 			end
 		end
+		local messageVisible = visible and (inRound or Ui.gui:GetAttribute("TopLineNotice") ~= true)
 		local targetButton = uiTarget(current or menuAction)
-		if visible and targetButton and rendered(targetButton) and not tutorial then
+		if messageVisible and targetButton and rendered(targetButton) and not tutorial then
 			pulseButton(targetButton)
 		end
-		local alpha = if visible then 0 else 1
+		local alpha = if messageVisible then 0 else 1
 		band.GroupTransparency += math.clamp(alpha - band.GroupTransparency, -dt / 0.25, dt / 0.25)
 		band.Visible = not blocked and band.GroupTransparency < 1
 		if Ui.gui:GetAttribute("DoLine") ~= band.Visible then

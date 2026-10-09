@@ -340,8 +340,7 @@ startCarry = function(
 	kind: string,
 	item: string,
 	boss: { Zone: number, Slot: number }?,
-	source: string?,
-	resumed: boolean?
+	source: string?
 )
 	local character = player.Character :: Model
 	local head = character:FindFirstChild("Head") :: BasePart?
@@ -414,17 +413,15 @@ startCarry = function(
 		Source = source or (if boss then "boss" else "ground"),
 		Zone = if boss then boss.Zone else (zoneIndexAt(root.Position) or 0),
 	}
-	if not resumed then
-		local carry = carriers[player]
-		Analytics.Track(player, "steal.start", carryProps(carry))
-		Analytics.Milestone(player, "steal_started", carryProps(carry))
-		if carry.Source == "boss" then
-			Analytics.Milestone(player, "boss_steal_zone_" .. carry.Zone)
-			-- the round prize's Speed in use: a steal from the boss it was for (or deeper)
-			local target = player:GetAttribute("PrizeTargetZone")
-			if type(target) == "number" and carry.Zone >= target then
-				Analytics.Track(player, "prize.followup", { stage = "attempt", zone = carry.Zone, target = target })
-			end
+	local carry = carriers[player]
+	Analytics.Track(player, "steal.start", carryProps(carry))
+	Analytics.Milestone(player, "steal_started", carryProps(carry))
+	if carry.Source == "boss" then
+		Analytics.Milestone(player, "boss_steal_zone_" .. carry.Zone)
+		-- the round prize's Speed in use: a steal from the boss it was for (or deeper)
+		local target = player:GetAttribute("PrizeTargetZone")
+		if type(target) == "number" and carry.Zone >= target then
+			Analytics.Track(player, "prize.followup", { stage = "attempt", zone = carry.Zone, target = target })
 		end
 	end
 	Net.Animate(character, "Pickup")
@@ -716,107 +713,11 @@ function StealService.IsCarrying(player: Player): boolean
 	return carriers[player] ~= nil
 end
 
--- Rounds pull everyone out of the arena, knockdowns knock it loose: whatever they carried drops
--- A round pulled a carrier in: the carry is set aside (the boss's slot stays empty) and handed back
--- on the way home (Resume, via BaseService.OnReturnedHome), so they're back where they were, still
--- holding it. Released (back to the wall / dropped) if they leave or never come back for it.
-type Suspended = {
-	Kind: string,
-	Item: string,
-	Source: string,
-	Boss: { Zone: number, Slot: number }?,
-	At: Vector3?,
-	ChaserAt: CFrame?,
-	Chasing: boolean,
-	Since: number,
-}
-local suspended: { [Player]: Suspended } = {}
-StealService.OnResumeBoss = nil :: ((player: Player, zone: number, at: CFrame?, chasing: boolean) -> ())?
-StealService.OnSuspendBoss = nil :: ((player: Player, zone: number) -> (CFrame?, boolean))?
-
-local function release(player: Player)
-	local held = suspended[player]
-	suspended[player] = nil
-	if not held then
-		return
-	end
-	if held.Boss then
-		local hook = StealService.OnBossCarryEnded
-		if hook then
-			hook(held.Boss.Zone, held.Boss.Slot, held.Item, false)
-		end
-	elseif held.At then
-		StealService.DropKnife(held.Item, held.At, held.Source == "coffin")
-	end
-end
-
-function StealService.Suspend(player: Player)
-	local carry = carriers[player]
-	if not carry then
-		return
-	end
-	carriers[player] = nil
-	Analytics.Track(player, "steal.suspended", carryProps(carry))
-	carry.Visual:Destroy()
-	player:SetAttribute("Carrying", nil)
-	player:SetAttribute("BossCarry", nil)
-	player:SetAttribute("PlaceReady", nil)
-	BaseService.RefreshWalkSpeed(player)
-	local chaserAt, chasing = nil, false
-	if carry.Boss and StealService.OnSuspendBoss then
-		chaserAt, chasing = StealService.OnSuspendBoss(player, carry.Boss.Zone)
-	end
-	suspended[player] = {
-		Kind = carry.Kind,
-		Item = carry.Item,
-		Source = carry.Source,
-		Boss = carry.Boss,
-		At = carry.LastPos,
-		ChaserAt = chaserAt,
-		Chasing = chasing,
-		Since = os.clock(),
-	}
-end
-
--- A murder round is starting (the night, Steal An Egg style): a boss's knife you're still carrying
--- goes back on its wall - you saw the timer - and that chase is over. Anything else you hold is
--- kept for you (Suspend) and handed back once you're home.
+-- Rounds pull everyone out of the arena, knockdowns knock it loose: whatever they carried drops-- Round start ends a carry: boss coffins return to their stash, loose drops stay on the ground.
 function StealService.EndForRound(player: Player)
-	local carry = carriers[player]
-	if not carry then
-		return
-	end
-	if carry.Boss then
-		endCarry(player, false, nil, "round_reset")
-	else
-		StealService.Suspend(player)
-	end
+	endCarry(player, false, nil, "round_reset")
 end
 
-function StealService.Resume(player: Player)
-	local held = suspended[player]
-	if not held or player:GetAttribute("InRound") then
-		return
-	end
-	suspended[player] = nil
-	startCarry(player, held.Kind, held.Item, held.Boss, held.Source, true)
-	if not carriers[player] then
-		-- couldn't hand it back (no character): don't lose it
-		suspended[player] = held
-		release(player)
-		return
-	end
-	Net.Notify(player, "You still have it! RUN HOME!", "good")
-	-- The boss picks the chase back up (no free escapes by waiting out a round)
-	if held.Boss and StealService.OnResumeBoss then
-		StealService.OnResumeBoss(player, held.Boss.Zone, held.ChaserAt, held.Chasing)
-	end
-end
-
--- Steal a Brainrot's bat, with our knives: out of the biomes, anyone carrying a stolen knife can be
--- hit by another player's hub knife. They go flying like a boss hit and the knife drops where they
--- were, for anyone to grab. Only carriers can be hit (no other PvP), never at home in their own
--- vault, never in a round, and never a new player.
 local function onRunway(position: Vector3): boolean
 	return position.Z > -2 and math.abs(position.X) < GameConfig.ArenaWidth / 2 + 2
 end
@@ -920,20 +821,7 @@ function StealService.Init()
 	dropFolder.Name = "DroppedKnives"
 	dropFolder.Parent = workspace:FindFirstChild("Map")
 
-	BaseService.OnReturnedHome = StealService.Resume
-	-- Never held forever: released after 10 minutes if they somehow don't come back for it
-	task.spawn(function()
-		while true do
-			task.wait(30)
-			for player, held in suspended do
-				if os.clock() - held.Since > 600 then
-					release(player)
-				end
-			end
-		end
-	end)
 	Players.PlayerRemoving:Connect(function(player)
-		release(player)
 		local carry = carriers[player]
 		endCarry(player, false, if carry then carry.LastPos else nil, "left")
 	end)

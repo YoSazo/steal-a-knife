@@ -328,20 +328,6 @@ function BaseService.IsInAnyBase(position: Vector3): boolean
 	return false
 end
 
--- Where a murder round pulled someone from: the next trip "home" goes back there instead
--- (whether they survived the round or respawned after dying in it). The rule: a round never
--- moves you in the hub.
-local returnSpots: { [Player]: CFrame? } = {}
-function BaseService.SetReturnSpot(player: Player, spot: CFrame?)
-	returnSpots[player] = spot
-end
-Players.PlayerRemoving:Connect(function(player)
-	returnSpots[player] = nil
-end)
-
--- Set by StealService: called once someone is back at their pre-round spot (hands back a carry)
-BaseService.OnReturnedHome = nil :: ((player: Player) -> ())?
-
 -- Spawning: stream the area round the spawn to the player's client FIRST, so they never drop into
 -- a map that hasn't loaded yet (falling out of the sky, Roblox's "Gameplay Paused" box)
 function BaseService.LoadCharacter(player: Player)
@@ -361,13 +347,6 @@ function BaseService.TeleportHome(player: Player)
 	end
 	local base = baseOf[player]
 	local destination = if base then base.Spawn else MapService.LobbySpawn
-	local spot = returnSpots[player]
-	local restored = false
-	if spot and not player:GetAttribute("InRound") then
-		returnSpots[player] = nil
-		destination = spot
-		restored = true
-	end
 	-- (no early jump to the spot: arriving before it has streamed in is what showed Roblox's
 	-- loading spinner on the way back from a round; the screen fade covers the short wait)
 	task.spawn(function()
@@ -391,11 +370,6 @@ function BaseService.TeleportHome(player: Player)
 			task.wait(0.4)
 			local root = character:FindFirstChild("HumanoidRootPart") :: BasePart?
 			if not root or (root.Position - destination.Position).Magnitude < 30 then
-				-- (hands back anything kept for them over a round - restored spot or their pen)
-				local _ = restored
-				if BaseService.OnReturnedHome then
-					BaseService.OnReturnedHome(player)
-				end
 				return
 			end
 		end

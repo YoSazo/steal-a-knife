@@ -1248,7 +1248,7 @@ local function stopChase(guard: Guard, escaped: boolean)
 end
 
 -- Someone just took a knife off the wall: the boss (or a shadow of them) comes for them
-local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
+local function sendChaser(boss: Boss, thief: Player)
 	local guard = boss.Guard
 	if guard.Target ~= nil and guard.Target ~= thief then
 		-- Already busy with someone else: a shadow steps out of the wall
@@ -1256,32 +1256,30 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 		Net.Remotes.Effect:FireAllClients("Smoke", boss.Post.Position)
 	end
 	-- Waking up is its own beat (see GameConfig.BossWake): red eyes, out of the chair, then the chase.
-	-- New players get longer. A chase picked back up after a round only gets the short "!".
+	-- Every steal gets its full wake-up window.
 	local wake = GameConfig.GuardAlertTime
 	guard.InChair = false
 	guard.ExitAt = nil
-	if not startAt then
-		local profile = DataService.Get(thief)
-		local knives = if profile then #profile.Knives else 0
-		local newcomer = knives < GameConfig.BossWake.NewcomerKnives
-		wake = if guard.Hound
-			then (if newcomer then GameConfig.BossWake.HoundNewcomer else GameConfig.BossWake.HoundTime)
-			elseif newcomer then GameConfig.BossWake.Newcomer
-			else GameConfig.BossWake.Time
-		-- The boss himself gets up out of his chair (client/Moves acts it out), steps out of it and
-		-- walks forward clear of the torch post before turning for you (he walked through it).
-		-- A shadow steps out of the wall: no chair.
-		if not guard.IsShadow and (guard.Position - guard.Boss.Post.Position).Magnitude < 1 then
-			local serverNow = workspace:GetServerTimeNow()
-			guard.Model:SetAttribute("WakeAt", serverNow)
-			guard.Model:SetAttribute("WakeEnd", serverNow + BossChairMotion.WakeDuration(wake))
-			guard.Model:SetAttribute("SitAt", nil)
-			guard.Model:SetAttribute("SitEnd", nil)
-			guard.InChair = true
-			guard.ExitAt = (guard.Boss.Post * CFrame.new(0, 0, -CHAIR_EXIT)).Position
-		end
-		Net.Remotes.Effect:FireAllClients("BossWake", guard.Model, wake)
+	local profile = DataService.Get(thief)
+	local knives = if profile then #profile.Knives else 0
+	local newcomer = knives < GameConfig.BossWake.NewcomerKnives
+	wake = if guard.Hound
+		then (if newcomer then GameConfig.BossWake.HoundNewcomer else GameConfig.BossWake.HoundTime)
+		elseif newcomer then GameConfig.BossWake.Newcomer
+		else GameConfig.BossWake.Time
+	-- The boss himself gets up out of his chair (client/Moves acts it out), steps out of it and
+	-- walks forward clear of the torch post before turning for you (he walked through it).
+	-- A shadow steps out of the wall: no chair.
+	if not guard.IsShadow and (guard.Position - guard.Boss.Post.Position).Magnitude < 1 then
+		local serverNow = workspace:GetServerTimeNow()
+		guard.Model:SetAttribute("WakeAt", serverNow)
+		guard.Model:SetAttribute("WakeEnd", serverNow + BossChairMotion.WakeDuration(wake))
+		guard.Model:SetAttribute("SitAt", nil)
+		guard.Model:SetAttribute("SitEnd", nil)
+		guard.InChair = true
+		guard.ExitAt = (guard.Boss.Post * CFrame.new(0, 0, -CHAIR_EXIT)).Position
 	end
+	Net.Remotes.Effect:FireAllClients("BossWake", guard.Model, wake)
 	guard.WakeStart = now()
 	-- A creature has no stand-and-face beat after its pose blend finishes (no chair to clear) - the
 	-- blend IS the whole wake, so it ends exactly when the chase starts (see AlertUntil below), not
@@ -1300,14 +1298,9 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 	if not table.find(chasers, guard) then
 		table.insert(chasers, guard)
 	end
-	if startAt then
-		-- Picking a chase back up after a round: right where they were when it was interrupted
-		guard.Position = startAt.Position
-		guard.Model:PivotTo(startAt)
-	end
 	-- (the "!" stretch once they're on their feet)
 	local model = guard.Model
-	task.delay(if startAt then 0 else BossChairMotion.WakeDuration(wake) * GameConfig.BossHop.Done, function()
+	task.delay(BossChairMotion.WakeDuration(wake) * GameConfig.BossHop.Done, function()
 		if model.Parent then
 			Net.Animate(model, "Alert")
 		end
@@ -1316,7 +1309,6 @@ local function sendChaser(boss: Boss, thief: Player, startAt: CFrame?)
 		wake = wake,
 		zone = boss.Index,
 		shadow = guard.IsShadow == true,
-		resumed = startAt ~= nil,
 		walk_speed = (function()
 			local humanoid = thief.Character and thief.Character:FindFirstChildOfClass("Humanoid")
 			return if humanoid then math.floor(humanoid.WalkSpeed) else nil
@@ -2121,37 +2113,6 @@ function GuardService.Init()
 	end
 
 	StealService.OnBossCarryEnded = onBossCarryEnded
-	StealService.OnSuspendBoss = function(player: Player, zone: number): (CFrame?, boolean)
-		-- Where the boss is right now, and whether it was chasing this thief (saved across the round)
-		for _, guard in chasers do
-			if guard.Target == player and not guard.Dead then
-				return guard.Model:GetPivot(), true
-			end
-		end
-		local boss = bosses[zone]
-		if boss and boss.Guard and not boss.Guard.Dead and boss.Guard.Target == nil then
-			return boss.Guard.Model:GetPivot(), false
-		end
-		return nil, false
-	end
-	StealService.OnResumeBoss = function(player: Player, zone: number, at: CFrame?, chasing: boolean)
-		local boss = bosses[zone]
-		if not boss then
-			return
-		end
-		if chasing then
-			sendChaser(boss, player, at)
-		elseif at and boss.Guard and boss.Guard.Target == nil then
-			-- It had given up: back where it was, walking home to its post
-			local guard = boss.Guard
-			guard.Position = at.Position
-			guard.Model:PivotTo(at)
-			guard.Returning = true
-			if not table.find(chasers, guard) then
-				table.insert(chasers, guard)
-			end
-		end
-	end
 
 	-- Restocks, once a second
 	local restockCheck = 0
