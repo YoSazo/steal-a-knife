@@ -5,7 +5,7 @@ place it in your pen -> murder rounds are its clock -> it hatches a knife charac
 wheel/pen upgrades -> steal deeper. Your best knife is your Murderer weapon (one fixed perk per knife type). Steal-and-collect + Murder Mystery 2-style rounds: each zone's boss sleeps by a graveyard of coffins (deeper zone =
 rarer coffin, faster boss); every few minutes everyone is pulled into a round with one random Murderer (weighted by
 the chance meter), a Sheriff with the Revolver and a survival timer. One version of the game: pens + coffins
-everywhere (Pens.Enabled = true; the vault code is dead and due to be deleted), 8 pens = 8-player servers.
+everywhere (the vault path is deleted), 8 pens = 8-player servers.
 Rarities (one biome zone each): Common, Rare, Epic, Legendary, Mythic, Godly, Celestial, Cosmic (24 knives,
 3 per rarity). Money is Steal An Egg-sized (starter knife $75/s, into the quintillions; `shared/Format` prints
 K/M/B/T/Qd/Qn/Sx/...). Audience ~9-15, low-poly.
@@ -22,7 +22,7 @@ the next boss you can't outrun yet; the win card + ~30 shoes flying into the Spe
   Guard → Upgrade → Inventory → Combat → Round → Debug → Data (last, so everyone is listening for PlayerLoaded), then
   characters load. CombatService respawns people after death.
 - `DataService` UpdateAsync + retries + session lock; the only writer of player data. In Studio without API access it runs on temporary data.
-- `MapService` builds the gameplay layout in code (arena zones, pedestals, 8 vaults); `ManorDecor` is
+- `MapService` builds the gameplay layout in code (arena zones, pedestals, 8 pens); `ManorDecor` is
   the cosmetic hub; `RoundMaps` lays out the indoor round maps (random one per round) from `RoundMapKit`
   (walls with trim and per-face wallpaper, windows, lights, furniture; furniture front = local -Z, rotation
   0/180/-90/90 for north/south/west/east walls). Anything named "Floor" is where coins/Revolver land.
@@ -41,13 +41,8 @@ the next boss you can't outrun yet; the win card + ~30 shoes flying into the Spe
   end (Steal from the Rich): 6 across the back wall facing the way in, 1 on each side wall facing the middle,
   wheels + signs in front of each gate, the Lucky Wheel in the middle (MapService.buildBases, LuckyWheelAt), events board over the entrance, round maps far away at x = 3000. ManorDecor dresses each
   zone as its own biome (Courtyard, Gardens, Crypts, Catacombs, Inferno, Mount Olympus, Heavens, Outer Space).
-- Vaults grow a floor at a time (Tsunami style, FLOOR_HEIGHT 16): each floor = a walkway down the middle, a ladder
-  at the back middle (invisible TrussPart + drawn rails/rungs) up through a slot cut in the deck above, with a small
-  landing behind it to step onto (Roblox trusses step you off in the direction you push), 5 flat cyan disc plates
-  down each side (no vault sign; SAFE ZONE is painted on the plaza by the thin red line at the runway start) (GameConfig.SlotsPerFloor 10, up to
-  4 floors = MaxSlots 40). The "Slot" upgrade / Mount product buys the next floor (+10, GameConfig.FloorCosts);
-  MapService.SetFloors shows the owned storeys (BaseSite.FloorFolders) and VaultWalls.Build(..., floors) sizes the
-  frame. The Haunted Wheel stands outside the gate.
+- Pens are flat fenced plots (8 total, 6 at the back and 1 on each side). Each grows from 10 to 20 slots, one at a time. `Pens.SlotCosts` prices room; `PenMode.RoomUpgrade` returns its cost and +1 slot. `PenWalls` draws the fence; `client/BaseMarkers` still uses the internal `VaultGate` tag. Vault floors, ladders, plate models, floor config and wall tiers have been deleted. Old knives beyond pen capacity stay in the bag.
+
 - Plaza: the Lucky Wheel (`PlazaWheel`, free daily spin + earned spins; prizes are cash, spins and coffins) and
   the map vote boards. No shopkeepers (cases, powers and the merchant were cut).
 - Health: everyone has GameConfig.PlayerHealth (100); no health levels (cut; owners refunded once by
@@ -55,7 +50,7 @@ the next boss you can't outrun yet; the win card + ~30 shoes flying into the Spe
 - Speed (Steal An Egg style): `profile.Speed` is trained by standing in your vault's Haunted Wheel (the code calls
   it the treadmill; tiers in `GameConfig.Treadmills`), turned into walk speed by `GameConfig.WalkSpeedFor`. Zones have
   `SpeedNeeded` and guards fast enough to catch anyone below it. No dash.
-- `BaseService` vaults, wall mounts, the Haunted Wheel training tick, income tick, and the single `RefreshWalkSpeed`.
+- `BaseService` pens, placement, the Haunted Wheel training tick, income tick, and the single `RefreshWalkSpeed`.
   Income is Tsunami style: every second each knife adds to profile.Pending[slot], shown on its green cash pad
   (BaseSite.CashPads/CashLabels) beside the plate; the owner walking over a pad collects it (CashBurst effect).
   Offline earnings still pay straight into cash. `client/Overheads` shows everyone's cash over their head (hub only).
@@ -146,9 +141,7 @@ the next boss you can't outrun yet; the win card + ~30 shoes flying into the Spe
   (rarity / name / $ per second). Sunny afternoon high in the sky (MapService.buildLighting: ClockTime 15.2, real
   sun, NO shadows and no Light instances anywhere (noLights strips them, round maps included) for one even light, day skybox from `tools/make_sky_day.py` -> `Textures.Day`, Terrain Clouds); the hub is a
   floating island (buildIsland: stepped studded earth under every floor, puffy cloud clusters around and below). No blood (hit bursts are yellow).
-- Vaults: open Tsunami-style platforms (3 floors, 24 pedestals as navy/cyan plates). BaseService.RefreshRack: nameplate
-  billboard, green floor money plaque (+$/s), light beam, aura (every knife: rising Money bills + a Swirl in its colour). Aura = `Items.AuraPower`: sparks/flames/crackle + dashed floor ring; `VaultWalls` = open navy frame + glass rail + invisible
-  walls, and a laser gate ("Pane" lasers, more lines per GameConfig.Walls tier) whose invisible Blocker keeps non-owners out.
+
 - Retention (`Rewards`): offline earnings (`GameConfig.Offline`, from profile `LastSeen`) and the 7-day login streak
   (`GameConfig.Daily`, `Remotes.ClaimDaily`), shown by `client/Welcome` on join (`Remotes.Welcome`). New-player
   shield: `DataService.IsNewPlayer` (PlayTime < `NewPlayerShield`, no rebirths) blocks round loot.

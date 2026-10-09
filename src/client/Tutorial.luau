@@ -14,7 +14,6 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local PenMode = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PenMode"))
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("GameConfig"))
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -149,9 +148,7 @@ local function run(startAt: number, replay: boolean)
 		},
 		{
 			-- (a pen: being in it collects your money - no pads)
-			Text = if PenMode.On()
-				then "Your knife makes money! Stay in your pen to collect it."
-				else "Your knife makes money! Walk on the green pad to get it.",
+			Text = "Your knife makes money! Stay in your pen to collect it.",
 			Target = cashPad,
 			Done = function()
 				return collected

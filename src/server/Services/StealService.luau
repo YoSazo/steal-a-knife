@@ -579,11 +579,11 @@ function StealService.PlaceAt(player: Player, position: Vector3)
 	local root = rootPart(player)
 	local profile = DataService.Get(player)
 	local base = BaseService.GetBase(player)
-	if PenMode.On() and not carry then
+	if not carry then
 		BaseService.PlaceHatched(player, position) -- (a knife fresh out of its coffin, in your hand)
 		return
 	end
-	if not PenMode.On() or not carry or carry.Kind ~= "Knife" or not root or not profile or not base then
+	if not carry or carry.Kind ~= "Knife" or not root or not profile or not base then
 		return
 	end
 	if not BaseService.IsInOwnBase(player, root.Position) or not MapService.InBounds(base.Bounds, position, -2) then
@@ -663,32 +663,19 @@ local function tick()
 		if BaseService.IsInOwnBase(player, pos) then
 			-- A pen: you tap where to put it down (client/PlaceTap -> Remotes.PlaceAt). A full pen
 			-- (bag only) takes it straight away; and nobody stands holding it forever (PlaceAfter)
-			if PenMode.On() then
-				local profile = DataService.Get(player)
-				if profile and not DataService.FreePlate(profile) then
-					deposit(player)
-					continue
-				end
-				if not player:GetAttribute("PlaceReady") then
-					player:SetAttribute("PlaceReady", true)
-					carry.ReadySince = now
-					Net.Notify(player, "Tap where you want to put it!", "good")
-				elseif now - (carry.ReadySince or now) > GameConfig.Pens.PlaceAfter then
-					deposit(player)
-				end
+			local profile = DataService.Get(player)
+			if profile and not DataService.FreePlate(profile) then
+				deposit(player)
 				continue
 			end
-			-- Knives: you put them on a plate yourself (Tsunami style), StealService.Place
 			if not player:GetAttribute("PlaceReady") then
 				player:SetAttribute("PlaceReady", true)
-				local profile = DataService.Get(player)
-				if profile and #profile.Knives >= profile.Slots then
-					Net.Notify(player, "Your vault is full! Sell a knife first.", "bad")
-					Offers.Show(player, "Mount", "Your vault is full! Get more room right now.")
-				else
-					Net.Notify(player, "Walk to a glowing plate to put it down!", "good")
-				end
+				carry.ReadySince = now
+				Net.Notify(player, "Tap where you want to put it!", "good")
+			elseif now - (carry.ReadySince or now) > GameConfig.Pens.PlaceAfter then
+				deposit(player)
 			end
+			continue
 		elseif player:GetAttribute("PlaceReady") then
 			player:SetAttribute("PlaceReady", nil)
 		end

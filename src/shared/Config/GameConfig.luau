@@ -20,11 +20,7 @@ local GameConfig = {
 	-- Economy / progression
 	StartingCash = 0,
 	-- Vaults grow a floor at a time (Tsunami style): 10 plates per floor, up to 4 floors
-	SlotsPerFloor = 10,
 	StartingSlots = 10,
-	MaxSlots = 40,
-	FloorCosts = { 1.5e6, 2e10, 1e14 }, -- the 2nd, 3rd and 4th floor
-	FloorRebirths = { 0, 1, 3 }, -- rebirths needed before the 2nd, 3rd and 4th floor (Steal a Brainrot style)
 	-- Speed -> walk speed: walk = BaseWalkSpeed + SpeedCurve * log2(1 + Speed / 500). Lower = every
 	-- deeper biome needs a lot more Speed (the long climb; tools/pacing_sim.py checks the hours)
 	SpeedCurve = 3.6,
@@ -51,7 +47,6 @@ local GameConfig = {
 	-- SlotsPerFloor). Knife characters are drawn Scale[rarity] x their 2.4-stud size (Common ~5 studs,
 	-- Cosmic ~48: over the hub walls, seen from spawn).
 	Pens = {
-		Enabled = true, -- one version of the game: pens everywhere (the vault/pen A/B is over)
 		Count = 8, -- one pen per player: 8-player servers (Creator Dashboard -> Places -> Server size)
 		Width = 64,
 		-- (10 studs of grass between neighbouring pens: each one its own plot - MapService)
@@ -211,67 +206,6 @@ local GameConfig = {
 	},
 	-- The Robux trail (Monetization pass "PhantomTrail"): void knives and a x10 multiplier
 	PhantomTrail = { Name = "Phantom Trail", Knife = "VoidEdge", Multiplier = 10, Color = Color3.fromRGB(170, 70, 255) },
-
-	-- Vault wall looks (profile.WallLevel; no longer sold: players keep the tier they bought while
-	-- raids existed). The frame, pillars and trim of a vault (VaultWalls / VaultModel).
-	Walls = {
-		{
-			Name = "Starter Lasers",
-			Height = 16,
-			Color = Color3.fromRGB(60, 64, 110),
-			Material = Enum.Material.WoodPlanks,
-			Trim = Color3.fromRGB(255, 170, 70),
-		},
-		{
-			Name = "Twin Lasers",
-			Height = 21,
-			Color = Color3.fromRGB(60, 70, 120),
-			Material = Enum.Material.Cobblestone,
-			Trim = Color3.fromRGB(120, 200, 255),
-		},
-		{
-			Name = "Iron Grid",
-			Height = 26,
-			Color = Color3.fromRGB(70, 74, 96),
-			Material = Enum.Material.DiamondPlate,
-			Trim = Color3.fromRGB(220, 230, 240),
-		},
-		{
-			Name = "Red Alert",
-			Height = 31,
-			Color = Color3.fromRGB(80, 40, 70),
-			Material = Enum.Material.Limestone,
-			Trim = Color3.fromRGB(255, 70, 80),
-		},
-		{
-			Name = "Plasma Wall",
-			Height = 36,
-			Color = Color3.fromRGB(60, 30, 100),
-			Material = Enum.Material.Basalt,
-			Trim = Color3.fromRGB(190, 90, 255),
-		},
-		{
-			Name = "Void Field",
-			Height = 41,
-			Color = Color3.fromRGB(20, 30, 60),
-			Material = Enum.Material.Glass,
-			Trim = Color3.fromRGB(90, 255, 240),
-		},
-		{
-			Name = "Golden Gate",
-			Height = 46,
-			Color = Color3.fromRGB(90, 80, 60),
-			Material = Enum.Material.Marble,
-			Trim = Color3.fromRGB(255, 215, 90),
-		},
-		{
-			Name = "Star Shield",
-			Height = 52,
-			Color = Color3.fromRGB(40, 26, 90),
-			Material = Enum.Material.Glass,
-			Trim = Color3.fromRGB(255, 120, 240),
-		},
-	},
 
 	-- Rebirth: start over (cash, knives, slots, Speed, wheel) for a permanent multiplier on
 	-- income and Speed training, a title, and better coffin luck
@@ -886,10 +820,6 @@ function GameConfig.BossLairCenter(index: number): Vector3
 end
 
 -- What the next floor costs for someone who has `slots` plates now
-function GameConfig.SlotCost(slots: number): number
-	local floors = math.max(1, math.ceil(slots / GameConfig.SlotsPerFloor))
-	return GameConfig.FloorCosts[floors] or math.huge
-end
 
 -- The rarity a rebirth from `rebirths` needs on your plates
 function GameConfig.RebirthNeeds(rebirths: number): string
@@ -898,10 +828,6 @@ function GameConfig.RebirthNeeds(rebirths: number): string
 end
 
 -- Rebirths needed before buying the floor after `slots`
-function GameConfig.FloorRebirthsFor(slots: number): number
-	local floors = math.max(1, math.ceil(slots / GameConfig.SlotsPerFloor))
-	return GameConfig.FloorRebirths[floors] or 0
-end
 
 -- The deepest biome's rarity your Speed can outrun (cash cases / blocks only go up to this)
 function GameConfig.RarityReached(speed: number): string
@@ -912,10 +838,6 @@ function GameConfig.RarityReached(speed: number): string
 		end
 	end
 	return reached
-end
-
-function GameConfig.FloorsFor(slots: number): number
-	return math.clamp(math.ceil(slots / GameConfig.SlotsPerFloor), 1, GameConfig.MaxSlots // GameConfig.SlotsPerFloor)
 end
 
 -- Speed stat -> walk speed. Every doubling of Speed is worth +4.4 walk speed (16 at 0, ~30 at 4K,

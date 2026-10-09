@@ -68,7 +68,7 @@ local function grantPass(player: Player, key: string, announce: boolean)
 			DataService.Update(player, function(p)
 				table.insert(p.Bought, "ExtraFloorPass")
 				-- (pens hold at most Pens.MaxSlots and grow a few at a time: PassRoom)
-				local room = if PenMode.On() then GameConfig.Pens.PassRoom else GameConfig.SlotsPerFloor
+				local room = GameConfig.Pens.PassRoom
 				p.Slots = math.min(PenMode.MaxSlots(), p.Slots + room)
 			end)
 			BaseService.RefreshRack(player)
@@ -249,7 +249,8 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 			table.insert(got, PenMode.Words("a bigger vault"))
 		else
 			-- Already maxed: their Robux turn into the cash a mount would have cost
-			local value = math.min(GameConfig.SlotCost(profile.Slots), 1e15)
+			local costs = GameConfig.Pens.SlotCosts
+			local value = costs[#costs]
 			DataService.AddCash(player, value, "robux_product")
 			table.insert(got, `{Format.Cash(value)} (your vault was already maxed)`)
 		end

@@ -109,16 +109,13 @@ function NextAction.Pick(s: State): Action?
 				Ui = if s.Spare == false then "Knives" else nil,
 			}
 		end
-		if s.InVault and PenMode.On() then
+		if s.InVault then
 			return {
 				Id = "carry_place",
 				Text = "<b>Tap</b> where you want to put it!",
 				Short = "Tap where to put it!",
 				Target = "Home",
 			}
-		end
-		if s.InVault and s.FreePlate then
-			return { Id = "carry_place", Text = "Put your knife on the <b>glowing plate</b>!", Target = "Plate" }
 		end
 		return {
 			Id = "carry_home",

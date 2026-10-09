@@ -83,7 +83,7 @@ local function state(): NextAction.State
 		InVault = root ~= nil and Places.InVault(root.Position),
 		FreePlate = plateAt ~= nil,
 		KnifeCount = (player:GetAttribute("KnifeCount") or 0) :: number,
-		Slots = (player:GetAttribute("Slots") or GameConfig.SlotsPerFloor) :: number,
+		Slots = (player:GetAttribute("Slots") or GameConfig.StartingSlots) :: number,
 		Rebirths = (player:GetAttribute("Rebirths") or 0) :: number,
 		Cash = (player:GetAttribute("Cash") or 0) :: number,
 		Income = (player:GetAttribute("Income") or 0) :: number,

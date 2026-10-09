@@ -27,21 +27,18 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local ManorDecor = require(script.Parent.ManorDecor)
 local BiomeSprites = require(script.Parent.BiomeSprites)
 local RoundMaps = require(script.Parent.RoundMaps)
-local VaultWalls = require(script.Parent.VaultWalls)
 local PenWalls = require(script.Parent.PenWalls)
-local PenMode = require(ReplicatedStorage.Shared.PenMode)
 local SignTheme = require(ReplicatedStorage.Shared.SignTheme)
 local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 local Toy = require(ReplicatedStorage.Shared.Toy)
 local WheelModel = require(ReplicatedStorage.Shared.WheelModel)
-local VaultModel = require(ReplicatedStorage.Shared.VaultModel)
 
 export type Bounds = { MinX: number, MaxX: number, MinZ: number, MaxZ: number }
 export type BaseSite = {
 	Index: number,
 	Color: Color3, -- this vault's own colour (wall strip, gate glow)
 	Folder: Folder,
-	WallFolder: Folder, -- rebuilt by VaultWalls whenever the owner's wall tier changes
+	WallFolder: Folder, -- the pen fence
 	Gate: Model,
 	Blocker: Part, -- the invisible gate marker (attributes: Owner, OwnerName, Tier, Floors, PenDepth)
 	SignPart: Part,
@@ -51,9 +48,7 @@ export type BaseSite = {
 	Spawn: CFrame,
 	SlotCFrames: { CFrame }, -- where each knife floats, over its pedestal
 	SlotPads: { BasePart }, -- each pedestal's stone (holds the prompts)
-	SlotRims: { BasePart }, -- state proxy; VaultModel updates the octagon's individual glow blocks
-	PlateArts: { ImageLabel }, -- retained artwork hooks, hidden on the native block-built plates
-	FloorFolders: { Folder }, -- each storey's decks, ladder and plates (SetFloors shows the owned ones)
+	SlotRims: { BasePart }, -- invisible anchors on the grass
 	CashPads: { BasePart }, -- the green pad beside each plate: walk on it to collect that knife's money
 	CashLabels: { TextLabel }, -- the amount waiting, written on the pad
 	Treadmill: Part, -- the floor inside the Haunted Wheel; standing on it trains Speed
@@ -65,7 +60,7 @@ export type Zone = { Index: number, Rarity: string, Bounds: Bounds }
 
 local MapService = {}
 
-MapService.MaxBases = 16 -- 6 down each side of the plaza + 4 across the back (16-player servers)
+MapService.MaxBases = GameConfig.Pens.Count
 MapService.Arena = nil :: Bounds?
 MapService.Zones = {} :: { Zone }
 MapService.Hideaways = {} :: { Bounds }
@@ -327,31 +322,10 @@ end
 
 -- Vaults: four down each side of the plaza, each opening onto it. Built in each vault's own frame
 -- (local +Z = the open side), so both columns share the same code.
-local VAULT_WIDTH, VAULT_DEPTH, VAULT_SPACING = 40, 44, 40 -- vaults touch: no gaps to slip out through
--- Inside (vault-local; +Z is the open side), Tsunami style: every floor is a walkway down the middle
--- with a ladder at the back, and five big plates down each side. Floor 1 is the ground; each
--- upgrade shows the next storey (SetFloors).
-local SLOTS_PER_FLOOR = GameConfig.SlotsPerFloor
-local FLOORS = GameConfig.MaxSlots // SLOTS_PER_FLOOR
-local FLOOR_HEIGHT = 22 -- tall Tsunami storeys: lots of air over the knives
-local PLATE_X = 12 -- the two columns of plates, either side of the walkway
-local PLATE_Z = { -17, -9, -1, 7, 15 } -- back to front
-local WALK_HALF = 4
-local LADDER_LANDING = 3.5 -- deck behind the ladder at the back, where you step off at the top
-local LADDER_HOLE = 3 -- the slot in front of the ladder you climb up through
-local LADDER_HOLE_HALF = 2.5
-local VAULT_DECK = VaultModel.Deck
-local HUB_HALF: number = GameConfig.ArenaWidth / 2 + VAULT_DEPTH + 0.5 -- the hub's outer wall (inner face), just behind the vaults
-local COLUMN = 6 -- vaults down each side; 4 more across the back
-local HUB_BACK: number = COLUMN * 40 + 44 -- the hub ends right behind the back row of vaults
--- (pens: where the side walls step in behind the front row - the back row has fewer pens, so its
--- outer corners would be empty grass)
+local HUB_HALF: number = GameConfig.ArenaWidth / 2
+local HUB_BACK: number = 0
 local HUB_STEP: { X: number, Z: number }? = nil
 local NAVY = Color3.fromRGB(40, 44, 90)
-local KNIFE_TILT = 12 -- degrees
-MapService.Floors = FLOORS
-MapService.FloorHeight = FLOOR_HEIGHT
-MapService.SlotsPerFloor = SLOTS_PER_FLOOR
 
 local function buildBases()
 	local bases = Instance.new("Folder")
@@ -377,69 +351,49 @@ local function buildBases()
 	}
 	local half = GameConfig.ArenaWidth / 2
 	-- Pens (Shared/PenMode): fewer, bigger, flat - 5 down each side, the back of the plaza left open
-	local pens = PenMode.On()
 	local penWidth = GameConfig.Pens.Width
 	-- (a pen's full length, or a vault's depth: everything below is laid out from it)
-	local DEPTH = if pens then GameConfig.Pens.Depth else VAULT_DEPTH
+	local DEPTH = GameConfig.Pens.Depth
 	-- Pens wrap an open plaza in a "]" (Steal from the Rich): a row across the back wall facing the
 	-- way in, and one on each side wall facing the middle (8 pens: 6 + 1 + 1). The middle stays open
 	-- (the Lucky Wheel stands in it); each pen's Haunted Wheel and signs stand in front of its gate.
 	-- The hub is just big enough for that. Numbered nearest-first, so players get the closest pen.
 	local penCentres: { Vector3 } = {}
 	local penFrames: { [Vector3]: CFrame } = {}
-	if pens then
-		local PEN_GAP = 8 -- (between neighbouring pens)
-		local FRONT = 22 -- (the strip behind the safe line, before the side pens start)
-		local PLAZA = 40 -- (open ground between the side pens and the back row: wheels, signs)
-		local sideCount = math.min(2, GameConfig.Pens.Count)
-		local backCount = GameConfig.Pens.Count - sideCount
-		local rowWidth = backCount * penWidth + (backCount - 1) * PEN_GAP
-		HUB_HALF = math.max(half, rowWidth / 2 + 4)
-		local backZ = FRONT + penWidth + PLAZA + DEPTH / 2
-		for k = 0, backCount - 1 do
-			local centre = Vector3.new(-rowWidth / 2 + penWidth / 2 + k * (penWidth + PEN_GAP), 0, -backZ)
-			table.insert(penCentres, centre)
-			penFrames[centre] = CFrame.new(centre) -- (local +Z, the gate, faces the way in)
-		end
-		for k = 1, sideCount do
-			local side = if k == 1 then -1 else 1
-			local centre = Vector3.new(side * (HUB_HALF - 1 - DEPTH / 2), 0, -(FRONT + penWidth / 2))
-			table.insert(penCentres, centre)
-			-- (turned to face the middle: the left one +X, the right one -X)
-			penFrames[centre] = CFrame.new(centre) * CFrame.Angles(0, math.rad(if side < 0 then 90 else -90), 0)
-		end
-		table.sort(penCentres, function(a, b)
-			return a.Magnitude < b.Magnitude
-		end)
-		HUB_BACK = backZ + DEPTH / 2 + 2
-		-- (the Lucky Wheel in the open middle, facing the way in)
-		MapService.LuckyWheelAt = Vector3.new(0, 0, -(FRONT + penWidth * 0.6))
-		MapService.LobbySpawn = CFrame.new(0, 4, -14)
+	local PEN_GAP = 8 -- (between neighbouring pens)
+	local FRONT = 22 -- (the strip behind the safe line, before the side pens start)
+	local PLAZA = 40 -- (open ground between the side pens and the back row: wheels, signs)
+	local sideCount = math.min(2, GameConfig.Pens.Count)
+	local backCount = GameConfig.Pens.Count - sideCount
+	local rowWidth = backCount * penWidth + (backCount - 1) * PEN_GAP
+	HUB_HALF = math.max(half, rowWidth / 2 + 4)
+	local backZ = FRONT + penWidth + PLAZA + DEPTH / 2
+	for k = 0, backCount - 1 do
+		local centre = Vector3.new(-rowWidth / 2 + penWidth / 2 + k * (penWidth + PEN_GAP), 0, -backZ)
+		table.insert(penCentres, centre)
+		penFrames[centre] = CFrame.new(centre) -- (local +Z, the gate, faces the way in)
 	end
-	if pens then
-		MapService.MaxBases = GameConfig.Pens.Count
+	for k = 1, sideCount do
+		local side = if k == 1 then -1 else 1
+		local centre = Vector3.new(side * (HUB_HALF - 1 - DEPTH / 2), 0, -(FRONT + penWidth / 2))
+		table.insert(penCentres, centre)
+		-- (turned to face the middle: the left one +X, the right one -X)
+		penFrames[centre] = CFrame.new(centre) * CFrame.Angles(0, math.rad(if side < 0 then 90 else -90), 0)
 	end
+	table.sort(penCentres, function(a, b)
+		return a.Magnitude < b.Magnitude
+	end)
+	HUB_BACK = backZ + DEPTH / 2 + 2
+	-- (the Lucky Wheel in the open middle, facing the way in)
+	MapService.LuckyWheelAt = Vector3.new(0, 0, -(FRONT + penWidth * 0.6))
+	MapService.LobbySpawn = CFrame.new(0, 4, -14)
+	MapService.MaxBases = GameConfig.Pens.Count
 
 	for i = 1, MapService.MaxBases do
 		task.wait() -- (one vault a frame: never trips the script timeout)
 		-- 1-6 down the left side, 7-12 down the right, 13-16 across the back of the plaza
-		local center: Vector3, frame: CFrame
-		local sideways = not pens and i <= COLUMN * 2
-		if pens then
-			center = penCentres[i]
-			frame = penFrames[center]
-		elseif sideways then
-			local side = if i <= COLUMN then -1 else 1
-			local row = (i - 1) % COLUMN
-			center = Vector3.new(side * (half + DEPTH / 2), 0, -20 - row * VAULT_SPACING)
-			-- Rotate so local +Z faces the plaza (the left column faces +X, the right column -X)
-			frame = CFrame.new(center) * CFrame.Angles(0, math.rad(if side < 0 then 90 else -90), 0)
-		else
-			local k = i - COLUMN * 2
-			center =
-				Vector3.new(-half + VAULT_WIDTH / 2 + (k - 1) * VAULT_WIDTH, 0, -COLUMN * VAULT_SPACING - DEPTH / 2)
-			frame = CFrame.new(center) -- local +Z already faces the plaza
-		end
+		local center = penCentres[i]
+		local frame = penFrames[center]
 		local function at(x: number, y: number, z: number): CFrame
 			return frame * CFrame.new(x, y, z)
 		end
@@ -450,169 +404,36 @@ local function buildBases()
 
 		-- An open platform (Tsunami style): a pale studded floor with a hint of the owner's colour
 		-- (a pen: a patch of bright grass inside its fence)
-		if pens then
-			local grass =
-				block("Floor", Vector3.new(penWidth, 1, DEPTH), at(0, 0.1, 0), Color3.fromRGB(86, 196, 56), folder)
-			Toy.Dress(grass, { Enum.NormalId.Top }, 1, 4)
-		else
-			block("Floor", Vector3.new(VAULT_WIDTH, 1, DEPTH), at(0, 0.1, 0), VAULT_DECK, folder)
-		end
-		-- Walls, gate towers and the gate itself depend on the owner's wall tier (VaultWalls)
+		local grass =
+			block("Floor", Vector3.new(penWidth, 1, DEPTH), at(0, 0.1, 0), Color3.fromRGB(86, 196, 56), folder)
+		Toy.Dress(grass, { Enum.NormalId.Top }, 1, 4)
+		-- The pen fence and its entrance marker.
 		local wallFolder = Instance.new("Folder")
 		wallFolder.Name = "Walls"
 		wallFolder.Parent = folder
-		local walls = if pens
-			then PenWalls.Build(wallFolder, frame, color, 1)
-			else VaultWalls.Build(wallFolder, frame, color, 1)
-		-- The storeys. Each has its own folder so the vault can grow: decks with a hole at the back
-		-- middle, a ladder up from the floor below, a glass rail along the open front, the walkway
-		-- and ten plates (slots 1-10 ground, 11-20 next floor, ...)
-		local deckColor = VAULT_DECK
-		local floorFolders: { Folder } = {}
+		local walls = PenWalls.Build(wallFolder, frame, color, 1)
 		local slotCFrames: { CFrame }, slotPads: { BasePart }, slotRims: { BasePart } = {}, {}, {}
 		local cashPads: { BasePart }, cashLabels: { TextLabel } = {}, {}
-		local plateArts: { ImageLabel } = {}
-		local inner = VAULT_WIDTH / 2 - 0.5
-		local back, front = -DEPTH / 2 + 0.5, DEPTH / 2 - 0.5
-		if pens then
-			-- No storeys or plates: invisible spots on the grass, one per knife (coffins wait on them,
-			-- raid prompts hang on them; the knives themselves hop around - BaseService). Walking in
-			-- collects your money, so every spot's "cash pad" is the spot itself.
-			local levelFolder = Instance.new("Folder")
-			levelFolder.Name = "Floor1"
-			levelFolder.Parent = folder
-			floorFolders[1] = levelFolder
-			local cols, rows = 8, 5
-			for slot = 1, cols * rows do
-				local c, r = (slot - 1) % cols, (slot - 1) // cols
-				local x = (c - (cols - 1) / 2) * ((penWidth - 10) / (cols - 1))
-				local z = (r - (rows - 1) / 2) * ((DEPTH - 14) / (rows - 1)) - 2
-				local spot = block(`Spot{slot}`, Vector3.new(3, 0.2, 3), at(x, 0.7, z), NAVY, levelFolder)
-				spot.Transparency = 1
-				spot.CanCollide, spot.CanQuery, spot.CanTouch = false, false, false
-				spot.Name = `CashPad{slot}` -- (client/Places reads money waiting off these)
-				slotPads[slot] = spot
-				slotRims[slot] = spot
-				cashPads[slot] = spot
-				cashLabels[slot] = Instance.new("TextLabel") -- (unshown: money pops off the knives)
-				slotCFrames[slot] = at(x, 4.2, z)
-			end
-		end
-		for level = 1, if pens then 0 else FLOORS do
-			local levelFolder = Instance.new("Folder")
-			levelFolder.Name = `Floor{level}`
-			levelFolder.Parent = folder
-			floorFolders[level] = levelFolder
-			local y = (level - 1) * FLOOR_HEIGHT
-			local surface = if level == 1 then 0.6 else y
-			if level > 1 then
-				-- The deck is whole except a slot in front of the ladder (where you climb through);
-				-- behind the ladder is a small landing you step onto at the top, Roblox-ladder style
-				local landing = back + LADDER_LANDING
-				local holeTo = landing + 2 + LADDER_HOLE
-				local function deck(minX: number, maxX: number, minZ: number, maxZ: number)
-					block(
-						"Deck",
-						Vector3.new(maxX - minX, 1, maxZ - minZ),
-						at((minX + maxX) / 2, y - 0.5, (minZ + maxZ) / 2),
-						deckColor,
-						levelFolder
-					)
-				end
-				deck(-inner, inner, back, landing) -- the landing
-				deck(-inner, inner, holeTo, front) -- the floor
-				for _, deckSide in { -1, 1 } do
-					local a, b = deckSide * LADDER_HOLE_HALF, deckSide * inner
-					deck(math.min(a, b), math.max(a, b), landing, holeTo)
-				end
-				-- A slim navy edge along the open front (no glass rail, Tsunami style)
-				block("RailCap", Vector3.new(inner * 2, 0.4, 0.6), at(0, y + 0.2, front - 0.2), NAVY, levelFolder)
-				-- The ladder from the floor below, poking up through the hole so you can step off
-				local truss = Instance.new("TrussPart")
-				truss.Name = "Ladder"
-				truss.Anchored = true
-				-- From the floor below up to just over this deck: climb, then keep pushing to step onto the
-				-- landing behind it
-				local bottom = if level == 2 then 0.6 else y - FLOOR_HEIGHT
-				truss.Size = Vector3.new(2, FLOOR_HEIGHT, 2)
-				truss.CFrame = at(0, bottom + FLOOR_HEIGHT / 2, landing + 1)
-				truss.Transparency = 1 -- climbable, but the ladder you see is drawn below
-				truss.Parent = levelFolder
-				-- The visible block ladder is cosmetic; the original TrussPart stays climbable.
-				VaultModel.BuildLadder(levelFolder, frame, bottom, landing + 1)
-				for _, trim in
-					{
-						{ Vector3.new(LADDER_HOLE_HALF * 2 + 0.6, 0.12, 0.3), Vector3.new(0, y + 0.06, holeTo) },
-						{
-							Vector3.new(0.3, 0.12, holeTo - landing),
-							Vector3.new(-LADDER_HOLE_HALF, y + 0.06, (landing + holeTo) / 2),
-						},
-						{
-							Vector3.new(0.3, 0.12, holeTo - landing),
-							Vector3.new(LADDER_HOLE_HALF, y + 0.06, (landing + holeTo) / 2),
-						},
-					}
-				do
-					local edge =
-						block("HoleTrim", trim[1], at(trim[2].X, trim[2].Y, trim[2].Z), VaultModel.Cyan, levelFolder)
-					edge.CanCollide = false
-					edge.CanQuery = false
-				end
-			end
-			-- The walkway down the middle, from the gate to the ladder
-			-- (it stops where the ladder hole starts, so the cut-out reads as a hole)
-			local walkFrom = back + LADDER_LANDING + 2 + LADDER_HOLE
-			local walk = block(
-				"Walkway",
-				Vector3.new(WALK_HALF * 2, 0.06, front - walkFrom),
-				at(0, surface + 0.03, (front + walkFrom) / 2),
-				Color3.fromRGB(206, 210, 226), -- grey walkway against the lavender floor
-				levelFolder
-			)
-			walk.CanCollide = false
-			walk.CanQuery = false
-			VaultModel.BuildFloor(levelFolder, frame, surface)
-			for index = 1, SLOTS_PER_FLOOR do
-				local plateSide = if index <= #PLATE_Z then -1 else 1
-				local x, z = plateSide * PLATE_X, PLATE_Z[(index - 1) % #PLATE_Z + 1]
-				local slot = (level - 1) * SLOTS_PER_FLOOR + index
-				local builtPlate = VaultModel.BuildPlate(levelFolder, at(x, surface, z), slot)
-				slotPads[slot] = builtPlate.Pad
-				slotRims[slot] = builtPlate.Rim
-				VaultModel.SetPlateTier(builtPlate.Details, at(x, surface, z), 1)
-				-- The money pad between the plate and the walkway (Tsunami style): the knife's
-				-- earnings pile up here until its owner walks over it
-				-- The panel's +Z faces the plate, so the text reads from the walkway.
-				local padAt = at(plateSide * (WALK_HALF + 2.2), surface + 0.06, z).Position
-				local towardPlate = frame:VectorToWorldSpace(Vector3.new(plateSide, 0, 0))
-				local cashPad = block(
-					`CashPad{slot}`,
-					Vector3.new(3.8, 0.12, 5.2),
-					-- (a SurfaceGui on a Top face runs along the part's Z: turned so it reads across)
-					CFrame.lookAt(padAt, padAt - towardPlate) * CFrame.Angles(0, math.pi / 2, 0),
-					Color3.fromRGB(150, 240, 160),
-					levelFolder
-				)
-				cashPad.Transparency = 1
-				cashPad.CanCollide = false
-				cashPad.CanQuery = false
-				local padArt = block(
-					`CashPadArt{slot}`,
-					Vector3.new(2.6, 0.05, 5.6),
-					cashPad.CFrame * CFrame.new(0, 0.04, 0),
-					NAVY,
-					levelFolder
-				)
-				padArt.CanCollide, padArt.CanTouch, padArt.CanQuery = false, false, false
-				-- Tsunami: a simple green pill with the money in it (a Top-face canvas runs along Z)
-				padArt.Transparency = 1
-				local padText = SignTheme.cashPill(SignTheme.face(padArt, Enum.NormalId.Top, 60, 70))
-				cashPads[slot] = cashPad
-				cashLabels[slot] = padText
-				-- The knife floats upright over the plate, a little tilted
-				slotCFrames[slot] = at(x, surface + 4.2, z) * CFrame.Angles(0, 0, math.rad(KNIFE_TILT))
-			end
-			VaultModel.ApplyTier(levelFolder, 1)
+		-- No storeys or plates: invisible spots on the grass, one per knife (coffins wait on them,
+		-- raid prompts hang on them; the knives themselves hop around - BaseService). Walking in
+		-- collects your money, so every spot's "cash pad" is the spot itself.
+		local levelFolder = Instance.new("Folder")
+		levelFolder.Name = "Floor1"
+		levelFolder.Parent = folder
+		local cols, rows = 8, 5
+		for slot = 1, cols * rows do
+			local c, r = (slot - 1) % cols, (slot - 1) // cols
+			local x = (c - (cols - 1) / 2) * ((penWidth - 10) / (cols - 1))
+			local z = (r - (rows - 1) / 2) * ((DEPTH - 14) / (rows - 1)) - 2
+			local spot = block(`Spot{slot}`, Vector3.new(3, 0.2, 3), at(x, 0.7, z), NAVY, levelFolder)
+			spot.Transparency = 1
+			spot.CanCollide, spot.CanQuery, spot.CanTouch = false, false, false
+			spot.Name = `CashPad{slot}` -- (client/Places reads money waiting off these)
+			slotPads[slot] = spot
+			slotRims[slot] = spot
+			cashPads[slot] = spot
+			cashLabels[slot] = Instance.new("TextLabel") -- (unshown: money pops off the knives)
+			slotCFrames[slot] = at(x, 4.2, z)
 		end
 
 		-- The owner's sign rides on top of the frame (BaseService moves it as the vault grows)
@@ -626,7 +447,7 @@ local function buildBases()
 		ownerGui.Name = "OwnerGui"
 		ownerGui.Enabled = false
 		ownerGui.Parent = signPart
-		local sign = WorldSignModel.LiveText(ownerGui, "Owner", "Empty Vault", color)
+		local sign = WorldSignModel.LiveText(ownerGui, "Owner", "Empty Pen", color)
 
 		-- The Haunted Wheel: a giant iron wheel you run inside to train Speed (the plate at the bottom
 		-- is what counts as "on it"). Clients spin it while its owner is training. It stands just
@@ -796,18 +617,13 @@ local function buildBases()
 			Frame = frame,
 			-- Rotated 90 degrees, so the world footprint swaps width and depth
 			-- (a turned pen's depth runs along world X)
-			Bounds = if pens
-				then (if math.abs(frame.LookVector.X) > 0.5
-					then bounds(center, DEPTH, penWidth)
-					else bounds(center, penWidth, DEPTH))
-				elseif sideways then bounds(center, DEPTH, VAULT_WIDTH)
-				else bounds(center, VAULT_WIDTH, DEPTH),
+			Bounds = if math.abs(frame.LookVector.X) > 0.5
+				then bounds(center, DEPTH, penWidth)
+				else bounds(center, penWidth, DEPTH),
 			Spawn = CFrame.lookAt(spawnPos, spawnPos + frame:VectorToWorldSpace(Vector3.zAxis)),
 			SlotCFrames = slotCFrames,
 			SlotPads = slotPads,
 			SlotRims = slotRims,
-			PlateArts = plateArts,
-			FloorFolders = floorFolders,
 			CashPads = cashPads,
 			CashLabels = cashLabels,
 			Treadmill = belt,
@@ -1086,35 +902,6 @@ function MapService.FitPen(base: BaseSite, depth: number)
 	base.Bounds = if worldX then bounds(centre, depth, width) else bounds(centre, width, depth)
 end
 
-function MapService.SetVaultTier(base: BaseSite, level: number)
-	if PenMode.On() then
-		return -- (a pen's grass and fence don't change with the tier)
-	end
-	local palette = VaultModel.Style(level)
-	local floor = base.Folder:FindFirstChild("Floor")
-	if floor and floor:IsA("BasePart") then
-		floor.Color = palette.Deck
-	end
-	for _, levelFolder in base.FloorFolders do
-		VaultModel.ApplyTier(levelFolder, level)
-		for _, child in levelFolder:GetChildren() do
-			if child:IsA("BasePart") and child.Name == "Deck" then
-				child.Color = palette.Deck
-			elseif child:IsA("BasePart") and child.Name == "RailCap" then
-				child.Color = palette.Body
-			elseif child:IsA("BasePart") and child.Name == "HoleTrim" then
-				child.Color = palette.Inset
-			elseif child:IsA("Model") and child.Name:match("^PlateDetails%d+$") then
-				local slot = tonumber(child.Name:match("%d+"))
-				local pad = slot and base.SlotPads[slot]
-				if pad then
-					VaultModel.SetPlateTier(child, pad.CFrame * CFrame.new(0, -0.15, 0), level)
-				end
-			end
-		end
-	end
-end
-
 -- Rebuild only when the tier changes, including rebirth and a newly claimed vault.
 -- Preserve training state when an owner buys an upgrade while already running.
 function MapService.SetWheelTier(base: BaseSite, level: number)
@@ -1141,11 +928,6 @@ function MapService.SetWheelTier(base: BaseSite, level: number)
 end
 
 -- Shows the vault's first `count` storeys (the rest wait out of the world until they're bought)
-function MapService.SetFloors(base: BaseSite, count: number)
-	for level, levelFolder in base.FloorFolders do
-		levelFolder.Parent = if level <= count then base.Folder else nil
-	end
-end
 
 function MapService.Init()
 	-- Clear out the template place's baseplate and default spawn; the map below replaces them
@@ -1184,12 +966,9 @@ function MapService.Init()
 	-- Nothing from the plaza decor in the way of the wheels outside the vault gates
 	for _, base in MapService.Bases do
 		ManorDecor.ClearArea((base.Wheel.PrimaryPart :: BasePart).Position, 9, 9)
-		if PenMode.On() then
-			-- (and nothing of the old plaza's lamps and props inside a pen)
-			local b = base.Bounds
-			ManorDecor.ClearArea(base.Center, (b.MaxX - b.MinX) / 2 + 2, (b.MaxZ - b.MinZ) / 2 + 2)
-		end
-		MapService.SetFloors(base, 1)
+		-- (and nothing of the old plaza's lamps and props inside a pen)
+		local b = base.Bounds
+		ManorDecor.ClearArea(base.Center, (b.MaxX - b.MinX) / 2 + 2, (b.MaxZ - b.MinZ) / 2 + 2)
 	end
 	task.wait()
 	MapService.BuildRoundMap("Office")

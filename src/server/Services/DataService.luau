@@ -38,7 +38,6 @@ export type Profile = {
 	PowerSlots: number,
 	Speed: number, -- trained on the vault treadmill; turned into walk speed by GameConfig.WalkSpeedFor
 	TreadmillLevel: number,
-	WallLevel: number, -- GameConfig.Walls tier: wall height and gate health
 	Rebirths: number,
 	TutorialDone: boolean,
 	KnivesStolen: number, -- from other players' vaults in raids
@@ -118,7 +117,6 @@ local function defaultProfile(): Profile
 		PowerSlots = 2,
 		Speed = 0,
 		TreadmillLevel = 1,
-		WallLevel = 1,
 		Rebirths = 0,
 		TutorialDone = false,
 		KnivesStolen = 0,
@@ -163,15 +161,10 @@ local function reconcile(data: any): Profile
 			end
 		end
 	end
-	-- Whole floors only (older saves bought single mounts: round up to the floor they started)
-	profile.Slots = math.clamp(
-		math.ceil(profile.Slots / GameConfig.SlotsPerFloor) * GameConfig.SlotsPerFloor,
-		GameConfig.StartingSlots,
-		GameConfig.MaxSlots
-	)
+	profile.Slots = math.clamp(math.floor(profile.Slots), GameConfig.StartingSlots, GameConfig.Pens.MaxSlots)
 	-- One number per slot, never negative or broken (a dense array saves cleanly)
 	local pending: { number } = {}
-	for slot = 1, GameConfig.MaxSlots do
+	for slot = 1, math.max(GameConfig.Pens.MaxSlots + GameConfig.Pens.Bag, #profile.Knives) do
 		local value = profile.Pending[slot]
 		pending[slot] = if type(value) == "number"
 				and value == value
@@ -240,7 +233,6 @@ local function reconcile(data: any): Profile
 	profile.Speed = math.max(0, profile.Speed)
 	profile.TreadmillLevel = math.clamp(math.floor(profile.TreadmillLevel), 1, #GameConfig.Treadmills)
 	profile.Cash = math.max(0, profile.Cash)
-	profile.WallLevel = math.clamp(math.floor(profile.WallLevel), 1, #GameConfig.Walls)
 	profile.Rebirths = math.clamp(math.floor(profile.Rebirths), 0, GameConfig.Rebirth.Max)
 	profile.TrailLevel = math.clamp(math.floor(profile.TrailLevel), 0, #GameConfig.Trails)
 	LegacyProgress.Apply(profile)
@@ -252,7 +244,12 @@ local function reconcile(data: any): Profile
 		if Items.Valid(item) then
 			table.insert(items, item)
 			local plate = profile.Plates[i]
-			if type(plate) == "number" and plate >= 1 and plate <= GameConfig.MaxSlots and not used[plate] then
+			if
+				type(plate) == "number"
+				and plate >= 1
+				and plate <= math.max(GameConfig.Pens.MaxSlots + GameConfig.Pens.Bag, #profile.Knives)
+				and not used[plate]
+			then
 				plate = math.floor(plate)
 			else
 				plate = 0
@@ -545,7 +542,6 @@ local function publish(player: Player, profile: Profile)
 	player:SetAttribute("Kills", profile.TotalKills)
 	player:SetAttribute("Wins", profile.RoundsWon)
 	player:SetAttribute("RoundsPlayed", profile.RoundsPlayed)
-	player:SetAttribute("WallLevel", profile.WallLevel)
 	player:SetAttribute("Rebirths", profile.Rebirths)
 	player:SetAttribute("Title", GameConfig.RebirthTitle(profile.Rebirths))
 	player:SetAttribute("TutorialDone", profile.TutorialDone)

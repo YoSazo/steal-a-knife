@@ -18,7 +18,7 @@ right.** Each is its own commit on `main-eftg5w`, so a bad one can be reverted a
 
 Done:
 - **Item 2 (switch):** pens + coffins everywhere, Pens.Count = 8, both A/B tests gone (pens/vaults
-  split, prize_pick). Not done: deleting the dormant vault code.
+  split, prize_pick). Dormant vault code deleted in the Codex continuation.
 - **Item 3:** no knife loot / AtRisk / Insurance (leftover charges refunded once), Classic and
   Double Trouble off (code dormant), map vote gone (random map).
 - **Item 1:** shells only for zones 1-2; deep biomes back to the dirt wall + ManorDecor props + floor
@@ -92,6 +92,13 @@ The creature's speed sign is readable up close at 640 x 320.
   keeps its Speed / Money tab (the visibility handler previously reset it to Featured).
   Tested both tabs through Studio input on desktop (1648 x 843) and the owner's 640 x 320 phone
   preset (live viewport 640 x 300, safe HUD 640 x 242). Selene, StyLua and luau-lsp pass.
+  The rows now sit beside the centre view so they do not cover a monster's speed sign.
+- **Item 2 deletion:** VaultModel / VaultWalls, all vault floors / ladders / plates and base
+  layout branches, floor config, wall tiers and the pen-mode switch removed (~1,500 net lines).
+  Pens retain their entrance marker for BaseMarkers. DataService preserves old knives in the bag
+  and normalizes pen room to individual slots instead of whole floors. Placement, held knife,
+  room purchases tested in Studio at phone and desktop sizes; console clean after fixing the
+  dynamic KnifeModel pen-mode call. Selene, StyLua and luau-lsp pass. CLAUDE.md updated.
 - **Round lighting fixed:** neutral 210 / 210 / 200 ambient and no indoor shadows while in a
   round; hub ambient and shadows restore afterward. Visually checked Office in the phone preset
   and at desktop size after the role-reveal overlay faded. All three code checks pass. One

@@ -577,7 +577,6 @@ function Hud.Init()
 		local slots = player:GetAttribute("Slots") or GameConfig.StartingSlots
 		local speed = player:GetAttribute("Speed") or 0
 		local treadmill = player:GetAttribute("TreadmillLevel") or 1
-		local walls = player:GetAttribute("WallLevel") or 1
 		local rebirths = player:GetAttribute("Rebirths") or 0
 		cashLabel.Text = `${Ui.abbreviate(cash)}`
 		speedLabel.Text = Ui.abbreviate(speed)
@@ -594,8 +593,6 @@ function Hud.Init()
 		incomeLabel.Text = `+${Ui.abbreviate(player:GetAttribute("Income") or 0)}/s`
 		rackLabel.Text = PenMode.Words(`{player:GetAttribute("KnifeCount") or 0}/{slots} in your vault`)
 			.. (if rebirths > 0 then `  ·  Rebirth {rebirths}` else "")
-
-		local _ = walls -- (vault walls are gone: open vaults, nothing to upgrade)
 	end
 	for _, attribute in
 		{
@@ -604,7 +601,6 @@ function Hud.Init()
 			"Speed",
 			"TreadmillLevel",
 			"TrailLevel",
-			"WallLevel",
 			"Training",
 			"Tickets",
 			"Income",
