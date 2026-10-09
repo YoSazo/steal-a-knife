@@ -3,7 +3,7 @@
 -- dark band that fades out at both ends, only as wide as its words.
 --
 -- Most of the time it rests on what client/Hud gives it (TopLine.Resting: "🔪 MURDER ROUND in 3:12",
--- in the last minute the prize lines in turn, after the tutorial your next goal, in a round "Office
+-- in the last minute the prize lines in turn, after the tutorial your next goal, in a round "Courtyard
 -- 2:15 · 2 alive"). A notice (TopLine.Show: zone titles, announcements, "Equipped", tips, "Round
 -- over!") takes its place for a few seconds, one at a time, and then it goes back.
 --

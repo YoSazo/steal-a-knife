@@ -104,6 +104,17 @@ local commands: { [string]: (Player, ...any) -> any } = {
 		return true
 	end,
 	-- Steal from a boss's wall for real (the boss chases you): tests guard hits and thrown knives
+	Map = function(player: Player, name: string)
+		if ReplicatedStorage:GetAttribute("Phase") ~= "Intermission" then
+			return false
+		end
+		local map = require(script.Parent.MapService)
+		local built = map.BuildRoundMap(name)
+		if player.Character then
+			player.Character:PivotTo(built.Spawns[1])
+		end
+		return { Name = built.Name, Spawns = #built.Spawns, Size = tostring(built.Size) }
+	end,
 	BossStock = function(_player: Player, zone: number, item: string)
 		return GuardService.DebugStock(zone, item)
 	end,

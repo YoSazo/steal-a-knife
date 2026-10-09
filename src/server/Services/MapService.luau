@@ -18,7 +18,7 @@
 --                [B3]         [B7]
 --                [B4] spawn   [B8]
 --
---   round maps (indoor buildings, see RoundMaps) are built far away at x = 3000
+--   round maps (biome arenas, see BiomeRoundMaps) are built far away at x = 3000
 
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -26,7 +26,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local ManorDecor = require(script.Parent.ManorDecor)
 local BiomeSprites = require(script.Parent.BiomeSprites)
-local RoundMaps = require(script.Parent.RoundMaps)
+local BiomeRoundMaps = require(script.Parent.BiomeRoundMaps)
 local PenWalls = require(script.Parent.PenWalls)
 local SignTheme = require(ReplicatedStorage.Shared.SignTheme)
 local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
@@ -194,27 +194,9 @@ local function buildLighting()
 end
 
 -- Each zone is its own bright toy biome, so going deeper reads at a glance (Steal An Egg style)
-local ZONE_FLOORS: { [string]: Color3 } = {
-	Common = Color3.fromRGB(48, 146, 30), -- the Courtyard: grass (same green as the plaza)
-	Rare = Color3.fromRGB(26, 104, 30), -- the Gardens: deep grass
-	Epic = Color3.fromRGB(96, 100, 120), -- the Crypts: grey stone
-	Legendary = Color3.fromRGB(196, 158, 86), -- the Catacombs: sand
-	Mythic = Color3.fromRGB(150, 48, 30), -- the Inferno: red rock
-	Godly = Color3.fromRGB(200, 196, 180), -- Olympus: marble
-	Celestial = Color3.fromRGB(150, 196, 230), -- the Heavens: cloud blue
-	Cosmic = Color3.fromRGB(70, 46, 130), -- Space: purple
-}
--- Walls change with the biome too, so going deeper looks deeper
-local ZONE_WALLS: { [string]: Color3 } = {
-	Common = Color3.fromRGB(214, 146, 78), -- dirt
-	Rare = Color3.fromRGB(174, 119, 72), -- dark dirt
-	Epic = Color3.fromRGB(110, 110, 118), -- stone
-	Legendary = Color3.fromRGB(176, 140, 80), -- sandstone
-	Mythic = Color3.fromRGB(90, 40, 34), -- dark basalt
-	Godly = Color3.fromRGB(196, 186, 160), -- marble
-	Celestial = Color3.fromRGB(200, 214, 230), -- cloud
-	Cosmic = Color3.fromRGB(48, 36, 84), -- void
-}
+local Palette = require(ReplicatedStorage.Shared.Config.BiomePalette)
+local ZONE_FLOORS = Palette.Floors
+local ZONE_WALLS = Palette.Walls
 
 -- One wall height everywhere - the hub, the plain biomes and the far end - level with where the
 -- Codex biome shells' walls top out (their spires reach SHELL_HEIGHT; most of each wall stops
@@ -723,54 +705,17 @@ local function buildIsland()
 	local _ = cloud
 end
 
--- Round maps are real buildings (RoundMaps); a random one is rebuilt at the start of each round
+-- Round maps reuse the runway biomes; a random one is rebuilt at the start of each round
 function MapService.RoundMapFolder(): Instance?
 	return root and root:FindFirstChild("RoundMap")
 end
 
-local ROUND_SCALE = 1.5 -- the buildings are built at 1x and scaled up: roomier, longer chases
-
-function MapService.BuildRoundMap(name: string?): RoundMaps.Built
-	local built = RoundMaps.Build(root, MapService.RoundCenter, name)
-	local center = MapService.RoundCenter
-	local folder = root:FindFirstChild("RoundMap")
-	if folder then
-		-- People stay the same size, so everything around them gets bigger
-		local model = Instance.new("Model")
-		for _, child in folder:GetChildren() do
-			child.Parent = model
-		end
-		model.WorldPivot = CFrame.new(center)
-		model:ScaleTo(ROUND_SCALE)
-		for _, child in model:GetChildren() do
-			child.Parent = folder
-		end
-		model:Destroy()
-		-- Clock hands turn about the "Center" they were built with; the scale moved the clocks,
-		-- so put each centre back where its hand now starts (the hand's bottom end)
-		for _, hand in folder:GetDescendants() do
-			if hand:IsA("BasePart") and hand:HasTag("ClockHand") then
-				hand:SetAttribute("Center", hand.CFrame * CFrame.new(0, -hand.Size.Y / 2, 0))
-			end
-		end
-		for i, spawn in built.Spawns do
-			built.Spawns[i] = CFrame.new(center + (spawn.Position - center) * ROUND_SCALE) * spawn.Rotation
-		end
-		-- The rooms are lit by the sun shining through the ceiling (it casts no shadow). An upstairs
-		-- - its floor, walls and furniture - would block that and leave the ground floor gloomy, so
-		-- nothing at the ceiling's height or above casts a shadow either: same light as before.
-		local ceilingY = center.Y + (RoundMaps.STOREY - 1) * ROUND_SCALE - 0.5
-		for _, part in folder:GetDescendants() do
-			if part:IsA("BasePart") and part.Position.Y > ceilingY then
-				part.CastShadow = false
-			end
-		end
-		built.Size *= ROUND_SCALE
-	end
+function MapService.BuildRoundMap(name: string?): BiomeRoundMaps.Built
+	local built = BiomeRoundMaps.Build(root, MapService.RoundCenter, name)
 	MapService.RoundSpawns = built.Spawns
 	MapService.RoundMapSize = built.Size
-	MapService.RoundLevels = built.Levels or 1
-	MapService.RoundStorey = RoundMaps.STOREY * ROUND_SCALE
+	MapService.RoundLevels = 1
+	MapService.RoundStorey = 15
 	return built
 end
 
@@ -867,7 +812,7 @@ function MapService.Init()
 		ManorDecor.ClearArea(base.Center, (b.MaxX - b.MinX) / 2 + 2, (b.MaxZ - b.MinZ) / 2 + 2)
 	end
 	task.wait()
-	MapService.BuildRoundMap("Office")
+	MapService.BuildRoundMap("Courtyard")
 	noLights()
 end
 

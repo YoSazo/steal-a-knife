@@ -1535,4 +1535,49 @@ function ManorDecor.Build(root: Instance, arena: Bounds, _hideaways: { Bounds })
 	manor(Vector3.new(0, 0, arena.MaxZ + 6))
 end
 
+-- Reuse the runway dressing without changing the hub's active decoration folder.
+function ManorDecor.DressRound(parent: Folder, floor: BasePart, walls: { BasePart }, rarity: string)
+	local savedFolder, savedRng = folder, rng
+	local decor = Instance.new("Folder")
+	decor.Name, decor.Parent = "RoundDecor", parent
+	folder, rng = decor, Random.new(831)
+	floorDressing(floor, 600)
+	for _, wall in walls do
+		wallDressing(wall, floor.Position, 300)
+	end
+	local center = Vector3.new(floor.Position.X, 0, floor.Position.Z)
+	for _, offset in { Vector3.new(-62, 0, -52), Vector3.new(62, 0, 52) } do
+		local position = center + offset
+		if rarity == "Common" then
+			bush(position)
+		elseif rarity == "Rare" then
+			topiary(position)
+			glowFlower(position + Vector3.new(5, 0, 0), Color3.fromRGB(90, 200, 255))
+		elseif rarity == "Epic" then
+			gravestone(position)
+			deadTree(position + Vector3.new(5, 0, 0))
+		elseif rarity == "Legendary" then
+			pillar(position)
+			urn(position + Vector3.new(5, 0, 0))
+		elseif rarity == "Mythic" then
+			obsidianSpire(position)
+			fireVent(position + Vector3.new(5, 0, 0))
+		elseif rarity == "Godly" then
+			olympusColumn(position, 18)
+		elseif rarity == "Celestial" then
+			cloud(position + Vector3.new(0, 13, 0), 1)
+			angelStatue(position, 0)
+		elseif rarity == "Cosmic" then
+			asteroid(position)
+			spaceCrystals(position + Vector3.new(5, 0, 0), Color3.fromRGB(170, 80, 255))
+		end
+	end
+	for _, part in decor:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.CanCollide, part.CanQuery, part.CanTouch, part.CastShadow = false, false, false, false
+		end
+	end
+	folder, rng = savedFolder, savedRng
+end
+
 return ManorDecor

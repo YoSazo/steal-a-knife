@@ -309,7 +309,17 @@ Bundle `update8.bundle` merged at 5626bd3 and pushed; both PLAN progress section
   Cosmic knives, so it is not a Secret waiting-time forecast. Selene, StyLua, sourcemap and
   luau-lsp pass.
 
-**Next:** biome murder maps (19), shop/weekly drop, UI and remaining cleanup.
+- **Items 12/19 complete:** eight 160x140-stud biome arenas reuse the runway palette, studded
+  dirt walls, floor patches and biome props. Four staggered cover walls, two sheds with two
+  12-stud exits each, and eight spawns; no dead-end room. Removed the Office/Mansion builders,
+  indoor kit, furniture/art modules and geometry (about 6,900 net lines). All eight maps passed
+  10/10 no-jump paths from every spawn and both shed interiors to the centre. Fixed colliding
+  decorative bushes/asteroids at spawn points; decor is walk-through, cover remains solid and
+  queryable. Actual desktop walking into and out of a shed passed. Desktop/640x320 phone map
+  views checked. A live round built a random biome, ran the ladder and spawned 25 round objects
+  (shoes plus gun) on the usable floor. Selene, StyLua, sourcemap and luau-lsp pass.
+
+**Next:** merge update9 (paid coffin/title), shop/weekly drop, UI and remaining cleanup.
 
 ---
 
