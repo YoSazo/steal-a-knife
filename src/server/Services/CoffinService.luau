@@ -90,10 +90,6 @@ function CoffinService.LuckyContents(player: Player, item: string): string
 	end
 	local mutation, size = Items.Roll(rng, luck)
 	local candidate = Items.Make(parsed.Name, mutation.Id, size.Id)
-	local fields = string.split(item, "|")
-	if fields[4] and fields[4] ~= "" then
-		candidate = Items.WithPower(candidate, fields[4]) -- (a set power stays: the tutorial's Shadow)
-	end
 	return if Items.Income(candidate) > Items.Income(item) then candidate else item
 end
 

@@ -278,77 +278,6 @@ function Transitions.Init()
 	end
 
 	local fadeToken = 0
-	-- "THE MURDERER HAS SPAM KNIFE": the first time the Murderer's power shows itself. It names the
-	-- power, never the player. Everyone in the round (and anyone spectating) sees it.
-	-- A slim strip under the round timer (it was a big card in the middle of the screen - too much
-	-- in the way mid-round): small knife icon, "Murderer has" + the power, one line on what it does
-	local phone = Ui.Phone
-	local stripH = if phone then 54 else 66
-	local reveal = Instance.new("Frame")
-	reveal.Name = "PowerReveal"
-	reveal.AnchorPoint = Vector2.new(0.5, 0)
-	reveal.Size = UDim2.fromOffset(if phone then 300 else 380, stripH)
-	reveal.BackgroundColor3 = Color3.fromRGB(30, 8, 12)
-	reveal.BackgroundTransparency = 0.3
-	reveal.Visible = false
-	reveal.ZIndex = 40
-	reveal.Parent = Ui.root
-	local function placeReveal()
-		reveal.Position = UDim2.new(0.5, 0, 0, ((Ui.gui:GetAttribute("HudTop") or 40) :: number) + 2)
-	end
-	Ui.gui:GetAttributeChangedSignal("HudTop"):Connect(placeReveal)
-	placeReveal()
-	Instance.new("UICorner", reveal).CornerRadius = UDim.new(0, 10)
-	local revealStroke = Instance.new("UIStroke")
-	revealStroke.Color, revealStroke.Thickness = Color3.fromRGB(255, 60, 70), 2
-	revealStroke.Parent = reveal
-	local icon = stripH - 12
-	local revealArt = Ui.art(reveal, "", {
-		Position = UDim2.fromOffset(6, 6),
-		Size = UDim2.fromOffset(icon, icon),
-		ZIndex = 41,
-	})
-	local textX = icon + 14
-	local revealName = label(reveal, {
-		Position = UDim2.fromOffset(textX, 4),
-		Size = UDim2.new(1, -(textX + 8), 0, stripH * 0.52),
-		TextColor3 = Color3.fromRGB(255, 90, 100),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		RichText = true,
-		ZIndex = 41,
-	})
-	local revealText = label(reveal, {
-		Position = UDim2.fromOffset(textX, stripH * 0.56),
-		Size = UDim2.new(1, -(textX + 8), 0, stripH * 0.36),
-		TextColor3 = Color3.fromRGB(230, 230, 240),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 41,
-	})
-	local revealToken = 0
-	local function showReveal(info: { [string]: any })
-		if not player:GetAttribute("InRound") and not player:GetAttribute("Spectating") then
-			return
-		end
-		revealToken += 1
-		local token = revealToken
-		local knife = if type(info.Knife) == "string" then info.Knife else ""
-		local parsed = Items.Parse(knife)
-		revealArt.Image = if parsed then (VoxelKnives[parsed.Name] or KnifeIcons[parsed.Name] or "") else ""
-		revealName.Text = `<font color="#FFC8C8">🔪 Murderer has</font> {string.upper(tostring(info.Name or "?"))}`
-		revealText.Text = tostring(info.Description or "")
-		reveal.Visible = true
-		local scale = reveal:FindFirstChild("Pop") :: UIScale? or Instance.new("UIScale")
-		scale.Name = "Pop"
-		scale.Parent = reveal
-		scale.Scale = 1.15
-		TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-		task.delay(3, function()
-			if token == revealToken then
-				reveal.Visible = false
-			end
-		end)
-	end
-
 	-- The kill card: who got you, with what, and where that knife comes from - the "I need that"
 	-- moment (right after dying in a round)
 	local kill = Instance.new("Frame")
@@ -546,12 +475,6 @@ function Transitions.Init()
 	end
 
 	Remotes:WaitForChild("Effect").OnClientEvent:Connect(function(kind: string, text: any, extra: any, ...)
-		if kind == "PowerReveal" then
-			if type(text) == "table" then
-				showReveal(text)
-			end
-			return
-		end
 		if kind == "KillCard" then
 			showKill()
 			return

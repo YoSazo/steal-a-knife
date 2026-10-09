@@ -31,7 +31,7 @@ Done:
 - **Item 28:** round moments shown in rounds (`Net.Notify(..., inRound)`), bigger top line /
   toasts, pen wording, rewrites. Not done: the two-line prize layout + moving the x2 pill.
 - **Item 4:** powers off at the source (`Items.Parse` Perk = nil), PowerShowcase gone. Not done:
-  deleting the dormant power code; the per-rarity kill effect.
+  none of the code deletion: completed in the Codex continuation below.
 - **Item 6 (HUD):** the guide's DO line is the big objective (36 px, phones 28); the core loop's
   line and red trail never retire (tests/GuidePolicy updated); Speed / Cash bigger, tap either to
   open the shop on its tab (`Ui.OpenShop`), a + badge on Cash.
@@ -99,6 +99,13 @@ The creature's speed sign is readable up close at 640 x 320.
   and normalizes pen room to individual slots instead of whole floors. Placement, held knife,
   room purchases tested in Studio at phone and desktop sizes; console clean after fixing the
   dynamic KnifeModel pen-mode call. Selene, StyLua and luau-lsp pass. CLAUDE.md updated.
+- **Item 4 deletion:** all Murderer perks, Spam / Hellfire / stun / traps / power reveal, Decoy,
+  Stealth, Shift, perk catalog / icons / cards / button removed (~1,500 lines). Every knife uses
+  tap to stab and hold to throw; higher rarities have larger coloured kill bursts. Legacy four-field
+  items still parse, ignoring their power. Studio desktop hold threw once and tap killed a bot;
+  phone THROW button works repeatedly and tap killed a bot. Old Spam requests were rejected.
+  Studio solo debugging bypasses join grace after giving a knife; empty profiles cannot join.
+  Selene, StyLua and luau-lsp pass; no game script errors. CLAUDE.md updated.
 - **Round lighting fixed:** neutral 210 / 210 / 200 ambient and no indoor shadows while in a
   round; hub ambient and shadows restore afterward. Visually checked Office in the phone preset
   and at desktop size after the role-reveal overlay faded. All three code checks pass. One

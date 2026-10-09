@@ -10,7 +10,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
-local KnifePowers = require(ReplicatedStorage.Shared.Config.KnifePowers)
 local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
@@ -97,7 +96,6 @@ local function sell(player: Player, index: unknown): boolean
 	Analytics.Track(player, "knife.sold", {
 		knife = Items.Name(name),
 		rarity = if soldParsed then soldParsed.Knife.Rarity else nil,
-		power = if soldParsed then soldParsed.Perk else nil,
 		price = price,
 	})
 	DataService.Update(player, function(p)
@@ -113,19 +111,14 @@ local function sell(player: Player, index: unknown): boolean
 end
 
 -- The power on the knife you fight with (the Murderer's power in rounds)
-local function publishKnifePower(player: Player)
+local function publishFightingKnife(player: Player)
 	local item = BaseService.ProtectedItem(player)
-	local parsed = item and Items.Parse(item)
-	local id = parsed and parsed.Perk
-	local entry = id and KnifePowers.ById[id]
 	local function set(name: string, value: any)
 		if player:GetAttribute(name) ~= value then
 			player:SetAttribute(name, value)
 		end
 	end
-	set("PowerId", id)
 	set("FightingKnife", item)
-	set("PowerName", if entry then entry.Name else nil)
 end
 
 -- Old saves: Innocent Powers were once bought with cash (and later cut). That cash comes back once.
@@ -174,16 +167,16 @@ InventoryService.DebugRefund = refundOldPowers
 function InventoryService.Init()
 	DataService.PlayerLoaded:Connect(function(player: Player, profile: DataService.Profile)
 		refundOldPowers(player, profile)
-		publishKnifePower(player)
+		publishFightingKnife(player)
 	end)
 	DataService.Changed:Connect(function(player: Player)
-		publishKnifePower(player)
+		publishFightingKnife(player)
 	end)
 	local function watch(player: Player)
 		-- (leaving a round can change the knife you fight with)
 		player:GetAttributeChangedSignal("InRound"):Connect(function()
 			if not player:GetAttribute("InRound") then
-				publishKnifePower(player)
+				publishFightingKnife(player)
 			end
 		end)
 	end

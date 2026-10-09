@@ -13,7 +13,6 @@ local RunService = game:GetService("RunService")
 local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
-local KnifePowers = require(ReplicatedStorage.Shared.Config.KnifePowers)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local Net = require(script.Parent.Parent.Remotes)
@@ -492,7 +491,7 @@ local function deposit(player: Player)
 	-- The tutorial's first knife always gets the starter power (Shadow: vanish), so every new player
 	-- starts with the same simple, easy-to-show power; after that it's the knife type's own power
 	local starter = not profile.TutorialDone and profile.TutorialStep <= 2 and #profile.Knives <= 1
-	local item = if starter then Items.WithPower(carry.Item, KnifePowers.Starter) else carry.Item
+	local item = carry.Item
 	local parsed = Items.Parse(item) :: Items.Item
 	local isNew = not table.find(profile.Discovered, parsed.Name)
 	-- A boss's knife comes home in a COFFIN that opens later (CoffinService) - never in the tutorial
@@ -541,7 +540,6 @@ local function deposit(player: Player)
 		rarity = parsed.Knife.Rarity,
 		mutation = parsed.Mutation.Id,
 		size = parsed.Size.Id,
-		power = parsed.Perk,
 		new = isNew,
 		value = Items.Income(item),
 		plate = carry.Plate,
@@ -561,7 +559,7 @@ local function deposit(player: Player)
 		Offers.Show(player, "Mount", "Your pen is full! Get more room right now.")
 	elseif opensIn then
 		Net.Notify(player, `⚰️ {parsed.Knife.Rarity} Coffin! It opens {opensIn}`, "good")
-	elseif not parsed.Perk then
+	else
 		Net.Notify(player, `{if isNew then "NEW! " else ""}{name} +{Format.Cash(Items.Income(item))}/s`, "good")
 	end
 	Net.Remotes.Effect:FireAllClients("Deposit", player, parsed.Knife.Rarity)

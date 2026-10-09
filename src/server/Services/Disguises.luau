@@ -550,34 +550,6 @@ function Disguises.Assign(players: { Player }): { [Player]: string }
 end
 
 -- ShapeShifter perk: swap to an outfit nobody in `taken` is wearing. Returns the new name.
-function Disguises.Shift(player: Player, taken: { [string]: boolean }): string?
-	local free = {}
-	for _, outfit in OUTFITS do
-		if not taken[outfit.Name] then
-			table.insert(free, outfit)
-		end
-	end
-	if #free == 0 then
-		return nil
-	end
-	local outfit = free[Random.new():NextInteger(1, #free)]
-	-- Re-dressing rebuilds the body and destroyed the knife in your hand: put it in the backpack for
-	-- the change and back in your hand after
-	local character = player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	local held = character and character:FindFirstChildOfClass("Tool")
-	if humanoid and held then
-		humanoid:UnequipTools()
-	end
-	putOn(player, outfit)
-	if humanoid and held and held.Parent and humanoid.Health > 0 then
-		humanoid:EquipTool(held)
-	end
-	-- a new person has their own money over their head (Overheads), or the tag would give you away
-	player:SetAttribute("DisguiseCash", math.floor(10 ^ Random.new():NextNumber(4, 11)))
-	player:SetAttribute("DisguiseVIP", Random.new():NextNumber() < 0.2)
-	return outfit.Name
-end
 
 -- Back to their own avatar (only needed for people who are still alive; respawns reload it anyway)
 function Disguises.Remove(player: Player)

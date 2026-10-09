@@ -10,7 +10,6 @@ local SignTheme = require(ReplicatedStorage.Shared.SignTheme)
 local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
-local KnifePowers = require(ReplicatedStorage.Shared.Config.KnifePowers)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
 local Net = require(script.Parent.Parent.Remotes)
@@ -192,15 +191,6 @@ local roundPick: { [Player]: string } = {}
 Players.PlayerRemoving:Connect(function(player)
 	roundPick[player] = nil
 end)
-local function powerScore(item: string): number
-	local parsed = Items.Parse(item)
-	local id = parsed and parsed.Perk
-	local entry = id and KnifePowers.ById[id]
-	if not entry then
-		return 0
-	end
-	return KnifePowers.TierRank(entry.Tier)
-end
 function BaseService.BestKnife(player: Player): string?
 	local profile = DataService.Get(player)
 	if not profile then
@@ -220,14 +210,14 @@ function BaseService.BestKnife(player: Player): string?
 	if equippedAt and not DataService.IsSealedIndex(profile, equippedAt) then
 		pick = profile.Equipped
 	else
-		local bestScore, bestDamage = -1, -1
+		local bestDamage = -1
 		for i, item in profile.Knives do
 			if DataService.IsSealedIndex(profile, i) then
 				continue -- (can't fight with a knife still in its coffin)
 			end
-			local score, damage = powerScore(item), Items.Damage(item)
-			if score > bestScore or (score == bestScore and damage > bestDamage) then
-				pick, bestScore, bestDamage = item, score, damage
+			local damage = Items.Damage(item)
+			if damage > bestDamage then
+				pick, bestDamage = item, damage
 			end
 		end
 	end
@@ -444,7 +434,6 @@ function BaseService.RefreshWalkSpeed(player: Player)
 			else GameConfig.RoundWalkSpeed
 		-- Sneakers and knife perks (both set by RoundService, cleared when the round ends)
 		speed += (player:GetAttribute("RoundSpeedBonus") or 0) :: number
-		speed += (player:GetAttribute("PerkSpeed") or 0) :: number
 	else
 		-- Speed Potion (Robux consumable): hub only, never in rounds
 		if profile and DataService.BoostActive(profile, "Speed") and not player:GetAttribute("SlowMode") then
@@ -586,7 +575,6 @@ function BaseService.RefreshRack(player: Player)
 			-- client/PenKnives; the tag shows up close)
 			local perSecond = Items.Income(item) * multiplier
 			penModel:SetAttribute("Income", perSecond)
-			local perk = parsed.Perk and GameConfig.Perks[parsed.Perk]
 			local tag = SignTheme.knifeLabel(
 				folder,
 				labelAnchor,
@@ -594,11 +582,11 @@ function BaseService.RefreshRack(player: Player)
 				parsed.Knife.Rarity,
 				Knives.RarityColors[parsed.Knife.Rarity],
 				`{Format.Cash(math.floor(perSecond * 10 + 0.5) / 10)}/s`,
-				if perk then `🔪 {perk.DisplayName}` else nil,
+				nil,
 				40 -- (only up close: from afar a pen is just its knives and their money pops, Steal an Egg)
 			)
 			-- Steal an Egg's labels: the same small size on screen, shown only when you're close
-			tag.Size = UDim2.fromOffset(130, if perk then 62 else 52)
+			tag.Size = UDim2.fromOffset(130, 52)
 		end
 	end
 	player:SetAttribute("Income", rackIncome(player))

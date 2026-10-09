@@ -2,9 +2,7 @@
 -- Owned knives are "items": a catalog knife plus a mutation and a size (Items.RollKnife). Stored as one string so profiles, attributes and round loot stay simple:
 --   "Katana"              plain, normal size (every save from before cases still works)
 --   "Katana|Gold|Big"     Gold mutation, Big size ("Katana||Huge" = no mutation, Huge)
---   "Katana|Gold|Big|SpamKnife"  ...carrying a set Murderer power (old rolled saves, the tutorial's
---                         first knife). Without one ("", "?", missing or unknown) a knife has its
---                         knife type's power (Config/Knives Perk).
+-- Old four-field saves remain valid; their fourth field is ignored.
 -- Mutations and sizes multiply income; they also make the knife hit a little harder.
 
 local Knives = require(script.Parent.Config.Knives)
@@ -35,7 +33,6 @@ export type Item = {
 	Knife: Knives.Knife,
 	Mutation: Mutation,
 	Size: Size,
-	Perk: string?, -- the Murderer power this one carries (GameConfig.Perks id)
 }
 
 local Items = {}
@@ -105,14 +102,7 @@ Items.Sizes = {
 	},
 } :: { Size }
 
--- Knife powers (Config/KnifePowers): every knife carries one
-local KnifePowers = require(script.Parent.Config.KnifePowers)
-
 -- What players see for a power id ("Invisiknife" -> "Shadow")
-function Items.PowerName(power: string?): string
-	local entry = power and KnifePowers.ById[power]
-	return if entry then entry.Name else (power or "")
-end
 
 local mutationById: { [string]: Mutation } = {}
 for _, m in Items.Mutations do
@@ -135,15 +125,13 @@ function Items.Parse(item: string): Item?
 		return cached
 	end
 	local fields = string.split(item, "|")
-	local name, mutation, size, power = fields[1], fields[2] or "", fields[3] or "", fields[4]
+	local name, mutation, size = fields[1], fields[2] or "", fields[3] or ""
 	local knife = Knives.ByName[name]
 	local m = mutationById[mutation]
 	local s = sizeById[size]
 	-- Murderer powers are cut (docs/PLAN.md item 4): every Murderer plays by the same MM2 rules, and
 	-- the knife is a flex (looks, rarity, mutation), not an ability. Perk stays in the type so old
 	-- 4-field items still parse; it's always nil now, which turns every power branch off.
-	local _ = power
-	local perk: string? = nil
 	if not knife or not m or not s or #fields > 4 then
 		invalid[item] = true
 		return nil
@@ -154,30 +142,17 @@ function Items.Parse(item: string): Item?
 		Knife = knife,
 		Mutation = m,
 		Size = s,
-		Perk = perk,
 	}
 	cache[item] = parsed
 	return parsed
 end
 
-function Items.Make(name: string, mutation: string?, size: string?, power: string?): string
+function Items.Make(name: string, mutation: string?, size: string?): string
 	local m, s = mutation or "", size or ""
-	if power then
-		return `{name}|{m}|{s}|{power}`
-	end
 	if m == "" and s == "" then
 		return name
 	end
 	return `{name}|{m}|{s}`
-end
-
--- The same knife with a set power (the tutorial's first knife: KnifePowers.Starter)
-function Items.WithPower(item: string, power: string): string
-	local p = Items.Parse(item)
-	if not p then
-		return item
-	end
-	return Items.Make(p.Name, p.Mutation.Id, p.Size.Id, power)
 end
 
 function Items.Valid(item: unknown): boolean

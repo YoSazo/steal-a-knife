@@ -23,10 +23,8 @@ local WorldSignInput = require(script.Parent.WorldSignInput)
 local KNIFE_SIZE = KnifeAim.ButtonSize
 local AnimLibrary = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("AnimLibrary"))
 local GameConfig = require(ReplicatedStorage.Shared:WaitForChild("Config"):WaitForChild("GameConfig"))
-local Textures = require(ReplicatedStorage.Shared.Config:WaitForChild("Textures"))
 local Items = require(ReplicatedStorage.Shared.Items)
 local Artwork = require(ReplicatedStorage.Shared.Config.UiArtwork)
-local PowerIcons = require(ReplicatedStorage.Shared.Config.VoxelPowerIcons)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
 
@@ -44,6 +42,12 @@ local BASE_FOV = 70
 -- A mouse aims at the cursor (always, even on a touch laptop or Studio's phone preview); touch
 -- screens and gamepads aim through the screen centre (MM2's THROW button)
 local function usingMouse(): boolean
+	if
+		not UserInputService.MouseEnabled
+		or (Ui.Phone and RunService:IsStudio() and ReplicatedStorage:GetAttribute("DebugPhone") == true)
+	then
+		return false
+	end
 	local lastInput = UserInputService:GetLastInputType()
 	return lastInput == Enum.UserInputType.MouseMovement
 		or lastInput == Enum.UserInputType.MouseButton1
@@ -164,83 +168,6 @@ end
 
 function Abilities.Init()
 	local gui = Ui.gui
-	local button = Ui.button({
-		Name = "PerkButton",
-		-- Bottom right, above where the touch jump button sits and clear of the tool hotbar
-		AnchorPoint = Vector2.new(1, 1),
-		-- (phones: just left of the jump button, under the right thumb)
-		Position = if Ui.Phone then UDim2.new(1, -160, 1, -22) else UDim2.new(1, -20, 1, -186),
-		Size = if Ui.Phone then UDim2.fromOffset(180, 70) else UDim2.fromOffset(230, 64),
-		BackgroundColor3 = Color3.fromRGB(200, 40, 60),
-		Text = "",
-		Visible = false,
-	}, gui)
-
-	-- The Murderer's perk: its Blender badge on the ability button, and a card above it that
-	-- explains the perk (passive perks get the card only)
-	Ui.GuideTargets.Perk = button
-	local buttonIcon = Instance.new("ImageLabel")
-	buttonIcon.Name = "PerkIcon"
-	buttonIcon.AnchorPoint = Vector2.new(0, 0.5)
-	buttonIcon.Position = UDim2.new(0, -18, 0.5, 0)
-	buttonIcon.Size = UDim2.fromOffset(if Ui.Phone then 58 else 66, if Ui.Phone then 58 else 66)
-	buttonIcon.BackgroundTransparency = 1
-	buttonIcon.ZIndex = (button.ZIndex or 1) + 3
-	buttonIcon.Visible = false
-	buttonIcon.Parent = button
-	local perkCard = Instance.new("Frame")
-	perkCard.Name = "PerkCard"
-	perkCard.AnchorPoint = Vector2.new(1, 1)
-	perkCard.Position = if Ui.Phone then UDim2.new(1, -160, 1, -100) else UDim2.new(1, -20, 1, -262)
-	perkCard.Size = UDim2.fromOffset(260, 70)
-	perkCard.BackgroundColor3 = Color3.fromRGB(28, 20, 34)
-	perkCard.BackgroundTransparency = 0.15
-	perkCard.Visible = false
-	perkCard.Parent = Ui.root
-	Ui.corner(perkCard, 14)
-	Ui.stroke(perkCard)
-	local cardIcon = Instance.new("ImageLabel")
-	cardIcon.Position = UDim2.fromOffset(4, 3)
-	cardIcon.Size = UDim2.fromOffset(64, 64)
-	cardIcon.BackgroundTransparency = 1
-	cardIcon.Parent = perkCard
-	local cardName = Ui.label({
-		Position = UDim2.fromOffset(74, 4),
-		Size = UDim2.new(1, -80, 0, 26),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = Color3.fromRGB(255, 90, 100),
-		Text = "",
-	}, perkCard)
-	Ui.textStroke(cardName, 2)
-	local cardText = Ui.label({
-		Position = UDim2.fromOffset(74, 30),
-		Size = UDim2.new(1, -80, 0, 36),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Top,
-		TextScaled = false,
-		TextSize = 14,
-		TextWrapped = true,
-		Text = "",
-	}, perkCard)
-	Ui.textStroke(cardText, 1)
-	local function refreshPerk()
-		local id = player:GetAttribute("Perk")
-		local perk = type(id) == "string" and GameConfig.Perks[id] or nil
-		-- Codex's voxel power icon, else the old Blender render
-		local icon = if type(id) == "string" then PowerIcons.KnifePowers[id] or Textures.PerkIcons[id] else nil
-		perkCard.Visible = not Ui.Phone and not Ui.menuOpen() and perk ~= nil and player:GetAttribute("InRound") == true
-		buttonIcon.Visible = icon ~= nil
-		if perk then
-			cardIcon.Image = icon or ""
-			buttonIcon.Image = icon or ""
-			cardName.Text = if perk.Passive then `{perk.DisplayName} (passive)` else perk.DisplayName
-			cardText.Text = perk.Description
-		end
-	end
-	player:GetAttributeChangedSignal("Perk"):Connect(refreshPerk)
-	player:GetAttributeChangedSignal("InRound"):Connect(refreshPerk)
-	refreshPerk()
-
 	-- Crosshair + charge ring, shown while winding up a throw
 	local crosshairGui = Instance.new("ScreenGui")
 	crosshairGui.Name = "Crosshair"
@@ -278,9 +205,9 @@ function Abilities.Init()
 	local abilityName: string? = nil
 	local readyAt = 0
 	local chargingSince: number? = nil
-	-- "perk" = the ability button's throw (hub throw / Knife Throw perk), "basic" = the Murderer's
+	-- "hub" = the ability button's throw (hub throw / Knife Throw perk), "basic" = the Murderer's
 	-- hold-click throw that every Murderer has
-	local chargeKind = "perk"
+	local chargeKind = "hub"
 	local basicThrowReadyAt = 0
 	local restoreFov = BASE_FOV
 	-- The zoom to come back to, taken only when no lean is in progress: re-reading it on every press
@@ -294,9 +221,7 @@ function Abilities.Init()
 	end
 
 	local function ready(): boolean
-		return abilityName ~= nil
-			and workspace:GetServerTimeNow() >= readyAt
-			and (not player:GetAttribute("InRound") or player:GetAttribute("PerkUsesLeft") ~= 0)
+		return abilityName ~= nil and workspace:GetServerTimeNow() >= readyAt
 	end
 
 	local function zoom(fov: number)
@@ -310,31 +235,7 @@ function Abilities.Init()
 		return tool ~= nil and tool:GetAttribute("MurderKnife") == true
 	end
 
-	-- Spam Knife (always) / Hellfire (a few seconds after Q): no stab, every click throws a knife
 	-- straight at the cursor
-	local lastSpam = 0
-	local function spamMode(): boolean
-		if not holdingMurderKnife() then
-			return false
-		end
-		local until_ = player:GetAttribute("SpamUntil")
-		return type(until_) == "number" and workspace:GetServerTimeNow() < until_
-	end
-	local function spamThrow(at: Vector2?, touch: boolean?)
-		local now = os.clock()
-		if now - lastSpam < 0.1 then
-			return
-		end
-		lastSpam = now
-		local character = player.Character
-		if character then
-			Moves.Play(character, "Throw")
-		end
-		Remotes.Ability:FireServer(aimDirection(at, touch), "Spam")
-		if Ui.LearnGuidance then
-			Ui.LearnGuidance("knife_fight")
-		end
-	end
 
 	local function beginCharge(kind: string?)
 		local basic = kind == "basic"
@@ -344,7 +245,7 @@ function Abilities.Init()
 		if basic and os.clock() < basicThrowReadyAt or not basic and not ready() then
 			return
 		end
-		chargeKind = if basic then "basic" else "perk"
+		chargeKind = if basic then "basic" else "hub"
 		chargingSince = os.clock()
 		Moves.SetLocalCharge(chargingSince)
 		Remotes.Charge:FireServer(true)
@@ -385,15 +286,12 @@ function Abilities.Init()
 
 	-- Press: instant abilities fire; throws start charging
 	local function press()
-		if Ui.menuOpen() or not abilityName then
+		if Ui.menuOpen() then
 			return
 		end
-		if isThrow() then
-			beginCharge()
-		elseif ready() then
-			Remotes.Ability:FireServer(aimDirection())
-		end
+		beginCharge(if holdingMurderKnife() then "basic" else "hub")
 	end
+
 	local function release()
 		endCharge(true)
 	end
@@ -428,10 +326,6 @@ function Abilities.Init()
 		then
 			return -- a world-sign purchase/sale must not also swing or wind up the knife
 		end
-		if spamMode() then
-			spamThrow(nil)
-			return
-		end
 		primaryDown = input
 		local pressedAt = os.clock()
 		primaryAt = pressedAt
@@ -462,26 +356,6 @@ function Abilities.Init()
 		end
 	end)
 	-- The on-screen button: hold to charge on touch, click-hold with a mouse
-	button.InputBegan:Connect(function(input)
-		if
-			input.UserInputType == Enum.UserInputType.Touch
-			or input.UserInputType == Enum.UserInputType.MouseButton1
-		then
-			if not Ui.Phone or not isThrow() then
-				press()
-			end
-		end
-	end)
-	button.InputEnded:Connect(function(input)
-		if
-			input.UserInputType == Enum.UserInputType.Touch
-			or input.UserInputType == Enum.UserInputType.MouseButton1
-		then
-			if not Ui.Phone and isThrow() then
-				release()
-			end
-		end
-	end)
 
 	local knifeButton = Ui.button({
 		Name = "KnifeButton",
@@ -596,12 +470,7 @@ function Abilities.Init()
 	local function allowed(): boolean
 		local character = player.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-		local stunned = player:GetAttribute("StunnedUntil")
-		return humanoid ~= nil
-			and humanoid.Health > 0
-			and not Ui.menuOpen()
-			and not player:GetAttribute("Carrying")
-			and (type(stunned) ~= "number" or stunned <= workspace:GetServerTimeNow())
+		return humanoid ~= nil and humanoid.Health > 0 and not Ui.menuOpen() and not player:GetAttribute("Carrying")
 	end
 	local releaseCamera: () -> () = function() end
 	local takeCameraHook: () -> () = function() end
@@ -636,7 +505,7 @@ function Abilities.Init()
 		local factor = Ui.Scale.Scale
 		knifeButton.Position = UDim2.fromOffset(x / factor, y / factor)
 		knifeButton.Size = UDim2.fromOffset(KNIFE_SIZE / factor, KNIFE_SIZE / factor)
-		local aiming = gesture.mode == "charging" or gesture.mode == "spam"
+		local aiming = gesture.mode == "charging"
 		local center = KNIFE_SIZE / 2
 		-- The knife is the stick's knob: centred until you drag it
 		local knob = Vector2.new(center, center) + (if aiming then aimAxis * KNIFE_SIZE * 0.28 else Vector2.zero)
@@ -663,19 +532,6 @@ function Abilities.Init()
 		chargeHint.Position = UDim2.fromOffset(hintX / factor, (y - 44) / factor)
 		chargeHint.Size = UDim2.fromOffset(math.max(44, math.min(112, bounds.X - hintX - 12)) / factor, 32 / factor)
 		chargeHint.TextSize = 14 / factor
-		if Ui.Phone then
-			local padding = button:FindFirstChildOfClass("UIPadding")
-			if padding then
-				padding:Destroy()
-			end
-			button.AnchorPoint = Vector2.zero
-			button.Position = UDim2.fromOffset((x - 96) / factor, (y + 14) / factor)
-			button.Size = UDim2.fromOffset(64 / factor, 64 / factor)
-			buttonIcon.Position, buttonIcon.Size =
-				UDim2.fromOffset(4 / factor, 4 / factor), UDim2.fromOffset(56 / factor, 40 / factor)
-			button.TextYAlignment = Enum.TextYAlignment.Bottom
-			button.TextSize, button.TextScaled, button.TextTruncate = 14 / factor, false, Enum.TextTruncate.AtEnd
-		end
 	end
 	local function onKnifeTouch(input: InputObject)
 		if
@@ -795,22 +651,18 @@ function Abilities.Init()
 		applyKnifeAim()
 		-- Input may end between render ticks on a slow phone. Resolve the threshold first.
 		local canCharge = if holdingMurderKnife() then os.clock() >= basicThrowReadyAt else isThrow() and ready()
-		local pending = KnifeGesture.tick(gesture, os.clock(), canCharge, spamMode())
+		local pending = KnifeGesture.tick(gesture, os.clock(), canCharge)
 		if allowed() and gestureTool == knifeInHand() then
 			if pending == "charge" then
-				beginCharge(if holdingMurderKnife() then "basic" else "perk")
-			elseif pending == "spam" then
-				spamThrow(nil)
+				beginCharge(if holdingMurderKnife() then "basic" else "hub")
 			end
 		end
-		local action = KnifeGesture.release(gesture, input, os.clock(), spamMode())
+		local action = KnifeGesture.release(gesture, input, os.clock())
 		if allowed() and gestureTool == knifeInHand() then
 			if action == "swing" then
 				(gestureTool :: Tool):Activate()
 			elseif action == "throw" then
 				endCharge(true)
-			elseif action == "spam" then
-				spamThrow(nil)
 			end
 		end
 		cancelKnife()
@@ -823,11 +675,6 @@ function Abilities.Init()
 	end)
 	player:GetAttributeChangedSignal("InRound"):Connect(cancelKnife)
 	ReplicatedStorage:GetAttributeChangedSignal("Phase"):Connect(cancelKnife)
-	player:GetAttributeChangedSignal("StunnedUntil"):Connect(function()
-		if not allowed() then
-			cancelKnife()
-		end
-	end)
 	player:GetAttributeChangedSignal("Carrying"):Connect(function()
 		if not allowed() then
 			cancelKnife()
@@ -849,8 +696,6 @@ function Abilities.Init()
 		end
 		if Ui.Phone then
 			positionControls()
-			button.Visible = allowed() and abilityName ~= nil and not isThrow()
-			perkCard.Visible = false
 		end
 		if not knifeButton.Visible then
 			if Ui.Phone and gesture.owner ~= nil then
@@ -874,19 +719,13 @@ function Abilities.Init()
 		end
 		knifeFallback.Visible = knifeIcon.Image == "" or not knifeIcon.IsLoaded
 		local canCharge = if holdingMurderKnife() then os.clock() >= basicThrowReadyAt else isThrow() and ready()
-		local action = KnifeGesture.tick(gesture, os.clock(), canCharge, spamMode())
+		local action = KnifeGesture.tick(gesture, os.clock(), canCharge)
 		if action == "charge" then
-			beginCharge(if holdingMurderKnife() then "basic" else "perk")
-		elseif action == "spam" then
-			spamThrow(nil)
+			beginCharge(if holdingMurderKnife() then "basic" else "hub")
 		end
 		cancelButton.Visible = false -- (no cancel: let go to throw, the rest of the screen just looks around)
 		chargeHint.Visible = false -- (no "Release to throw" under the stick: the button's own "Throw" says it)
-		chargeHint.Text = if gesture.mode == "charging"
-			then "Release to throw"
-			elseif gesture.mode == "spam" then "Drag: aim\nHold: throw"
-			elseif spamMode() then "Tap: throw\nHold: repeat"
-			else "Tap: stab\nHold: aim"
+		chargeHint.Text = if gesture.mode == "charging" then "Release to throw" else "Tap: stab. Hold: aim."
 		knifeLabel.Text = if gesture.mode == "charging"
 			then "Throw"
 			elseif gesture.mode == "blocked" then "Wait"
@@ -896,7 +735,7 @@ function Abilities.Init()
 			else Color3.fromRGB(218, 56, 77)
 		knifeButton.BackgroundTransparency = if gesture.owner then 0.4 else 0.65
 		knifeIcon.BackgroundColor3 = Color3.fromRGB(61, 178, 255)
-		local aimingNow = gesture.mode == "charging" or gesture.mode == "spam"
+		local aimingNow = gesture.mode == "charging"
 		knifeIcon.BackgroundColor3 = if aimingNow then Color3.fromRGB(61, 178, 255) else Color3.fromRGB(20, 22, 34)
 		knifeIcon.BackgroundTransparency = if aimingNow then 0.25 else 0.35
 		knifeLabel.Visible = gesture.owner ~= nil
@@ -915,63 +754,20 @@ function Abilities.Init()
 	end)
 
 	Remotes:WaitForChild("AbilityState").OnClientEvent:Connect(function(name: string?, until_: number?)
-		-- The hub knife's throw never belongs in a round (a late message can't bring it back)
-		if name == "Throw Knife" and player:GetAttribute("InRound") then
-			name = nil
-		end
-		abilityName = name
+		abilityName = if player:GetAttribute("InRound") then nil else name
 		readyAt = until_ or 0
-		-- The hub throw is "hold click" with a mouse: the big button is only needed on touch screens
-		button.Visible = name ~= nil and (Ui.Phone or name ~= "Throw Knife")
-		button.BackgroundColor3 = if name == "Smoke Bomb"
-			then Color3.fromRGB(120, 120, 140)
-			else Color3.fromRGB(200, 40, 60)
-		if not name then
+		if not abilityName and not holdingMurderKnife() then
 			endCharge(false)
 		end
 	end)
 
 	RunService.RenderStepped:Connect(function()
 		if Ui.menuOpen() then
-			button.Visible = false
-			perkCard.Visible = false
-			crosshairGui.Enabled = false
 			endCharge(false)
 			return
 		end
-		-- Button label + cooldown
-		if abilityName then
-			local left = readyAt - workspace:GetServerTimeNow()
-			local key = if UserInputService.PreferredInput == Enum.PreferredInput.Gamepad
-				then "LT"
-				elseif UserInputService.TouchEnabled and not UserInputService.MouseEnabled then "Hold"
-				else if isThrow() then "Hold Click" else "Q"
-			if chargingSince then
-				button.Text = "Release to throw!"
-				button.BackgroundTransparency = 0
-			elseif player:GetAttribute("InRound") and player:GetAttribute("PerkUsesLeft") == 0 then
-				button.Text = `{abilityName} USED`
-				button.BackgroundTransparency = 0.5
-			elseif left > 0 then
-				button.Text = `{abilityName}  {math.ceil(left)}s`
-				button.BackgroundTransparency = 0.4
-			else
-				button.Text = if Ui.Phone then abilityName :: string else `[{key}] {abilityName}`
-				button.BackgroundTransparency = 0
-			end
-		end
-		-- Spam mode: a red crosshair on the cursor the whole time the knife is out
 		if not chargingSince then
-			local spamming = spamMode()
-			crosshairGui.Enabled = spamming
-			if spamming then
-				local at = screenAim()
-				ring.Position = UDim2.fromOffset(at.X, at.Y)
-				ring.Size = UDim2.fromOffset(40, 40)
-				ringStroke.Color = Color3.fromRGB(255, 70, 70)
-				fill.Size = UDim2.fromScale(0.3, 0.3)
-				fill.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
-			end
+			crosshairGui.Enabled = false
 		end
 		-- Crosshair follows the aim point; the ring fills as the arm cranks back
 		if chargingSince then
@@ -1130,10 +926,6 @@ function Abilities.Init()
 		if throwInput or not allowed() or not holdingMurderKnife() then
 			return
 		end
-		if spamMode() then
-			spamThrow(nil)
-			return
-		end
 		throwInput = input
 		lastPointer = Vector2.new(input.Position.X, input.Position.Y)
 		throwStart = lastPointer
@@ -1194,7 +986,7 @@ function Abilities.Init()
 		end
 		centerDot.Visible = show and not chargingSince
 		if show then
-			local isReady = os.clock() >= basicThrowReadyAt or spamMode()
+			local isReady = os.clock() >= basicThrowReadyAt
 			throwKnob.BackgroundTransparency = if isReady then 0.1 else 0.55
 			throwKnob.Text = if chargingSince
 				then "LET GO"
@@ -1249,7 +1041,7 @@ function Abilities.Init()
 		tool:SetAttribute("Wired", true)
 		tool.Activated:Connect(function()
 			local character = player.Character
-			if not character or chargingSince or Ui.menuOpen() or not allowed() or spamMode() then
+			if not character or chargingSince or Ui.menuOpen() or not allowed() then
 				return
 			end
 			local now = os.clock()
@@ -1376,8 +1168,7 @@ function Abilities.Init()
 		end
 	end)
 
-	-- Phones: with the Murderer's knife out, a tap stabs (Spam Knife: throws at the spot you tapped)
-	UserInputService.TouchTapInWorld:Connect(function(position: Vector2, processed: boolean)
+	UserInputService.TouchTapInWorld:Connect(function(_position: Vector2, processed: boolean)
 		if processed or not Ui.Phone or Ui.menuOpen() or usingMouse() then
 			return
 		end
@@ -1391,11 +1182,7 @@ function Abilities.Init()
 		end
 		local knife = knifeInHand()
 		if knife and knife:GetAttribute("MurderKnife") and allowed() then
-			if spamMode() then
-				spamThrow(position, true)
-			else
-				knife:Activate()
-			end
+			knife:Activate()
 		end
 	end)
 

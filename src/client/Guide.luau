@@ -190,14 +190,8 @@ local function roundAction(): NextAction.Action
 		WeaponWait = math.max(0, ((player:GetAttribute("WeaponAt") or now) :: number) - now),
 		Reload = math.max(0, ((player:GetAttribute("RevolverReadyAt") or 0) :: number) - now),
 		Classic = ReplicatedStorage:GetAttribute("Classic") == true,
-		Perk = player:GetAttribute("PowerId") :: string?,
-		PerkPassive = player:GetAttribute("PerkPassive") == true,
-		PerkUsesLeft = player:GetAttribute("PerkUsesLeft") :: number?,
-		PerkWait = math.max(0, ((player:GetAttribute("PerkReadyAt") or 0) :: number) - now),
-		Spam = ((player:GetAttribute("SpamUntil") or 0) :: number) > now,
 		GunNearby = not murderer and not gun and visibleRoundTarget("RoundGunPickup", 45) ~= nil,
 		Input = input,
-		Stunned = math.max(0, ((player:GetAttribute("StunnedUntil") or 0) :: number) - now),
 	})
 end
 
@@ -458,18 +452,11 @@ function Guide.Init()
 			end
 		end)
 	end
-	for _, name in { "RevolverReadyAt", "PerkReadyAt" } do
+	for _, name in { "RevolverReadyAt" } do
 		player:GetAttributeChangedSignal(name):Connect(function()
 			local ready = player:GetAttribute(name)
 			if player:GetAttribute("InRound") and type(ready) == "number" and ready > workspace:GetServerTimeNow() then
-				if name == "RevolverReadyAt" then
-					learn("gun_shoot")
-				else
-					local perk = player:GetAttribute("PowerId")
-					if type(perk) == "string" then
-						learn(`perk:{perk}`)
-					end
-				end
+				learn("gun_shoot")
 			end
 		end)
 	end
@@ -682,7 +669,7 @@ function Guide.Init()
 		elseif idleHelp and root and helpMovement and (root.Position - helpMovement).Magnitude > 6 then
 			idleHelp = false
 		end
-		local skill = current and GuidePolicy.Skill(current.Id, player:GetAttribute("PowerId") :: string?)
+		local skill = current and GuidePolicy.Skill(current.Id)
 		local visible = current ~= nil
 			and not blocked
 			and GuidePolicy.Visible({

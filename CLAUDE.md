@@ -2,7 +2,7 @@
 
 Loop (Steal an Egg simple, after the October cut - docs/CUT_LIST_CHECKLIST.md): steal a boss's COFFIN -> tap to
 place it in your pen -> murder rounds are its clock -> it hatches a knife character that hops and earns cash -> cash buys
-wheel/pen upgrades -> steal deeper. Your best knife is your Murderer weapon (one fixed perk per knife type). Steal-and-collect + Murder Mystery 2-style rounds: each zone's boss sleeps by a graveyard of coffins (deeper zone =
+wheel/pen upgrades -> steal deeper. Your best knife is your Murderer weapon. Steal-and-collect + Murder Mystery 2-style rounds: each zone's boss sleeps by a graveyard of coffins (deeper zone =
 rarer coffin, faster boss); every few minutes everyone is pulled into a round with one random Murderer (weighted by
 the chance meter), a Sheriff with the Revolver and a survival timer. One version of the game: pens + coffins
 everywhere (the vault path is deleted), 8 pens = 8-player servers.
@@ -12,7 +12,7 @@ K/M/B/T/Qd/Qn/Sx/...). Audience ~9-15, low-poly.
 Look: dark murder-mystery theme. The hub is "Blackwood Manor" at night (fences, lamps, dead trees,
 the Manor behind the arena); rounds are The Mad Murderer-style indoor maps (Office, Mansion) with
 disguises (named pre-made characters), bodies that stay, and a Revolver innocents can grab.
-The loop feeds itself: the equipped knife = the Murderer's perk; rounds are gain-or-no-gain (no knife loot,
+The equipped knife is the Murderer weapon; rounds are gain-or-no-gain (no knife loot,
 no insurance); survivors get 2x vault income for a while.
 Round prize (`Shared/RoundPrize`): ONE promise for every winner, "Win the round: +X Speed" (a share of the way to
 the next boss you can't outrun yet; the win card + ~30 shoes flying into the Speed readout).
@@ -28,12 +28,8 @@ the next boss you can't outrun yet; the win card + ~30 shoes flying into the Spe
   0/180/-90/90 for north/south/west/east walls). Anything named "Floor" is where coins/Revolver land.
   Tags the client animates: "Flicker" (+ attribute Flame = soft waver), "ClockHand" (real time), "Coin",
   "ShopNPC" (shopkeeper fidgets).
-- **Murderer powers are OFF** (docs/PLAN.md item 4): `Items.Parse` always returns `Perk = nil`, so every perk
-  branch below is dormant (every Murderer: click = stab, hold = throw). Delete the dormant code with Studio to hand.
-- Murderer perks (dormant): Spam Knife is passive (every click throws at the cursor, no stab, Range 1000; client sends
-  `Ability(aim, "Spam")`); Hellfire's Q sets player SpamUntil for the same click-throw mode with flaming knives.
-  Stunned (Flash / trap: StunnedUntil) Murderers can't stab, throw or use perks. Perk icons are Blender renders
-  (`blender/scripts/make_icons.py` -> Config/Textures.PerkIcons): ability button, perk card, knife cards.
+- Murderer controls are uniform: tap/click to stab, hold to throw. All perk code, cards, power icons, Decoy, Stealth and Disguises.Shift are deleted. Old four-field item strings ignore the saved power. The equipped knife determines the weapon appearance and kill burst colour, with stronger bursts at higher rarity.
+
 - Round coins: the Blender "Coin" prop + invisible Hitbox (RoundService.spawnCoin); the client predicts the
   pickup (fly-in, streak chime) and the server pays.
 - Hub layout (MapService): one long, wide runway (ArenaWidth 160 x ZoneDepth per zone, 8 zones, solid walls - the
@@ -61,10 +57,9 @@ the next boss you can't outrun yet; the win card + ~30 shoes flying into the Spe
   banner) and the Draw clip. Each vault has an Upgrade Base sign by the gate (client/Hud fills it; prompt -> "Slot").
 - Murderer meter = profile.Luck (`ChanceMeter.Add`; GameConfig.MurdererMeter: +PerRound each round not picked,
   0 when picked), capped at Cap x the server average. Heat was cut.
-- Murderer perks: each knife type has one fixed perk (Config/Knives `Perk`, Items.Parse -> Perk); power rolls,
-  levels, XP, rerolls and Sheriff power steals were cut. Old 4-field items ("Name|Mut|Size|Power") keep a saved power.
+
 - Hotbar knives show an icon (Tool.TextureId from Config/KnifeIcons, rendered by blender/scripts/render_knife_icons.py).
-- Rounds (MM2 style: innocents hide, run and grab the gun - Innocent Powers were cut); Spam Knife is always on (passive: click = throw all round, giveWeapon sets SpamUntil);
+- Rounds (MM2 style: innocents hide, run and grab the gun - Innocent Powers were cut); tap = stab, hold = throw;
   Classic and Double Trouble rounds are off (ClassicChance 0, DoubleTrouble.Chance 0); the
   Murderer's speed boost only applies with the knife out; HUD shows "Your chance to be the Murderer" (MurdererChance);
   end-of-round VS card (Effect "RoundCard" -> client/Transitions).
@@ -81,7 +76,7 @@ the next boss you can't outrun yet; the win card + ~30 shoes flying into the Spe
 - `Disguises` round outfits: classic Shirt/Pants templates (`tools/make_clothing.py`) + face decals
   (`tools/make_faces.py`, 12 faces, 4x supersampled) and Blender hair/hats/glasses from PropMeshes (part fallbacks).
   Hair is sculpted by `blender/scripts/hair.py` (a cap fitted to the R15 head down to a hairline that stays above the
-  eyebrows + tapered locks; 8 styles); hats are worn 1.12x over hair; Wear.On puts pieces on the body (wings). `Shift` = ShapeShifter perk. `Revolver` the pickup/tool. `DebugService` Studio-only hook.
+  eyebrows + tapered locks; 8 styles); hats are worn 1.12x over hair; Wear.On puts pieces on the body (wings). `Revolver` the pickup/tool. `DebugService` Studio-only hook.
 - Rounds: maps are built at 1x then scaled 1.5x (MapService.BuildRoundMap, ROUND_SCALE); doors are solid. A random
   innocent (player or bot) is the Sheriff from the start (giveRevolver / giveRevolverToBot); the floor Revolver only
   appears if nobody holds it. Bot Sheriffs aim + shoot once the Murderer's knife is out (botShoot, distance-based
@@ -103,7 +98,7 @@ the next boss you can't outrun yet; the win card + ~30 shoes flying into the Spe
   GameConfig.BossScale big, grab and throw without stopping, and search (not quit) when you Mimic/Vanish
   (MimicSpotRange). Mimic props move with you.
 - `RoundService` phase loop; state is attributes on ReplicatedStorage (Phase, PhaseEndsAt, Status, Alive, MapName,
-  Revolver, Loot). Melee from `Tool.Activated`; perks via `Remotes.Ability`, gun via `Remotes.Shoot` - all validated server-side.
+  Revolver, Loot). Melee from `Tool.Activated`; throws via `Remotes.Ability`, gun via `Remotes.Shoot` - all validated server-side.
 - Client modules (`src/client`): Ui, Hud, Menus (Knives/Shop panels), Abilities (knife input: click combo,
   hold RMB/Q/LT/button to charge a throw), Effects (cosmetic `Remotes.Effect`), Moves (animation engine).
 - Animations are procedural, no uploaded assets: clips live in `src/shared/AnimLibrary.luau` as keyframes of joint

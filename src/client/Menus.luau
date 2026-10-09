@@ -21,7 +21,6 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("Config"):WaitForChild("GameConfig"))
 local Items = require(Shared:WaitForChild("Items"))
 local Knives = require(Shared.Config:WaitForChild("Knives"))
-local Textures = require(Shared.Config:WaitForChild("Textures"))
 local KnifeModel = require(Shared:WaitForChild("KnifeModel"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
@@ -126,46 +125,6 @@ local function cardText(parent: Instance, y: number, height: number, text: strin
 end
 
 -- The knife's Murderer perk: its Blender badge in the card's top corner
-local function perkBadge(parent: Instance, perkId: string)
-	local icon = Textures.PerkIcons[perkId]
-	local perk = GameConfig.Perks[perkId]
-	if not icon or not perk then
-		return
-	end
-	-- A small dark pill in the corner (it used to sit big across the knife picture)
-	local pill = new("Frame", {
-		Name = "Perk",
-		Position = UDim2.fromOffset(4, 4),
-		Size = UDim2.fromOffset(0, 22),
-		AutomaticSize = Enum.AutomaticSize.X,
-		BackgroundColor3 = Color3.fromRGB(20, 16, 30),
-		BackgroundTransparency = 0.25,
-		ZIndex = 8,
-	}, parent)
-	Ui.corner(pill, 11)
-	new("UIListLayout", {
-		FillDirection = Enum.FillDirection.Horizontal,
-		VerticalAlignment = Enum.VerticalAlignment.Center,
-		Padding = UDim.new(0, 3),
-	}, pill)
-	new("UIPadding", { PaddingLeft = UDim.new(0, 3), PaddingRight = UDim.new(0, 7) }, pill)
-	new("ImageLabel", {
-		Size = UDim2.fromOffset(18, 18),
-		BackgroundTransparency = 1,
-		Image = icon,
-		ZIndex = 9,
-	}, pill)
-	local name = Ui.label({
-		Size = UDim2.fromOffset(0, 18),
-		AutomaticSize = Enum.AutomaticSize.X,
-		TextScaled = false,
-		TextSize = 13,
-		TextColor3 = Color3.fromRGB(255, 140, 140),
-		Text = perk.DisplayName,
-		ZIndex = 9,
-	}, pill)
-	Ui.textStroke(name, 1.2)
-end
 
 local function smallButton(
 	parent: Instance,
@@ -290,9 +249,6 @@ function Menus.Init()
 			cardText(c, 88, 20, Items.DisplayName(item), Items.Color(item))
 			cardText(c, 108, 16, knife.Rarity, Knives.RarityColors[knife.Rarity])
 			cardText(c, 124, 18, `+${Ui.abbreviate(Items.Income(item))}/s`, Color3.fromRGB(120, 255, 140))
-			if parsed.Perk then
-				perkBadge(c, parsed.Perk)
-			end
 			local isEquipped = item == equipped and not equippedShown
 			equippedShown = equippedShown or isEquipped
 			smallButton(

@@ -477,13 +477,8 @@ local handlers: { [string]: (...any) -> () } = {
 		end
 		-- Your own screen: one line on the top line (client/TopLine) - the knife's name in its colour
 		-- and its Murderer power. (It was three big lines in a card in the middle of the screen.)
-		local parsed = Items.Parse(item)
-		local perk = parsed and parsed.Perk and GameConfig.Perks[parsed.Perk]
 		local tint = Items.Color(item):Lerp(Color3.new(1, 1, 1), 0.25)
 		local text = `⚔️ Equipped <font color="#{tint:ToHex()}"><b>{Items.DisplayName(item)}</b></font>`
-		if perk then
-			text ..= `  <font color="#FF8C9E">🔪 {perk.DisplayName}</font>`
-		end
 		TopLine.Show(text, 2.4, "Equipped")
 	end,
 	-- A coffin opened (CoffinService.Reveal): the knife stands where it was, full size, with a white
@@ -683,6 +678,9 @@ local handlers: { [string]: (...any) -> () } = {
 	Hit = function(position: Vector3)
 		-- Cartoon impact sparks (no blood: keeps the game rated for younger players)
 		Effects.Burst(position, Color3.fromRGB(255, 235, 120), 24, 16, 0.6)
+	end,
+	KnifeKill = function(position: Vector3, color: Color3, rank: number)
+		Effects.Burst(position, color, 12 + math.clamp(rank, 1, 9) * 5, 14 + rank * 2, 0.6)
 	end,
 	Shield = function(position: Vector3)
 		Effects.Burst(position, Color3.fromRGB(90, 190, 255), 40, 20, 0.9)
