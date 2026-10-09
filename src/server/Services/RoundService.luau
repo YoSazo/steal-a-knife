@@ -1807,7 +1807,6 @@ local function endRound(round: Round)
 			CoffinService.Winner(player)
 			DataService.Update(player, function(p)
 				p.RoundsWon += 1
-				p.FuseCharges = math.min(GameConfig.Fusion.ChargeCap, p.FuseCharges + 1)
 			end)
 		end
 	end

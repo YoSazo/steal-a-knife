@@ -352,7 +352,7 @@ local function requestOpen(player: Player, plate: unknown): (boolean, string)
 end
 
 function CoffinService.Init()
-	Net.Remotes.OpenCoffin.OnServerInvoke = Analytics.Remote("OpenCoffin", requestOpen)
+	Net.Remotes.OpenCoffin.OnServerInvoke = requestOpen
 	BaseService.OnOpenCoffin = function(player, plate)
 		local ok, message = requestOpen(player, plate)
 		if not ok then

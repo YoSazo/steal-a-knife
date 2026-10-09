@@ -136,12 +136,6 @@ local commands: { [string]: (Player, ...any) -> any } = {
 				else CoffinService.GiveRarity(player, rarity or "Epic", "Studio")
 		) ~= nil
 	end,
-	FuseCharges = function(player: Player, amount: number)
-		DataService.Update(player, function(p)
-			p.FuseCharges = math.clamp(math.floor(amount), 0, GameConfig.Fusion.ChargeCap)
-		end)
-		return true
-	end,
 	Ready = function(player: Player, plate: number)
 		DataService.Update(player, function(p)
 			local entry = DataService.SealedEntry(p, plate)

@@ -22,7 +22,6 @@ export type Profile = {
 	Tickets: number,
 	TotalKills: number,
 	RoundsWon: number,
-	FuseCharges: number,
 	RoundsPlayed: number, -- murder rounds taken part in (a new player's first one: they're the Murderer)
 	-- where you put each knife / coffin down in your pen (pen-local X/Z, keyed by plate as a string)
 	Spots: { [string]: { number } },
@@ -99,7 +98,6 @@ local function defaultProfile(): Profile
 		Tickets = 0,
 		TotalKills = 0,
 		RoundsWon = 0,
-		FuseCharges = 0,
 		RoundsPlayed = 0,
 		NotifyAsked = false,
 		Spots = {},
@@ -204,7 +202,6 @@ local function reconcile(data: any): Profile
 	profile.Source = profile.Source:sub(1, 300)
 	profile.Speed = math.max(0, profile.Speed)
 	profile.Cash = math.max(0, profile.Cash)
-	profile.FuseCharges = math.clamp(math.floor(profile.FuseCharges), 0, GameConfig.Fusion.ChargeCap)
 	profile.Rebirths = math.clamp(math.floor(profile.Rebirths), 0, GameConfig.Rebirth.Max)
 	profile.TrailLevel = math.clamp(math.floor(profile.TrailLevel), 0, #GameConfig.Trails)
 	-- Drop knives that were removed from the catalog so nothing downstream sees an unknown name
@@ -515,7 +512,6 @@ local function publish(player: Player, profile: Profile)
 	player:SetAttribute("Discovered", table.concat(profile.Discovered, ","))
 	player:SetAttribute("Kills", profile.TotalKills)
 	player:SetAttribute("Wins", profile.RoundsWon)
-	player:SetAttribute("FuseCharges", profile.FuseCharges)
 	player:SetAttribute("RoundsPlayed", profile.RoundsPlayed)
 	player:SetAttribute("Rebirths", profile.Rebirths)
 	player:SetAttribute("Title", GameConfig.RebirthTitle(profile.Rebirths))

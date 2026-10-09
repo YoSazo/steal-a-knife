@@ -485,8 +485,6 @@ function Theme.shell(
 	width: number?
 ): (Frame, Frame, Frame)
 	local designWidth = width or 1000
-	local compact = height <= 300
-	local headerH = if compact then 52 else 88
 	local frame: Frame = Ui.new("Frame", {
 		Name = name,
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -500,37 +498,34 @@ function Theme.shell(
 	Ui.corner(frame, 14)
 	Theme.outline(frame, Theme.Black, 4)
 	local scale = Ui.new("UIScale", { Scale = 1 }, frame)
-	local header = Theme.surface(frame, { Name = "Header", Size = UDim2.new(1, 0, 0, headerH), ZIndex = 6 }, color)
+	local header = Theme.surface(frame, { Name = "Header", Size = UDim2.new(1, 0, 0, 88), ZIndex = 6 }, color)
 	local headerCorner = header:FindFirstChildOfClass("UICorner") :: UICorner
 	headerCorner.CornerRadius = UDim.new(0, 14)
 	local headerStuds = header:FindFirstChild("Studs") :: ImageLabel?
 	if headerStuds then
 		headerStuds.ImageTransparency = 0.8 -- just a hint of texture
 	end
-	Theme.image(
-		header,
-		icon,
-		{ Position = UDim2.fromOffset(8, 2), Size = UDim2.fromOffset(if compact then 48 else 104, headerH - 4) }
-	)
+	Theme.image(header, icon, { Position = UDim2.fromOffset(8, 2), Size = UDim2.fromOffset(104, 84) })
 	Theme.text(header, title, {
 		Name = "Title",
-		Position = UDim2.fromOffset(if compact then 64 else 112, 2),
-		Size = UDim2.new(1, if compact then -128 else -212, 0, headerH - 8),
+		Position = UDim2.fromOffset(112, 2),
+		Size = UDim2.new(1, -212, 0, 80),
 		TextXAlignment = Enum.TextXAlignment.Left,
-		MaximumTextSize = if compact then 40 else 72,
+		MaximumTextSize = 72,
 	})
-	Theme.button(header, "X", Theme.Red, {
-		Name = "Close",
-		Position = UDim2.new(1, if compact then -56 else -78, 0, if compact then 2 else 10),
-		Size = if compact then UDim2.fromOffset(48, 48) else UDim2.fromOffset(66, 66),
-		MaximumTextSize = 58,
-	}, function()
-		frame.Visible = false
-	end)
+	Theme.button(
+		header,
+		"X",
+		Theme.Red,
+		{ Name = "Close", Position = UDim2.new(1, -78, 0, 10), Size = UDim2.fromOffset(66, 66), MaximumTextSize = 58 },
+		function()
+			frame.Visible = false
+		end
+	)
 	local body: Frame = Ui.new("Frame", {
 		Name = "Body",
-		Position = UDim2.fromOffset(12, headerH + 12),
-		Size = UDim2.new(1, -24, 1, -headerH - 24),
+		Position = UDim2.fromOffset(12, 100),
+		Size = UDim2.new(1, -24, 1, -112),
 		BackgroundTransparency = 1,
 		ZIndex = 6,
 	}, frame)

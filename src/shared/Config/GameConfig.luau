@@ -20,7 +20,6 @@ local GameConfig = {
 	-- Economy / progression
 	StartingCash = 0,
 	CommunityGroupId = 857947897,
-	Fusion = { Required = 3, ChargeCap = 5 },
 	-- Pens start with ten individual plates.
 	StartingSlots = 10,
 	-- Speed -> walk speed: walk = BaseWalkSpeed + SpeedCurve * log2(1 + Speed / 500). Lower = every

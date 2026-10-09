@@ -31,26 +31,15 @@ function QuickBar.Init()
 	local count = SimpleUi.text(
 		body,
 		"",
-		{ Size = UDim2.new(0.35, 0, 0, S.Top), TextXAlignment = Enum.TextXAlignment.Left, Max = 26 }
+		{ Size = UDim2.new(0.45, 0, 0, S.Top), TextXAlignment = Enum.TextXAlignment.Left, Max = 26 }
 	)
 	local room = SimpleUi.button(
 		body,
 		"",
 		GREEN,
-		{ Position = UDim2.fromScale(0.67, 0), Size = UDim2.new(0.33, 0, 0, S.Top), Max = 24 },
+		{ Position = UDim2.fromScale(0.55, 0), Size = UDim2.new(0.45, 0, 0, S.Top), Max = 24 },
 		function()
 			Remotes.Purchase:InvokeServer("Slot")
-		end
-	)
-	local fuse = SimpleUi.button(
-		body,
-		"",
-		Color3.fromRGB(150, 80, 230),
-		{ Name = "Fuse", Position = UDim2.fromScale(0.35, 0), Size = UDim2.new(0.3, -8, 0, S.Top), Max = 24 },
-		function()
-			if Ui.OpenFuse then
-				Ui.OpenFuse()
-			end
 		end
 	)
 	local list: ScrollingFrame = Ui.new("ScrollingFrame", {
@@ -86,7 +75,6 @@ function QuickBar.Init()
 		end
 	end
 	local function refreshRoom()
-		SimpleUi.set(fuse, `Fuse ⚡{player:GetAttribute("FuseCharges") or 0}`)
 		local slots = (player:GetAttribute("Slots") or GameConfig.StartingSlots) :: number
 		local cash = (player:GetAttribute("Cash") or 0) :: number
 		local cost, step = PenMode.RoomUpgrade(slots)
@@ -242,7 +230,6 @@ function QuickBar.Init()
 	end
 	player:GetAttributeChangedSignal("Cash"):Connect(refreshRoom)
 	player:GetAttributeChangedSignal("WinnerLuck"):Connect(refreshRoom)
-	player:GetAttributeChangedSignal("FuseCharges"):Connect(refreshRoom)
 	frame:GetPropertyChangedSignal("Visible"):Connect(function()
 		if frame.Visible then
 			refresh()

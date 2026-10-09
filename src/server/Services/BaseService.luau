@@ -102,8 +102,6 @@ local function penKnife(
 end
 
 local BaseService = {}
-local claimedEvent = Instance.new("BindableEvent")
-BaseService.Claimed = claimedEvent.Event
 
 local owners: { [number]: Player } = {} -- base index -> player
 local baseOf: { [Player]: MapService.BaseSite } = {}
@@ -673,7 +671,6 @@ local function claimBase(player: Player)
 			end)
 			BaseService.RefreshRack(player)
 			BaseService.RefreshWalls(base)
-			claimedEvent:Fire(player)
 			return
 		end
 	end
@@ -753,10 +750,6 @@ end
 
 -- CoffinService.Reveal: the knife pops out, flies into you (client Effects CoffinHatch) and waits
 -- in your hotbar until you tap where it goes in your pen (Steal an Egg)
-function BaseService.HasHatch(player: Player): boolean
-	return hatching[player] ~= nil and #hatching[player] > 0
-end
-
 function BaseService.HoldHatched(player: Player, plate: number, item: string)
 	local list = hatching[player] or {}
 	hatching[player] = list
