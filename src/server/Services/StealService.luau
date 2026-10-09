@@ -428,7 +428,7 @@ startCarry = function(
 	player:SetAttribute("Carrying", if boss or source == "coffin" then Items.Name(item) else item)
 	player:SetAttribute("BossCarry", if boss then boss.Zone else nil) -- (a boss is after you)
 	BaseService.RefreshWalkSpeed(player)
-	-- (a boss steal gets no toast: GuardService already says "<BOSS> IS COMING! RUN HOME!")
+	-- (a boss steal gets no toast: GuardService already says "RUN HOME!")
 	if boss then
 		return
 	else

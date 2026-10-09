@@ -1321,7 +1321,9 @@ local function sendChaser(boss: Boss, thief: Player)
 		boss_speed = guard.Config.GuardSpeed,
 	})
 	Net.Remotes.Effect:FireClient(thief, "Alarm")
-	Net.Notify(thief, `THE {string.upper(GameConfig.MonsterName(guard.Boss.Index))} IS COMING! RUN HOME!`, "bad")
+	-- (one short line: the monster on your heels and the red glow say who; the long version wrapped
+	-- onto two lines on phones and covered the Drop button)
+	Net.Notify(thief, "RUN HOME!", "bad")
 end
 
 -- Hurt a thief (throws, and the snatch). Shields block it.
