@@ -14,25 +14,48 @@ local player = Players.LocalPlayer
 local Favorite = {}
 
 local asked = false
-
-function Favorite.Ask(moment: string)
+local pending = false
+local waiting: { () -> () } = {}
+local function finish()
+	pending = false
+	local callbacks = table.clone(waiting)
+	table.clear(waiting)
+	for _, callback in callbacks do
+		task.defer(callback)
+	end
+end
+function Favorite.Ask(moment: string, completed: (() -> ())?)
 	if asked or table.find(Ui.list(player:GetAttribute("TipsSeen")), "Favorite") then
+		if completed then
+			if pending then
+				table.insert(waiting, completed)
+			else
+				task.defer(completed)
+			end
+		end
 		return
 	end
 	asked = true
+	pending = true
+	if completed then
+		table.insert(waiting, completed)
+	end
 	ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Tutorial"):FireServer("Tip", "Favorite")
-	local AvatarEditorService = game:GetService("AvatarEditorService")
+	local service = game:GetService("AvatarEditorService")
 	local done: RBXScriptConnection? = nil
-	done = AvatarEditorService.PromptSetFavoriteCompleted:Connect(function(result)
+	done = service.PromptSetFavoriteCompleted:Connect(function(result)
 		Telemetry.Track("favorite.prompt", { result = result.Name, moment = moment })
 		if done then
 			done:Disconnect()
 		end
+		finish()
 	end)
-	local ok =
-		pcall(AvatarEditorService.PromptSetFavorite, AvatarEditorService, game.PlaceId, Enum.AvatarItemType.Asset, true)
-	if not ok and done then
-		done:Disconnect()
+	local ok = pcall(service.PromptSetFavorite, service, game.PlaceId, Enum.AvatarItemType.Asset, true)
+	if not ok then
+		if done then
+			done:Disconnect()
+		end
+		finish()
 	end
 end
 

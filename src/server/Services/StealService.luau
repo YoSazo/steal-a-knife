@@ -100,7 +100,7 @@ local function tag(adornee: BasePart, lines: { { Text: string, Color: Color3, He
 	end
 end
 
-local startCarry: (Player, string, string, { Zone: number, Slot: number }?, string?, boolean?) -> ()
+local startCarry: (Player, string, string, { Zone: number, Slot: number }?, string?) -> ()
 local dropped: { [Model]: { Item: string, Prompt: ProximityPrompt, Sealed: boolean } } = {}
 
 -- Somewhere on the floor under `position`, ignoring bodies, players and other drops
@@ -719,7 +719,7 @@ function StealService.EndForRound(player: Player)
 end
 
 local function onRunway(position: Vector3): boolean
-	return position.Z > -2 and math.abs(position.X) < GameConfig.ArenaWidth / 2 + 2
+	return position.Z > 0 and math.abs(position.X) < GameConfig.ArenaWidth / 2
 end
 
 local safeZoneToldAt: { [Player]: number } = setmetatable({}, { __mode = "k" }) :: any

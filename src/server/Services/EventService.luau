@@ -105,8 +105,8 @@ end
 local lastKind: string? = nil
 local warned = 0
 
-local function tick()
-	local now = os.time()
+local function tick(at: number?)
+	local now = at or os.time()
 	local kind, endsAt, nextKind, nextAt = schedule(now)
 	ReplicatedStorage:SetAttribute("EventKind", kind)
 	ReplicatedStorage:SetAttribute("EventEndsAt", if kind then endsAt else nil)
@@ -118,10 +118,10 @@ local function tick()
 	if kind ~= lastKind then
 		if kind then
 			local def = Config.Kinds[kind]
-			Net.Announce(`{def.Title} ({math.ceil((endsAt - now) / 60)} min)`, GOLD, 3)
+			Net.Announce(`{def.Title} · x{def.Multiplier} · {math.ceil((endsAt - now) / 60)}m`, GOLD, 3)
 			Analytics.Track(nil, "event.start", { kind = kind, players = #Players:GetPlayers() })
 		elseif lastKind then
-			Net.Announce("The event is over. See you Saturday!", GOLD, 1)
+			Net.Announce("Event over! Back on Saturday!", GOLD, 1)
 		end
 		lastKind = kind
 	end
@@ -210,5 +210,12 @@ end
 
 -- (for tests: the weekly schedule at a given time)
 EventService.Schedule = schedule
+EventService.Command = onChat
+function EventService.DebugTick(at: number)
+	if RunService:IsStudio() then
+		override = nil
+		tick(at)
+	end
+end
 
 return EventService

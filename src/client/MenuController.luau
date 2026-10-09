@@ -10,6 +10,7 @@ local entries: { [GuiObject]: boolean } = {}
 local active: GuiObject? = nil
 local savedFocus: GuiObject? = nil
 local backpack = true
+local touchControls = GuiService.TouchControlsEnabled
 local gui: ScreenGui
 local backdrop: GuiObject
 local transitioning = false
@@ -42,6 +43,7 @@ local function refresh()
 	local open = active ~= nil
 	if open and not wasOpen then
 		savedFocus = GuiService.SelectedObject
+		touchControls = GuiService.TouchControlsEnabled
 		pcall(function()
 			backpack = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Backpack)
 		end)
@@ -55,6 +57,7 @@ local function refresh()
 	pcall(function()
 		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, if open then false else backpack)
 	end)
+	GuiService.TouchControlsEnabled = if open then false else touchControls
 	gui:SetAttribute("MenuOpen", open)
 	gui:SetAttribute("ActiveMenu", if active then active.Name else nil)
 	backdrop.Visible = open

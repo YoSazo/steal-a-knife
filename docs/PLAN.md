@@ -262,6 +262,36 @@ events board (item 8), so it reads the attributes below.
   `/event golden 2` in a Studio round (ladder amounts double), `/event stop`; set the system
   clock or temporarily change `Weekly` to a few minutes from now to see the automatic start.
 
+### Codex tests of the cloud bundle, 2026-10-08 (local)
+
+Bundle `update8.bundle` merged at 5626bd3 and pushed; both PLAN progress sections retained.
+- **22:** before-win claims now rejected on the server. After a real win, the owner/member's
+  phone CLAIM tap paid once; repeat returned Already claimed with unchanged Speed. A non-member
+  simulated client with a real win returned Join the group first. Card/claim checked at phone
+  and desktop sizes. Group lookup is rechecked after its async call, with an in-flight guard.
+  The gift now waits for the native favourite prompt's completion instead of appearing behind
+  it after 12 seconds. Pending join requests don't auto-claim. Touch controls pause in menus
+  and restore on close. Native prompt dismissal is guarded by Roblox's completion event;
+  the repeat-favourite path was used for automated claim UI testing.
+- **25:** owner chat `/event speed 2` worked. Fixed integration that applied delivery Speed twice
+  (4x); verified 535,000 → 771,833, about 2x baseline 118,416. Golden now applies live to ladder
+  awards rather than being frozen into the round budget: next step 1,240 → 2,480 → 1,240 on
+  start/stop. Shoe pickups retain their own amount. Luck Storm opening weight multiplier 1 → 2.
+  DST schedule tested for October/November 2026 and March 2027 (19:00/20:00 UTC as appropriate).
+  Scheduler tick tested just before start, at start, and at +1 h without changing the OS clock.
+  Non-admin simulated user rejected. Event titles shortened and Luck text describes its actual
+  mutation effect. Cross-server MessagingService propagation still needs a second live server;
+  local commands, attributes and banners passed.
+- **26 codes:** RELEASE matched case-insensitively and paid once; MURDER gave one Rare coffin;
+  repeats and invalid codes rejected. Actual phone/desktop REDEEM button checked. The weekly
+  limited character and shop tile remain to implement with the shop (not included in the bundle).
+- **27:** two real simulated clients launched with StudioTestService. A runway stab knocked the
+  coffin loose; safe-zone stab kept carry, health and ground-drop count unchanged, with the
+  safe-zone message visible at phone/desktop sizes. Fixed the old two-stud allowance behind the
+  painted line; an attacker at z=-1 is now blocked. Server-side authorization remains intact.
+- Selene (0 errors/warnings), StyLua, sourcemap and luau-lsp pass. Temporary multi-client Studio
+  sessions ended cleanly. No game script errors; tool input occasionally reported CoreGUI hits.
+
 **Next:** Secret (item 18), maps, shop and remaining work.
 
 ---

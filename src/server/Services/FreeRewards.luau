@@ -45,6 +45,7 @@ function FreeRewards.Give(player: Player, reward: Reward, reason: string): strin
 			p.Speed += amount
 		end)
 		BaseService.RefreshWalkSpeed(player)
+		Net.Remotes.Effect:FireClient(player, "SpeedBank", amount)
 		table.insert(got, `+{Format.Short(amount)} Speed`)
 	end
 	if reward.Cash then

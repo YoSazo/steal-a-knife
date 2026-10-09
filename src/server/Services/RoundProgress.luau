@@ -40,7 +40,6 @@ local function budget(player: Player, round: boolean): number
 		if DataService.BoostActive(profile, "RoundSpeed") then
 			multiplier *= GameConfig.Consumables.RoundSpeedMultiplier
 		end
-		multiplier *= (ReplicatedStorage:GetAttribute("RoundSpeedMultiplier") or 1) :: number
 	else
 		-- the Speed Rush weekly event (EventService)
 		multiplier *= (ReplicatedStorage:GetAttribute("DeliverySpeedMultiplier") or 1) :: number
@@ -48,9 +47,16 @@ local function budget(player: Player, round: boolean): number
 	return math.max(1, math.floor(prize.Amount * multiplier))
 end
 
-local function award(player: Player, amount: number, entry: Entry?)
+local function ladderAmount(amount: number): number
+	return math.floor(amount * ((ReplicatedStorage:GetAttribute("RoundSpeedMultiplier") or 1) :: number))
+end
+
+local function award(player: Player, amount: number, entry: Entry?, boostLadder: boolean?)
 	if amount <= 0 or not DataService.Get(player) then
 		return
+	end
+	if entry and boostLadder ~= false then
+		amount = ladderAmount(amount)
 	end
 	local before = (player:GetAttribute("Speed") or 0) :: number
 	DataService.Update(player, function(p)
@@ -79,7 +85,7 @@ local function nextStep(player: Player, entry: Entry)
 		player:SetAttribute("RoundHide", true)
 		player:SetAttribute("RoundStepAt", entry.Started + TIMES[1])
 		player:SetAttribute("RoundStepKills", nil)
-		player:SetAttribute("RoundStepSpeed", math.max(1, math.floor(entry.Full / TOTAL)))
+		player:SetAttribute("RoundStepSpeed", ladderAmount(math.max(1, math.floor(entry.Full / TOTAL))))
 		return
 	end
 	player:SetAttribute("RoundHide", nil)
@@ -88,12 +94,15 @@ local function nextStep(player: Player, entry: Entry)
 		local denominator = entry.Enemies * (entry.Enemies + 1) / 2
 		player:SetAttribute("RoundStepAt", nil)
 		player:SetAttribute("RoundStepKills", kills)
-		player:SetAttribute("RoundStepSpeed", math.max(1, math.floor(entry.Full * 13 / TOTAL * kills / denominator)))
+		player:SetAttribute(
+			"RoundStepSpeed",
+			ladderAmount(math.max(1, math.floor(entry.Full * 13 / TOTAL * kills / denominator)))
+		)
 	else
 		local step = math.min(entry.Step + 1, #TIMES)
 		player:SetAttribute("RoundStepAt", entry.Started + TIMES[step])
 		player:SetAttribute("RoundStepKills", nil)
-		player:SetAttribute("RoundStepSpeed", math.max(1, math.floor(entry.Full * PARTS[step] / TOTAL)))
+		player:SetAttribute("RoundStepSpeed", ladderAmount(math.max(1, math.floor(entry.Full * PARTS[step] / TOTAL))))
 	end
 end
 
@@ -151,7 +160,7 @@ function Progress.Coin(player: Player)
 	local entry = entries[player]
 	if entry and not entry.Finished and entry.Coins < 15 then
 		entry.Coins += 1
-		award(player, math.max(1, math.floor(entry.Full * 0.01)), entry)
+		award(player, math.max(1, math.floor(entry.Full * 0.01)), entry, false)
 	end
 end
 
@@ -181,7 +190,6 @@ function Progress.Finish(player: Player, jackpot: boolean)
 end
 
 function Progress.Delivered(player: Player, zone: number)
-	local multiplier = (ReplicatedStorage:GetAttribute("DeliverySpeedMultiplier") or 1) :: number
 	local reached = 1
 	local speed = (player:GetAttribute("Speed") or 0) :: number
 	for i, entry in GameConfig.Zones do
@@ -190,7 +198,7 @@ function Progress.Delivered(player: Player, zone: number)
 		end
 	end
 	local depth = math.clamp(zone / reached, 0.25, 1)
-	award(player, math.max(1, math.floor(budget(player, false) * 0.1 * depth * multiplier)), nil)
+	award(player, math.max(1, math.floor(budget(player, false) * 0.1 * depth)), nil)
 end
 
 Players.PlayerRemoving:Connect(function(player)

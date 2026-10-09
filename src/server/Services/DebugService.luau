@@ -130,6 +130,32 @@ local commands: { [string]: (Player, ...any) -> any } = {
 				else CoffinService.GiveRarity(player, rarity or "Epic", "Studio")
 		) ~= nil
 	end,
+	Tip = function(player: Player, name: string)
+		DataService.Update(player, function(p)
+			if not table.find(p.Tips, name) then
+				table.insert(p.Tips, name)
+			end
+		end)
+		return true
+	end,
+	EventCommand = function(player: Player, text: string)
+		require(script.Parent.EventService).Command(player, text)
+		return ReplicatedStorage:GetAttribute("EventKind")
+	end,
+	AutoEvent = function(_player: Player, at: number)
+		require(script.Parent.EventService).DebugTick(at)
+		return { Kind = ReplicatedStorage:GetAttribute("EventKind"), EndsAt = ReplicatedStorage:GetAttribute(
+			"EventEndsAt"
+		) }
+	end,
+	CoffinLuck = function(player: Player)
+		local profile = DataService.Get(player)
+		return if profile then CoffinService.Luck(player, profile) else 0
+	end,
+	EventSchedule = function(_player: Player, at: number)
+		local kind, ends, nextKind, nextAt = require(script.Parent.EventService).Schedule(at)
+		return { Kind = kind, EndsAt = ends, NextKind = nextKind, NextAt = nextAt }
+	end,
 	Ready = function(player: Player, plate: number)
 		DataService.Update(player, function(p)
 			local entry = DataService.SealedEntry(p, plate)

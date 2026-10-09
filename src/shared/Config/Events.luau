@@ -28,14 +28,14 @@ local Events = {
 	WarnMinutes = 5, -- "starts in 5 minutes!" to everyone in the server
 	MaxAdminMinutes = 180,
 	Kinds = {
-		Golden = { Title = "🌟 GOLDEN ROUNDS: 2x round Speed!", Channel = "RoundSpeedMultiplier", Multiplier = 2 },
+		Golden = { Title = "🌟 GOLDEN ROUND", Channel = "RoundSpeedMultiplier", Multiplier = 2 },
 		Luck = {
-			Title = "🍀 LUCK STORM: rare coffins 2x more likely!",
+			Title = "🍀 LUCK STORM",
 			Channel = "MutationLuckMultiplier",
 			Multiplier = 2,
 		},
 		Speed = {
-			Title = "👟 SPEED RUSH: 2x Speed from coffins!",
+			Title = "👟 SPEED RUSH",
 			Channel = "DeliverySpeedMultiplier",
 			Multiplier = 2,
 		},

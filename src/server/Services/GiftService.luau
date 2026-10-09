@@ -20,6 +20,8 @@ local GiftService = {}
 local KEY = "gift:group"
 local lastTry: { [Player]: number } = setmetatable({}, { __mode = "k" }) :: any
 
+local busy: { [Player]: boolean } = {}
+
 local function inGroup(player: Player): boolean
 	local ok, groups = pcall(GroupService.GetGroupsAsync, GroupService, player.UserId)
 	if ok and type(groups) == "table" then
@@ -36,7 +38,7 @@ end
 
 local function claim(player: Player): (boolean, string)
 	local now = os.clock()
-	if now - (lastTry[player] or 0) < 2 then
+	if busy[player] or now - (lastTry[player] or 0) < 2 then
 		return false, "One sec..."
 	end
 	lastTry[player] = now
@@ -47,7 +49,20 @@ local function claim(player: Player): (boolean, string)
 	if table.find(profile.Claimed, KEY) then
 		return false, "Already claimed!"
 	end
-	if not inGroup(player) then
+	if profile.RoundsWon < 1 then
+		return false, "Win a round first!"
+	end
+	busy[player] = true
+	local member = inGroup(player)
+	busy[player] = nil
+	profile = DataService.Get(player)
+	if not profile or not player.Parent then
+		return false, "Try again later!"
+	end
+	if table.find(profile.Claimed, KEY) then
+		return false, "Already claimed!"
+	end
+	if not member then
 		return false, "Join the group first!"
 	end
 	DataService.Update(player, function(p)
@@ -68,6 +83,7 @@ function GiftService.Init()
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		lastTry[player] = nil
+		busy[player] = nil
 	end)
 end
 

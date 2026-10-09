@@ -511,8 +511,9 @@ function Transitions.Init()
 				local murdererWon = text.Won == "Murderer"
 				local mine = tonumber(text.MurdererId) == Players.LocalPlayer.UserId
 				if murdererWon == mine then
-					task.delay(4, Favorite.Ask, if mine then "murderer_win" else "round_win")
-					task.delay(12, GiftCard.Offer) -- (after the favourite prompt: one ask at a time)
+					task.delay(6.5, Favorite.Ask, if mine then "murderer_win" else "round_win", function()
+						task.delay(3, GiftCard.Offer)
+					end)
 				end
 			end
 			return

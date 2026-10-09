@@ -52,8 +52,12 @@ local function build(): Frame
 		MaximumTextSize = 52,
 	}, function()
 		local ok, status = pcall(GroupService.PromptJoinAsync, GroupService, GameConfig.CommunityGroupId)
-		if ok and status ~= Enum.GroupMembershipStatus.None then
+		if
+			ok and (status == Enum.GroupMembershipStatus.Joined or status == Enum.GroupMembershipStatus.AlreadyMember)
+		then
 			claim(result)
+		elseif ok and status == Enum.GroupMembershipStatus.JoinRequestPending then
+			result.Text = "Join request sent!"
 		end
 	end)
 	Theme.button(body, "CLAIM", Theme.Gold, {
