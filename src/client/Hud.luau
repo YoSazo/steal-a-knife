@@ -364,13 +364,50 @@ function Hud.Init()
 	-- (No Upgrades button any more: the wheel + trail are one "Upgrade Wheel" sign by your Haunted
 	-- Wheel, the vault floor is the Upgrade Base sign / the Knives panel, and Health is gone.)
 
+	-- Speed and Cash count up to their new value (a jump to the new number is easy to miss) and
+	-- punch on every gain: progress you can SEE. (Losses - rebirth, spending - snap at once.)
+	local shown = {
+		Cash = (player:GetAttribute("Cash") or 0) :: number,
+		Speed = (player:GetAttribute("Speed") or 0) :: number,
+	}
+	local rolling: { [string]: number } = {}
+	local function punch(label: TextLabel, size: number)
+		local scale = label:FindFirstChildOfClass("UIScale") or new("UIScale", {}, label)
+		scale.Scale = size
+		TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+	end
+	local function roll(key: string, label: TextLabel, prefix: string)
+		local target = (player:GetAttribute(key) or 0) :: number
+		local from = shown[key]
+		if target <= from then
+			shown[key] = target
+			rolling[key] = nil
+			label.Text = prefix .. Ui.abbreviate(target)
+			return
+		end
+		local token = (rolling[key] or 0) + 1
+		rolling[key] = token
+		task.spawn(function()
+			local started = os.clock()
+			local length = 0.6
+			while rolling[key] == token do
+				local t = math.min(1, (os.clock() - started) / length)
+				local eased = 1 - (1 - t) ^ 3
+				shown[key] = from + (target - from) * eased
+				label.Text = prefix .. Ui.abbreviate(math.floor(shown[key]))
+				if t >= 1 then
+					break
+				end
+				task.wait()
+			end
+		end)
+	end
+
 	local function refreshStats()
-		local cash = player:GetAttribute("Cash") or 0
 		local slots = player:GetAttribute("Slots") or GameConfig.StartingSlots
-		local speed = player:GetAttribute("Speed") or 0
 		local rebirths = player:GetAttribute("Rebirths") or 0
-		cashLabel.Text = `${Ui.abbreviate(cash)}`
-		speedLabel.Text = Ui.abbreviate(speed)
+		roll("Cash", cashLabel, "$")
+		roll("Speed", speedLabel, "")
 		incomeLabel.Text = `+${Ui.abbreviate(player:GetAttribute("Income") or 0)}/s`
 		rackLabel.Text = PenMode.Words(`{player:GetAttribute("KnifeCount") or 0}/{slots} in your vault`)
 			.. (if rebirths > 0 then `  ·  Rebirth {rebirths}` else "")
@@ -398,9 +435,13 @@ function Hud.Init()
 		local cash = (player:GetAttribute("Cash") or 0) :: number
 		local gained = cash - lastCash
 		lastCash = cash
-		if gained <= 0 or Ui.Phone or Ui.menuOpen() then
+		if gained <= 0 or Ui.menuOpen() then
 			return
 		end
+		punch(
+			cashLabel,
+			if gained >= math.max(100, ((player:GetAttribute("Income") or 0) :: number) * 5) then 1.3 else 1.12
+		)
 		local pop = Ui.label({
 			Position = UDim2.fromOffset(60 + math.random(0, 120), 70),
 			Size = UDim2.fromOffset(160, 30),
@@ -417,12 +458,24 @@ function Hud.Init()
 			TweenService:Create(stroke, info, { Transparency = 1 }):Play()
 		end
 		game:GetService("Debris"):AddItem(pop, 1)
-		-- Big gains make the number punch
-		if gained >= math.max(100, ((player:GetAttribute("Income") or 0) :: number) * 5) then
-			local scale = cashLabel:FindFirstChildOfClass("UIScale") or new("UIScale", {}, cashLabel)
-			scale.Scale = 1.25
-			TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+	end)
+
+	-- Speed: every gain punches the number, and one that didn't already fly shoes in (a Robux pack,
+	-- an Index reward...) flies them now: Speed never just changes
+	local lastSpeed = (player:GetAttribute("Speed") or 0) :: number
+	player:GetAttributeChangedSignal("Speed"):Connect(function()
+		local speed = (player:GetAttribute("Speed") or 0) :: number
+		local gained = speed - lastSpeed
+		lastSpeed = speed
+		if gained <= 0 then
+			return
 		end
+		punch(speedLabel, 1.2)
+		task.delay(0.35, function()
+			if os.clock() - Ui.LastFlyIn.Speed > 0.8 and Ui.FlyIn and not Ui.menuOpen() then
+				Ui.FlyIn(false, nil, 8)
+			end
+		end)
 	end)
 
 	-- Results banner (big, centre) for the few seconds between a round and the next intermission

@@ -326,9 +326,10 @@ function Transitions.Init()
 	-- shoe at the bottom left (Ui.SpeedIcon), which pops with every one that lands
 	local function shoeShower(fromCard: GuiObject, cash: boolean?, amount: number?)
 		local target = (if cash then Ui.CashIcon else Ui.SpeedIcon) :: GuiObject?
-		if not target or not target.Parent or not fromCard.Parent then
-			return
+		if not target or not target.Parent or not fromCard.Parent or not target.Visible then
+			return -- (a hidden readout: shoes flying into nothing)
 		end
+		Ui.LastFlyIn[if cash then "Cash" else "Speed"] = os.clock()
 		local root = Ui.root
 		local scale = math.max(Ui.Scale.Scale, 0.01)
 		local function local_(at: Vector2): UDim2
@@ -385,6 +386,21 @@ function Transitions.Init()
 				end
 			end)
 		end
+	end
+
+	-- Anything else that adds Speed / Cash flies in from where it happened (Ui.FlyIn)
+	Ui.FlyIn = function(cash: boolean, at: Vector2?, count: number?)
+		local root = Ui.root
+		local scale = math.max(Ui.Scale.Scale, 0.01)
+		local screen = at or (root.AbsolutePosition + root.AbsoluteSize / 2)
+		local p = (screen - root.AbsolutePosition) / scale
+		local source = Ui.new("Frame", {
+			Size = UDim2.fromOffset(1, 1),
+			Position = UDim2.fromOffset(p.X, p.Y),
+			BackgroundTransparency = 1,
+		}, root)
+		shoeShower(source, cash, count or 8)
+		Debris:AddItem(source, 2)
 	end
 
 	-- The round prize, paid once you're home: "You won! +$4.2M" (a knife shows its picture)

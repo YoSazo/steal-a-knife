@@ -420,6 +420,20 @@ function Guide.Init()
 			TweenService:Create(label, TweenInfo.new(0.6), { TextColor3 = Color3.fromRGB(255, 235, 120) }):Play()
 		end
 	end
+	-- A ladder step banked: the SURVIVE line itself flashes green and pops, right as the shoes
+	-- fly into your Speed (then it shows the next, bigger step)
+	local lastBanked = 0
+	player:GetAttributeChangedSignal("RoundSpeedBanked"):Connect(function()
+		local banked = (player:GetAttribute("RoundSpeedBanked") or 0) :: number
+		local grew = banked > lastBanked
+		lastBanked = banked
+		if grew and current and current.Id == "round_speed" then
+			label.TextColor3 = Color3.fromRGB(120, 255, 140)
+			TweenService:Create(label, TweenInfo.new(0.7), { TextColor3 = Color3.fromRGB(255, 235, 120) }):Play()
+			pop.Scale = 1.25
+			TweenService:Create(pop, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+		end
+	end)
 	player:GetAttributeChangedSignal("KnifePlacementSerial"):Connect(function()
 		local item = player:GetAttribute("LastPlacedKnife")
 		if type(item) == "string" and unlockedTier then

@@ -21,6 +21,7 @@ local PenMode = require(ReplicatedStorage.Shared:WaitForChild("PenMode"))
 local CoffinModel = require(ReplicatedStorage.Shared:WaitForChild("CoffinModel"))
 local Lod = require(script.Parent.Lod)
 local TopLine = require(script.Parent.TopLine)
+local Ui = require(script.Parent.Ui)
 local WorldSignInput = require(script.Parent.WorldSignInput)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
@@ -809,6 +810,12 @@ local handlers: { [string]: (...any) -> () } = {
 		-- Auto Collect repeats for every occupied plate each tick; income stays visible but quiet.
 		if not automatic then
 			Effects.Sound(Sounds.Cash, nil, 0.9)
+			-- the bills fly from where you picked them up into your cash (show, don't tell)
+			local camera = workspace.CurrentCamera
+			local screen, visible = camera:WorldToScreenPoint(position)
+			if Ui.FlyIn then
+				Ui.FlyIn(true, if visible then Vector2.new(screen.X, screen.Y) else nil, 5)
+			end
 		end
 	end,
 	IndexClaim = function(cash: number, speed: number)
@@ -817,10 +824,16 @@ local handlers: { [string]: (...any) -> () } = {
 		if root then
 			Effects.FloatText(
 				root.Position + Vector3.new(0, 3, 0),
-				`+${Format.Short(cash)}  +{Format.Short(speed)}⚡`,
+				`+${Format.Short(cash)}  +{Format.Short(speed)} 👟`,
 				Color3.fromRGB(255, 230, 90)
 			)
 			Effects.Burst(root.Position, Color3.fromRGB(80, 170, 255), 50, 20, 0.8)
+		end
+		if Ui.FlyIn then
+			Ui.FlyIn(true, nil, 6)
+			if speed > 0 then
+				task.delay(0.3, Ui.FlyIn, false, nil, 8)
+			end
 		end
 	end,
 }

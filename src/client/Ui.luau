@@ -428,6 +428,10 @@ Ui.SpeedIcon = nil :: GuiObject?
 Ui.CashIcon = nil :: GuiObject? -- (a cash prize flies into it)
 -- Opens the shop on a tab ("Featured" / "Speed" / "Money"): the ➕ on the Speed / Cash readouts
 Ui.OpenShop = nil :: ((tab: string) -> ())?
+-- Show, don't tell: anything that adds Speed (shoes) or Cash (bills) flies into its readout, from a
+-- screen point (nil = the middle). Set by client/Transitions. LastFlyIn = os.clock() of the last one.
+Ui.FlyIn = nil :: ((cash: boolean, at: Vector2?, count: number?) -> ())?
+Ui.LastFlyIn = { Speed = 0, Cash = 0 }
 Layout.bind(Ui.root)
 player:WaitForChild("PlayerGui").ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor
 -- Phones: the free strip of Roblox's top bar, between its buttons on the left and our shift-lock
