@@ -88,6 +88,7 @@ local GameConfig = {
 		TutorialSeconds = 6, -- a new player's first coffins: a short countdown, then it opens
 		WinRounds = 2,
 		OfflineSecondsPerRound = 234, -- 540 * 130 / 300; hatch minutes remain unchanged
+		WinnerLuck = 2, -- mutation roll weight boost until the next round starts
 		AnnounceFrom = "Mythic", -- coffins of this rarity and up are announced to the server
 	},
 	Daily = DAILY,

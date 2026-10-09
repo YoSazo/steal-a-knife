@@ -31,6 +31,10 @@ function CoffinService.Luck(player: Player, profile: DataService.Profile): numbe
 	if player:GetAttribute("Pass_Luck") == true then
 		luck *= 2
 	end
+	if player:GetAttribute("WinnerLuck") then
+		luck *= CONFIG.WinnerLuck
+	end
+	luck *= (ReplicatedStorage:GetAttribute("MutationLuckMultiplier") or 1) :: number
 	return luck
 end
 
@@ -54,13 +58,13 @@ end
 
 -- A boss's knife going into your coffin gets one more mutation / size roll with your luck (rebirths,
 -- the Luck pass, potions); the better of the two is what's inside. Nobody sees it until it opens.
-function CoffinService.LuckyContents(player: Player, item: string): string
+function CoffinService.LuckyContents(player: Player, item: string, openingLuck: number?): string
 	local profile = DataService.Get(player)
 	local parsed = Items.Parse(item)
 	if not profile or not parsed then
 		return item
 	end
-	local luck = CoffinService.Luck(player, profile)
+	local luck = openingLuck or CoffinService.Luck(player, profile)
 	if luck <= 1 then
 		return item
 	end
@@ -68,7 +72,7 @@ function CoffinService.LuckyContents(player: Player, item: string): string
 	return Items.Make(
 		parsed.Name,
 		if mutation.Rank > parsed.Mutation.Rank then mutation.Id else parsed.Mutation.Id,
-		if size.Rank > parsed.Size.Rank then size.Id else parsed.Size.Id
+		if size.Income > parsed.Size.Income then size.Id else parsed.Size.Id
 	)
 end
 
@@ -127,7 +131,7 @@ function CoffinService.GiveRarity(player: Player, rarity: string, source: string
 	if not profile then
 		return nil
 	end
-	local item = Items.RollKnife(rng, rarity, CoffinService.Luck(player, profile))
+	local item = Items.RollKnife(rng, rarity, 1)
 	return CoffinService.Give(player, item, source, quiet)
 end
 
@@ -158,6 +162,7 @@ function CoffinService.Open(player: Player, plate: number, how: string)
 	end
 	popping[key] = true
 	local openingItem = profile.Knives[index]
+	local openingLuck = if entry.Paid then 1 else CoffinService.Luck(player, profile)
 	-- The pop (client/Coffins): everyone sees it shake harder and the lid fly open, then the reveal
 	local first = Items.Parse(profile.Knives[index])
 	Net.Remotes.Effect:FireAllClients("CoffinPop", player.UserId, plate, if first then first.Knife.Rarity else "Common")
@@ -172,13 +177,13 @@ function CoffinService.Open(player: Player, plate: number, how: string)
 			and liveIndex
 			and live.Knives[liveIndex] == openingItem
 		then
-			CoffinService.Reveal(player, plate, how)
+			CoffinService.Reveal(player, plate, how, openingLuck)
 		end
 	end)
 end
 
 -- The reveal: the knife appears and flies to its owner (CoffinService.Open pops the lid first)
-function CoffinService.Reveal(player: Player, plate: number, how: string)
+function CoffinService.Reveal(player: Player, plate: number, how: string, openingLuck: number?)
 	local profile = DataService.Get(player)
 	if not profile then
 		return
@@ -189,12 +194,19 @@ function CoffinService.Reveal(player: Player, plate: number, how: string)
 		return
 	end
 	local roundsLeft = entry.Rounds
-	local item = profile.Knives[index]
+	local item = if entry.Paid
+		then profile.Knives[index]
+		else CoffinService.LuckyContents(player, profile.Knives[index], openingLuck)
 	local parsed = Items.Parse(item)
 	-- (it joins your Index now, not when the coffin landed: what's inside was a secret till now)
 	local isNew = parsed ~= nil and not table.find(profile.Discovered, parsed.Name)
 	DataService.Update(player, function(p)
-		DataService.Unseal(p, plate)
+		if p.Knives[index] ~= item then
+			DataService.RemoveKnife(p, index)
+			DataService.AddKnife(p, item, plate)
+		else
+			DataService.Unseal(p, plate)
+		end
 		if isNew and parsed then
 			table.insert(p.Discovered, parsed.Name)
 		end
@@ -270,6 +282,22 @@ function CoffinService.OpenNow(player: Player): boolean
 	BaseService.RefreshRack(player)
 	Net.Notify(player, "⚰️ READY! Tap to unlock!", "good")
 	return true
+end
+
+-- This bonus follows the server's round boundary, not a client countdown.
+function CoffinService.RoundStarted()
+	for _, player in Players:GetPlayers() do
+		player:SetAttribute("WinnerLuck", nil)
+	end
+end
+function CoffinService.Winner(player: Player)
+	local token = workspace:GetServerTimeNow()
+	player:SetAttribute("WinnerLuck", token)
+	task.delay(GameConfig.ResultsTime + 0.3, function()
+		if player.Parent and player:GetAttribute("WinnerLuck") == token then
+			Net.Remotes.Effect:FireClient(player, "Announce", "🍀 WINNER'S LUCK x2!", Color3.fromRGB(90, 255, 130), 1)
+		end
+	end)
 end
 
 -- At results, winners advance twice as far. Due coffins wait for a tap.

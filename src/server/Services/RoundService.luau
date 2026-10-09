@@ -1426,6 +1426,7 @@ giveWeapon = function(round: Round)
 end
 
 local function startRound(participants: { Player })
+	CoffinService.RoundStarted()
 	local built = MapService.BuildRoundMap() -- (a random map: the vote was cut)
 	ReplicatedStorage:SetAttribute("MapName", built.Name)
 	RoundBots.SetMap(built.Folder)
@@ -1803,6 +1804,7 @@ local function endRound(round: Round)
 		local won = if player == murderer then not innocentsWon and round.Kills > 0 else innocentsWon
 		Progress.Finish(player, (alive and player ~= murderer) or round.Hero == player or (player == murderer and won))
 		if won and player.Parent then
+			CoffinService.Winner(player)
 			DataService.Update(player, function(p)
 				p.RoundsWon += 1
 			end)

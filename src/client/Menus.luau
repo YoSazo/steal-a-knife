@@ -16,7 +16,6 @@ local Ui = require(script.Parent.Ui)
 local Theme = require(script.Parent.MenuTheme)
 local IndexView = require(script.Parent.IndexView)
 local RebirthView = require(script.Parent.RebirthView)
-local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
 local new = Ui.new

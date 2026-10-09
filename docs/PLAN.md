@@ -195,7 +195,15 @@ The creature's speed sign is readable up close at 640 x 320.
   a CoreGUI-position warning while injecting test input).
   More's stats values are now only rebirths and wins; full UI-kit/grid migration remains item 7.
 
-**Next:** remaining hatch layer (items 16-17: Winner's Luck, fuse machine), then Secret, maps, shop and remaining work.
+- **Item 16 complete:** round winners receive Winner's Luck through the
+  following stealing break; the next round start clears it for everyone. A delayed surprise
+  `🍀 WINNER'S LUCK x2!` banner follows results; the active bonus appears in My Knives. Luck now
+  rolls at the READY tap (snapshot before the lid animation), preserving an existing stronger
+  mutation/size. Paid roll entries bypass further luck changes so their shown odds can remain
+  exact. Studio win attributes, phone bonus display, READY opening and next Reveal clearing
+  tested; a Diamond coffin remained Diamond. Exact banner payload visually checked on desktop and phone. All code checks pass, including the removed unused menu import.
+
+**Next:** the fuse machine (item 17), then Secret, maps, shop and remaining work.
 
 ---
 

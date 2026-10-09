@@ -28,7 +28,7 @@ export type Profile = {
 	NotifyAsked: boolean, -- shown Roblox's notifications opt-in (NotifyService plans "come back" messages)
 	-- knives still in their coffin (CoffinService): Rounds = murder rounds left (nil = a plain timer);
 	-- ReadyAt (os.time) = when it opens anyway, the offline fallback
-	Sealed: { { Plate: number, ReadyAt: number, Rounds: number? } },
+	Sealed: { { Plate: number, ReadyAt: number, Rounds: number?, Paid: boolean? } },
 	Equipped: string, -- item you fight with / bring into rounds as the Murderer; "" = best owned
 	Discovered: { string }, -- every catalog knife ever owned (plain names), for the collection book
 	-- (old saves: the cut Innocent Powers, kept only so InventoryService can refund them once)
@@ -198,21 +198,6 @@ local function reconcile(data: any): Profile
 			learned[skill] = math.clamp(math.floor(count), 0, limit)
 		end
 	end
-	-- Existing saves already prove these actions; adding coaching must not restart their learning.
-	learned.delivery =
-		math.max(learned.delivery or 0, if firsts.second_knife_home then 2 elseif firsts.knife_home then 1 else 0)
-	if firsts.cash_collected then
-		learned.collect = 1
-	end
-	if firsts.wheel_trained then
-		learned.train = 1
-	end
-	if profile.TrailLevel > 0 then
-		learned.wheel = 1
-	end
-	if #profile.IndexClaimed > 0 then
-		learned.index = 1
-	end
 	profile.GuidanceLearned = learned
 	profile.Source = profile.Source:sub(1, 300)
 	profile.Speed = math.max(0, profile.Speed)
@@ -363,12 +348,15 @@ function DataService.IsSealedIndex(profile: Profile, index: number): boolean
 	return plate ~= nil and DataService.SealedReadyAt(profile, plate) ~= nil
 end
 
-function DataService.Seal(profile: Profile, plate: number, readyAt: number, rounds: number?)
+function DataService.Seal(profile: Profile, plate: number, readyAt: number, rounds: number?, paid: boolean?)
 	DataService.Unseal(profile, plate)
-	table.insert(profile.Sealed, { Plate = plate, ReadyAt = readyAt, Rounds = rounds })
+	table.insert(profile.Sealed, { Plate = plate, ReadyAt = readyAt, Rounds = rounds, Paid = paid })
 end
 
-function DataService.SealedEntry(profile: Profile, plate: number): { Plate: number, ReadyAt: number, Rounds: number? }?
+function DataService.SealedEntry(
+	profile: Profile,
+	plate: number
+): { Plate: number, ReadyAt: number, Rounds: number?, Paid: boolean? }?
 	for _, entry in profile.Sealed do
 		if entry.Plate == plate then
 			return entry

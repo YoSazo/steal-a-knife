@@ -499,10 +499,7 @@ local function deposit(player: Player)
 	local sealed = needsCoffin
 	-- (the tutorial's coffin: it lands and counts down a few seconds - Steal an Egg's egg - then opens)
 	local quick = sealed and (starter or not profile.TutorialDone)
-	if sealed and not quick then
-		item = CoffinService.LuckyContents(player, item)
-		parsed = Items.Parse(item) :: Items.Item
-	end
+
 	if carry.Boss then
 		ChanceMeter.Add(player, 1)
 		-- 🤝 Whoever helped (near you when you grabbed it, or your teammate) shares the glory

@@ -79,7 +79,8 @@ function QuickBar.Init()
 		local cash = (player:GetAttribute("Cash") or 0) :: number
 		local cost, step = PenMode.RoomUpgrade(slots)
 		local n = #Ui.list(player:GetAttribute("Knives"))
-		count.Text = `{n} {if n == 1 then "Knife" else "Knives"}`
+		count.Text =
+			`{n} {if n == 1 then "Knife" else "Knives"}{if player:GetAttribute("WinnerLuck") then " 🍀 x2" else ""}`
 		SimpleUi.set(
 			room,
 			if slots >= PenMode.MaxSlots() then "Full size!" else `+{step} room {Format.Cash(cost)}`,
@@ -228,6 +229,7 @@ function QuickBar.Init()
 		end)
 	end
 	player:GetAttributeChangedSignal("Cash"):Connect(refreshRoom)
+	player:GetAttributeChangedSignal("WinnerLuck"):Connect(refreshRoom)
 	frame:GetPropertyChangedSignal("Visible"):Connect(function()
 		if frame.Visible then
 			refresh()
