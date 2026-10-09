@@ -29,6 +29,36 @@ buys pen upgrades → faster → steal deeper. The round is also the stage where
 
 Test every step in Studio before starting the next.
 
+## LAUNCH NOW (owner, 2026-10-09): ship what's playable and start ads
+
+The owner wants ads running on what's playable today. **Codex: do only this list, in order, then
+stop adding features.** Everything else waits for real player data.
+
+1. **Publish + live smoke test (not Studio):** publish to the real place; join on PC and on a
+   phone (two accounts if possible). Full loop: first coffin steal → place → round (hide, ladder,
+   weapons at 10 s) → READY tap → collect cash → buy room → a deeper steal. DataStores save across
+   a rejoin. Console clean (F9 server + client). Fix only what breaks the loop.
+2. **Robux:** every product/pass in the shop has a real id and buys on the live game (one cheap
+   test buy). The Featured coffin stays hidden until its tile exists (fine to launch without it).
+3. **Store page (owner):** title `[MURDER] Steal a Knife`, server size 8, icon + 3 thumbnails
+   (a monster chase, a murder round, a pen of glowing characters), age questionnaire done, public.
+4. **Ads (owner):** Ads Manager sponsored-experience campaign on a small daily budget; judge it
+   on D1 retention, average session length and CTR (analytics funnel, docs/ANALYTICS.md), not
+   on visits.
+
+**After launch** (from the data, not before): the Featured coffin shop tile (item 21 server side
+is done), the weekly drop (item 26: a new limited character each week, then one row in
+`Config/Featured`; the first three weeks are already scheduled), the shared menu style + events
+board (items 7-8), the rest of the text pass (28), cutting what nobody uses (23), and round-map
+cover if rounds show few kills or the Murderer can't hide (see below).
+
+**Round maps vs MM2 suspense (check in the first data):** the biome arenas are open 160x140-stud
+arenas with four hedges and two sheds, in full daylight. MM2's suspense comes from breaking line
+of sight (corners, rooms, doorways), so the Murderer can get close unseen and nobody knows who's
+around the next corner. Watch kills per round, how often innocents win by the timer, and
+how long until the first kill. If the first kill is slow or the Murderer gets spotted from
+across the map, add more and taller cover (maze-like hedge rows, more sheds), not new maps.
+
 ## Status (cloud session, 2026-10-08): code done, first Studio pass below
 
 Everything below was written in a cloud session with no Studio: it is type-checked (luau-lsp) and
