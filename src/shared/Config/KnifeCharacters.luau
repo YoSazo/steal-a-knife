@@ -2,6 +2,7 @@
 -- Art metadata only; keys used by saves/trades remain unchanged.
 export type Character = {
 	Display: string,
+	Geometry: string?,
 	Personality: string,
 	Rarity: string,
 	Height: number,
@@ -252,4 +253,8 @@ local names: { [string]: Character } = {
 		GlowStyle = "Pupil",
 	},
 }
+local secret = table.clone(names.VoidEdge)
+secret.Display, secret.Rarity, secret.Geometry = "Otto", "Secret", "VoidEdge"
+names.NightWhisper = secret
+
 return names

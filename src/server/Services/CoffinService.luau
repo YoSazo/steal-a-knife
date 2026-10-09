@@ -128,7 +128,7 @@ end
 -- A mystery knife of this rarity (a 4% chance of one rarity up), rolled with the player's luck
 function CoffinService.GiveRarity(player: Player, rarity: string, source: string, quiet: boolean?): string?
 	local profile = DataService.Get(player)
-	if not profile then
+	if not profile or rarity == "Secret" then
 		return nil
 	end
 	local item = Items.RollKnife(rng, rarity, 1)

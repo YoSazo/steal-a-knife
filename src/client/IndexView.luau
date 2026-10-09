@@ -55,6 +55,10 @@ function View.Build(): (Frame, () -> number)
 	}, body)
 	Ui.new("UIListLayout", { Padding = UDim.new(0, 7), SortOrder = Enum.SortOrder.LayoutOrder }, filters)
 	Ui.padding(filters, 3, 3)
+	local filterPadding = filters:FindFirstChildOfClass("UIPadding")
+	if filterPadding then
+		filterPadding.PaddingBottom = UDim.new(0, 60)
+	end
 	local grid = Ui.new("ScrollingFrame", {
 		Name = "Collection",
 		Position = UDim2.fromOffset(142, contentTop),

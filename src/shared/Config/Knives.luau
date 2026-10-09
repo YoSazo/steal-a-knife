@@ -19,7 +19,7 @@ export type Knife = {
 	AssetId: number?, -- filled in once the Blender mesh is uploaded (tools/upload_model.py)
 }
 
-local Rarities = { "Common", "Rare", "Epic", "Legendary", "Mythic", "Godly", "Celestial", "Cosmic" }
+local Rarities = { "Common", "Rare", "Epic", "Legendary", "Mythic", "Godly", "Celestial", "Cosmic", "Secret" }
 
 local RarityColors: { [string]: Color3 } = {
 	Common = Color3.fromRGB(200, 205, 215),
@@ -30,6 +30,7 @@ local RarityColors: { [string]: Color3 } = {
 	Godly = Color3.fromRGB(255, 95, 185),
 	Celestial = Color3.fromRGB(150, 240, 255),
 	Cosmic = Color3.fromRGB(130, 80, 255),
+	Secret = Color3.fromRGB(220, 255, 235),
 }
 
 local rgb = Color3.fromRGB
@@ -262,6 +263,19 @@ local list: { Knife } = {
 		rgb(60, 220, 255),
 		rgb(20, 10, 40),
 		{ Neon = true }
+	),
+	knife(
+		"NightWhisper",
+		"Otto",
+		"Secret",
+		50e9,
+		2400,
+		3.6,
+		0.65,
+		rgb(25, 35, 35),
+		rgb(220, 255, 235),
+		rgb(10, 15, 15),
+		{ Mesh = "VoidEdge", Neon = true }
 	),
 }
 
