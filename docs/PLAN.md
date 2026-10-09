@@ -376,7 +376,7 @@ Bundle `update8.bundle` merged at 5626bd3 and pushed; both PLAN progress section
 - **Title (item 24, in-game part):** loading screen "STEAL A KNIFE", console tags. The Roblox
   title "[MURDER] Steal a Knife" is set on the Creator Dashboard by the owner.
 
-### Current owner corrections, 2026-10-09 (implemented; publishing next)
+### Current owner corrections, 2026-10-09 (pushed and published v870)
 
 These owner choices supersede the older art freeze, eight-player layout, long hatch waits and
 return-after-results notes in this document.
@@ -440,7 +440,8 @@ return-after-results notes in this document.
   not player telemetry. The fit output now preserves seven decimals instead of rounding away
   a digit that changed a milestone by one round.
 - Static validation: StyLua, Selene, sourcemap and luau-lsp pass. Source/Blender/art files are
-  prepared for commit/push/publish. Physical live phone check belongs to the owner; live saving
+  committed and pushed as aaa3923. Studio confirmed PublishSuccessful and publication v870
+  at 16:38:52 America/Chicago (21:38:52 UTC); debug settings were cleared before publishing. Physical live phone check belongs to the owner; live saving
   across rejoin and one actual Robux transaction remain unverified.
 
 ### Codex UI/art brief, 2026-10-09
