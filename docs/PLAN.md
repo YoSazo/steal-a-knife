@@ -384,8 +384,18 @@ Bundle `update8.bundle` merged at 5626bd3 and pushed; both PLAN progress section
   The complete Speed/Cash row is a sibling tap target, independent of the animated icon. Removed
   an old number text-size cap. Desktop 1920x1080 preset and fresh 640x320 phone checked for UI
   sizing; phone viewport 640x300, rows 176x44, both far-right number taps opened their correct
-  shop tabs. Model/world verification is pending: Studio MCP currently captures a black 3D view
-  behind the working GUI. New hub/pen/win changes from bcfc200 still need their full Studio pass.
+  shop tabs. The earlier black 3D capture cleared after restart; the desktop and fresh-phone world view
+  is rendering again. New hub/pen/win changes from bcfc200 still need their full Studio pass.
+
+- **Step 2:** objective/tutorial/status backgrounds are fully transparent; text uses a thicker
+  black outline. Intermission explicitly says `MURDER ROUND IN 1:10` in large text, including
+  phone, without shrinking into the 14px status strip. Phone readouts move below this line and
+  the Slow toggle has a 62x44 target beside the countdown, clear of the native top-left controls.
+  Desktop 1920x1080 preset and fresh 640x320 phone verified; backgrounds = 1, countdown text
+  complete. Results say ROUND OVER rather than claiming the next round starts during results.
+- **9a596cd merged:** preserved the UI changes and Claude's per-coffin rarity/character/special
+  odds. Corrected one Selene shadowing warning. Normal and promoted/special coffin labels
+  checked through the live Studio stock hook. Selene, StyLua, sourcemap and luau-lsp pass.
 
 ### Claude cloud, 2026-10-09 (3): show, don't tell + a tighter hub (CODEX: CHECK IN STUDIO)
 

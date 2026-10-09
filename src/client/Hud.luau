@@ -160,7 +160,14 @@ function Hud.Init()
 		if phase == "Reveal" then
 			return nil
 		end
-		return { Text = `🔪 {Ui.clock(left)}`, Pulse = phase == "Intermission" and left <= 10 and left > 0 }
+		if phase == "Results" then
+			return { Text = "ROUND OVER!", Large = true }
+		end
+		return {
+			Text = `🔪 MURDER ROUND IN {Ui.clock(left)}`,
+			Large = true,
+			Pulse = phase == "Intermission" and left <= 10 and left > 0,
+		}
 	end
 	type SignLabels = { Title: TextLabel, Price: TextLabel, Count: TextLabel, Alert: TextLabel }
 	local function signLabels(surface: SurfaceGui): SignLabels?
@@ -618,6 +625,12 @@ function Hud.Init()
 		-- (not hidden while the knife is held: they never overlap, and taps made it flicker)
 		stats.Visible = not Ui.menuOpen()
 		cashLabel.Visible = not inRound
+		for _, key in { "SpeedShopTap", "MoneyShopTap" } do
+			local tap = stats:FindFirstChild(key)
+			if tap and tap:IsA("GuiObject") then
+				tap.Visible = not inRound
+			end
+		end
 		if Ui.CashIcon then
 			Ui.CashIcon.Visible = not inRound
 		end
@@ -1033,7 +1046,8 @@ function Hud.Init()
 		-- Speed over Cash. Phones keep both rows above the backpack's bottom touch area too.
 		local small = 0
 		stats.AnchorPoint = if Ui.Phone then Vector2.zero else Vector2.new(0, 1)
-		stats.Position = if Ui.Phone then UDim2.fromOffset(x, 46) else UDim2.new(0, x, 1, -12)
+		local top = math.max(46, ((Ui.gui:GetAttribute("TopLineHeight") or 0) :: number) + 8)
+		stats.Position = if Ui.Phone then UDim2.fromOffset(x, top) else UDim2.new(0, x, 1, -12)
 		stats.Size = UDim2.fromOffset(icon + 8 + textWidth, small + row * 2)
 		speedArt.Position, speedArt.Size = UDim2.fromOffset(0, small + (row - icon) / 2), UDim2.fromOffset(icon, icon)
 		cashArt.Position, cashArt.Size =
@@ -1047,6 +1061,7 @@ function Hud.Init()
 		speedLabel.TextSize, cashLabel.TextSize = math.floor(size * 0.9), size
 	end
 	Ui.Layout.Changed:Connect(placeStats)
+	Ui.gui:GetAttributeChangedSignal("TopLineHeight"):Connect(placeStats)
 	placeStats()
 	healthFrame.AnchorPoint, healthFrame.Position, healthFrame.Size =
 		Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -12), UDim2.fromOffset(180, 20)

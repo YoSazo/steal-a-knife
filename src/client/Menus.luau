@@ -318,9 +318,11 @@ function Menus.Init()
 		Text = "",
 		AutoButtonColor = false,
 		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(150, 30),
+		Size = UDim2.fromOffset(150, 44),
 	}, Ui.gui)
 	local track = new("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromScale(0, 0.5),
 		Size = UDim2.fromOffset(58, 28),
 		BackgroundColor3 = Color3.fromRGB(40, 70, 50),
 		ZIndex = 2,
@@ -364,6 +366,13 @@ function Menus.Init()
 		local holder = slowToggle.Parent :: GuiObject?
 		slowToggle.Visible = nav ~= nil and nav.Visible and Ui.inHub()
 		if nav and holder then
+			local compact = Ui.Phone and Ui.Layout.get().Short
+			caption.Visible = not compact
+			slowToggle.Size = if compact then UDim2.fromOffset(62, 44) else UDim2.fromOffset(150, 44)
+			if compact then
+				slowToggle.Position = UDim2.new(1, -76, 0, 36)
+				return
+			end
 			local first: GuiObject? = nil
 			for _, child in nav:GetChildren() do
 				if child:IsA("GuiObject") and child.Visible and child ~= slowButton then
@@ -376,7 +385,7 @@ function Menus.Init()
 			local top = if first then first.AbsolutePosition.Y else nav.AbsolutePosition.Y
 			slowToggle.Position = UDim2.fromOffset(
 				(nav.AbsolutePosition.X - holder.AbsolutePosition.X) / factor,
-				(top - holder.AbsolutePosition.Y) / factor - 30 - 6
+				(top - holder.AbsolutePosition.Y) / factor - 44 - 6
 			)
 		end
 	end)

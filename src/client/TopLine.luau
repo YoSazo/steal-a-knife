@@ -1,6 +1,6 @@
 --!strict
 -- THE line across the top of the screen, in the tutorial's style (Steal An Egg's top line): a thin
--- dark band that fades out at both ends, only as wide as its words.
+-- outlined text floating directly over the world.
 --
 -- Most of the time it rests on what client/Hud gives it (TopLine.Resting: "🔪 MURDER ROUND in 3:12",
 -- in the last minute the prize lines in turn, after the tutorial your next goal, in a round "Courtyard
@@ -19,7 +19,7 @@ local Ui = require(script.Parent.Ui)
 local TopLine = {}
 
 -- Icon: an image drawn right after the words (the prize line's Speed shoe)
-export type Rest = { Text: string, Short: string?, Pill: boolean?, Pulse: boolean?, Icon: string? }
+export type Rest = { Text: string, Short: string?, Pill: boolean?, Pulse: boolean?, Icon: string?, Large: boolean? }
 -- Set by client/Hud: what the line says when no notice is up (nil = hidden)
 TopLine.Resting = nil :: (() -> Rest?)?
 
@@ -37,6 +37,7 @@ local shownText = ""
 local shownPill = false
 local icon: ImageLabel? = nil
 local shownIcon: string? = nil
+local shownLarge = false
 
 local function baseHeight(): number
 	return if Ui.Phone then 32 else 34
@@ -47,19 +48,11 @@ local function build()
 		Name = "TopLine",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.fromScale(0.5, 0),
-		BackgroundColor3 = Color3.fromRGB(8, 10, 22),
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Visible = false,
 		ZIndex = 40,
 	}, Ui.gui) :: Frame
-	Ui.new("UIGradient", {
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 1),
-			NumberSequenceKeypoint.new(0.16, 0.45),
-			NumberSequenceKeypoint.new(0.84, 0.45),
-			NumberSequenceKeypoint.new(1, 1),
-		}),
-	}, frame)
 	local text = Ui.label({
 		AnchorPoint = Vector2.new(0, 0),
 		Position = UDim2.fromOffset(FADE, 0),
@@ -70,7 +63,7 @@ local function build()
 		Text = "",
 		ZIndex = 41,
 	}, frame)
-	Ui.textStroke(text, 1.5)
+	Ui.textStroke(text, 2.5)
 	pulse = Ui.new("UIScale", { Scale = 1 }, text) :: UIScale
 	icon = Ui.new("ImageLabel", {
 		Name = "Icon",
@@ -91,8 +84,11 @@ local function fit(text: string, withPill: boolean)
 	end
 	local _, bounds = Ui.bounds()
 	-- (big enough for a 5-year-old to read at a glance: was 18 / 20)
-	words.TextSize = if showing then (if Ui.Phone then 32 else 36) else (if Ui.Phone then 24 else 28)
-	local compactStrip = if showing then nil else Ui.topStrip("Status")
+	words.TextSize = if showing
+		then (if Ui.Phone then 32 else 36)
+		elseif shownLarge then (if Ui.Phone then 26 else 36)
+		else (if Ui.Phone then 24 else 28)
+	local compactStrip = if showing or shownLarge then nil else Ui.topStrip("Status")
 	-- (a line that won't fit Roblox's narrow phone top bar even at 14 goes under it, full width,
 	-- instead of being cut off: "⚡ GOLDEN GRIFFIN · ...")
 	if compactStrip then
@@ -108,7 +104,7 @@ local function fit(text: string, withPill: boolean)
 		if withPill and pill and not compactStrip then pill.AbsoluteSize.X / math.max(Ui.Scale.Scale, 0.01) + 8 else 0
 	) + iconWidth
 	-- (phones: keep the words between the left and right button columns)
-	local maxLane = if showing
+	local maxLane = if showing or shownLarge
 		then bounds.X - 40
 		else math.max(160, math.min(860, bounds.X - (if Ui.Phone then 2 * 175 else 2 * FADE + 24)) - pillWidth)
 	local plain = text:gsub("<[^>]->", "") -- (RichText tags take no space)
@@ -119,7 +115,9 @@ local function fit(text: string, withPill: boolean)
 	-- (the guide's DO line comes first: the status line goes under it - client/Guide)
 	local doLine = Ui.gui:GetAttribute("DoLine") == true
 	local doInStrip = doLine and Ui.gui:GetAttribute("DoLineInStrip") == true
-	local strip = if showing then nil else compactStrip or (if tutorialInStrip or doInStrip then nil else Ui.topStrip())
+	local strip = if showing or shownLarge
+		then nil
+		else compactStrip or (if tutorialInStrip or doInStrip then nil else Ui.topStrip())
 	local fade = if showing then 16 else FADE
 	if strip then
 		local stripLane = strip.W - 2 * 16 - pillWidth
@@ -284,8 +282,13 @@ function TopLine.Init()
 		scale.Scale = if rest.Pulse then 1.06 + 0.06 * math.abs(math.sin(os.clock() * math.pi)) else 1
 		local wantsPill = rest.Pill == true and pill ~= nil
 		local restText = if Ui.topStrip("Status") and rest.Short then rest.Short else rest.Text
-		if restText ~= shownText or wantsPill ~= shownPill or rest.Icon ~= shownIcon then
-			shownText, shownPill, shownIcon = restText, wantsPill, rest.Icon
+		if
+			restText ~= shownText
+			or wantsPill ~= shownPill
+			or rest.Icon ~= shownIcon
+			or (rest.Large == true) ~= shownLarge
+		then
+			shownText, shownPill, shownIcon, shownLarge = restText, wantsPill, rest.Icon, rest.Large == true
 			text.Text = restText
 			fit(restText, wantsPill)
 		end

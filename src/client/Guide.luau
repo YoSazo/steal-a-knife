@@ -299,30 +299,22 @@ function Guide.Init()
 		Name = "DoLine",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.fromScale(0.5, 0),
-		BackgroundColor3 = Color3.fromRGB(8, 10, 22),
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Visible = false,
 		GroupTransparency = 1,
 		ZIndex = 41,
 	}, Ui.gui) :: CanvasGroup
-	Ui.new("UIGradient", {
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 1),
-			NumberSequenceKeypoint.new(0.16, 0.3),
-			NumberSequenceKeypoint.new(0.84, 0.3),
-			NumberSequenceKeypoint.new(1, 1),
-		}),
-	}, band)
 	local label = Ui.label({
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		TextScaled = false,
 		RichText = true,
-		TextColor3 = Color3.fromRGB(255, 235, 120),
+		TextColor3 = Color3.new(1, 1, 1),
 		Text = "",
 		ZIndex = 42,
 	}, band) :: TextLabel
-	Ui.textStroke(label, 2)
+	Ui.textStroke(label, 2.5)
 	local pop = Ui.new("UIScale", { Scale = 1 }, label) :: UIScale
 
 	local shownText = ""

@@ -670,12 +670,12 @@ end
 -- An everyday coffin reads "1 in 3", a lucky one "1 in 75" or "1 in 1,000". (The mutation itself
 -- stays hidden.)
 local function comma(n: number): string
-	local text = tostring(math.floor(n))
+	local formatted = tostring(math.floor(n))
 	while true do
-		local swapped, count = text:gsub("^(%d+)(%d%d%d)", "%1,%2")
-		text = swapped
+		local swapped, count = formatted:gsub("^(%d+)(%d%d%d)", "%1,%2")
+		formatted = swapped
 		if count == 0 then
-			return text
+			return formatted
 		end
 	end
 end

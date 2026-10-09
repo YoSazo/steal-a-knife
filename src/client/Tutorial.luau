@@ -170,18 +170,9 @@ local function run(startAt: number, replay: boolean)
 	local banner = new("Frame", {
 		Name = "TutorialBar",
 		AnchorPoint = Vector2.new(0.5, 0),
-		BackgroundColor3 = Color3.fromRGB(8, 10, 22),
-		BackgroundTransparency = 0,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 	}, Ui.gui)
-	new("UIGradient", {
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 1),
-			NumberSequenceKeypoint.new(0.18, 0.45),
-			NumberSequenceKeypoint.new(0.82, 0.45),
-			NumberSequenceKeypoint.new(1, 1),
-		}),
-	}, banner)
 	local stepLabel = Ui.label({
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.fromScale(0.5, 0),
@@ -189,17 +180,17 @@ local function run(startAt: number, replay: boolean)
 		TextColor3 = Color3.new(1, 1, 1),
 		Text = "",
 	}, banner)
-	Ui.textStroke(stepLabel, 1.5)
+	Ui.textStroke(stepLabel, 2.5)
 	stepLabel.TextScaled, stepLabel.TextWrapped = true, false
 	local textLimit = stepLabel:FindFirstChildOfClass("UITextSizeConstraint")
 	if textLimit then
-		textLimit.MinTextSize, textLimit.MaxTextSize = 12, 20
+		textLimit.MinTextSize, textLimit.MaxTextSize = 22, 32
 	end
 	local function layout()
 		local _, bounds = Ui.bounds()
 		local phone = Ui.Phone
-		local height = if phone then 36 else 34
-		stepLabel.TextSize = if phone then 19 else 20
+		local height = if phone then 36 else 42
+		stepLabel.TextSize = if phone then 24 else 30
 		-- Only as wide as the words (plus the fade at each end), never the whole screen
 		local reserve = 0
 		-- Phones: up in Roblox's top bar (Ui.topStrip), with short fades so it fits
