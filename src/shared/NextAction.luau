@@ -198,6 +198,7 @@ function NextAction.Pick(s: State): Action?
 			return {
 				Id = "steal",
 				Text = `Steal another coffin from the {monster(zone)}!`,
+				Short = `Steal: {monster(zone)}!`,
 				Target = "Lair",
 				Zone = zone,
 			}

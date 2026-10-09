@@ -324,6 +324,10 @@ function Guide.Init()
 		-- (the objective: big, the first thing a kid reads - was 19 / 22)
 		label.TextSize = if Ui.Phone then 28 else 36
 		local strip = Ui.topStrip()
+		if Ui.Phone and displayAction and displayAction.Short then
+			shownText = displayAction.Short
+			label.Text = shownText
+		end
 		local plain = shownText:gsub("<[^>]->", "")
 		local width = TextService:GetTextSize(plain, label.TextSize, label.Font, Vector2.new(4000, 100)).X
 		if width > (if strip then strip.W else math.huge) - 32 and displayAction and displayAction.Short then
@@ -341,8 +345,8 @@ function Guide.Init()
 				strip = nil
 			end
 		end
-		local fade = if strip then 16 else FADE
-		local room = if strip then strip.W else math.min(900, bounds.X - 24)
+		local fade = if strip or Ui.Phone then 16 else FADE
+		local room = if strip then strip.W elseif Ui.Phone then bounds.X - 256 else math.min(900, bounds.X - 24)
 		local lane = room - 2 * fade
 		if width > lane then
 			-- shorter words first (down to 20), never two lines

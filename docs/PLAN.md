@@ -393,6 +393,9 @@ Bundle `update8.bundle` merged at 5626bd3 and pushed; both PLAN progress section
   the Slow toggle has a 62x44 target beside the countdown, clear of the native top-left controls.
   Desktop 1920x1080 preset and fresh 640x320 phone verified; backgrounds = 1, countdown text
   complete. Results say ROUND OVER rather than claiming the next round starts during results.
+  Short phones use two 146x44 readouts side by side, with no overlap with the knife joystick;
+  the shorter monster objective clears the Shop/Index column. Normal/promotion/special stock
+  fixtures displayed 1 in 3 / 1 in 75 / 1 in 1,000; the mutation stays hidden.
 - **9a596cd merged:** preserved the UI changes and Claude's per-coffin rarity/character/special
   odds. Corrected one Selene shadowing warning. Normal and promoted/special coffin labels
   checked through the live Studio stock hook. Selene, StyLua, sourcemap and luau-lsp pass.

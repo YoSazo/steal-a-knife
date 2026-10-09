@@ -1027,37 +1027,31 @@ function Hud.Init()
 	end
 	speedLabel.TextColor3 = Color3.new(1, 1, 1)
 	local function placeStats()
-		-- rows: icon size, text size, row height
-		-- (bigger than before - 46 / 42 / 54 - so a young kid reads them at a glance)
+		local _, bounds = Ui.bounds()
+		local horizontal = Ui.Phone and bounds.Y < 420
 		local icon, size, row = 60, 48, 68
-		local textWidth = size * 6
-		local x = 12
 		if Ui.Phone then
-			local _, bounds = Ui.bounds()
-			-- as big as the screen allows (Steal An Egg keeps them huge on phones too)
-			-- Steal An Egg keeps these small and tucked in: two short rows
-			size = math.clamp(math.floor(bounds.Y * 0.1), 30, 52) -- big and chunky, like theirs
+			size = math.clamp(math.floor(bounds.Y * 0.1), 30, 52)
 			icon, row = math.floor(size * 1.1), math.max(44, math.floor(size * 1.2))
-			-- The dynamic thumbstick owns the lower-left 40% of the viewport, far beyond
-			-- its visible circle. Put both complete tap targets outside that rectangle.
-			textWidth = math.ceil(size * 4.5)
-			x = math.max(math.floor(bounds.X * 0.4) + 12, bounds.X - (icon + 8 + textWidth) - 80)
 		end
-		-- Speed over Cash. Phones keep both rows above the backpack's bottom touch area too.
-		local small = 0
-		stats.AnchorPoint = if Ui.Phone then Vector2.zero else Vector2.new(0, 1)
+		local textWidth = if horizontal
+			then math.floor(size * 3.5)
+			elseif Ui.Phone then math.ceil(size * 4.5)
+			else size * 6
+		local rowWidth = icon + 8 + textWidth
+		local width = if horizontal then rowWidth * 2 + 8 else rowWidth
+		local x = if Ui.Phone then math.max(math.floor(bounds.X * 0.4) + 12, bounds.X - width - 72) else 12
 		local top = math.max(46, ((Ui.gui:GetAttribute("TopLineHeight") or 0) :: number) + 8)
+		stats.AnchorPoint = if Ui.Phone then Vector2.zero else Vector2.new(0, 1)
 		stats.Position = if Ui.Phone then UDim2.fromOffset(x, top) else UDim2.new(0, x, 1, -12)
-		stats.Size = UDim2.fromOffset(icon + 8 + textWidth, small + row * 2)
-		speedArt.Position, speedArt.Size = UDim2.fromOffset(0, small + (row - icon) / 2), UDim2.fromOffset(icon, icon)
-		cashArt.Position, cashArt.Size =
-			UDim2.fromOffset(0, small + row + (row - icon) / 2), UDim2.fromOffset(icon, icon)
-		speedLabel.Position, speedLabel.Size = UDim2.fromOffset(icon + 8, small), UDim2.fromOffset(textWidth, row)
-		cashLabel.Position, cashLabel.Size = UDim2.fromOffset(icon + 8, small + row), UDim2.fromOffset(textWidth, row)
-		for _, tap in { speedTap, cashTap } do
-			tap.Position = UDim2.fromOffset(0, if tap == speedTap then 0 else row)
-			tap.Size = UDim2.fromOffset(icon + 8 + textWidth, row)
-		end
+		stats.Size = UDim2.fromOffset(width, if horizontal then row else row * 2)
+		local cashX, cashY = if horizontal then rowWidth + 8 else 0, if horizontal then 0 else row
+		speedArt.Position, speedArt.Size = UDim2.fromOffset(0, (row - icon) / 2), UDim2.fromOffset(icon, icon)
+		cashArt.Position, cashArt.Size = UDim2.fromOffset(cashX, cashY + (row - icon) / 2), UDim2.fromOffset(icon, icon)
+		speedLabel.Position, speedLabel.Size = UDim2.fromOffset(icon + 8, 0), UDim2.fromOffset(textWidth, row)
+		cashLabel.Position, cashLabel.Size = UDim2.fromOffset(cashX + icon + 8, cashY), UDim2.fromOffset(textWidth, row)
+		speedTap.Position, speedTap.Size = UDim2.new(), UDim2.fromOffset(rowWidth, row)
+		cashTap.Position, cashTap.Size = UDim2.fromOffset(cashX, cashY), UDim2.fromOffset(rowWidth, row)
 		speedLabel.TextSize, cashLabel.TextSize = math.floor(size * 0.9), size
 	end
 	Ui.Layout.Changed:Connect(placeStats)
