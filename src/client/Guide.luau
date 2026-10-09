@@ -184,17 +184,16 @@ local function roundAction(): NextAction.Action
 			or (not murderer and (not gun or toolWith("Revolver", true)))
 			or toolWith("MurderKnife", true)
 		then
+			-- One verb for the whole ladder: SURVIVE the countdown, get the shoes. (The Murderer's
+			-- countdown while everyone hides is its knife arriving; after that its steps are kills.)
+			local seconds = math.max(0, math.ceil((if type(due) == "number" then due else now) - now))
 			local step = if type(kills) == "number"
 				then `🔪 {kills}`
-				else `{if player:GetAttribute("RoundHide") then "" else "⏱ "}{math.max(
-					0,
-					math.ceil((if type(due) == "number" then due else now) - now)
-				)}s`
+				elseif murderer then `🔪 {seconds}s`
+				else `SURVIVE {seconds}s`
 			return {
 				Id = "round_speed",
-				Text = `{if player:GetAttribute("RoundHide") then "🔪 HIDE! " else ""}{step} → +{Ui.abbreviate(
-					reward
-				)} 👟`,
+				Text = `{step} → +{Ui.abbreviate(reward)} 👟`,
 			}
 		end
 	end
