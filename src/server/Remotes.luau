@@ -50,6 +50,8 @@ local Remotes = {
 	Drop = event("Drop"), -- client -> server: () put down what you're carrying (boss knives go back on the wall)
 	Gamble = func("Gamble"), -- client -> server: (action, arg) -> (ok, message, extra), see Gamble
 	StoreTest = func("StoreTest"), -- client -> server: (kind, key) Studio-only fake purchase for unset ids
+	ClaimGift = func("ClaimGift"), -- client -> server: () -> (ok, message) the join-the-group gift (GiftService)
+	RedeemCode = func("RedeemCode"), -- client -> server: (code) -> (ok, message) a code from the description (Codes)
 	Track = event("Track"), -- client -> server: (event, props) analytics from the client (server/Analytics whitelists)
 }
 

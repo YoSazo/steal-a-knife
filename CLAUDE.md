@@ -40,6 +40,12 @@ Payment receipt processing remains idempotent; retired product/pass receipt tabl
   exact mutations stay server-side until the owner taps READY. Human display names include rarity
   and mutation, never size. The owner chose My Knives for the combined inventory. Winner's Luck applies at the READY tap and expires at
   the next round start. Fusing was removed at the owner's request; do not reintroduce it.
+- Free rewards (FreeRewards sizes them to the player): codes (Config/Codes, CodesService, More ->
+  Codes), the join-the-group gift after a won round (GiftService, client/GiftCard), each once via
+  profile.Claimed. EventService runs the Saturday events (Config/Events) and the owner's /event
+  command across servers; it sets RoundSpeedMultiplier / MutationLuckMultiplier /
+  DeliverySpeedMultiplier and EventKind / EventEndsAt / NextEventKind / NextEventAt.
+- Coffins can only be knocked loose by players on the runway, never past the SAFE ZONE line.
 - MonetizationService handles passes/products and validates paid-random policy. FastWheel is the
   stable pass key, now labelled 2x Round Speed. SpeedUpgrade is retired. Potions use RoundSpeed.
 

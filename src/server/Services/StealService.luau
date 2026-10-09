@@ -722,6 +722,8 @@ local function onRunway(position: Vector3): boolean
 	return position.Z > -2 and math.abs(position.X) < GameConfig.ArenaWidth / 2 + 2
 end
 
+local safeZoneToldAt: { [Player]: number } = setmetatable({}, { __mode = "k" }) :: any
+
 local function canHitCarrier(attacker: Player, victim: Player): boolean
 	if
 		attacker == victim
@@ -732,14 +734,21 @@ local function canHitCarrier(attacker: Player, victim: Player): boolean
 		return false
 	end
 	local root, attackerRoot = rootPart(victim), rootPart(attacker)
-	if not root or not attackerRoot or onRunway(root.Position) or onRunway(attackerRoot.Position) then
+	if not root or not attackerRoot or victim:GetAttribute("Tumbling") then
 		return false
 	end
-	if victim:GetAttribute("Tumbling") then
+	-- Knocking a coffin loose is a runway thing (on the way home): past the SAFE ZONE line, the
+	-- plaza and the pens, nobody can, so the sign tells the truth. (CanHit only runs for a target
+	-- that was really in reach of a swing or throw, so this is the moment to say why.)
+	if not onRunway(root.Position) or not onRunway(attackerRoot.Position) then
+		local now = os.clock()
+		if now - (safeZoneToldAt[attacker] or 0) > 3 then
+			safeZoneToldAt[attacker] = now
+			Net.Notify(attacker, "Can't attack in the safe zone!", "bad")
+		end
 		return false
 	end
-	local _, owner = BaseService.BaseAt(root.Position)
-	return owner ~= victim -- safe once they're inside their own vault
+	return true
 end
 
 -- Knocks the carried knife loose: it lands on the ground (a boss's knife too: that wall slot counts
