@@ -22,6 +22,7 @@ local Ui = {
 	Navigation = nil :: any,
 	Buy = nil :: ((kind: string, key: string) -> ())?, -- set by Store
 	ReplayTutorial = nil :: (() -> ())?, -- set by Tutorial (More > How to play)
+	OpenFuse = nil :: (() -> ())?,
 	Toast = nil :: ((text: string, kind: string) -> ())?, -- set by Hud: a message on the Feedback layer
 	GuideTargets = {} :: { [string]: GuiObject },
 	LearnGuidance = nil :: ((skill: string) -> ())?,

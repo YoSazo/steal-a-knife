@@ -207,7 +207,21 @@ The creature's speed sign is readable up close at 640 x 320.
   Winner's Luck is a large 32/36 px line, checked at phone/desktop sizes; the hub objective yields
   while the notice is up. The redundant Murderer-chance line is deleted. Static checks pass.
 
-**Next:** the fuse machine (item 17), then Secret, maps, shop and remaining work.
+- **Item 17 complete:** a toy Fuse Machine sits to the side of each pen's entrance, clear of the
+  stealing route. Three unlocked copies of the same visible knife/mutation plus ⚡1 become its
+  next mutation (None → Gold → Diamond → Rainbow → Void), retaining the best of the three size
+  rolls. Each round win earns one charge, capped at 5; rebirth keeps earned charges. My Knives
+  opens the same machine panel; phone uses one tile column to clear the thumbstick's input area.
+  Server validates owner pen, distance, life/round/carry state, charge and fresh unlocked copies;
+  pending hatch placement must finish first. It uses RemoveKnife/AddKnife, preserves plate
+  alignment/equipped choice and banks already-earned pending income from consumed copies.
+  Phone: three differently-sized Chris copies → Gold Huge Chris, exactly one charge used;
+  Gold → Diamond worked, best size/equipped choice retained. Sealed third copies, Void, repeat
+  requests and zero-charge requests rejected. Desktop world E prompt and tile tap tested.
+  A real surviving round moved charges 0 → 1. Static checks pass. No game script errors; early
+  QA commands ran before character spawn and were corrected to wait for it.
+
+**Next:** Secret (item 18), maps, shop and remaining work.
 
 ---
 
