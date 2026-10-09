@@ -292,6 +292,28 @@ Bundle `update8.bundle` merged at 5626bd3 and pushed; both PLAN progress section
 - Selene (0 errors/warnings), StyLua, sourcemap and luau-lsp pass. Temporary multi-client Studio
   sessions ended cleanly. No game script errors; tool input occasionally reported CoreGUI hits.
 
+### Claude cloud, 2026-10-09 (2): item 21 server side + in-game title (CODEX: BUILD THE TILE, TEST)
+
+- **Item 21, featured paid coffin, server done; the shop tile is Codex's (item 20).**
+  `Config/Featured`: dated weeks (InfernoFang / Lenny from Sat 2026-10-10 19:00 UTC, MagmaCleaver /
+  Hank 10-17, DemonHorn / Nina 10-24 until 10-31), each on sale until the next row starts, never
+  rerun; the owner adds a row a week (the weekly drop). Odds None/Gold/Diamond/Rainbow/Void =
+  60/25/10/4/1, size always normal so those odds are the whole roll. `Shared/FeaturedCoffin`:
+  `Current(os.time()) -> knife?, endsAt?` (nil = hide the tile), `Odds`, `Rarity`, `RollMutation`.
+  Products `FeaturedCoffin1/3/10` (99/249/699 R$, `Featured = 1/3/10`, **Id 0: create them on the
+  dashboard**, `Hidden = true` so the old grid doesn't list them). `Monetization.IsPaidRandom`
+  now covers them, so restricted regions can't buy (client `Ui.Buy` refuses; the server pays the
+  Mythic coffin value). Grant: `CoffinService.GivePaid` puts each in a free plate already READY
+  and marked Paid (no luck re-roll at the tap, so the shown odds are exact); no free plate = that
+  one's Mythic coffin value in cash.
+  **For the tile:** character art + name (`Knives.ByName[knife].DisplayName`), the 5 odds lines,
+  a real countdown to `endsAt`, three buttons `Ui.Buy("Product", "FeaturedCoffin1"|3|10)`, and a
+  "needs N free spots" hint when the pen has fewer free plates than the bundle.
+  Test: Studio StoreTest buys of 1/3/10 (READY at once, tap opens the rolled mutation), a full
+  pen (cash instead), `PaidRandomRestricted = true` (refused / cash).
+- **Title (item 24, in-game part):** loading screen "STEAL A KNIFE", console tags. The Roblox
+  title "[MURDER] Steal a Knife" is set on the Creator Dashboard by the owner.
+
 **Next:** Secret (item 18), maps, shop and remaining work.
 
 ---
