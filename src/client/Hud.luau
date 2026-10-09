@@ -106,6 +106,7 @@ function Hud.Init()
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
 		LineJoinMode = Enum.LineJoinMode.Round,
 	}, timerLabel)
+	timerLabel.RichText = true
 	local timerCap = timerLabel:FindFirstChildOfClass("UITextSizeConstraint")
 	if timerCap then
 		timerCap.MaxTextSize = if Ui.Phone then 24 else 36
@@ -539,6 +540,12 @@ function Hud.Init()
 		local now = workspace:GetServerTimeNow()
 		local clock = Ui.clock(endsAt - now)
 		local inRound = player:GetAttribute("InRound")
+		local bonus = (
+			ReplicatedStorage:GetAttribute(
+				if phase == "Intermission" then "NextRoundSpeedMultiplier" else "RoundBonusMultiplier"
+			) or 1
+		) :: number
+		local bonusText = if bonus == 2 then ' · <font color="#9CFF70">2X SPEED!</font>' else ""
 		timerFrame.Visible = phase ~= "Results" and not Ui.menuOpen() and Ui.gui:GetAttribute("FadeCover") ~= true
 		if phase == "Round" then
 			local map = ReplicatedStorage:GetAttribute("MapName") or ""
@@ -548,12 +555,15 @@ function Hud.Init()
 					then `{clock} · {math.max(0, ((ReplicatedStorage:GetAttribute("Alive") or 0) :: number) - 1)} PLAYERS LEFT`
 					else `{clock} · {ReplicatedStorage:GetAttribute("Alive") or 0} ALIVE`
 				else `{map}  {clock}  ·  {ReplicatedStorage:GetAttribute("Alive") or 0} alive`
+			timerLabel.Text ..= bonusText
 			timerFrame.BackgroundColor3 = Color3.fromRGB(150, 30, 50)
 		elseif phase == "Results" or status:find("Waiting") then
 			timerLabel.Text = if phase == "Results" then "Round over!" else status
 			timerFrame.BackgroundColor3 = Ui.PANEL
 		else
-			timerLabel.Text = `🔪 MURDER ROUND IN {clock}`
+			timerLabel.Text = if phase == "Reveal"
+				then "🔪 MURDER ROUND" .. bonusText
+				else `🔪 MURDER ROUND IN {clock}{bonusText}`
 			timerFrame.BackgroundColor3 = Ui.PANEL
 		end
 		-- The last 10 s before a round: the timer itself goes red and pulses (that IS the countdown;
@@ -1022,7 +1032,7 @@ function Hud.Init()
 		local top = Ui.messageTop()
 		local height = if Ui.Phone then 38 else 44
 		timerFrame.Position = UDim2.fromOffset(center, top)
-		timerFrame.Size = UDim2.fromOffset(math.min(bounds.X - 24, 600), height)
+		timerFrame.Size = UDim2.fromOffset(math.min(bounds.X - 24, 860), height)
 		timerLabel.TextScaled = false
 		timerLabel.TextSize = if Ui.Phone then 26 else 36
 		if timerCap then

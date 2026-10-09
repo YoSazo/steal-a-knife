@@ -97,3 +97,9 @@ DebugService and its remotes are Studio-only; never use them for production admi
 - No end-of-round roster modal or victory jingle. Persistent PEN FULL warning while home carrying.
 - Free gift chest/card uses real reward, Like screenshot, native Favorite and Join prompts.
 - Featured products have immutable per-character IDs; the tile uses the real dated rotation.
+
+- Survivor fix: carried visuals live outside the avatar in Map.CarriedItems and attach to the
+  HumanoidRootPart, so ApplyDescriptionResetAsync cannot orphan a Head weld. End-round routing
+  tracks resumed players explicitly, including safe-zone resumes whose RunSaved flag clears.
+- Deeper coin values: 1/25/600/8K/80K/600K/3.2M/27M. Random rounds have 25% chance of 2x Speed,
+  announced in the countdown and fixed for that round; Golden and random 2x do not make 4x.

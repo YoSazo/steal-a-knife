@@ -67,6 +67,7 @@ type SavedRun = {
 }
 local savedRuns: { [Player]: SavedRun } = {}
 local dropFolder: Folder
+local carriedFolder: Folder
 
 local function rootPart(player: Player): BasePart?
 	local character = player.Character
@@ -395,10 +396,15 @@ startCarry = function(
 	local off = above:PointToObjectSpace(box.Position)
 	visual:PivotTo(CFrame.new(above:VectorToWorldSpace(Vector3.new(-off.X, 0, -off.Z))) * visual:GetPivot())
 	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = head
+	-- Avatar restoration can replace Head after this function returns. The root survives it.
+	weld.Name = "CarryAttachment"
+	weld.Part0 = root
 	weld.Part1 = visual.PrimaryPart :: BasePart
 	weld.Parent = visual
-	visual.Parent = character
+	-- Keep carried models outside the avatar so appearance resets cannot delete/hide them.
+	visual:SetAttribute("CarryOwner", player.UserId)
+	visual.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+	visual.Parent = carriedFolder
 
 	-- Team steal: anyone close by when you grab a boss's knife (and your teammate, wherever they are)
 	local helpers: { Player } = {}
@@ -813,7 +819,9 @@ function StealService.ReturnAfterRound(player: Player)
 		local root = rootPart(player)
 		if not root or not player.Character or savedRuns[player] ~= saved or not player.Parent then
 			saved.Queued = false
-			if player.Parent and savedRuns[player] == saved then task.delay(1, StealService.ReturnAfterRound, player) end
+			if player.Parent and savedRuns[player] == saved then
+				task.delay(1, StealService.ReturnAfterRound, player)
+			end
 			return
 		end
 		root.Anchored = true
@@ -831,7 +839,9 @@ function StealService.ReturnAfterRound(player: Player)
 				hook(boss.Zone, boss.Slot, carry.Item, false)
 			end
 			root.Anchored = false
-			if StealService.OnCancelPausedChase then StealService.OnCancelPausedChase(player) end
+			if StealService.OnCancelPausedChase then
+				StealService.OnCancelPausedChase(player)
+			end
 			player:SetAttribute("RunSaved", nil)
 			return
 		end
@@ -979,6 +989,9 @@ function StealService.Init()
 	dropFolder = Instance.new("Folder")
 	dropFolder.Name = "DroppedKnives"
 	dropFolder.Parent = workspace:FindFirstChild("Map")
+	carriedFolder = Instance.new("Folder")
+	carriedFolder.Name = "CarriedItems"
+	carriedFolder.Parent = dropFolder.Parent
 
 	Players.PlayerRemoving:Connect(function(player)
 		StealService.CancelSavedRun(player)

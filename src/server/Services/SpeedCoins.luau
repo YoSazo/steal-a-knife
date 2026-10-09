@@ -1,5 +1,5 @@
 --!strict
--- The same +1 Speed Blender token in every biome and along the safe hub walkways.
+-- Blender coins pay more Speed deeper down the runway; hub coins use Common's reward.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
@@ -12,8 +12,9 @@ local SpeedCoins = {}
 local folder: Folder
 local rng = Random.new()
 local lastPickup: { [Player]: number } = setmetatable({}, { __mode = "k" }) :: any
-local function spawn(at: Vector3)
-	local model, hitbox = Coin.Build(CFrame.new(at), false)
+local function spawn(at: Vector3, zone: number)
+	local amount = GameConfig.CoinSpeed[zone]
+	local model, hitbox = Coin.Build(CFrame.new(at), false, amount)
 	model:AddTag("Coin")
 	model.Parent = folder
 	local taken = false
@@ -39,14 +40,14 @@ local function spawn(at: Vector3)
 		taken = true
 		lastPickup[player] = os.clock()
 		DataService.Update(player, function(profile)
-			profile.Speed += 1
+			profile.Speed += amount
 		end)
 		BaseService.RefreshWalkSpeed(player)
-		Net.Remotes.Effect:FireClient(player, "SpeedPickup", hitbox.Position)
+		Net.Remotes.Effect:FireClient(player, "SpeedPickup", hitbox.Position, amount)
 		model:Destroy()
 		task.delay(12, function()
 			if folder.Parent then
-				spawn(at)
+				spawn(at, zone)
 			end
 		end)
 	end)
@@ -55,14 +56,14 @@ function SpeedCoins.Init()
 	folder = Instance.new("Folder")
 	folder.Name, folder.Parent = "SpeedCoins", workspace:FindFirstChild("Map")
 	local points: { Vector3 } = {}
-	local function add(at: Vector3): boolean
+	local function add(at: Vector3, zone: number): boolean
 		for _, previous in points do
 			if (previous - at).Magnitude < 6.5 then
 				return false
 			end
 		end
 		table.insert(points, at)
-		spawn(at)
+		spawn(at, zone)
 		return true
 	end
 	-- Scatter them across the usable walkway rather than placing perfect rows.
@@ -81,7 +82,7 @@ function SpeedCoins.Init()
 				clear = false
 			end
 		end
-		if clear and add(at) then
+		if clear and add(at, 1) then
 			hubCount += 1
 		end
 	end
@@ -95,7 +96,7 @@ function SpeedCoins.Init()
 					math.abs(at.X - lair.X) > GameConfig.BossLair.Depth / 2 + 8
 					or math.abs(at.Z - lair.Z) > GameConfig.BossLair.Width / 2 + 8
 				then
-					if add(at) then
+					if add(at, i) then
 						break
 					end
 				end

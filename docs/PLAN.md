@@ -444,6 +444,31 @@ return-after-results notes in this document.
   at 16:38:52 America/Chicago (21:38:52 UTC); debug settings were cleared before publishing. Physical live phone check belongs to the owner; live saving
   across rejoin and one actual Robux transaction remain unverified.
 
+### Survivor coffin regression and reward follow-up, 2026-10-09
+
+- Reproduced the owner's invisible coffin: after a surviving player's avatar restored, the old
+  Head weld was invalid and the registered carried model fell to Y -298. The earlier death
+  return test did not exercise this avatar-restoration path.
+- Carried models now live in Map.CarriedItems and weld to HumanoidRootPart. Avatar resets cannot
+  replace their attachment, delete the custom model, or apply avatar camera transparency to it.
+  Alive-survivor rerun: same item, horizontal position error 0, valid root weld, 56 visible parts,
+  coffin 3.07 studs above the root after the avatar returned to a MeshPart head.
+- Safe-zone survivors are tracked explicitly through endRound, preventing the later home-return
+  loop from sending them away again after their saved-run attributes have cleared.
+- Owner updated the +1 rule: deeper biome coins pay more. Safe/Common → Cosmic values are
+  1 / 25 / 600 / 8K / 80K / 600K / 3.2M / 27M Speed. All eight actual pickup tests matched their
+  amounts. Round pickups remain +1 ordinarily and +2 in a random double-Speed round.
+- Random double-Speed rounds: 25% chance selected once at intermission start. The top clock
+  advertises 2X SPEED before teleport; the selected bonus lasts the entire round and doubles
+  ladder, kill, jackpot and round-pickup payouts. A Golden Round and random double round stay
+  at 2x together. Timings and coffin waits are unchanged.
+- Forced bonus-round test: displayed/expected/actual hiding step = 68/68/68, round pickup +2;
+  client survivor coffin retained 56 visible parts after restoration. Bonus clock TextFits true.
+- Pacing re-fit (12 h): Rare 0.33 h, Epic 1.19 h, Legendary 4.02 h, Mythic 7.99 h. Normal ladder
+  shares now 16.207% / 4.83677% / 1.68899% / 1.10595% / 0.8% / 0.6% / 0.4%; random double rounds
+  and deeper pickups are included in the model. These supersede the previous share table.
+- The 10-second carry warning now truthfully says the coffin will wait through the round.
+
 ### Codex UI/art brief, 2026-10-09
 
 - **Step 1:** one height scale on the HUD root and feedback root, `clamp(viewport.Y/720, 1, 1.5)`.

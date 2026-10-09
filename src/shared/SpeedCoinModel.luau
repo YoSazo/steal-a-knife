@@ -3,12 +3,12 @@ local Props = require(script.Parent.Props)
 local Art = require(script.Parent.Config.CartoonArt)
 local Coin = {}
 -- A real Blender token; the small shoe marker is measured in studs and shrinks with distance.
-function Coin.Build(at: CFrame, roundOnly: boolean): (Model, BasePart)
+function Coin.Build(at: CFrame, roundOnly: boolean, value: number?): (Model, BasePart)
 	local model = Props.Build("SpeedCoin", true)
 	model.Name = "Coin"
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	model:SetAttribute("RoundOnly", roundOnly)
-	model:SetAttribute("SpeedValue", 1)
+	model:SetAttribute("SpeedValue", value or 1)
 	model:PivotTo(at)
 	local hitbox = Instance.new("Part")
 	hitbox.Name = "Hitbox"

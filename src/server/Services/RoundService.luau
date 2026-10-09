@@ -882,7 +882,11 @@ local function spawnCoin(round: Round)
 		return
 	end
 	-- Face a random way so a room full of coins doesn't look stamped out
-	local coin, hitbox = SpeedCoinModel.Build(CFrame.new(point + Vector3.new(0, 2.1, 0)), true)
+	local coin, hitbox = SpeedCoinModel.Build(
+		CFrame.new(point + Vector3.new(0, 2.1, 0)),
+		true,
+		(ReplicatedStorage:GetAttribute("RoundBonusMultiplier") or 1) :: number
+	)
 	coin:AddTag("Coin")
 	coin.Parent = round.Coins
 	hitbox.Touched:Connect(function(other)
@@ -902,7 +906,7 @@ local function spawnCoin(round: Round)
 		coin:Destroy()
 		Analytics.Count(player, "coins")
 		Progress.Coin(player)
-		Net.Remotes.Effect:FireClient(player, "SpeedPickup", position)
+		Net.Remotes.Effect:FireClient(player, "SpeedPickup", position, coin:GetAttribute("SpeedValue") or 1)
 		task.delay(GameConfig.CoinRespawn, function()
 			if current == round then
 				spawnCoin(round)
@@ -1400,6 +1404,10 @@ giveWeapon = function(round: Round)
 end
 
 local function startRound(participants: { Player })
+	ReplicatedStorage:SetAttribute(
+		"RoundBonusMultiplier",
+		ReplicatedStorage:GetAttribute("NextRoundSpeedMultiplier") or 1
+	)
 	-- Save runs before disguises/streaming can change the body or delay the teleport.
 	local pausedRun = false
 	for _, player in participants do
@@ -1788,6 +1796,7 @@ local function endRound(round: Round)
 	ReplicatedStorage:SetAttribute("RoundOutcome", outcome)
 	setPhase("Results", GameConfig.ResultsTime, outcome)
 	-- Interrupted thieves return directly; everyone else goes back to their pen.
+	local returnedRuns: { [Player]: boolean } = {}
 	local fading = false
 	for player in round.Alive do
 		if player.Parent and not StealService.HasSavedRun(player) then
@@ -1797,6 +1806,7 @@ local function endRound(round: Round)
 	end
 	for player in round.Names do
 		if player.Parent and StealService.HasSavedRun(player) then
+			returnedRuns[player] = true
 			leaveRound(player)
 			if round.Alive[player] then
 				Disguises.Remove(player)
@@ -1808,7 +1818,7 @@ local function endRound(round: Round)
 		task.wait(0.35)
 	end
 	for player in round.Alive do
-		if player.Parent and not player:GetAttribute("RunSaved") then
+		if player.Parent and not returnedRuns[player] then
 			leaveRound(player)
 			Disguises.Remove(player)
 			BaseService.TeleportHome(player)
@@ -1870,6 +1880,11 @@ local function loop()
 	while true do
 		-- Intermission: steal knives, earn cash, buy upgrades and round items
 		setPhase("Intermission", GameConfig.IntermissionTime, INTERMISSION_STATUS)
+		ReplicatedStorage:SetAttribute(
+			"NextRoundSpeedMultiplier",
+			if rng:NextNumber() < GameConfig.DoubleSpeedRoundChance then 2 else 1
+		)
+		ReplicatedStorage:SetAttribute("RoundBonusMultiplier", nil)
 		local prizeKind, jackpot, seed = RoundPrize.Roll(rng)
 		ReplicatedStorage:SetAttribute("PrizeKind", prizeKind)
 		ReplicatedStorage:SetAttribute("PrizeJackpot", jackpot)
@@ -1901,7 +1916,7 @@ local function loop()
 				setPhase("Intermission", endsAt - os.clock(), INTERMISSION_STATUS)
 			end
 			-- The night is coming (Steal An Egg's 10 s warning): anyone carrying a boss's coffin hears
-			-- it goes back if it isn't home in time
+			-- the interrupted steal is saved through the round
 			local left = endsAt - os.clock()
 			if left > GameConfig.NightWarning + 2 then
 				warned = false
@@ -1912,7 +1927,7 @@ local function loop()
 						continue
 					end
 					if StealService.BossCarry(player) then
-						Net.Notify(player, "🔪 Murder round in 10! Get it home or it goes back!", "bad")
+						Net.Notify(player, "🔪 Murder round in 10! Your coffin will wait for you!", "bad")
 					else
 						Net.Notify(player, "🔪 Murder round in 10 seconds!", "info")
 					end
@@ -1989,6 +2004,15 @@ end
 
 -- Studio "Bot Round" buttons: start a round now with bots filling in, `role` = the side the
 -- asking player plays ("Murderer" | "Innocent")
+-- Studio regression fixture: finish a bot round with the human survivor still alive.
+function RoundService.DebugEndBotRound(player: Player): boolean
+	if not RunService:IsStudio() or not current or not current.Names[player] or not current.MurdererBot then
+		return false
+	end
+	current.MurdererBot.Alive = false
+	return true
+end
+
 function RoundService.DebugBotRound(player: Player, role: string)
 	botPlan = { Player = player, Role = if role == "Innocent" then "Innocent" else "Murderer" }
 	ReplicatedStorage:SetAttribute("DebugMinPlayers", 1)

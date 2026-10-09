@@ -23,6 +23,8 @@ local GameConfig = {
 	-- The free gift for joining that group (once ever, server/Services/GiftService): a share of the
 	-- way to the next monster you can't outrun yet
 	GroupGift = { Speed = 0.25 },
+	-- Pickup Speed by biome depth; the safe zone uses Common.
+	CoinSpeed = { 1, 25, 600, 8000, 80000, 600000, 3200000, 27000000 },
 	Secret = { Chance = 0.0005, Knife = "NightWhisper" }, -- 1 in 2,000 Cosmic-boss restocks only
 	-- Pens start with ten individual plates.
 	StartingSlots = 10,
@@ -228,10 +230,10 @@ local GameConfig = {
 	RoundPrize = {
 		StepShare = 0.01,
 		ZoneShares = {
-			[2] = 0.2501912,
-			[3] = 0.0592422,
-			[4] = 0.0168394,
-			[5] = 0.0142217,
+			[2] = 0.1620700,
+			[3] = 0.0483677,
+			[4] = 0.0168899,
+			[5] = 0.0110595,
 			[6] = 0.0080000,
 			[7] = 0.0060000,
 			[8] = 0.0040000,
@@ -469,6 +471,7 @@ local GameConfig = {
 	NewcomerMinBreak = 70, -- (was 180: the whole break is 180 now)
 	RoundJoinGrace = 60, -- nobody is pulled into a round in their first this many seconds in a server
 	RoundTime = 60,
+	DoubleSpeedRoundChance = 0.25, -- selected once when the intermission begins
 	ResultsTime = 8,
 	RoleRevealSeconds = 3.6,
 	MurdererGrace = 10, -- seconds before the Murderer gets their knife (same as the classic)

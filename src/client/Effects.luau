@@ -663,8 +663,12 @@ local handlers: { [string]: (...any) -> () } = {
 	KnifeKill = function(position: Vector3, color: Color3, rank: number)
 		Effects.Burst(position, color, 12 + math.clamp(rank, 1, 9) * 5, 14 + rank * 2, 0.6)
 	end,
-	SpeedPickup = function(position: Vector3)
-		Effects.FloatText(position + Vector3.new(0, 1, 0), "+1 SPEED", Color3.fromRGB(120, 220, 255))
+	SpeedPickup = function(position: Vector3, amount: number?)
+		Effects.FloatText(
+			position + Vector3.new(0, 1, 0),
+			`+{Format.Short(amount or 1)} SPEED`,
+			Color3.fromRGB(120, 220, 255)
+		)
 		Effects.Sound(Sounds.PrizeLand, position, 0.5)
 	end,
 	Shield = function(position: Vector3)

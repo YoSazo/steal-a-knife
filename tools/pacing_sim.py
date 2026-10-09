@@ -28,11 +28,13 @@ REBIRTH_BASE, REBIRTH_GROWTH = 2e9, 6
 REBIRTH_INCOME, REBIRTH_SPEED = 0.5, 0.3
 REBIRTH_NEEDS = ["Mythic", "Godly", "Godly", "Celestial", "Celestial", "Cosmic"]  # then Cosmic (was Legendary first)
 INTERMISSION, REVEAL, ROUND, RESULTS = 70, 3.6, 60, 8
+DOUBLE_ROUND_CHANCE = .25
 # A stolen knife's income doesn't count until its coffin's murder-round wait is over
 # (GameConfig.Coffins.Rounds; was 0/1/1/2/2/3/4/5).
 COFFIN_ROUNDS = {"Common": 0, "Rare": 1, "Epic": 2, "Legendary": 3, "Mythic": 4,
                  "Godly": 6, "Celestial": 8, "Cosmic": 10, "Secret": 12}
-SHARES = [0, 0.2501912, 0.0592422, 0.0168394, 0.0142217, 0.008, 0.006, 0.004]
+COIN_SPEED = [1, 25, 600, 8000, 80000, 600000, 3200000, 27000000]
+SHARES = [0, 0.16207, 0.0483677, 0.0168899, 0.0110595, 0.008, 0.006, 0.004]
 MIN_SPEED_PRIZE = 300  # GameConfig.RoundPrize.MinSpeed
 WIN_CHANCE = 0.65  # rough share of rounds a player ends up on the winning side
 ZONE_DEPTHS = [90, 130, 170, 210, 250, 290, 330, 370]
@@ -83,8 +85,9 @@ def simulate(hours, seed=1):
             survived=rng.random()<WIN_CHANCE
             elapsed=60 if survived else rng.uniform(5,55)
             parts=sum(p for at,p in zip([10,20,35,50,60],[1,2,4,7,12]) if at<=elapsed)
-            speed+=full*max(1,parts)/26
-            speed+=3 # typical round coins: each is exactly +1 Speed
+            multiplier=2 if rng.random()<DOUBLE_ROUND_CHANCE else 1
+            speed+=full*max(1,parts)/26*multiplier
+            speed+=3*multiplier # typical round coins: each is exactly +1 Speed
             cash+=income()*(REVEAL+ROUND+RESULTS)
             t+=REVEAL+ROUND+RESULTS
             if survived:
@@ -117,7 +120,7 @@ def simulate(hours, seed=1):
                 if full: wall.remove(worst)
                 stolen = "Secret" if zone == 7 and rng.random() < SECRET_CHANCE else rarity
                 wall.append((INCOME[stolen],zone,t+dt+COFFIN_ROUNDS[stolen]*cycle))
-                speed+=2 # typical coins picked up along this biome run
+                speed+=2*COIN_SPEED[zone] # typical coins picked up along this biome run
                 note(f"first {stolen} knife",t+dt)
         else:
             dt=min(10,max(0,boundary-t))

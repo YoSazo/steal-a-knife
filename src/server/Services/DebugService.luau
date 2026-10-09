@@ -201,6 +201,9 @@ local commands: { [string]: (Player, ...any) -> any } = {
 		BaseService.RefreshRack(player)
 		return true
 	end,
+	EndBotRound = function(player: Player)
+		return RoundService.DebugEndBotRound(player)
+	end,
 	BotRound = function(player: Player, role: string)
 		if ReplicatedStorage:GetAttribute("Phase") ~= "Intermission" then
 			Net.Notify(player, "Wait for this round to end first", "bad")
