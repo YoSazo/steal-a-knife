@@ -285,15 +285,37 @@ function Coffins.Init()
 		end)
 	end
 
+	-- Your coffin just became READY (a round ended, its timer ran out): it bursts and chimes right
+	-- there, so you see it happen instead of a label quietly changing. (Per plate: the pen rebuilds
+	-- its models, the plate stays the same.)
+	local readyBefore: { [number]: boolean } = {}
 	RunService.RenderStepped:Connect(function()
 		local now = os.clock()
 		local serverNow = workspace:GetServerTimeNow()
 		local readyPlate = math.huge
+		local readyNow: { [number]: boolean } = {}
 		for model in tracked do
 			if model:GetAttribute("Owner") == player.UserId and model:GetAttribute("Ready") then
-				readyPlate = math.min(readyPlate, (model:GetAttribute("Plate") or math.huge) :: number)
+				local plate = (model:GetAttribute("Plate") or math.huge) :: number
+				readyPlate = math.min(readyPlate, plate)
+				readyNow[plate] = true
+				if not readyBefore[plate] and model.Parent then
+					local at = model:GetPivot().Position
+					local rarity = model:GetAttribute("Rarity")
+					Effects.Burst(
+						at + Vector3.new(0, 3, 0),
+						if type(rarity) == "string"
+							then Knives.RarityColors[rarity] or Color3.new(1, 1, 1)
+							else Color3.fromRGB(120, 255, 140),
+						60,
+						28,
+						1
+					)
+					Effects.Sound(Sounds.Reveal, at, 0.6)
+				end
 			end
 		end
+		readyBefore = readyNow
 		for model, info in tracked do
 			if not model.Parent then
 				tracked[model] = nil

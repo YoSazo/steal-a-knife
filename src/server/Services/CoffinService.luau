@@ -97,10 +97,8 @@ function CoffinService.Give(player: Player, item: string, source: string, quiet:
 			CoffinService.SealInto(p, plate, item)
 		end)
 		BaseService.RefreshRack(player)
+		-- (you see it land in your pen; whoever gave it says what it was for)
 		Net.Remotes.Effect:FireAllClients("Deposit", player, rarity)
-		if not quiet then
-			Net.Notify(player, `⚰️ {parsed.Knife.DisplayName} coffin delivered!`, "good")
-		end
 	else
 		local isNew = not table.find(profile.Discovered, parsed.Name)
 		DataService.Update(player, function(p)
@@ -257,7 +255,7 @@ function CoffinService.Reveal(player: Player, plate: number, how: string, openin
 		-- (Steal an Egg: what hatched pops up and flies into its owner - client Effects CoffinHatch)
 		Net.Remotes.Effect:FireAllClients("CoffinHatch", player, item, at)
 	end
-	Net.Notify(player, `🎉 {Items.DisplayName(item)} unlocked!`, "good")
+	-- (no toast: the hatch itself shows it - the knife pops out, "It's a <name>!" and flies to you)
 	-- the big ones are a server moment
 	local rank = table.find(Knives.Rarities, rarity) or 1
 	if rank >= (table.find(Knives.Rarities, CONFIG.AnnounceFrom) or 5) then

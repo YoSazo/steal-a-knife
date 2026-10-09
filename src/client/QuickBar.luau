@@ -3,6 +3,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local ContextActionService = game:GetService("ContextActionService")
 local Ui = require(script.Parent.Ui)
 local Theme = require(script.Parent.MenuTheme)
@@ -247,11 +248,19 @@ function QuickBar.Init()
 	Ui.GuideTargets.Knives = button
 	local badge = Theme.badge(button)
 	local nextUpdate = 0
+	local readyShown = 0
+	local badgePop = Ui.new("UIScale", { Scale = 1 }, badge) :: UIScale
 	RunService.Heartbeat:Connect(function()
 		button.Visible = Ui.inHub() and not Ui.menuOpen()
 		local ready = (player:GetAttribute("CoffinsReady") or 0) :: number
 		badge.Visible = ready > 0
 		badge.Text = tostring(ready)
+		-- one more READY coffin: the badge pops (the coffin itself bursts in your pen)
+		if ready > readyShown then
+			badgePop.Scale = 1.6
+			TweenService:Create(badgePop, TweenInfo.new(0.4, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+		end
+		readyShown = ready
 		if os.clock() >= nextUpdate and frame.Visible then
 			nextUpdate = os.clock() + 0.25
 			updateTimers()

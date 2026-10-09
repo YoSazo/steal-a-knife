@@ -561,9 +561,8 @@ local function deposit(player: Player)
 	if toBag then
 		Net.Notify(player, `Pen full! {name} is in your bag.`, "info")
 		Offers.Show(player, "Mount", "Your pen is full! Get more room right now.")
-	elseif opensIn then
-		Net.Notify(player, `⚰️ {parsed.Knife.DisplayName} coffin delivered!`, "good")
-	else
+	elseif not opensIn then
+		-- (a coffin you just put down yourself and watched land needs no toast)
 		Net.Notify(player, `{if isNew then "NEW! " else ""}{name} +{Format.Cash(Items.Income(item))}/s`, "good")
 	end
 	Net.Remotes.Effect:FireAllClients("Deposit", player, parsed.Knife.Rarity)

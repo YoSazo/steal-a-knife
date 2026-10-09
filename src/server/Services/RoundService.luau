@@ -955,7 +955,7 @@ giveRevolver = function(round: Round, player: Player)
 		player:SetAttribute("Role", "Sheriff")
 		Net.Remotes.Role:FireClient(player, "Sheriff", round.Names[player])
 	end
-	Net.Notify(player, "You're the SHERIFF! Shoot the Murderer. Don't hit anyone else!", "good", true)
+	-- (the role reveal says SHOOT THE MURDERER and the gun is in your hand: no extra toast)
 end
 giveRevolverToBot = function(round: Round, bot: Bot)
 	local tool = Revolver.BuildTool()
@@ -1407,7 +1407,7 @@ giveWeapon = function(round: Round)
 			onAttack(round)
 		end)
 	)
-	Net.Notify(murderer, "Tap = stab. Hold = throw.", "info", true)
+	-- (how to stab / throw: the guide line, which knows your device)
 	-- The knife arrives quietly in their hotbar: nobody can tell who got it until they choose to
 	-- pull it out (the draw flourish plays then, for everyone - that's the reveal)
 	local root = rootOf(murderer)

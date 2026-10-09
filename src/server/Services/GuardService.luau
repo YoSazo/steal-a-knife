@@ -1320,10 +1320,9 @@ local function sendChaser(boss: Boss, thief: Player)
 		end)(),
 		boss_speed = guard.Config.GuardSpeed,
 	})
+	-- (the alarm's big red RUN!! banner, the monster on your heels, the red glow and the guide's
+	-- RUN HOME line already say it: no extra toast)
 	Net.Remotes.Effect:FireClient(thief, "Alarm")
-	-- (one short line: the monster on your heels and the red glow say who; the long version wrapped
-	-- onto two lines on phones and covered the Drop button)
-	Net.Notify(thief, "RUN HOME!", "bad")
 end
 
 -- Hurt a thief (throws, and the snatch). Shields block it.
@@ -1416,11 +1415,8 @@ local function snatch(guard: Guard, thief: Player)
 		else
 			Offers.Show(thief, "Escape3", "Caught at the last second? An Escape Token breaks you free WITH the knife.")
 		end
-		Net.Notify(
-			thief,
-			if PenMode.Coffins() then "Caught! The coffin went back." else "Caught! The knife went back.",
-			"bad"
-		)
+		-- (said once: the CAUGHT! pop where you are and the coffin flying back show it; the tip line
+		-- says where it went - the extra toast said it a third time)
 		Net.Remotes.Effect:FireClient(thief, "Tip", "Caught")
 		Net.Remotes.Effect:FireClient(thief, "Damage", root.Position + Vector3.new(0, 3, 0), "CAUGHT!")
 	end
