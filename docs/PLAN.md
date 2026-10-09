@@ -1,34 +1,5 @@
 # The plan (owner + Claude, 2026-10-08)
 
-## LAUNCH NOW (owner decision, 2026-10-09)
-
-Stop adding features before ads. Item 19 is complete (e85dde3); keep the Featured coffin hidden
-until its shop tile and purchase validation are finished. The owner's pasted checklist governs
-while update10.bundle is not yet present in Downloads.
-
-1. Publish the current game and test the full loop in the live Roblox client on PC and phone.
-   Check persistence across a rejoin, console errors, and fix only broken core-loop behaviour.
-2. Every visible shop product/pass must have a real ID and correct Roblox price. Make one cheap
-   live test purchase with the owner's approval at the payment confirmation.
-3. Store page: title `[MURDER] Steal a Knife` and server size 8 were set and verified via API.
-   Owner supplies the icon, three thumbnails (chase / round / glowing pen), age questionnaire
-   and public visibility.
-4. Owner starts a small daily ad budget and watches D1 retention, session length and click-through.
-
-**After launch:** Featured shop tile, weekly drop, shared menu styling, events board, remaining
-text cleanup and decisions on unused features based on real player data. The featured server
-config has three dated weeks; its checkout UI remains hidden. More cover can follow map metrics
-(time to first kill, kills per round, timer endings); do not build new maps before launch.
-
-**The filter:** every feature must make *steal → unlock → faster → steal deeper* better, or make the
-murder round feed it. If it doesn't, cut it. Think 5-year-old: one obvious thing to do, no reading.
-
-**The loop:** steal a locked knife from a monster → run home → murder rounds unlock it (and pay
-Speed - the only Speed, item 30 - give Winner's Luck) → it earns cash → cash
-buys pen upgrades → faster → steal deeper. The round is also the stage where you flex your best knife.
-
-Test every step in Studio before starting the next.
-
 ## LAUNCH NOW (owner, 2026-10-09): ship what's playable and start ads
 
 The owner wants ads running on what's playable today. **Codex: do only this list, in order, then
@@ -40,11 +11,16 @@ stop adding features.** Everything else waits for real player data.
    a rejoin. Console clean (F9 server + client). Fix only what breaks the loop.
 2. **Robux:** every product/pass in the shop has a real id and buys on the live game (one cheap
    test buy). The Featured coffin stays hidden until its tile exists (fine to launch without it).
-3. **Store page (owner):** title `[MURDER] Steal a Knife`, server size 8, icon + 3 thumbnails
+3. **Store page (owner):** title `[MURDER] Steal a Knife` and server size 8 are already set and verified via API. Owner supplies icon + 3 thumbnails
    (a monster chase, a murder round, a pen of glowing characters), age questionnaire done, public.
 4. **Ads (owner):** Ads Manager sponsored-experience campaign on a small daily budget; judge it
    on D1 retention, average session length and CTR (analytics funnel, docs/ANALYTICS.md), not
    on visits.
+
+**Local launch checks (Codex):** update10.bundle merged with 5def7cc, preserving the publish
+settings. All 31 existing product/pass entries have valid Roblox IDs and matching default prices.
+The three Featured IDs are still 0 and hidden from the shop. Live gameplay, persistence and an
+actual payment remain unverified until performed; Studio tests do not count as live tests.
 
 **After launch** (from the data, not before): the Featured coffin shop tile (item 21 server side
 is done), the weekly drop (item 26: a new limited character each week, then one row in
@@ -58,6 +34,15 @@ of sight (corners, rooms, doorways), so the Murderer can get close unseen and no
 around the next corner. Watch kills per round, how often innocents win by the timer, and
 how long until the first kill. If the first kill is slow or the Murderer gets spotted from
 across the map, add more and taller cover (maze-like hedge rows, more sheds), not new maps.
+
+**The filter:** every feature must make *steal → unlock → faster → steal deeper* better, or make the
+murder round feed it. If it doesn't, cut it. Think 5-year-old: one obvious thing to do, no reading.
+
+**The loop:** steal a locked knife from a monster → run home → murder rounds unlock it (and pay
+Speed - the only Speed, item 30 - give Winner's Luck) → it earns cash → cash
+buys pen upgrades → faster → steal deeper. The round is also the stage where you flex your best knife.
+
+Test every step in Studio before starting the next.
 
 ## Status (cloud session, 2026-10-08): code done, first Studio pass below
 
