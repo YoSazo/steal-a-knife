@@ -262,9 +262,12 @@ end
 -- A random knife of `rarity` (or, 4% of the time, the next one up), with a mutation and a size:
 -- what's inside a coffin, and what a boss keeps on its wall. Returns the item and whether it
 -- jumped a rarity.
+-- A boss's restock is its own rarity, or this often one rarity up (the coffin labels show it)
+Items.UpgradeChance = 0.04
+
 function Items.RollKnife(rng: Random, rarity: string, luck: number?): (string, boolean)
 	local rarityIndex = table.find(Knives.Rarities, rarity) or 1
-	local upgraded = rarityIndex < Knives.Rank("Cosmic") and rng:NextNumber() < 0.04
+	local upgraded = rarityIndex < Knives.Rank("Cosmic") and rng:NextNumber() < Items.UpgradeChance
 	if upgraded then
 		rarityIndex += 1
 	end
