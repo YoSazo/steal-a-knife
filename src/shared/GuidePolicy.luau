@@ -50,7 +50,7 @@ function GuidePolicy.Skill(id: string): string?
 		return "gun_shoot"
 	elseif id == "murderer_fight" then
 		return "knife_fight"
-	elseif id == "innocent_coins" or id == "classic_coins" then
+	elseif id == "innocent_coins" then
 		return "coins"
 	elseif id == "index" or id == "train" then
 		return id

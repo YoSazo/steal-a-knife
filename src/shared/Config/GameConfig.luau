@@ -634,13 +634,6 @@ local GameConfig = {
 		Cap = 3, -- nobody's chance can be more than 3x the server average
 	},
 
-	-- CLASSIC rounds (no Murderer power, ClassicPay) and DOUBLE TROUBLE (two Murderers, two
-	-- Sheriffs) are cut: one Murderer, one Sheriff, every round - the MM2 rules kids already know.
-	-- (Two Murderers is kept for an admin event later: docs/PLAN.md item 25.)
-	DoubleTrouble = { Always = math.huge, Chance = 0 },
-	ClassicChance = 0,
-	ClassicPay = 1.5,
-
 	-- The Murderer's thrown knife (everyone's, whatever the perk)
 	MurderThrow = { Range = 2000, Speed = 110 }, -- flies until it hits something
 

@@ -413,31 +413,6 @@ local function flyKnife(
 end
 
 local handlers: { [string]: (...any) -> () } = {
-	-- Double Trouble: your fellow Murderer, outlined red for you only, for the round
-	Partner = function(character: Model?, name: string)
-		if not character then
-			return
-		end
-		local highlight = Instance.new("Highlight")
-		highlight.Name = "PartnerOutline"
-		highlight.FillTransparency = 1
-		highlight.OutlineColor = Color3.fromRGB(255, 40, 60)
-		highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-		highlight.Adornee = character
-		highlight.Parent = character
-		Effects.FloatText(
-			(character:GetPivot()).Position + Vector3.new(0, 5, 0),
-			`🔪 Partner: {name}`,
-			Color3.fromRGB(255, 80, 90)
-		)
-		local connection: RBXScriptConnection
-		connection = player:GetAttributeChangedSignal("InRound"):Connect(function()
-			if not player:GetAttribute("InRound") then
-				connection:Disconnect()
-				highlight:Destroy()
-			end
-		end)
-	end,
 	-- Putting a stolen knife on your plate: it flies from your hands and lands with a burst
 	PlaceKnife = function(from: Vector3, to: Vector3, item: string, coffin: string?)
 		if not Lod.Near(to) then

@@ -189,7 +189,6 @@ local function roundAction(): NextAction.Action
 		GunOut = toolWith("Revolver", true) ~= nil,
 		WeaponWait = math.max(0, ((player:GetAttribute("WeaponAt") or now) :: number) - now),
 		Reload = math.max(0, ((player:GetAttribute("RevolverReadyAt") or 0) :: number) - now),
-		Classic = ReplicatedStorage:GetAttribute("Classic") == true,
 		GunNearby = not murderer and not gun and visibleRoundTarget("RoundGunPickup", 45) ~= nil,
 		Input = input,
 	})

@@ -60,7 +60,7 @@ the next boss you can't outrun yet; the win card + ~30 shoes flying into the Spe
 
 - Hotbar knives show an icon (Tool.TextureId from Config/KnifeIcons, rendered by blender/scripts/render_knife_icons.py).
 - Rounds (MM2 style: innocents hide, run and grab the gun - Innocent Powers were cut); tap = stab, hold = throw;
-  Classic and Double Trouble rounds are off (ClassicChance 0, DoubleTrouble.Chance 0); the
+  Classic and Double Trouble code is deleted; the
   Murderer's speed boost only applies with the knife out; HUD shows "Your chance to be the Murderer" (MurdererChance);
   end-of-round VS card (Effect "RoundCard" -> client/Transitions).
 - `CombatService` the hub knife Tool (equipped or best owned, else the Rusty Shank): swing (Tool.Activated) and throw

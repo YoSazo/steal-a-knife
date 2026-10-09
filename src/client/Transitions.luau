@@ -244,7 +244,7 @@ function Transitions.Init()
 		cardToken += 1
 		local token = cardToken
 		local murdererWon = info.Won == "Murderer"
-		cardTitle.Text = (if info.Classic then "CLASSIC · " else "") .. tostring(info.Title or "")
+		cardTitle.Text = tostring(info.Title or "")
 		cardTitle.TextColor3 = if murdererWon then Color3.fromRGB(255, 80, 90) else Color3.fromRGB(110, 200, 255)
 		cardStroke.Color = cardTitle.TextColor3
 		mName.Text = tostring(info.MurdererName or "?")

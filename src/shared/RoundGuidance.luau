@@ -10,7 +10,6 @@ export type State = {
 	GunOut: boolean,
 	WeaponWait: number,
 	Reload: number,
-	Classic: boolean,
 	GunNearby: boolean,
 	Input: string,
 }
@@ -73,7 +72,7 @@ function RoundGuidance.Pick(s: State): Action
 		return { Id = "gun_pickup", Text = "Grab the gun to stop the Murderer!", Target = "RoundGun" }
 	end
 	return {
-		Id = if s.Classic then "classic_coins" else "innocent_coins",
+		Id = "innocent_coins",
 		Text = "Collect coins and stay safe!",
 		Target = "RoundCoin",
 	}

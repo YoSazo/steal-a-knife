@@ -30,8 +30,8 @@ Done:
   goal line ("outrun the FLOWER TOAD").
 - **Item 28:** round moments shown in rounds (`Net.Notify(..., inRound)`), bigger top line /
   toasts, pen wording, rewrites. Not done: the two-line prize layout + moving the x2 pill.
-- **Item 4:** powers off at the source (`Items.Parse` Perk = nil), PowerShowcase gone. Not done:
-  none of the code deletion: completed in the Codex continuation below.
+- **Item 4:** Murderer powers and their dormant code deleted; rarity kill bursts added in the
+  Codex continuation below.
 - **Item 6 (HUD):** the guide's DO line is the big objective (36 px, phones 28); the core loop's
   line and red trail never retire (tests/GuidePolicy updated); Speed / Cash bigger, tap either to
   open the shop on its tab (`Ui.OpenShop`), a + badge on Cash.
@@ -106,6 +106,10 @@ The creature's speed sign is readable up close at 640 x 320.
   phone THROW button works repeatedly and tap killed a bot. Old Spam requests were rejected.
   Studio solo debugging bypasses join grace after giving a knife; empty profiles cannot join.
   Selene, StyLua and luau-lsp pass; no game script errors. CLAUDE.md updated.
+- **Item 3 deletion:** Classic / Double Trouble config, partner views / outlines / messages,
+  second Sheriff / gun paths and UI removed. Studio round setup had exactly one Murderer and one
+  Revolver; role and round UI checked at phone and desktop sizes. Console had no game script
+  errors. Selene, StyLua and luau-lsp pass.
 - **Round lighting fixed:** neutral 210 / 210 / 200 ambient and no indoor shadows while in a
   round; hub ambient and shadows restore afterward. Visually checked Office in the phone preset
   and at desktop size after the role-reveal overlay faded. All three code checks pass. One

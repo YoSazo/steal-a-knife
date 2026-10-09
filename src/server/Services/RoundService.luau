@@ -92,14 +92,6 @@ type Round = {
 	ShotByBot: boolean, -- a bot shot the (player) Murderer: loot goes home like a hero's shot
 	Newcomer: boolean, -- a brand-new player's first round as the Murderer: the bots let them win
 	HeroBot: Bot?, -- that bot (its face goes on the VS card)
-	Classic: boolean, -- no powers, no perks, extra pay
-	Double: boolean, -- DOUBLE TROUBLE: two Murderers, two Sheriffs
-	Killers: { [Player]: boolean }, -- every Murderer this round (one, or two in Double Trouble)
-	Partner: Player?, -- the second Murderer
-	PartnerRound: Round?, -- their own view of the round (own knife and cooldowns; see partnerView)
-	Gunner2: Player?, -- the second Sheriff
-	GunTool2: Tool?,
-	ShotKillers: { [Player]: boolean }, -- Murderers a Sheriff took down (their loot goes back)
 	Id: string, -- analytics: round_id on every round event
 	StartedAt: number, -- os.clock()
 	Map: string,
@@ -132,54 +124,18 @@ local rng = Random.new()
 -- player attribute the client reads too)
 -- Is this player one of the round's Murderers?
 local function isKiller(round: Round, player: Player?): boolean
-	return player ~= nil and round.Killers[player] == true
+	return player ~= nil and player == round.Murderer
 end
 
 -- The second Murderer gets their own copy of the per-Murderer fields (Murderer, knife, cooldowns);
 -- everything else reads and writes the real round. So every Murderer function just takes a round.
-local OWN_FIELDS = {
-	Murderer = true,
-	Weapon = true,
-	WeaponKnife = true,
-	LastAttack = true,
-	ThrowReadyAt = true,
-	StabHint = true,
-}
--- Is this the live round? The second Murderer's partnerView counts as the round it mirrors
 local function isLive(round: Round): boolean
-	return current ~= nil and (current == round or (current :: Round).PartnerRound == round)
+	return current == round
 end
 
-local function partnerView(round: Round, partner: Player, knife: string): Round
-	local own: { [string]: any } = {
-		Murderer = partner,
-		WeaponKnife = knife,
-		LastAttack = 0,
-		ThrowReadyAt = 0,
-	}
-	return setmetatable({}, {
-		__index = function(_, key)
-			if OWN_FIELDS[key] then
-				return own[key]
-			end
-			return (round :: any)[key]
-		end,
-		__newindex = function(_, key, value)
-			if OWN_FIELDS[key] then
-				own[key] = value
-			else
-				(round :: any)[key] = value
-			end
-		end,
-	}) :: any
-end
-
--- The round as seen by this Murderer (the partner's own view in Double Trouble)
 local function killerRound(round: Round, player: Player): Round?
 	if player == round.Murderer then
 		return round
-	elseif player == round.Partner then
-		return round.PartnerRound
 	end
 	return nil
 end
@@ -336,7 +292,7 @@ end
 local function roleOf(round: Round, player: Player): string
 	if isKiller(round, player) then
 		return "murderer"
-	elseif round.Sheriff == player or round.Gunner == player or round.Gunner2 == player then
+	elseif round.Sheriff == player or round.Gunner == player then
 		return "sheriff"
 	end
 	return "innocent"
@@ -345,8 +301,6 @@ local function roundProps(round: Round, player: Player, extra: { [string]: any }
 	local props: { [string]: any } = {
 		round_id = round.Id,
 		role = roleOf(round, player),
-		classic = round.Classic,
-		double = round.Double,
 		map = round.Map,
 		round_s = math.floor(os.clock() - round.StartedAt),
 		alive = aliveCount(round),
@@ -552,13 +506,6 @@ local function eliminate(round: Round, victim: Player, killer: Player?, fatal: b
 	local root = rootOf(victim)
 	if round.Gunner == victim and root then
 		dropRevolver(round, root.Position)
-	end
-	if round.Gunner2 == victim then
-		-- The second Sheriff's Revolver goes with them
-		if round.GunTool2 then
-			round.GunTool2:Destroy()
-		end
-		round.Gunner2, round.GunTool2 = nil, nil
 	end
 	Analytics.Track(
 		victim,
@@ -1149,16 +1096,11 @@ end
 
 local function onShoot(player: Player, aim: unknown)
 	local round = current
-	if
-		not round
-		or (round.Gunner ~= player and round.Gunner2 ~= player)
-		or not round.Alive[player]
-		or typeof(aim) ~= "Vector3"
-	then
+	if not round or round.Gunner ~= player or not round.Alive[player] or typeof(aim) ~= "Vector3" then
 		return
 	end
 	local character = player.Character
-	local tool = if player == round.Gunner2 then round.GunTool2 else round.GunTool
+	local tool = round.GunTool
 	if not character or not tool or tool.Parent ~= character then
 		return -- has to be holding it
 	end
@@ -1175,7 +1117,7 @@ local function onShoot(player: Player, aim: unknown)
 		return
 	end
 	round.LastShot = now
-	for _, holder in { round.Gunner, round.Gunner2 } do
+	for _, holder in { round.Gunner } do
 		if holder then
 			holder:SetAttribute("RevolverReadyAt", workspace:GetServerTimeNow() + GameConfig.RevolverCooldown)
 		end
@@ -1234,7 +1176,6 @@ local function onShoot(player: Player, aim: unknown)
 			Analytics.Milestone(player, "hero_shot")
 		end
 		round.Hero = round.Hero or player
-		round.ShotKillers[victim] = true
 		local victimRoot = rootOf(victim)
 		if victimRoot then
 			finalMoment(round, victimRoot.Position, "Hero")
@@ -1264,17 +1205,12 @@ local function murdererThreat(round: Round): BasePart?
 	if murdererBot then
 		return if murdererBot.Alive and murdererBot.Knife then murdererBot.Root else nil
 	end
-	for killer in round.Killers do
+	local killer = round.Murderer
+	if killer then
 		local view = killerRound(round, killer)
 		local weapon = view and view.Weapon
 		-- Only once the knife is out (pulling it is the reveal)
-		if
-			view
-			and weapon
-			and round.Alive[killer]
-			and weapon.Parent == killer.Character
-			and not killer:GetAttribute("Invisible")
-		then
+		if view and weapon and round.Alive[killer] and weapon.Parent == killer.Character then
 			return rootOf(killer)
 		end
 	end
@@ -1616,19 +1552,6 @@ local function startRound(participants: { Player })
 	else
 		murderer = pickMurderer(participants)
 	end
-	-- DOUBLE TROUBLE: two Murderers (and two Sheriffs). Always on busy servers, sometimes on quiet
-	-- ones; needs two real players to be the Murderers. Your teammate is picked with you.
-	local partner: Player? = nil
-	if
-		not plan
-		and murderer
-		and #participants >= 3
-		and (#participants >= GameConfig.DoubleTrouble.Always or rng:NextNumber() < GameConfig.DoubleTrouble.Chance)
-	then
-		local rest = table.clone(participants)
-		table.remove(rest, table.find(rest, murderer) :: number)
-		partner = pickMurderer(rest)
-	end
 	local botFolder = Instance.new("Folder")
 	botFolder.Name = "RoundBots"
 	botFolder.Parent = workspace
@@ -1659,19 +1582,10 @@ local function startRound(participants: { Player })
 		LastShot = 0,
 		ThrowReadyAt = 0,
 		Hero = nil,
-		Double = false,
-		Killers = if murderer then { [murderer] = true } else {},
-		Partner = nil,
-		PartnerRound = nil,
-		Gunner2 = nil,
-		GunTool2 = nil,
-		ShotKillers = {},
 		GunnerBot = nil,
 		ShotByBot = false,
 		Newcomer = newcomer,
 		HeroBot = nil,
-		-- (never for a Studio bot round: those are for testing perks and powers)
-		Classic = plan == nil and rng:NextNumber() < GameConfig.ClassicChance,
 		PayScale = if #participants >= 2 then 1 else GameConfig.BotRoundPay,
 		HumanKills = 0,
 		Connections = {},
@@ -1680,17 +1594,6 @@ local function startRound(participants: { Player })
 		Map = built.Name,
 	}
 	current = round
-	if partner then
-		round.Double = true
-		round.Partner = partner
-		round.Killers[partner] = true
-		round.PartnerRound = partnerView(round, partner, murdererKnife(partner))
-	end
-	ReplicatedStorage:SetAttribute("Classic", round.Classic or nil)
-	ReplicatedStorage:SetAttribute("Double", round.Double or nil)
-	if round.Classic then
-		round.PayScale *= GameConfig.ClassicPay
-	end
 	ReplicatedStorage:SetAttribute("Revolver", nil)
 
 	-- Everyone becomes a named character (yields while outfits apply)
@@ -1710,11 +1613,7 @@ local function startRound(participants: { Player })
 		Net.Remotes.Effect:FireClient(
 			player,
 			"Fade",
-			`🔪 {ReplicatedStorage:GetAttribute("MapName") or "The Murder"}{if round.Double
-				then "\nDOUBLE TROUBLE - 2 Murderers, 2 Sheriffs!"
-				else ""}{if round.Classic
-				then "\nCLASSIC ROUND - no Murderer power, x" .. GameConfig.ClassicPay .. " pay!"
-				else ""}`
+			`🔪 {ReplicatedStorage:GetAttribute("MapName") or "The Murder"}`
 		)
 	end
 	task.wait(0.35)
@@ -1743,7 +1642,7 @@ local function startRound(participants: { Player })
 		end
 		-- The night: a boss's knife you're carrying goes back to its wall (the 10 s warning said so)
 		StealService.EndForRound(player)
-		local isMurderer = round.Killers[player] == true
+		local isMurderer = player == round.Murderer
 		if not isMurderer then
 			table.insert(round.Innocents, player)
 		end
@@ -1844,26 +1743,12 @@ local function startRound(participants: { Player })
 		spawnCoin(round)
 	end
 
-	if round.Partner then
-		local a, b = round.Murderer :: Player, round.Partner :: Player
-		for _, pair in { { a, b }, { b, a } } do
-			Net.Remotes.Effect:FireClient(
-				pair[1],
-				"Partner",
-				pair[2].Character,
-				round.Names[pair[2]] or pair[2].DisplayName
-			)
-		end
-	end
-	for killer in round.Killers do
-		killer:SetAttribute("WeaponAt", workspace:GetServerTimeNow() + GameConfig.MurdererGrace)
+	if murderer then
+		murderer:SetAttribute("WeaponAt", workspace:GetServerTimeNow() + GameConfig.MurdererGrace)
 	end
 	task.delay(GameConfig.MurdererGrace, function()
 		if current == round then
 			giveWeapon(round)
-			if round.PartnerRound then
-				giveWeapon(round.PartnerRound)
-			end
 		end
 	end)
 	-- A Sheriff from the start (MM2 style): any innocent, player or bot, gets the Revolver now
@@ -1906,18 +1791,6 @@ local function startRound(participants: { Player })
 			giveRevolverToBot(round, chosen)
 		end
 		table.remove(sheriffs, table.find(sheriffs, chosen) :: number)
-		if round.Double and #sheriffs > 0 then
-			local second = sheriffs[rng:NextInteger(1, #sheriffs)]
-			if typeof(second) == "Instance" then
-				local player = second :: Player
-				local tool = Revolver.BuildTool()
-				tool.Parent = player:FindFirstChildOfClass("Backpack")
-				round.Gunner2, round.GunTool2 = player, tool
-				Net.Notify(player, "You're a SHERIFF too! There are 2 Murderers!", "good")
-			else
-				giveRevolverToBot(round, second)
-			end
-		end
 	end
 
 	-- Nobody took the Revolver (or it dropped): it turns up somewhere later
@@ -1939,13 +1812,6 @@ local function endRound(round: Round)
 	if round.Weapon then
 		round.Weapon:Destroy()
 	end
-	if round.PartnerRound and round.PartnerRound.Weapon then
-		round.PartnerRound.Weapon:Destroy()
-	end
-	if round.GunTool2 then
-		round.GunTool2:Destroy()
-	end
-	ReplicatedStorage:SetAttribute("Double", nil)
 	if round.GunTool then
 		round.GunTool:Destroy()
 	end
@@ -2114,9 +1980,6 @@ local function endRound(round: Round)
 	if murderer then
 		leaveRound(murderer)
 	end
-	if round.Partner then
-		leaveRound(round.Partner)
-	end
 	for player in round.Names do
 		Disguises.Forget(player)
 	end
@@ -2136,7 +1999,6 @@ local function endRound(round: Round)
 		elseif innocentsWon then `Innocents win! The Murderer was {murdererName}`
 		else `The Murderer wins! It was {murdererName}`
 	setPhase("Results", GameConfig.ResultsTime, status)
-	ReplicatedStorage:SetAttribute("Classic", nil)
 	-- The VS card: who was the Murderer, with which knife, and who stopped them (client/Transitions)
 	local heroName: string? = if hero
 		then `{round.Names[hero] or "?"} ({hero.DisplayName})`
@@ -2160,9 +2022,8 @@ local function endRound(round: Round)
 			elseif innocentsWon then "The innocents survived!"
 			else "The Murderer wins!",
 		Won = if innocentsWon then "Innocents" else "Murderer",
-		MurdererName = if murderer and round.Partner
-			then `{round.Names[murderer] or "?"} & {round.Names[round.Partner] or "?"}`
-			elseif murderer then `{round.Names[murderer] or "?"} ({murderer.DisplayName})`
+		MurdererName = if murderer
+			then `{round.Names[murderer] or "?"} ({murderer.DisplayName})`
 			elseif round.MurdererBot then `{round.MurdererBot.Name} (bot)`
 			else "?",
 		MurdererId = if murderer then murderer.UserId else 0,
@@ -2172,7 +2033,6 @@ local function endRound(round: Round)
 		MurdererFace = murdererBotFace,
 		HeroFace = heroBotFace,
 		Kills = round.Kills,
-		Classic = round.Classic,
 		-- The Murderer's knife power on show
 		SheriffName = sheriffName,
 		SheriffId = sheriffId,
@@ -2187,17 +2047,8 @@ end
 
 local function roundOver(round: Round): boolean
 	local murderer = round.Murderer
-	-- Every Murderer down (both, in Double Trouble): the innocents win
-	if murderer then
-		local anyLeft = false
-		for killer in round.Killers do
-			if round.Alive[killer] and killer.Parent then
-				anyLeft = true
-			end
-		end
-		if not anyLeft then
-			return true
-		end
+	if murderer and (not round.Alive[murderer] or not murderer.Parent) then
+		return true
 	end
 	if round.MurdererBot and not round.MurdererBot.Alive then
 		return true
@@ -2284,8 +2135,6 @@ local function loop()
 			round_id = round.Id,
 			players = #participants,
 			bots = #round.Bots,
-			classic = round.Classic,
-			double = round.Double,
 			map = round.Map,
 			bot_murderer = round.MurdererBot ~= nil,
 		})
