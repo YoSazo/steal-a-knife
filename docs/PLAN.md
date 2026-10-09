@@ -468,6 +468,8 @@ return-after-results notes in this document.
   shares now 16.207% / 4.83677% / 1.68899% / 1.10595% / 0.8% / 0.6% / 0.4%; random double rounds
   and deeper pickups are included in the model. These supersede the previous share table.
 - The 10-second carry warning now truthfully says the coffin will wait through the round.
+- Follow-up pushed as 1c99cf7 and published v875. Studio logged PublishSuccessful at
+  17:16:34 America/Chicago; runtime Map and test attributes were absent in the edit model.
 
 ### Codex UI/art brief, 2026-10-09
 
