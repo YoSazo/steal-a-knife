@@ -388,7 +388,7 @@ function Transitions.Init()
 	end
 
 	-- The round prize, paid once you're home: "You won! +$4.2M" (a knife shows its picture)
-	local function showPrize(text: string, kind: unknown, knife: unknown, jackpot: boolean)
+	local function showPrize(text: string, kind: unknown, knife: unknown, jackpot: boolean, title: string?)
 		local prizeCard = Instance.new("Frame")
 		prizeCard.Name = "PrizeWon"
 		Ui.TrackPresentation(prizeCard)
@@ -413,7 +413,8 @@ function Transitions.Init()
 		label(prizeCard, {
 			Position = UDim2.fromOffset(16, 12),
 			Size = UDim2.new(1, -32, 0, 48),
-			Text = if jackpot then "⭐ JACKPOT! You won the murder round! ⭐" else "🎉 You won the murder round!",
+			Text = title
+				or (if jackpot then "⭐ JACKPOT! You won the murder round! ⭐" else "🎉 You won the murder round!"),
 			TextColor3 = Color3.fromRGB(255, 215, 70),
 			ZIndex = 46,
 		})
@@ -496,15 +497,25 @@ function Transitions.Init()
 			)
 			shoeShower(source, false, 6)
 			local pop = label(source, {
-				Size = UDim2.fromOffset(240, 40),
+				Size = UDim2.fromOffset(300, 56),
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				Text = `+{Ui.abbreviate(text)} 👟`,
-				TextSize = 28,
+				TextSize = 44,
 				TextScaled = false,
+				TextColor3 = Color3.fromRGB(120, 200, 255),
 				ZIndex = 61,
 			})
-			TweenService:Create(pop, TweenInfo.new(1.2), { Position = UDim2.fromOffset(0, -40), TextTransparency = 1 })
-				:Play()
+			-- (solid while you read it, then text and outline fade together: fading only the
+			-- letters left a hollow ghost outline)
+			TweenService:Create(pop, TweenInfo.new(1.6), { Position = UDim2.fromOffset(0, -50) }):Play()
+			task.delay(1.1, function()
+				local fade = TweenInfo.new(0.4)
+				TweenService:Create(pop, fade, { TextTransparency = 1 }):Play()
+				local outline = pop:FindFirstChildOfClass("UIStroke")
+				if outline then
+					TweenService:Create(outline, fade, { Transparency = 1 }):Play()
+				end
+			end)
 			Debris:AddItem(source, 2)
 			return
 		end
@@ -518,6 +529,32 @@ function Transitions.Init()
 			kill.Visible = false
 			if type(text) == "table" then
 				showCard(text)
+				-- The payoff, big, once you're home (every role): "🎉 You won the murder round!
+				-- +12K 👟" with the shoe shower into the Speed readout
+				local speed = tonumber(text.YourSpeed) or 0
+				if speed > 0 then
+					local won = text.YouWon == true
+					task.spawn(function()
+						local started = os.clock()
+						task.wait(6.2) -- (the VS card's time)
+						while
+							(player:GetAttribute("InRound") or Ui.gui:GetAttribute("FadeCover"))
+							and os.clock() - started < 25
+						do
+							task.wait(0.2)
+						end
+						task.wait(0.6)
+						queueCard(4.8, function()
+							showPrize(
+								`+{Format.Short(speed)} 👟 Speed`,
+								"Speed",
+								nil,
+								false,
+								if won then "🎉 You won the murder round!" else "👟 Your Speed from the round"
+							)
+						end)
+					end)
+				end
 				-- you won it: the best moment of the first visit to ask for a favourite (once ever)
 				local murdererWon = text.Won == "Murderer"
 				local mine = tonumber(text.MurdererId) == Players.LocalPlayer.UserId
