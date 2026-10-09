@@ -76,7 +76,7 @@ task.spawn(function()
 	MapService.BuildBiomeShells() -- after the lairs
 	print(
 		string.format(
-			"[Steal and Murder] bosses %.1fs, biomes %.1fs (built after spawning)",
+			"[Steal a Knife] bosses %.1fs, biomes %.1fs (built after spawning)",
 			guards,
 			os.clock() - t - guards
 		)
@@ -108,6 +108,4 @@ DataService.PlayerLoaded:Connect(function(player: Player)
 end)
 DataService.Init()
 
-print(
-	string.format("[Steal and Murder] server ready in %.1fs (%s)", os.clock() - startedAt, table.concat(timings, ", "))
-)
+print(string.format("[Steal a Knife] server ready in %.1fs (%s)", os.clock() - startedAt, table.concat(timings, ", ")))

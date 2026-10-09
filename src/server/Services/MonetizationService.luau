@@ -18,6 +18,8 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local PenMode = require(ReplicatedStorage.Shared.PenMode)
 local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
+local FeaturedCoffin = require(ReplicatedStorage.Shared.FeaturedCoffin)
+local Items = require(ReplicatedStorage.Shared.Items)
 local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
@@ -28,6 +30,7 @@ local Analytics = require(script.Parent.Analytics)
 local CoffinService = require(script.Parent.CoffinService)
 
 local MonetizationService = {}
+local featuredRng = Random.new()
 
 -- PurchaseIds kept per profile. Roblox only re-sends a receipt until it's acknowledged, and we only
 -- acknowledge once the id is saved, so this just has to outlast a burst of purchases between
@@ -201,6 +204,27 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 				DataService.AddCash(player, value, "robux_coffin_value")
 				table.insert(got, `{Format.Cash(value)} (no room for a coffin)`)
 			end
+		end
+	end
+	if product.Featured then
+		-- This week's character (a late receipt gets the latest week's), each with the exact odds
+		-- the tile showed; no room for one = its coffin value instead (the tile warns about room)
+		local name = FeaturedCoffin.ForGrant(os.time())
+		local given, refunded = 0, 0
+		for _ = 1, product.Featured do
+			local item = if name then Items.Make(name, FeaturedCoffin.RollMutation(featuredRng), "") else nil
+			if not restricted and item and CoffinService.GivePaid(player, item, "featured") then
+				given += 1
+			else
+				refunded += coffinValue(FeaturedCoffin.Rarity)
+			end
+		end
+		if given > 0 then
+			table.insert(got, `{given} Featured {if given == 1 then "Coffin" else "Coffins"} (READY!)`)
+		end
+		if refunded > 0 then
+			DataService.AddCash(player, refunded, "robux_coffin_value")
+			table.insert(got, Format.Cash(refunded))
 		end
 	end
 	if product.Spins then
