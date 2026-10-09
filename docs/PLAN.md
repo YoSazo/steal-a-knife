@@ -204,7 +204,7 @@ The creature's speed sign is readable up close at 640 x 320.
 - **Item 13 complete:** native glass coffins with a visible rarity-coloured knife silhouette,
   matching carried/dropped/gift coffins. Diamond+ alone gets a white second glow and sparkles;
   the same mutation threshold controls monster-stash announcements, which keep the mutation
-  hidden. Stash labels show the character and `1 in 50 Rainbow roll`, calculated through the
+  hidden. Stash labels show the character and (since 10-09) its base $/s; they used to show `1 in 50 Rainbow roll`, calculated through the
   exact mutation weight function used by Items.Roll. Normal Rainbow 2%, Gold 12.5% verified.
   Fixed bloom that obscured the silhouette. Desktop and fresh 640×320 phone checked, console
   clean. A sealed `ThornDagger|Diamond|Huge` remained server-side; clients saw `ThornDagger`.

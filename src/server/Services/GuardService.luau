@@ -693,7 +693,8 @@ local function setSlot(boss: Boss, slot: Slot, item: string)
 			`{if special then "✨ SPECIAL " else ""}{parsed.Knife.DisplayName}`,
 			rarity,
 			Knives.RarityColors[rarity],
-			`✨ 1 in {math.round(1 / Items.MutationOdds("Rainbow"))} Rainbow roll`,
+			-- what it earns once home (the plain character's: the mutation stays a secret)
+			`{Format.Cash(Items.Income(parsed.Name))}/s`,
 			nil,
 			70
 		)

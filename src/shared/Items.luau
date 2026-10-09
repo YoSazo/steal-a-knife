@@ -242,20 +242,9 @@ local function weighted<T>(rng: Random, list: { T }, weightOf: (T) -> number): T
 	return list[#list]
 end
 
--- The same weights feed the roll and the displayed odds.
+-- A mutation's roll weight with `luck` (everything past "none" gets likelier)
 function Items.MutationWeight(mutation: Mutation, luck: number?): number
 	return mutation.Weight * (if mutation.Rank > 0 then math.max(1, luck or 1) else 1)
-end
-function Items.MutationOdds(id: string, luck: number?): number
-	local total, chosen = 0, 0
-	for _, mutation in Items.Mutations do
-		local weight = Items.MutationWeight(mutation, luck)
-		total += weight
-		if mutation.Id == id then
-			chosen = weight
-		end
-	end
-	return chosen / total
 end
 
 -- Rolls a mutation and a size. `luck` >= 1 makes everything past "none" / "normal" likelier.
