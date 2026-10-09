@@ -1,10 +1,30 @@
 # The plan (owner + Claude, 2026-10-08)
 
+## LAUNCH NOW (owner decision, 2026-10-09)
+
+Stop adding features before ads. Item 19 is complete (e85dde3); keep the Featured coffin hidden
+until its shop tile and purchase validation are finished. The owner's pasted checklist governs
+while update10.bundle is not yet present in Downloads.
+
+1. Publish the current game and test the full loop in the live Roblox client on PC and phone.
+   Check persistence across a rejoin, console errors, and fix only broken core-loop behaviour.
+2. Every visible shop product/pass must have a real ID and correct Roblox price. Make one cheap
+   live test purchase with the owner's approval at the payment confirmation.
+3. Store page: title `[MURDER] Steal a Knife` and server size 8 were set and verified via API.
+   Owner supplies the icon, three thumbnails (chase / round / glowing pen), age questionnaire
+   and public visibility.
+4. Owner starts a small daily ad budget and watches D1 retention, session length and click-through.
+
+**After launch:** Featured shop tile, weekly drop, shared menu styling, events board, remaining
+text cleanup and decisions on unused features based on real player data. The featured server
+config has three dated weeks; its checkout UI remains hidden. More cover can follow map metrics
+(time to first kill, kills per round, timer endings); do not build new maps before launch.
+
 **The filter:** every feature must make *steal → unlock → faster → steal deeper* better, or make the
 murder round feed it. If it doesn't, cut it. Think 5-year-old: one obvious thing to do, no reading.
 
 **The loop:** steal a locked knife from a monster → run home → murder rounds unlock it (and pay
-Speed - the only Speed, item 30 - give Winner's Luck, give a fuse charge) → it earns cash → cash
+Speed - the only Speed, item 30 - give Winner's Luck) → it earns cash → cash
 buys pen upgrades → faster → steal deeper. The round is also the stage where you flex your best knife.
 
 Test every step in Studio before starting the next.

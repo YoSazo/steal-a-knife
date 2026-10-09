@@ -32,7 +32,14 @@
       "$properties": {
         "StreamingIntegrityMode": "Disabled",
         "StreamOutBehavior": "Opportunistic",
-        "StreamingTargetRadius": 768
+        "StreamingTargetRadius": 768,
+        "StreamingEnabled": true
+      }
+    },
+    "HttpService": {
+      "$className": "HttpService",
+      "$properties": {
+        "HttpEnabled": true
       }
     }
   }
