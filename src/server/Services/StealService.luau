@@ -223,7 +223,7 @@ function StealService.DropKnife(item: string, position: Vector3, sealed: boolean
 	local at = Vector3.new(position.X, floorY + 2.2, position.Z)
 	local coffin = sealed == true and PenMode.Coffins()
 	local model = if coffin
-		then CoffinModel.Build(parsed.Knife.Rarity, CFrame.identity)
+		then CoffinModel.Build(parsed.Knife.Rarity, CFrame.identity, item)
 		else KnifeModel.Build(item, true)
 	if not coffin then
 		KnifeModel.FitItem(model, item, 3.2)
@@ -357,7 +357,7 @@ startCarry = function(
 	if (boss or source == "coffin") and PenMode.Coffins() then
 		-- a boss's coffin, held over your head (what's in it stays a secret until it opens)
 		local parsed = Items.Parse(item)
-		visual = CoffinModel.Build(if parsed then parsed.Knife.Rarity else "Common", CFrame.identity)
+		visual = CoffinModel.Build(if parsed then parsed.Knife.Rarity else "Common", CFrame.identity, item)
 		CoffinModel.Weld(visual) -- (all of it rides on your head, not just one piece)
 		-- (full size, as it lay in the graveyard: a big one is a big haul, and everyone sees it)
 		local _, size = visual:GetBoundingBox()
@@ -428,14 +428,14 @@ startCarry = function(
 		end
 	end
 	Net.Animate(character, "Pickup")
-	player:SetAttribute("Carrying", item)
+	player:SetAttribute("Carrying", if boss or source == "coffin" then Items.Name(item) else item)
 	player:SetAttribute("BossCarry", if boss then boss.Zone else nil) -- (a boss is after you)
 	BaseService.RefreshWalkSpeed(player)
 	-- (a boss steal gets no toast: GuardService already says "<BOSS> IS COMING! RUN HOME!")
 	if boss then
 		return
 	else
-		Net.Notify(player, `You got a {Items.DisplayName(item)}! RUN HOME!`, "good")
+		Net.Notify(player, `{if source == "coffin" then "Coffin!" else Items.DisplayName(item)} RUN HOME!`, "good")
 	end
 end
 
@@ -513,8 +513,17 @@ local function deposit(player: Player)
 		end
 	end
 	local placedPlate: number? = nil
+	local opensIn: string? = nil
 	DataService.Update(player, function(p)
 		placedPlate = DataService.AddKnife(p, item, carry.Plate)
+		if sealed then
+			opensIn = CoffinService.SealInto(
+				p,
+				placedPlate :: number,
+				item,
+				if quick then GameConfig.Coffins.TutorialSeconds else nil
+			)
+		end
 		-- Save placement with the inventory change, even if the client leaves before step 3 appears.
 		if not p.TutorialDone then
 			p.TutorialStep = math.max(p.TutorialStep, 3)
@@ -529,10 +538,7 @@ local function deposit(player: Player)
 	-- Only this successful carried-knife deposit confirms placement. Unboxes use the cosmetic
 	-- Deposit effect too, so the tutorial must not infer success from that effect or inventory size.
 	-- Publish the exact mounted item/plate before confirmation, so the guide can point at it.
-	local opensIn = if sealed and placedPlate
-		then CoffinService.Seal(player, placedPlate, item, if quick then GameConfig.Coffins.TutorialSeconds else nil)
-		else nil
-	player:SetAttribute("LastPlacedKnife", item)
+	player:SetAttribute("LastPlacedKnife", if sealed then Items.Name(item) else item)
 	player:SetAttribute("LastPlacedKnifePlate", placedPlate)
 	local placementSerial = (player:GetAttribute("KnifePlacementSerial") or 0) :: number
 	player:SetAttribute("KnifePlacementSerial", placementSerial + 1)
@@ -562,7 +568,7 @@ local function deposit(player: Player)
 		Net.Notify(player, `Pen full! {name} is in your bag.`, "info")
 		Offers.Show(player, "Mount", "Your pen is full! Get more room right now.")
 	elseif opensIn then
-		Net.Notify(player, `⚰️ {parsed.Knife.Rarity} Coffin! It opens {opensIn}`, "good")
+		Net.Notify(player, `⚰️ {parsed.Knife.DisplayName} coffin delivered!`, "good")
 	else
 		Net.Notify(player, `{if isNew then "NEW! " else ""}{name} +{Format.Cash(Items.Income(item))}/s`, "good")
 	end

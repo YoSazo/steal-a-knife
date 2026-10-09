@@ -509,7 +509,16 @@ local function publish(player: Player, profile: Profile)
 	player:SetAttribute("Speed", math.floor(profile.Speed))
 	player:SetAttribute("Luck", profile.Luck)
 	player:SetAttribute("Tickets", profile.Tickets)
-	player:SetAttribute("Knives", table.concat(profile.Knives, ","))
+	local publicKnives, sealed = {}, {}
+	for index, item in profile.Knives do
+		local hidden = DataService.IsSealedIndex(profile, index)
+		table.insert(publicKnives, if hidden then Items.Name(item) else item)
+		if hidden then
+			table.insert(sealed, index)
+		end
+	end
+	player:SetAttribute("SealedKnives", table.concat(sealed, ","))
+	player:SetAttribute("Knives", table.concat(publicKnives, ","))
 	player:SetAttribute("Equipped", profile.Equipped)
 	player:SetAttribute("Discovered", table.concat(profile.Discovered, ","))
 	player:SetAttribute("Kills", profile.TotalKills)

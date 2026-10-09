@@ -380,7 +380,7 @@ local function flyKnife(
 	character: boolean?,
 	coffin: string? -- a rarity: fly its coffin instead (the knife inside stays a secret)
 )
-	local model = if coffin then CoffinModel.Build(coffin, CFrame.identity) else buildFlying(item, character)
+	local model = if coffin then CoffinModel.Build(coffin, CFrame.identity, item) else buildFlying(item, character)
 	if coffin then
 		CoffinModel.Weld(model)
 	else

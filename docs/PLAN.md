@@ -166,7 +166,17 @@ The creature's speed sign is readable up close at 640 x 320.
   Keep intermission 70 s, ladder 60 s, warning 10 s. Pen slots 16 / 17 occur at 5.90 / 7.36 h;
   later unique slot milestones cross rebirths, which reset the pen.
 
-**Next:** hatch layer (items 13-17: glass coffin / silhouette and real odds, human names,
+- **Item 13 complete:** native glass coffins with a visible rarity-coloured knife silhouette,
+  matching carried/dropped/gift coffins. Diamond+ alone gets a white second glow and sparkles;
+  the same mutation threshold controls monster-stash announcements, which keep the mutation
+  hidden. Stash labels show the character and `1 in 50 Rainbow roll`, calculated through the
+  exact mutation weight function used by Items.Roll. Normal Rainbow 2%, Gold 12.5% verified.
+  Fixed bloom that obscured the silhouette. Desktop and fresh 640×320 phone checked, console
+  clean. A sealed `ThornDagger|Diamond|Huge` remained server-side; clients saw `ThornDagger`.
+  Add/seal is atomic so its contents never briefly replicate before sealing. Luck upgrades
+  preserve the original mutation rank. Selene, StyLua, sourcemap and luau-lsp pass.
+
+**Next:** remaining hatch layer (items 14-17: human names,
 manual READY opening, Winner's Luck, fuse machine), then Secret, maps, shop and remaining work.
 
 ---

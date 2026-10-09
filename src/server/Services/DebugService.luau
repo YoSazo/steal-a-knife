@@ -130,7 +130,11 @@ local commands: { [string]: (Player, ...any) -> any } = {
 	end,
 	-- A mystery coffin, as a gift / wheel prize / daily streak would give it
 	Coffin = function(player: Player, rarity: string?)
-		return CoffinService.GiveRarity(player, rarity or "Epic", "Studio") ~= nil
+		return (
+			if rarity and Items.Parse(rarity)
+				then CoffinService.Give(player, rarity, "Studio")
+				else CoffinService.GiveRarity(player, rarity or "Epic", "Studio")
+		) ~= nil
 	end,
 	BotRound = function(player: Player, role: string)
 		if ReplicatedStorage:GetAttribute("Phase") ~= "Intermission" then

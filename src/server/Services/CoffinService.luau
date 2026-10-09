@@ -54,26 +54,15 @@ end
 -- Seals the knife on `plate` (just deposited). Returns when it opens, for the toast ("in 20s",
 -- "after 2 murder rounds").
 -- `seconds`: a plain short timer instead (the tutorial's coffin: you see it land and count down)
-function CoffinService.Seal(player: Player, plate: number, item: string, seconds: number?): string
+-- Call only inside DataService.Update, alongside AddKnife: hidden contents never replicate.
+function CoffinService.SealInto(profile: DataService.Profile, plate: number, item: string, seconds: number?): string
 	local parsed = Items.Parse(item)
 	local rarity = if parsed then parsed.Knife.Rarity else "Common"
 	local rounds = if seconds then 0 else CONFIG.Rounds[rarity] or 1
-	if seconds then
-		DataService.Update(player, function(p)
-			DataService.Seal(p, plate, os.time() + seconds, nil)
-		end)
-		Analytics.Track(player, "coffin.sealed", { rarity = rarity, rounds = 0, tutorial = true })
-		return `in {Format.Duration(seconds)}`
-	end
-	DataService.Update(player, function(p)
-		if rounds <= 0 then
-			DataService.Seal(p, plate, os.time() + CONFIG.CommonSeconds, nil)
-		else
-			DataService.Seal(p, plate, os.time() + rounds * CONFIG.OfflineSecondsPerRound, rounds)
-		end
-	end)
-	Analytics.Track(player, "coffin.sealed", { rarity = rarity, rounds = rounds })
-	return if rounds <= 0 then `in {Format.Duration(CONFIG.CommonSeconds)}` else roundsText(rounds)
+	local waitSeconds = seconds
+		or (if rounds <= 0 then CONFIG.CommonSeconds else rounds * CONFIG.OfflineSecondsPerRound)
+	DataService.Seal(profile, plate, os.time() + waitSeconds, if rounds > 0 then rounds else nil)
+	return if rounds <= 0 then `in {Format.Duration(waitSeconds)}` else roundsText(rounds)
 end
 
 -- A boss's knife going into your coffin gets one more mutation / size roll with your luck (rebirths,
@@ -89,8 +78,11 @@ function CoffinService.LuckyContents(player: Player, item: string): string
 		return item
 	end
 	local mutation, size = Items.Roll(rng, luck)
-	local candidate = Items.Make(parsed.Name, mutation.Id, size.Id)
-	return if Items.Income(candidate) > Items.Income(item) then candidate else item
+	return Items.Make(
+		parsed.Name,
+		if mutation.Rank > parsed.Mutation.Rank then mutation.Id else parsed.Mutation.Id,
+		if size.Rank > parsed.Size.Rank then size.Id else parsed.Size.Id
+	)
 end
 
 -- A mystery knife for `player` (a gift, a wheel prize, round loot, the daily streak, the Starter
@@ -111,12 +103,12 @@ function CoffinService.Give(player: Player, item: string, source: string, quiet:
 		local plate = 0
 		DataService.Update(player, function(p)
 			plate = DataService.AddKnife(p, item)
+			CoffinService.SealInto(p, plate, item)
 		end)
-		local when = CoffinService.Seal(player, plate, item)
 		BaseService.RefreshRack(player)
 		Net.Remotes.Effect:FireAllClients("Deposit", player, rarity)
 		if not quiet then
-			Net.Notify(player, `⚰️ A {rarity} Coffin from {source} is in your pen! It opens {when}.`, "good")
+			Net.Notify(player, `⚰️ {parsed.Knife.DisplayName} coffin delivered!`, "good")
 		end
 	else
 		local isNew = not table.find(profile.Discovered, parsed.Name)

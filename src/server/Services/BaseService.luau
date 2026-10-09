@@ -528,8 +528,7 @@ function BaseService.RefreshRack(player: Player)
 			local grass = base.Folder:FindFirstChild("Floor") :: BasePart?
 			local floorY = if grass then grass.Position.Y + grass.Size.Y / 2 else pad.Position.Y + pad.Size.Y / 2
 			local floorCF = CFrame.new(pad.Position.X, floorY, pad.Position.Z) * slotCF.Rotation
-			local coffin = CoffinModel.Build(parsed.Knife.Rarity, floorCF)
-			KnifeHaze.Add(coffin, parsed.Knife.Rarity) -- (a glow on it from the start: you can see it's worth something)
+			local coffin = CoffinModel.Build(parsed.Knife.Rarity, floorCF, item)
 			coffin:SetAttribute("Owner", player.UserId)
 			coffin:SetAttribute("Plate", slot)
 			-- (server time, so every client counts down to the same moment)
