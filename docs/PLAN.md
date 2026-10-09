@@ -211,6 +211,44 @@ The creature's speed sign is readable up close at 640 x 320.
   UI, remotes, charge rewards, profile field and shared rules. This item is deferred and is no
   longer required for this launch. The completed round/hatch/luck work remains.
 
+### Claude cloud continuation, 2026-10-09: items 22, 25, 26, 27 (CODEX: TEST THESE IN STUDIO)
+
+Written in the cloud (no Studio): StyLua + luau-lsp pass, Selene couldn't run there. Codex, please
+play-test each one on desktop and phone, fix what's off, and note the result here. Codex owns the
+events board (item 8), so it reads the attributes below.
+
+- **Item 27 (PvP):** owner's choice: coffins can be knocked loose **only on the runway** (on the way
+  home); past the SAFE ZONE line (plaza, pens) nobody can, and the attacker sees "Can't attack in
+  the safe zone!" (3 s throttle). `StealService.canHitCarrier`. Test: 2 players (Test → Clients
+  and Servers); a carrier hit on the runway drops it, a carrier hit in the plaza doesn't.
+- **Item 26 (codes):** More → **Codes** tile (the 2x2 is now Rebirth / Invite / Stats / Codes):
+  type a code, REDEEM. `Config/Codes` (RELEASE = Speed + cash, MURDER = a Rare coffin),
+  `Services/CodesService` (`Remotes.RedeemCode`, once per player via new profile field
+  `Claimed` = "code:NAME", 1.5 s rate limit), `client/CodesView`. Rewards sized to the player by
+  `Services/FreeRewards` (Speed = share of the gap to the next zone, Cash = seconds of income,
+  Coffin = rarity). Test: both codes once each, a second try says "Already used!", a bad code.
+  The weekly limited knife + shop tile need art / the shop rebuild: not done.
+- **Item 22 (group gift):** after a round you WON (12 s after the card, after the favourite
+  prompt; waits until you're out of the round), once a visit until claimed: `client/GiftCard`
+  "Join our group = FREE Speed!" with JOIN (`GroupService:PromptJoinAsync`, claims by itself)
+  and CLAIM. `Services/GiftService` checks the group live (`GetGroupsAsync`, group 857947897),
+  pays `GameConfig.GroupGift` (Speed 0.25 of the gap) once ("gift:group" in `Claimed`; player
+  attribute GiftClaimed). Test: win a bot round with an account not in the group (CLAIM says
+  "Join the group first!"), then in the group.
+- **Item 25 (events):** `Services/EventService` + `Config/Events`. Every Saturday 15:00
+  America/New_York (DST worked out in code; checked: 2026-10-10 = 19:00 UTC, 2026-11-07 =
+  20:00 UTC) for 60 min, every server on its own, cycling Golden (2x round ladder) → Luck Storm
+  (2x coffin luck at opening) → Speed Rush (2x delivered-coffin Speed). 5-minute warning and
+  start / end banners (`Net.Announce`). Owner chat command `/event golden 30`, `/event luck`,
+  `/event speed`, `/event stop`, sent to every server with MessagingService.
+  Admin: `Config/Events.AdminUserIds` = the owner's id 1068989182 (from CLAUDE.md).
+  It sets the hooks Codex left: `RoundSpeedMultiplier`, `MutationLuckMultiplier`, and a new
+  `DeliverySpeedMultiplier` (read in `RoundProgress.budget` for deliveries). For the board:
+  ReplicatedStorage `EventKind` / `EventEndsAt` (os.time) while one runs, `NextEventKind` /
+  `NextEventAt` for the countdown; titles in `Config/Events.Kinds[kind].Title`. Test (as the owner):
+  `/event golden 2` in a Studio round (ladder amounts double), `/event stop`; set the system
+  clock or temporarily change `Weekly` to a few minutes from now to see the automatic start.
+
 **Next:** Secret (item 18), maps, shop and remaining work.
 
 ---

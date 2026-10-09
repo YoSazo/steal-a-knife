@@ -41,6 +41,9 @@ local function budget(player: Player, round: boolean): number
 			multiplier *= GameConfig.Consumables.RoundSpeedMultiplier
 		end
 		multiplier *= (ReplicatedStorage:GetAttribute("RoundSpeedMultiplier") or 1) :: number
+	else
+		-- the Speed Rush weekly event (EventService)
+		multiplier *= (ReplicatedStorage:GetAttribute("DeliverySpeedMultiplier") or 1) :: number
 	end
 	return math.max(1, math.floor(prize.Amount * multiplier))
 end

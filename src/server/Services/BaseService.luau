@@ -157,8 +157,7 @@ function BaseService.IncomeMultiplier(player: Player): number
 	if profile and DataService.BoostActive(profile, "Cash") then
 		multiplier *= GameConfig.Consumables.CashMultiplier
 	end
-	-- the Cash Rush weekly event (EventService)
-	return multiplier * ((ReplicatedStorage:GetAttribute("CashMultiplier") or 1) :: number)
+	return multiplier
 end
 
 function BaseService.RackIncome(player: Player): number

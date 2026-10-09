@@ -4,7 +4,7 @@
 -- starts one now on every server (MessagingService), "/event stop" ends it. State goes on
 -- ReplicatedStorage attributes: EventKind / EventEndsAt (os.time) for the running one,
 -- NextEventKind / NextEventAt for the events board's countdown, and the running kind's multiplier
--- attribute (Config/Events Channel: RoundSpeedMultiplier, MutationLuckMultiplier, CashMultiplier).
+-- attribute (Config/Events Channel: RoundSpeedMultiplier, MutationLuckMultiplier, DeliverySpeedMultiplier).
 
 local MessagingService = game:GetService("MessagingService")
 local Players = game:GetService("Players")
@@ -167,7 +167,7 @@ local function onChat(player: Player, message: string)
 			end
 		end
 		if not kind then
-			Net.Notify(player, "Try: /event golden 30, /event luck, /event cash, /event stop", "info")
+			Net.Notify(player, "Try: /event golden 30, /event luck, /event speed, /event stop", "info")
 			return
 		end
 		local minutes = math.clamp(tonumber(words[3]) or 30, 1, Config.MaxAdminMinutes)
