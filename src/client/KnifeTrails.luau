@@ -256,12 +256,6 @@ function KnifeTrails.Init()
 		local inRound = player:GetAttribute("InRound") == true
 		-- 0 at a normal jog, 1 flat out
 		local rush = if inRound then 0 else math.clamp((speed - 20) / (GameConfig.MaxWalkSpeed - 20), 0, 1)
-		-- Running on your wheel counts too (you're standing still, but you're SPRINTING): the
-		-- better the wheel, the harder the lines, wind, dust and camera go
-		if player:GetAttribute("Training") and not inRound then
-			local level = (player:GetAttribute("TreadmillLevel") or 1) :: number
-			rush = math.max(rush, 0.35 + 0.65 * math.clamp((level - 1) / 12, 0, 1))
-		end
 
 		-- Camera: wider the faster you go (left alone while something else is steering the FOV:
 		-- aiming a throw, or being pulled by a knife aura)

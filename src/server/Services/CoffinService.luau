@@ -48,7 +48,7 @@ function CoffinService.Luck(player: Player, profile: DataService.Profile): numbe
 end
 
 local function roundsText(rounds: number): string
-	return if rounds <= 1 then "after the next murder round" else `after {rounds} murder rounds`
+	return if rounds <= 1 then "after the next murder round" else `after {math.ceil(rounds)} murder rounds`
 end
 
 -- Seals the knife on `plate` (just deposited). Returns when it opens, for the toast ("in 20s",

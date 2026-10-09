@@ -109,12 +109,6 @@ function Places.CashPad(): Vector3?
 	return Places.VaultDoor()
 end
 
-function Places.Wheel(): Vector3?
-	local vault = Places.Vault()
-	local plate = vault and vault:FindFirstChild("WheelFloor") :: BasePart?
-	return plate and plate.Position
-end
-
 function Places.SpareSale(): (BasePart?, string?)
 	local vault = Places.Vault()
 	if not vault then

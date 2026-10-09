@@ -20,7 +20,6 @@ local CartoonArt = require(ReplicatedStorage.Shared.Config.CartoonArt)
 local VoxelUi = require(ReplicatedStorage.Shared.Config.VoxelUi)
 local RoundPrize = require(ReplicatedStorage.Shared.RoundPrize)
 local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
-local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
 local TopLine = require(script.Parent.TopLine)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Effects = require(script.Parent.Effects)
@@ -148,134 +147,21 @@ function Hud.Init()
 	TopLine.SetPill(doubleButton)
 	-- Phones, in a round: the prize gets its own badge on the left, just above the thumbstick
 	-- ("2:04 · GET EVERYONE = +$5K" didn't fit the top line and ended in "...")
-	local prizeBadge = Ui.new("Frame", {
-		Name = "RoundPrizeBadge",
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 14, 0.56, 0),
-		Size = UDim2.fromOffset(92, 74),
-		BackgroundColor3 = Color3.fromRGB(24, 22, 36),
-		BackgroundTransparency = 0.25,
-		Visible = false,
-	}, gui) :: Frame
-	Ui.corner(prizeBadge, 12)
-	Ui.new("UIStroke", { Color = Color3.fromRGB(140, 255, 150), Thickness = 2 }, prizeBadge)
-	local badgeIcon = Ui.art(prizeBadge, "Icon", {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 4),
-		Size = UDim2.fromOffset(34, 34),
-	})
-	local badgeText = Ui.label({
-		Name = "Prize",
-		Position = UDim2.fromOffset(4, 40),
-		Size = UDim2.new(1, -8, 0, 28),
-		Text = "",
-		TextColor3 = Color3.fromRGB(140, 255, 150),
-	}, prizeBadge)
-	Ui.textStroke(badgeText, 2)
-	-- (what to do next is the guide's DO line now - client/Guide; this line is information only)
+
 	TopLine.Resting = function(): TopLine.Rest?
-		if Ui.menuOpen() or Ui.gui:GetAttribute("FadeCover") == true then
-			prizeBadge.Visible = false
+		if Ui.menuOpen() or Ui.gui:GetAttribute("FadeCover") then
 			return nil
 		end
 		local phase = ReplicatedStorage:GetAttribute("Phase")
-		local status = (ReplicatedStorage:GetAttribute("Status") or "") :: string
-		local endsAt = (ReplicatedStorage:GetAttribute("PhaseEndsAt") or 0) :: number
-		local now = workspace:GetServerTimeNow()
-		local left = endsAt - now
-		local clock = Ui.clock(left)
+		local left = ((ReplicatedStorage:GetAttribute("PhaseEndsAt") or 0) :: number) - workspace:GetServerTimeNow()
 		if phase == "Round" then
-			local alive = ReplicatedStorage:GetAttribute("Alive") or 0
-			-- (not during the first seconds: it would give your role away before the role reel lands)
-			local elapsed = GameConfig.RoundTime - left
-			prizeBadge.Visible = false
-			if player:GetAttribute("InRound") and elapsed < 6 then
-				return { Text = `🔪 {clock}  ·  {alive} alive` }
-			end
-			if player:GetAttribute("InRound") then
-				-- how YOU win, and what it gets you, all round long
-				local prize = RoundPrize.For(
-					"Speed",
-					"",
-					ReplicatedStorage:GetAttribute("PrizeJackpot") == true,
-					1,
-					RoundPrize.Stats(player),
-					((player:GetAttribute("Charge_DoublePrize") or 0) :: number) > 0
-				)
-				local goal = if player:GetAttribute("Role") == "Murderer"
-					then "GET EVERYONE"
-					else if Ui.gui:GetAttribute("GuideRole") == "Sheriff" then "STOP THE MURDERER" else "SURVIVE"
-				-- (the prize you picked after it - the Speed shoe or the cash, like the line before the round;
-				-- phones: on the badge instead, the line only fits the clock and the goal)
-				local icon = if prize.Kind == "Cash" then CartoonArt.Cash else CartoonArt.Speed
-				if Ui.Phone then
-					prizeBadge.Visible = true
-					badgeIcon.Image = icon
-					badgeText.Text = `WIN {prize.Text:gsub(" Speed$", "")}`
-					return { Text = `{clock} · <b>{goal}</b>` }
-				end
-				return {
-					Text = `🔪 {clock} · <b>{goal}</b> = <font color="#8CFF96">{prize.Text}</font>`,
-					Icon = icon,
-				}
-			end
-			return {
-				Text = `🔪 {ReplicatedStorage:GetAttribute("MapName") or "Murder Round"} {clock}  ·  {alive} alive  ·  steal while they're busy!`,
-			}
+			return { Text = `🔪 {Ui.clock(left)} · 👥 {ReplicatedStorage:GetAttribute("Alive") or 0}` }
 		end
-		prizeBadge.Visible = false
-		if phase == "Results" then
-			return { Text = `<font color="#FFE678">{status}</font>` }
+		if phase == "Reveal" then
+			return nil
 		end
-		if status ~= "🔪 MURDER ROUND in" then
-			return if status ~= "" then { Text = status } else nil
-		end
-		if left <= 10 and left > 0 and not player:GetAttribute("InRound") then
-			return { Text = `<font color="#FF4646"><b>🔪 MURDER ROUND in {clock}</b></font>`, Pulse = true }
-		end
-		local timer = { Text = `🔪 MURDER ROUND in <b>{clock}</b>` }
-		local beat = os.clock() % 10
-		local kind = ReplicatedStorage:GetAttribute("PrizeKind")
-		if type(kind) == "string" and left <= GameConfig.RoundPrize.AnnounceAt and left > 0 then
-			if beat < 4 then
-				return timer
-			end
-			local jackpot = ReplicatedStorage:GetAttribute("PrizeJackpot") == true
-			local seed = (ReplicatedStorage:GetAttribute("PrizeSeed") or 1) :: number
-			local doubled = ((player:GetAttribute("Charge_DoublePrize") or 0) :: number) > 0
-			local stats = RoundPrize.Stats(player)
-			local star = if jackpot then "⭐ JACKPOT! " else ""
-			local done = if doubled then '  <font color="#78FF8C">✓ x2</font>' else ""
-			-- One promise for everyone: "Win the round: +1.9K Speed" (+ "-> outrun the FLOWER TOAD!" when
-			-- it gets you there). No sides to work out - whoever wins gets it.
-			local prize = RoundPrize.For(kind, "", jackpot, seed, stats, doubled)
-			-- (always says what the Speed is for: the next monster you can't outrun yet - the giant
-			-- creature a kid can see down the runway, not a knife category like "RARE knives")
-			local zoneColor = if prize.Zone then (GameConfig.Zones :: any)[prize.Zone].Color :: Color3 else nil
-			local target = if prize.Zone and zoneColor
-				then `<font color="#{zoneColor:Lerp(Color3.new(1, 1, 1), 0.3):ToHex()}">{string.upper(
-					GameConfig.MonsterName(prize.Zone)
-				)}</font>`
-				else nil
-			local outrun = if target and prize.Reaches
-				then ` → outrun the {target}!`
-				elseif target then ` toward the {target}`
-				else ""
-			return {
-				Text = `{star}Win the round: <font color="#8CFF96"><b>{prize.Text}</b></font>{outrun}{done}`,
-				Short = `{clock} · Win <font color="#8CFF96"><b>{prize.Text}</b></font>{done}`,
-				-- (not before your first round: 12 of 48 "x2 R$25" prompts came mid-tutorial, closed in ~1.6 s -
-				-- taps meant for the timer line, a Robux popup in the first minutes)
-				Pill = not doubled and ((player:GetAttribute("RoundsPlayed") or 0) :: number) > 0,
-				Icon = if prize.Kind == "Cash" then CartoonArt.Cash else CartoonArt.Speed, -- (as your readout)
-			}
-		end
-		return timer
+		return { Text = `🔪 {Ui.clock(left)}`, Pulse = phase == "Intermission" and left <= 10 and left > 0 }
 	end
-	-- The signs at your own vault (other vaults' signs stay blank): Upgrade Base by the gate (next
-	-- floor's price, how full you are) and Upgrade Wheel in front of the Haunted Wheel (Steal An Egg's
-	-- treadmill sign: "Lv 6 ➜ 7", the cash price, and R$ on the small board under it). A "!" when you
-	-- can afford it; clicking the sign buys it.
 	type SignLabels = { Title: TextLabel, Price: TextLabel, Count: TextLabel, Alert: TextLabel }
 	local function signLabels(surface: SurfaceGui): SignLabels?
 		-- The sign's labels are built in the world (MapService); this only fills them in
@@ -288,7 +174,6 @@ function Hud.Init()
 		}
 		return if labels.Price and labels.Count and labels.Title and labels.Alert then labels :: any else nil
 	end
-	local robuxClick: ClickDetector? = nil
 	task.spawn(function()
 		while true do
 			task.wait(0.5)
@@ -299,7 +184,7 @@ function Hud.Init()
 			-- Only YOUR two upgrade signs exist for you: everyone else's are hidden on your screen
 			if bases then
 				for _, other in bases:GetChildren() do
-					for _, signName in { "UpgradeSign", "WheelUpgradeSign" } do
+					for _, signName in { "UpgradeSign" } do
 						local sign = other:FindFirstChild(signName)
 						local mine = other == base
 						-- (checked part by part, every tick: with streaming a sign's parts arrive later
@@ -359,41 +244,6 @@ function Hud.Init()
 					labels.Price.Text = `${Ui.abbreviate(cost)}`
 					labels.Alert.Visible = cash >= cost
 				end
-			end
-			local wheelSurface = surfaceOf("WheelUpgradeSign")
-			local wheelLabels = wheelSurface and signLabels(wheelSurface)
-			if wheelLabels then
-				local nextUpgrade = GameConfig.NextSpeedUpgrade(
-					(player:GetAttribute("TreadmillLevel") or 1) :: number,
-					(player:GetAttribute("TrailLevel") or 0) :: number
-				)
-				wheelLabels.Title.Text = "Faster Wheel"
-				if nextUpgrade then
-					wheelLabels.Count.Text = `Level {nextUpgrade.Level} > {nextUpgrade.Level + 1}`
-					wheelLabels.Price.Text = `${Ui.abbreviate(nextUpgrade.Cost)}`
-					wheelLabels.Alert.Visible = cash >= nextUpgrade.Cost
-				else
-					wheelLabels.Count.Text = "Max level"
-					wheelLabels.Price.Text = "MAX"
-					wheelLabels.Alert.Visible = false
-				end
-			end
-			local wheelSign = base:FindFirstChild("WheelUpgradeSign")
-			local robuxBoard = wheelSign and wheelSign:FindFirstChild("RobuxBoard")
-			local robuxPrice = robuxBoard and robuxBoard:FindFirstChild("Price", true) :: TextLabel?
-			if robuxPrice then
-				local product = Monetization.ProductByKey.SpeedUpgrade
-				robuxPrice.Text = if product then `R${product.Price}` else ""
-			end
-			-- The Robux board's click (the server only adds the detector for the owner)
-			local click = robuxBoard and robuxBoard:FindFirstChild("BuyWheel") :: ClickDetector?
-			if click and click ~= robuxClick then
-				robuxClick = click
-				click.MouseClick:Connect(function()
-					if Ui.Buy then
-						Ui.Buy("Product", "SpeedUpgrade")
-					end
-				end)
 			end
 		end
 	end)
@@ -576,20 +426,9 @@ function Hud.Init()
 		local cash = player:GetAttribute("Cash") or 0
 		local slots = player:GetAttribute("Slots") or GameConfig.StartingSlots
 		local speed = player:GetAttribute("Speed") or 0
-		local treadmill = player:GetAttribute("TreadmillLevel") or 1
 		local rebirths = player:GetAttribute("Rebirths") or 0
 		cashLabel.Text = `${Ui.abbreviate(cash)}`
 		speedLabel.Text = Ui.abbreviate(speed)
-		local training = player:GetAttribute("Training")
-		local rate = GameConfig.TrainRate(
-			treadmill,
-			rebirths,
-			(player:GetAttribute("TrailLevel") or 0) :: number,
-			player:GetAttribute("Pass_PhantomTrail") == true,
-			player:GetAttribute("Pass_FastWheel") == true,
-			false
-		)
-		trainLabel.Text = if training then `+{Ui.abbreviate(rate)}/s  running!` else "" -- (one speed number only: the Speed readout. "{n} walk speed" was a second one)
 		incomeLabel.Text = `+${Ui.abbreviate(player:GetAttribute("Income") or 0)}/s`
 		rackLabel.Text = PenMode.Words(`{player:GetAttribute("KnifeCount") or 0}/{slots} in your vault`)
 			.. (if rebirths > 0 then `  ·  Rebirth {rebirths}` else "")
@@ -599,9 +438,7 @@ function Hud.Init()
 			"Cash",
 			"Slots",
 			"Speed",
-			"TreadmillLevel",
 			"TrailLevel",
-			"Training",
 			"Tickets",
 			"Income",
 			"KnifeCount",
@@ -712,7 +549,7 @@ function Hud.Init()
 			)
 			local texts = {
 				line1,
-				line("#8CFF96", "WIN IT:", `{string.upper(prize.Text)}`),
+				line("#8CFF96", "SURVIVE:", `{string.upper(prize.Text)}`),
 				if prize.Rarity then line("#FFE14B", "FOR", `{string.upper(prize.Rarity)} KNIVES`) else "",
 				"", -- (no server goals any more)
 			}
@@ -784,7 +621,11 @@ function Hud.Init()
 		-- ("Innocents win!" etc. is the top line's resting text during Results: TopLine.Resting)
 		banner.Visible = false
 		-- (not hidden while the knife is held: they never overlap, and taps made it flicker)
-		stats.Visible = not Ui.menuOpen() and Ui.inHub() -- (speed / cash: hub things; not while dead in a round)
+		stats.Visible = not Ui.menuOpen()
+		cashLabel.Visible = not inRound
+		if Ui.CashIcon then
+			Ui.CashIcon.Visible = not inRound
+		end
 		-- Boost
 		local boostUntil = player:GetAttribute("BoostUntil")
 		local boostLeft = if type(boostUntil) == "number" then boostUntil - now else 0
@@ -1000,7 +841,7 @@ function Hud.Init()
 		roleLabel.Text = entry.Text
 		roleLabel.TextColor3 = entry.Color
 	end
-	Remotes.Role.OnClientEvent:Connect(function(role: string, disguise: string?)
+	Remotes.Role.OnClientEvent:Connect(function(role: string, disguise: string?, revealEndsAt: number?)
 		revealToken += 1
 		local token = revealToken
 		local final = if ROLES[role] then role else "Innocent"
@@ -1008,30 +849,19 @@ function Hud.Init()
 		nameLabel.Text = `You are {disguise or player.DisplayName}`
 		local hint: string
 		local knifeImage = ""
-		local function winText(): string
-			local prize = RoundPrize.For(
-				"Speed",
-				"",
-				ReplicatedStorage:GetAttribute("PrizeJackpot") == true,
-				1,
-				RoundPrize.Stats(player),
-				((player:GetAttribute("Charge_DoublePrize") or 0) :: number) > 0
-			)
-			return `{if prize.Kind == "Cash" then "💵" else "👟"} {prize.Text}`
-		end
 		if final == "Murderer" then
 			-- Make the link obvious: this is the knife from YOUR vault, with its power
 			local equipped = player:GetAttribute("FightingKnife")
 			local parsed = if type(equipped) == "string" and equipped ~= "" then Items.Parse(equipped) else nil
 			-- One job and what it wins (a 5-year-old reads one line): the knife picture says which knife
-			hint = `GET EVERYONE! Win {winText()}`
+			hint = `GET EVERYONE! EARN SPEED!`
 			knifeImage = if parsed
 				then (VoxelUi.Knives[parsed.Knife.Name] or KnifeIcons[parsed.Knife.Name] or "")
 				else ""
 		elseif final == "Sheriff" then
-			hint = `SHOOT THE MURDERER! Win {winText()}`
+			hint = `SHOOT THE MURDERER! EARN SPEED!`
 		else
-			hint = `SURVIVE! Win {winText()}`
+			hint = `SURVIVE! EARN SPEED!`
 		end
 
 		-- The round teleport's loading cover goes first: a reel spun behind it was never seen
@@ -1103,16 +933,18 @@ function Hud.Init()
 		end
 		TweenService:Create(hintLabel, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
 
-		task.delay(2.8, function()
+		local revealLeft =
+			math.max(0, (revealEndsAt or (workspace:GetServerTimeNow() + 1.5)) - workspace:GetServerTimeNow() - 0.4)
+		task.delay(revealLeft, function()
 			if token ~= revealToken then
 				return
 			end
-			local info = TweenInfo.new(0.8)
+			local info = TweenInfo.new(0.4)
 			TweenService:Create(reveal, info, { BackgroundTransparency = 1 }):Play()
 			for _, label in { nameLabel, roleLabel, hintLabel } do
 				TweenService:Create(label, info, { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
 			end
-			task.wait(0.8)
+			task.wait(0.4)
 			if token == revealToken then
 				reveal.Visible = false
 			end

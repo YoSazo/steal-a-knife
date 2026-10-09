@@ -23,15 +23,12 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Format = require(ReplicatedStorage.Shared.Format)
 local AnimLibrary = require(ReplicatedStorage.Shared.AnimLibrary)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
 local RoundPrize = require(ReplicatedStorage.Shared.RoundPrize)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local KnifeModel = require(ReplicatedStorage.Shared.KnifeModel)
-local Props = require(ReplicatedStorage.Shared.Props)
-local Textures = require(ReplicatedStorage.Shared.Config.Textures)
 local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local CombatService = require(script.Parent.CombatService)
@@ -47,9 +44,9 @@ local GuardService = require(script.Parent.GuardService)
 local RoundBots = require(script.Parent.RoundBots)
 local Analytics = require(script.Parent.Analytics)
 local CoffinService = require(script.Parent.CoffinService)
-local Gamble = require(script.Parent.Gamble)
 local SurpriseGifts = require(script.Parent.SurpriseGifts)
 
+local Progress = require(script.Parent.RoundProgress)
 local RoundService = {}
 
 -- The hub's top timer. Says what's coming, so a new player knows the Murder Mystery half exists.
@@ -68,7 +65,6 @@ type Round = {
 	SheriffBot: Bot?,
 	Bots: { Bot },
 	BotFolder: Folder,
-	PrizeStats: { [Player]: RoundPrize.Stats }, -- each player's numbers when the round began
 	Innocents: { Player },
 	Alive: { [Player]: boolean },
 	Kills: number,
@@ -85,7 +81,6 @@ type Round = {
 	ThrowReadyAt: number,
 	StabHint: { Target: Model, At: number }?, -- who the Murderer's client says the last swing was at
 	Hero: Player?,
-	PayScale: number, -- 1, or GameConfig.BotRoundPay with fewer than two real players
 	HumanKills: number, -- real players the Murderer got (bots don't count toward the wipe prize)
 	Connections: { RBXScriptConnection },
 	GunnerBot: Bot?, -- a bot Sheriff
@@ -93,6 +88,7 @@ type Round = {
 	Newcomer: boolean, -- a brand-new player's first round as the Murderer: the bots let them win
 	HeroBot: Bot?, -- that bot (its face goes on the VS card)
 	Id: string, -- analytics: round_id on every round event
+	RevealEndsAt: number, -- server time shared by the reveal, hiding ladder and weapons
 	StartedAt: number, -- os.clock()
 	Map: string,
 	KnifeShownAt: number?, -- os.clock() the Murderer first pulled the knife out
@@ -167,13 +163,6 @@ local function rootOf(player: Player): BasePart?
 end
 
 -- Round pay scales with what the player's vault earns (GameConfig.RoundPay); returns the amount
-local function pay(round: Round, player: Player, entry: { Min: number, Seconds: number }, scale: number?): number
-	local amount = math.floor(GameConfig.Pay(entry, BaseService.RackIncome(player)) * round.PayScale * (scale or 1))
-	if amount > 0 then
-		DataService.AddCash(player, amount, "round_pay")
-	end
-	return amount
-end
 
 local function aliveCount(round: Round): number
 	local n = 0
@@ -366,78 +355,8 @@ local function leaveBody(round: Round, player: Player)
 end
 
 -- Puts a knife on a rack, or pays its sell value if the rack is full
-local function giveKnife(player: Player, item: string)
-	local profile = DataService.Get(player)
-	local parsed = Items.Parse(item)
-	if not profile or not parsed then
-		return
-	end
-	if #profile.Knives < profile.Slots then
-		DataService.Update(player, function(p)
-			DataService.AddKnife(p, item)
-			if not table.find(p.Discovered, parsed.Name) then
-				table.insert(p.Discovered, parsed.Name)
-			end
-		end)
-		BaseService.RefreshRack(player)
-	else
-		local value = math.floor(Items.Income(item) * GameConfig.SellSeconds)
-		DataService.AddCash(player, value, "round_loot_sold")
-		Net.Notify(player, `Your vault is full, so you got {Format.Cash(value)} instead`, "info")
-	end
-end
 
 -- Hands a round prize over (RoundPrize: the same numbers the countdown showed) and pops it up
-local function payPrize(
-	player: Player,
-	kind: string,
-	side: string,
-	jackpot: boolean,
-	seed: number,
-	stats: RoundPrize.Stats
-)
-	if not player.Parent or not DataService.Get(player) then
-		return
-	end
-	local doubled = DataService.UseCharge(player, "DoublePrize")
-	local prize = RoundPrize.For(kind, side, jackpot, seed, stats, doubled)
-	if prize.Kind == "Cash" then
-		DataService.AddCash(player, prize.Amount, "round_prize")
-	elseif prize.Kind == "Speed" then
-		DataService.Update(player, function(p)
-			p.Speed += prize.Amount
-		end)
-		BaseService.RefreshWalkSpeed(player)
-	elseif prize.Kind == "Knife" and prize.Knife then
-		for _ = 1, prize.Amount do
-			giveKnife(player, Items.Make(prize.Knife))
-		end
-	elseif prize.Kind == "Boost" then
-		DataService.AddBoost(player, "Cash", prize.Amount)
-	elseif prize.Kind == "Spins" then
-		Gamble.AddSpins(player, prize.Amount)
-	end
-	-- (the monster you can see down the runway, not a knife category)
-	local monster = if prize.Zone then string.upper(GameConfig.MonsterName(prize.Zone)) else nil
-	local text = if monster and prize.Reaches
-		then `{prize.Text}\nYou can outrun the {monster}!`
-		elseif monster then `{prize.Text}\n{Format.Short(prize.Left)} more Speed to outrun the {monster}`
-		else prize.Text
-	-- Did the Speed get used? StealService tracks the next steal from that boss (prize.followup)
-	if prize.Kind == "Speed" and prize.Zone then
-		player:SetAttribute("PrizeTargetZone", prize.Zone)
-	end
-	Net.Remotes.Effect:FireClient(player, "PrizeWon", text, prize.Kind, prize.Knife, jackpot)
-	Analytics.Track(player, "round.prize", {
-		kind = prize.Kind,
-		side = side,
-		jackpot = jackpot,
-		doubled = doubled,
-		amount = prize.Amount,
-		target_zone = prize.Zone,
-		reaches = prize.Reaches,
-	})
-end
 
 local spawnRevolver: (Round, Vector3?) -> ()
 local giveRevolver: (Round, Player) -> ()
@@ -496,6 +415,7 @@ local function eliminate(round: Round, victim: Player, killer: Player?, fatal: b
 	if not round.Alive[victim] then
 		return
 	end
+	Progress.Finish(victim, false)
 	round.Alive[victim] = nil
 	ReplicatedStorage:SetAttribute("Alive", aliveCount(round))
 	if not isKiller(round, victim) then
@@ -523,13 +443,12 @@ local function eliminate(round: Round, victim: Player, killer: Player?, fatal: b
 		if isKiller(round, killer) then
 			round.Kills += 1
 			round.HumanKills += 1
+			Progress.Kill(killer)
 			knifeKillEffect(round, if root then root.Position else Vector3.zero)
 		end
-		local amount = pay(round, killer, GameConfig.RoundPay.Kill)
 		DataService.Update(killer, function(p)
 			p.TotalKills += 1
 		end)
-		Net.Notify(killer, `Got one! +{Format.Cash(amount)}`, "good")
 	end
 	if killer or fatal then
 		if root then
@@ -604,12 +523,9 @@ local function killBot(round: Round, bot: Bot, killer: Player?)
 		end
 	else
 		round.Kills += 1
-		if killer == round.Murderer then
+		if killer and killer == round.Murderer then
+			Progress.Kill(killer)
 			knifeKillEffect(round, bot.Root.Position)
-		end
-		if killer then
-			local amount = pay(round, killer, GameConfig.RoundPay.Kill, GameConfig.BotKillPay)
-			Net.Notify(killer, `Got one! +{Format.Cash(amount)}`, "good")
 		end
 	end
 	ReplicatedStorage:SetAttribute("Alive", aliveCount(round))
@@ -961,44 +877,28 @@ end
 -- The Blender coin (Props "Coin": rim, notched edge, a skull on both faces) standing upright with
 -- a soft gold glow and a few sparkles; an invisible ball around it is what you touch
 local function buildCoin(at: CFrame): (Model, BasePart)
-	local coin = Props.Build("Coin", true)
-	coin.Name = "Coin"
-	-- Streams in whole: clients spin it, and a rim arriving after the spin started sat crooked
-	coin.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
-	coin:PivotTo(at)
+	local model = Instance.new("Model")
+	model.Name = "SpeedShoe"
 	local hitbox = Instance.new("Part")
 	hitbox.Name = "Hitbox"
-	hitbox.Shape = Enum.PartType.Ball
 	hitbox.Size = Vector3.one * 3.4
 	hitbox.CFrame = at
 	hitbox.Anchored = true
 	hitbox.CanCollide = false
-	hitbox.CanQuery = false
 	hitbox.Transparency = 1
-	hitbox.Parent = coin
-	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(255, 200, 80)
-	light.Range = 6
-	light.Brightness = 0.7
-	light.Shadows = false
-	light.Parent = hitbox
-	local sparkle = Instance.new("ParticleEmitter")
-	sparkle.Texture = Textures.Sparkle
-	sparkle.Color = ColorSequence.new(Color3.fromRGB(255, 235, 150))
-	sparkle.LightEmission = 1
-	sparkle.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0),
-		NumberSequenceKeypoint.new(0.5, 0.45),
-		NumberSequenceKeypoint.new(1, 0),
-	})
-	sparkle.Lifetime = NumberRange.new(0.5, 0.9)
-	sparkle.Rate = 2.5
-	sparkle.Speed = NumberRange.new(0.3, 0.8)
-	sparkle.SpreadAngle = Vector2.new(180, 180)
-	sparkle.Rotation = NumberRange.new(0, 360)
-	sparkle.Parent = hitbox
-	coin.PrimaryPart = hitbox
-	return coin, hitbox
+	hitbox.Parent = model
+	model.PrimaryPart = hitbox
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(52, 52)
+	gui.MaxDistance = 100
+	gui.LightInfluence = 0
+	gui.Parent = hitbox
+	local art = Instance.new("ImageLabel")
+	art.Size = UDim2.fromScale(1, 1)
+	art.BackgroundTransparency = 1
+	art.Image = require(ReplicatedStorage.Shared.Config.CartoonArt).Speed
+	art.Parent = gui
+	return model, hitbox
 end
 
 local function spawnCoin(round: Round)
@@ -1013,14 +913,22 @@ local function spawnCoin(round: Round)
 	coin.Parent = round.Coins
 	hitbox.Touched:Connect(function(other)
 		local player = Players:GetPlayerFromCharacter(other.Parent)
-		if not player or not round.Alive[player] or not coin.Parent or current ~= round then
+		local root = player and rootOf(player)
+		if
+			not player
+			or not root
+			or (root.Position - hitbox.Position).Magnitude > 5
+			or not round.Alive[player]
+			or not coin.Parent
+			or current ~= round
+		then
 			return
 		end
 		local position = hitbox.Position
 		coin:Destroy()
-		local amount = pay(round, player, GameConfig.RoundPay.Coin)
 		Analytics.Count(player, "coins")
-		Net.Remotes.Effect:FireClient(player, "Coin", position, amount)
+		Progress.Coin(player)
+		Net.Remotes.Effect:FireClient(player, "SpeedPickup", position)
 		task.delay(GameConfig.CoinRespawn, function()
 			if current == round then
 				spawnCoin(round)
@@ -1033,6 +941,7 @@ end
 
 -- The Sheriff: hand the Revolver to a player, or to a bot (which then hunts and shoots, see the brains)
 giveRevolver = function(round: Round, player: Player)
+	local alreadySheriff = round.Sheriff == player and player:GetAttribute("Role") == "Sheriff"
 	local backpack = player:FindFirstChildOfClass("Backpack")
 	local tool = Revolver.BuildTool()
 	tool.Parent = backpack
@@ -1042,7 +951,10 @@ giveRevolver = function(round: Round, player: Player)
 	player:SetAttribute("RevolverReadyAt", 0)
 	ReplicatedStorage:SetAttribute("Revolver", "Taken")
 	-- The role card said Innocent a moment ago: show the real role now
-	Net.Remotes.Role:FireClient(player, "Sheriff", round.Names[player])
+	if not alreadySheriff then
+		player:SetAttribute("Role", "Sheriff")
+		Net.Remotes.Role:FireClient(player, "Sheriff", round.Names[player])
+	end
 	Net.Notify(player, "You're the SHERIFF! Shoot the Murderer. Don't hit anyone else!", "good", true)
 end
 giveRevolverToBot = function(round: Round, bot: Bot)
@@ -1574,7 +1486,6 @@ local function startRound(participants: { Player })
 		LastAttack = 0,
 		Coins = coins,
 		Bodies = bodies,
-		PrizeStats = {},
 		Names = {},
 		Revolver = nil,
 		Gunner = nil,
@@ -1586,10 +1497,10 @@ local function startRound(participants: { Player })
 		ShotByBot = false,
 		Newcomer = newcomer,
 		HeroBot = nil,
-		PayScale = if #participants >= 2 then 1 else GameConfig.BotRoundPay,
 		HumanKills = 0,
 		Connections = {},
 		Id = `{string.sub(game.JobId, 1, 6)}-{string.format("%x", os.time())}`,
+		RevealEndsAt = 0,
 		StartedAt = os.clock(),
 		Map = built.Name,
 	}
@@ -1647,7 +1558,6 @@ local function startRound(participants: { Player })
 			table.insert(round.Innocents, player)
 		end
 		round.Alive[player] = true
-		round.PrizeStats[player] = RoundPrize.Stats(player)
 		player:SetAttribute("InRound", true)
 		player:SetAttribute("Role", if isMurderer then "Murderer" else "Innocent")
 		DataService.Update(player, function(p)
@@ -1689,7 +1599,6 @@ local function startRound(participants: { Player })
 			player:SetAttribute("RoundTeleport", nil)
 		end)
 		BaseService.RefreshWalkSpeed(player)
-		Net.Remotes.Role:FireClient(player, if isMurderer then "Murderer" else "Innocent", round.Names[player])
 
 		table.insert(
 			round.Connections,
@@ -1743,14 +1652,6 @@ local function startRound(participants: { Player })
 		spawnCoin(round)
 	end
 
-	if murderer then
-		murderer:SetAttribute("WeaponAt", workspace:GetServerTimeNow() + GameConfig.MurdererGrace)
-	end
-	task.delay(GameConfig.MurdererGrace, function()
-		if current == round then
-			giveWeapon(round)
-		end
-	end)
 	-- A Sheriff from the start (MM2 style): any innocent, player or bot, gets the Revolver now
 	local sheriffs: { any } = {}
 	for _, player in round.Innocents do
@@ -1786,13 +1687,35 @@ local function startRound(participants: { Player })
 			Analytics.Track(chosen :: Player, "round.first_sheriff")
 		end
 		if typeof(chosen) == "Instance" then
-			giveRevolver(round, chosen :: Player)
+			round.Sheriff = chosen :: Player
+			(chosen :: Player):SetAttribute("Role", "Sheriff")
 		else
-			giveRevolverToBot(round, chosen)
+			round.SheriffBot = chosen
 		end
 		table.remove(sheriffs, table.find(sheriffs, chosen) :: number)
 	end
 
+	round.RevealEndsAt = workspace:GetServerTimeNow() + GameConfig.RoleRevealSeconds
+	local weaponAt = round.RevealEndsAt + GameConfig.MurdererGrace
+	for player in round.Names do
+		local role = if player == murderer
+			then "Murderer"
+			else if player == round.Sheriff then "Sheriff" else "Innocent"
+		Net.Remotes.Role:FireClient(player, role, round.Names[player], round.RevealEndsAt)
+		player:SetAttribute("WeaponAt", weaponAt)
+	end
+	task.delay(math.max(0, weaponAt - workspace:GetServerTimeNow()), function()
+		if current ~= round then
+			return
+		end
+		Progress.Tick(round.Alive)
+		giveWeapon(round)
+		if round.Sheriff and round.Alive[round.Sheriff] then
+			giveRevolver(round, round.Sheriff)
+		elseif round.SheriffBot and round.SheriffBot.Alive then
+			giveRevolverToBot(round, round.SheriffBot)
+		end
+	end)
 	-- Nobody took the Revolver (or it dropped): it turns up somewhere later
 	task.delay(GameConfig.RevolverTime, function()
 		if current == round and not round.Gunner and not round.GunnerBot and not round.Revolver then
@@ -1835,7 +1758,6 @@ local function endRound(round: Round)
 		end
 	end
 	local murderer = round.Murderer
-	local murdererPresent = murderer == nil or murderer.Parent ~= nil
 	local botsSurvived = false
 	for _, bot in round.Bots do
 		if bot.Alive and bot ~= round.MurdererBot then
@@ -1876,86 +1798,14 @@ local function endRound(round: Round)
 		coffinWinners[player] = if role == "murderer" then not innocentsWon else innocentsWon
 	end
 	CoffinService.RoundEnded(coffinWinners)
-	-- The round prize: the winning side gets what the countdown promised, once they're home
-	local prizeKind = ReplicatedStorage:GetAttribute("PrizeKind")
-	if type(prizeKind) == "string" then
-		local jackpot = ReplicatedStorage:GetAttribute("PrizeJackpot") == true
-		local seed = (ReplicatedStorage:GetAttribute("PrizeSeed") or 1) :: number
-		for player in round.Names do
-			local role = roleOf(round, player)
-			local side = if role == "murderer" then "Murderer" else "Innocent"
-			local won = if side == "Murderer" then not innocentsWon else innocentsWon
-			local stats = round.PrizeStats[player]
-			if won and stats then
-				task.delay(GameConfig.ResultsTime + 2, payPrize, player, prizeKind, side, jackpot, seed, stats)
-			elseif stats and player.Parent then
-				-- lost: the prize they picked is still waiting - win the next one
-				local prize = RoundPrize.For(prizeKind, side, false, seed, stats, false)
-				task.delay(GameConfig.ResultsTime + 2, function()
-					if player.Parent then
-						Net.Notify(player, `So close! Win the next murder round for {prize.Text}`, "info")
-					end
-				end)
-			end
-		end
-	end
-	if hero and hero.Parent then
-		local amount = pay(round, hero, GameConfig.RoundPay.Hero)
-		Net.Notify(hero, `HERO! +{Format.Cash(amount)}`, "good")
-	end
-	local fewLeft = #survivors <= math.max(1, math.ceil(#round.Innocents * GameConfig.LastAliveFraction))
-
-	-- The innocents' side won: everyone on it gets something, even the ones who didn't make it
-	if innocentsWon and murdererPresent then
-		for _, player in round.Innocents do
-			if player.Parent and not table.find(survivors, player) and player ~= hero then
-				local amount = pay(round, player, GameConfig.RoundPay.TeamWin)
-				Net.Notify(player, `Your side won! +{Format.Cash(amount)}`, "good")
-			end
-		end
-	end
-
-	for _, player in survivors do
-		ChanceMeter.Add(player, 1)
-		local reward = pay(round, player, GameConfig.RoundPay.Survive)
-			+ (if fewLeft then pay(round, player, GameConfig.RoundPay.LastAlive) else 0)
-		DataService.Update(player, function(p)
-			p.RoundsWon += 1
-			player:SetAttribute("Wins", p.RoundsWon)
-		end)
-		Net.Notify(player, `You survived! +{Format.Cash(reward)}`, "good")
-		if player.Character then
-			Net.Animate(player.Character, "Cheer")
-		end
-		player:SetAttribute("BoostUntil", workspace:GetServerTimeNow() + GameConfig.BoostDuration)
-		Net.Notify(player, `{GameConfig.BoostMultiplier}x money for {GameConfig.BoostDuration} seconds!`, "info")
-	end
-	if murderer and murdererPresent then
-		if hero then
-			Net.Notify(murderer, "You got shot! The innocents win this one.", "bad")
-		elseif not innocentsWon and round.Kills > 0 then -- no bonus when everyone just left
-			-- One against the whole lobby: the prize grows with every real player they got
-			local bonus = pay(round, murderer, GameConfig.RoundPay.Wipe)
-			for _ = 1, round.HumanKills do
-				bonus += pay(round, murderer, GameConfig.RoundPay.WipePerVictim)
-			end
-			DataService.Update(murderer, function(p)
+	for player in round.Names do
+		local alive = round.Alive[player] == true
+		local won = if player == murderer then not innocentsWon and round.Kills > 0 else innocentsWon
+		Progress.Finish(player, (alive and player ~= murderer) or round.Hero == player or (player == murderer and won))
+		if won and player.Parent then
+			DataService.Update(player, function(p)
 				p.RoundsWon += 1
-				murderer:SetAttribute("Wins", p.RoundsWon)
 			end)
-			Net.Notify(murderer, `You got everyone! +{Format.Cash(bonus)}`, "good")
-			if round.HumanKills > 0 then
-				local config = GameConfig.WipeCoffin
-				local rarity = if #round.Innocents >= config.BigLobby then config.Big else config.Small
-				task.delay(1.5, function()
-					if murderer.Parent then
-						local got = CoffinService.GiveOrCash(murderer, rarity, "your wipe")
-						Net.Notify(murderer, `You won {got}!`, "good")
-					end
-				end)
-			end
-		else
-			Net.Notify(murderer, "Time's up!", "info")
 		end
 	end
 
@@ -2163,10 +2013,14 @@ local function loop()
 				Analytics.Milestone(player, "first_" .. role)
 			end
 		end
+		setPhase("Reveal", GameConfig.RoleRevealSeconds, "HIDE!")
+		Progress.Begin(round.Alive, round.Murderer, #round.Innocents + #round.Bots, round.RevealEndsAt)
+		task.wait(math.max(0, round.RevealEndsAt - workspace:GetServerTimeNow()))
 		setPhase("Round", GameConfig.RoundTime, "Survive!")
 		local roundEnds = os.clock() + GameConfig.RoundTime
 		while os.clock() < roundEnds and not roundOver(round) do
 			task.wait(0.1)
+			Progress.Tick(round.Alive)
 			stepBots(round)
 			-- The fall net: anyone who drops well below their spawn (fell through a floor that hadn't
 			-- loaded yet, glitched out of the map) goes back to it instead of dying
@@ -2180,6 +2034,7 @@ local function loop()
 				end
 			end
 		end
+		Progress.Tick(round.Alive)
 		endRound(round)
 		task.wait(GameConfig.ResultsTime)
 	end

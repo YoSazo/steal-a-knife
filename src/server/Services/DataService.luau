@@ -12,7 +12,6 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local GuidePolicy = require(ReplicatedStorage.Shared.GuidePolicy)
-local LegacyProgress = require(ReplicatedStorage.Shared.LegacyProgress)
 
 export type Profile = {
 	Cash: number,
@@ -33,11 +32,7 @@ export type Profile = {
 	Equipped: string, -- item you fight with / bring into rounds as the Murderer; "" = best owned
 	Discovered: { string }, -- every catalog knife ever owned (plain names), for the collection book
 	-- (old saves: the cut Innocent Powers, kept only so InventoryService can refund them once)
-	Powers: { [string]: number },
-	Loadout: { string },
-	PowerSlots: number,
 	Speed: number, -- trained on the vault treadmill; turned into walk speed by GameConfig.WalkSpeedFor
-	TreadmillLevel: number,
 	Rebirths: number,
 	TutorialDone: boolean,
 	KnivesStolen: number, -- from other players' vaults in raids
@@ -47,14 +42,11 @@ export type Profile = {
 	DailyStreak: number, -- day of the 7-day login streak last claimed (0 = none yet)
 	LastDaily: number, -- the UTC day number it was claimed on
 	TrailLevel: number, -- highest knife trail bought (GameConfig.Trails), 0 = none
-	HealthLevel: number, -- max health upgrades bought (GameConfig.Health)
 	Receipts: { string }, -- recent Robux PurchaseIds already granted (ProcessReceipt is idempotent)
 	Bought: { string }, -- one-time Robux products already bought (Starter Pack)
 	Pending: { number }, -- money waiting on each slot's cash pad (BaseService), collected by walking over it
-	Heat: number, -- 0-10, boosts income and power luck (server Fuel)
 	Spins: number, -- Lucky Wheel spins banked (Gamble)
 	FreeSpinDay: number, -- UTC day number the free daily spin was used
-	LuckUntil: number, -- (retired: luck potions were cut; LegacyProgress zeroes it)
 	MerchantBought: { string }, -- "rotation:slot" bought from the Mystery Merchant this rotation
 	Boosts: { [string]: number }, -- Robux timed boosts: name (Speed/Cash/Training) -> os.time() it ends
 	Charges: { [string]: number }, -- Robux charges: name (Escape/Insurance) -> how many left
@@ -112,11 +104,7 @@ local function defaultProfile(): Profile
 		Sealed = {},
 		Equipped = "",
 		Discovered = {},
-		Powers = {},
-		Loadout = {},
-		PowerSlots = 2,
 		Speed = 0,
-		TreadmillLevel = 1,
 		Rebirths = 0,
 		TutorialDone = false,
 		KnivesStolen = 0,
@@ -128,12 +116,9 @@ local function defaultProfile(): Profile
 		Receipts = {},
 		Bought = {},
 		TrailLevel = 0,
-		HealthLevel = 0,
 		Pending = {},
-		Heat = 0,
 		Spins = 0,
 		FreeSpinDay = 0,
-		LuckUntil = 0,
 		MerchantBought = {},
 		Boosts = {},
 		Charges = {},
@@ -164,7 +149,7 @@ local function reconcile(data: any): Profile
 	profile.Slots = math.clamp(math.floor(profile.Slots), GameConfig.StartingSlots, GameConfig.Pens.MaxSlots)
 	-- One number per slot, never negative or broken (a dense array saves cleanly)
 	local pending: { number } = {}
-	for slot = 1, math.max(GameConfig.Pens.MaxSlots + GameConfig.Pens.Bag, #profile.Knives) do
+	for slot = 1, GameConfig.Pens.MaxSlots + GameConfig.Pens.Bag do
 		local value = profile.Pending[slot]
 		pending[slot] = if type(value) == "number"
 				and value == value
@@ -222,7 +207,7 @@ local function reconcile(data: any): Profile
 	if firsts.wheel_trained then
 		learned.train = 1
 	end
-	if profile.TreadmillLevel > 1 or profile.TrailLevel > 0 then
+	if profile.TrailLevel > 0 then
 		learned.wheel = 1
 	end
 	if #profile.IndexClaimed > 0 then
@@ -231,11 +216,9 @@ local function reconcile(data: any): Profile
 	profile.GuidanceLearned = learned
 	profile.Source = profile.Source:sub(1, 300)
 	profile.Speed = math.max(0, profile.Speed)
-	profile.TreadmillLevel = math.clamp(math.floor(profile.TreadmillLevel), 1, #GameConfig.Treadmills)
 	profile.Cash = math.max(0, profile.Cash)
 	profile.Rebirths = math.clamp(math.floor(profile.Rebirths), 0, GameConfig.Rebirth.Max)
 	profile.TrailLevel = math.clamp(math.floor(profile.TrailLevel), 0, #GameConfig.Trails)
-	LegacyProgress.Apply(profile)
 	-- Drop knives that were removed from the catalog so nothing downstream sees an unknown name
 	-- Each kept knife keeps its plate (older saves: plates in list order); duplicates or bad plates
 	-- get the first free one
@@ -247,7 +230,7 @@ local function reconcile(data: any): Profile
 			if
 				type(plate) == "number"
 				and plate >= 1
-				and plate <= math.max(GameConfig.Pens.MaxSlots + GameConfig.Pens.Bag, #profile.Knives)
+				and plate <= GameConfig.Pens.MaxSlots + GameConfig.Pens.Bag
 				and not used[plate]
 			then
 				plate = math.floor(plate)
@@ -283,15 +266,6 @@ local function reconcile(data: any): Profile
 	if profile.Equipped ~= "" and not table.find(profile.Knives, profile.Equipped) then
 		profile.Equipped = ""
 	end
-	-- Old Innocent Powers (refunded once by InventoryService): plain numbers only
-	local powers: { [string]: number } = {}
-	for id, level in profile.Powers do
-		if type(id) == "string" and type(level) == "number" and level >= 1 then
-			powers[id] = math.clamp(math.floor(level), 1, 3)
-		end
-	end
-	profile.Powers = powers
-	profile.PowerSlots = math.clamp(profile.PowerSlots, 2, 3)
 	return profile
 end
 
@@ -518,7 +492,7 @@ local function saveAsync(player: Player, profile: Profile, release: boolean): bo
 	return false
 end
 
-local BOOSTS = { "Speed", "Cash", "Training" }
+local BOOSTS = { "Speed", "Cash", "RoundSpeed" }
 local CHARGES = { "Escape", "Insurance", "DoublePrize" }
 
 -- Mirror the profile onto the player so the HUD and leaderboard can read it (read-only for clients)
@@ -533,7 +507,6 @@ local function publish(player: Player, profile: Profile)
 	player:SetAttribute("Slots", profile.Slots)
 	player:SetAttribute("KnifeCount", #profile.Knives)
 	player:SetAttribute("Speed", math.floor(profile.Speed))
-	player:SetAttribute("TreadmillLevel", profile.TreadmillLevel)
 	player:SetAttribute("Luck", profile.Luck)
 	player:SetAttribute("Tickets", profile.Tickets)
 	player:SetAttribute("Knives", table.concat(profile.Knives, ","))

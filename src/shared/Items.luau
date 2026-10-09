@@ -2,7 +2,6 @@
 -- Owned knives are "items": a catalog knife plus a mutation and a size (Items.RollKnife). Stored as one string so profiles, attributes and round loot stay simple:
 --   "Katana"              plain, normal size (every save from before cases still works)
 --   "Katana|Gold|Big"     Gold mutation, Big size ("Katana||Huge" = no mutation, Huge)
--- Old four-field saves remain valid; their fourth field is ignored.
 -- Mutations and sizes multiply income; they also make the knife hit a little harder.
 
 local Knives = require(script.Parent.Config.Knives)
@@ -129,10 +128,7 @@ function Items.Parse(item: string): Item?
 	local knife = Knives.ByName[name]
 	local m = mutationById[mutation]
 	local s = sizeById[size]
-	-- Murderer powers are cut (docs/PLAN.md item 4): every Murderer plays by the same MM2 rules, and
-	-- the knife is a flex (looks, rarity, mutation), not an ability. Perk stays in the type so old
-	-- 4-field items still parse; it's always nil now, which turns every power branch off.
-	if not knife or not m or not s or #fields > 4 then
+	if not knife or not m or not s or #fields > 3 then
 		invalid[item] = true
 		return nil
 	end

@@ -43,6 +43,7 @@ type Carry = {
 	Zone: number, -- zone it was picked up in, 0 = outside the biomes (analytics)
 }
 
+local Progress = require(script.Parent.RoundProgress)
 local StealService = {}
 
 -- Set by GuardService: (player, zoneIndex) when someone picks something up in the arena
@@ -549,6 +550,9 @@ local function deposit(player: Player)
 	end
 	if isNew and not sealed then
 		Analytics.Milestone(player, "discovered_" .. parsed.Knife.Rarity)
+	end
+	if carry.Boss or carry.Source == "coffin" then
+		Progress.Delivered(player, if carry.Boss then carry.Boss.Zone else Knives.Rank(parsed.Knife.Rarity))
 	end
 	endCarry(player, true)
 	local name = Items.DisplayName(item)

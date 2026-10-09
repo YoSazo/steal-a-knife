@@ -31,7 +31,6 @@ local PenWalls = require(script.Parent.PenWalls)
 local SignTheme = require(ReplicatedStorage.Shared.SignTheme)
 local WorldSignModel = require(ReplicatedStorage.Shared.WorldSignModel)
 local Toy = require(ReplicatedStorage.Shared.Toy)
-local WheelModel = require(ReplicatedStorage.Shared.WheelModel)
 
 export type Bounds = { MinX: number, MaxX: number, MinZ: number, MaxZ: number }
 export type BaseSite = {
@@ -51,9 +50,6 @@ export type BaseSite = {
 	SlotRims: { BasePart }, -- invisible anchors on the grass
 	CashPads: { BasePart }, -- the green pad beside each plate: walk on it to collect that knife's money
 	CashLabels: { TextLabel }, -- the amount waiting, written on the pad
-	Treadmill: Part, -- the floor inside the Haunted Wheel; standing on it trains Speed
-	TreadmillSign: TextLabel,
-	Wheel: Model,
 	Sign: TextLabel,
 }
 export type Zone = { Index: number, Rarity: string, Bounds: Bounds }
@@ -452,7 +448,6 @@ local function buildBases()
 		-- The Haunted Wheel: a giant iron wheel you run inside to train Speed (the plate at the bottom
 		-- is what counts as "on it"). Clients spin it while its owner is training. It stands just
 		-- outside the vault's gate, so the inside is nothing but knives.
-		local wheelCenter = Vector3.new(-13, 6.6, DEPTH / 2 + 7.5)
 		-- Tsunami / Steal An Egg signs (client/Hud fills them in for their owner): Upgrade Base on the
 		-- other side of the gate (the next floor), Upgrade Wheel in front of the Haunted Wheel (the next
 		-- wheel or trail, with a small Robux board under it: RobuxBoard)
@@ -528,80 +523,7 @@ local function buildBases()
 			upgradeSign.Parent = folder
 			return upgradeSign
 		end
-		local wheelSignX, wheelSignZ = -13, DEPTH / 2 + 15.5
-		upgradeSignAt("UpgradeSign", 13, DEPTH / 2 + 6, "Upgrade Base")
-		local wheelUpgrade = upgradeSignAt("WheelUpgradeSign", wheelSignX, wheelSignZ, "Upgrade Wheel")
-		local robuxBoard = block(
-			"RobuxBoard",
-			Vector3.new(3.2, 1.2, 0.35),
-			at(wheelSignX, 2.3, wheelSignZ + 0.6) * CFrame.Angles(0, math.pi, 0),
-			Color3.fromRGB(0, 176, 111),
-			wheelUpgrade
-		)
-		local robuxGui = Instance.new("SurfaceGui")
-		robuxGui.Name = "Gui"
-		robuxGui.Face = Enum.NormalId.Front
-		robuxGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		robuxGui.PixelsPerStud = 60
-		robuxGui.LightInfluence = 0
-		robuxGui.MaxDistance = 80
-		robuxGui.Parent = robuxBoard
-		local robuxText = Instance.new("TextLabel")
-		robuxText.Name = "Price"
-		robuxText.Size = UDim2.fromScale(1, 1)
-		robuxText.BackgroundTransparency = 1
-		robuxText.Font = Enum.Font.FredokaOne
-		robuxText.TextScaled = true
-		robuxText.TextColor3 = Color3.new(1, 1, 1)
-		robuxText.Text = ""
-		robuxText.Parent = robuxGui
-		local robuxStroke = Instance.new("UIStroke")
-		robuxStroke.Thickness = 3
-		robuxStroke.Color = Color3.fromRGB(10, 60, 40)
-		robuxStroke.Parent = robuxText
-		local builtWheel = WheelModel.Build(1, at(wheelCenter.X, wheelCenter.Y, wheelCenter.Z))
-		local wheel = builtWheel.Rotor
-		wheel:AddTag("HauntedWheel")
-		wheel.Parent = folder
-		builtWheel.Stand.Parent = folder
-		-- The plate you stand on inside the bottom of the wheel
-		local belt = block(
-			"WheelFloor",
-			Vector3.new(6, 0.4, 5),
-			at(wheelCenter.X, 0.8, wheelCenter.Z),
-			Color3.fromRGB(80, 228, 255),
-			folder
-		)
-		belt.Transparency = 1 -- the tier's moving tread blocks are the visible running surface
-		local wheelSign =
-			block("WheelSign", Vector3.new(6, 2.4, 0.4), at(wheelCenter.X, 15.2, wheelCenter.Z), NAVY, folder)
-		-- No board: the wheel's name just floats over it, like the shop stalls' titles
-		wheelSign.Transparency = 1
-		wheelSign.CanCollide, wheelSign.CanQuery, wheelSign.CanTouch = false, false, false
-		local wheelTitle = Instance.new("BillboardGui")
-		wheelTitle.Name = "TierGui"
-		wheelTitle.Size = UDim2.fromScale(9, 1.8) -- studs: smaller with distance
-		wheelTitle.MaxDistance = 90
-		wheelTitle.LightInfluence = 0
-		wheelTitle.Adornee = wheelSign
-		wheelTitle.Parent = wheelSign
-		local treadmillSign = Instance.new("TextLabel")
-		treadmillSign.Name = "Tier"
-		treadmillSign.Size = UDim2.fromScale(1, 1)
-		treadmillSign.BackgroundTransparency = 1
-		treadmillSign.Font = Enum.Font.FredokaOne
-		treadmillSign.TextScaled = true
-		treadmillSign.TextColor3 = Color3.new(1, 1, 1)
-		treadmillSign.Text = "Creaky Wheel"
-		treadmillSign.Parent = wheelTitle
-		local titleGradient = Instance.new("UIGradient")
-		titleGradient.Rotation = 90
-		titleGradient.Color = ColorSequence.new(Color3.new(1, 1, 1), color:Lerp(Color3.new(1, 1, 1), 0.35))
-		titleGradient.Parent = treadmillSign
-		local titleStroke = Instance.new("UIStroke")
-		titleStroke.Thickness = 3
-		titleStroke.Color = color:Lerp(Color3.new(0, 0, 0), 0.65)
-		titleStroke.Parent = treadmillSign
+		upgradeSignAt("UpgradeSign", 13, DEPTH / 2 + 6, "Upgrade Pen")
 
 		-- Spawn just inside the door, facing out towards the plaza and the runway
 		local spawnPos = (at(0, 4, DEPTH / 2 - 10)).Position
@@ -626,9 +548,6 @@ local function buildBases()
 			SlotRims = slotRims,
 			CashPads = cashPads,
 			CashLabels = cashLabels,
-			Treadmill = belt,
-			TreadmillSign = treadmillSign,
-			Wheel = wheel,
 			Sign = sign,
 		})
 	end
@@ -904,28 +823,6 @@ end
 
 -- Rebuild only when the tier changes, including rebirth and a newly claimed vault.
 -- Preserve training state when an owner buys an upgrade while already running.
-function MapService.SetWheelTier(base: BaseSite, level: number)
-	level = math.clamp(math.floor(level), 1, #GameConfig.Treadmills)
-	base.TreadmillSign.Text = GameConfig.Treadmills[level].Name
-	if base.Wheel:GetAttribute("Tier") == level then
-		return
-	end
-	local old = base.Wheel
-	local pivot = old:GetAttribute("Pivot")
-	assert(typeof(pivot) == "CFrame", "Wheel is missing its resting axle pivot")
-	local built = WheelModel.Build(level, pivot)
-	built.Rotor:SetAttribute("Spinning", old:GetAttribute("Spinning"))
-	built.Rotor:SetAttribute("SpinRate", old:GetAttribute("SpinRate"))
-	built.Rotor:AddTag("HauntedWheel")
-	built.Rotor.Parent = base.Folder
-	local oldStand = base.Folder:FindFirstChild("WheelDetails")
-	if oldStand then
-		oldStand:Destroy()
-	end
-	built.Stand.Parent = base.Folder
-	base.Wheel = built.Rotor
-	old:Destroy()
-end
 
 -- Shows the vault's first `count` storeys (the rest wait out of the world until they're bought)
 
@@ -965,7 +862,6 @@ function MapService.Init()
 	task.wait()
 	-- Nothing from the plaza decor in the way of the wheels outside the vault gates
 	for _, base in MapService.Bases do
-		ManorDecor.ClearArea((base.Wheel.PrimaryPart :: BasePart).Position, 9, 9)
 		-- (and nothing of the old plaza's lamps and props inside a pen)
 		local b = base.Bounds
 		ManorDecor.ClearArea(base.Center, (b.MaxX - b.MinX) / 2 + 2, (b.MaxZ - b.MinZ) / 2 + 2)

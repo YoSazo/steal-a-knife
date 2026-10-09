@@ -3,7 +3,7 @@
 -- to where you need to go, a bouncing arrow over the spot, and one short line of text in a slim
 -- see-through bar under the timer (never a big box over the game). Learn by doing:
 --   1. steal a knife off Frank's wall    2. run it home and place it (caught? back to 1)
---   3. collect its cash pad               4. run in your wheel (Speed = deeper biomes)
+--   3. collect its cash pad               rounds earn Speed for deeper monsters
 -- then the "Your knife's power" showcase. (Upgrades and Equip steps were cut: only 2 of 11 new
 -- players got through them; Upgrades is found anyway, and your best knife is auto-equipped.)
 -- Progress is saved (player TutorialStep), so leaving midway resumes there. More > How to play
@@ -42,7 +42,7 @@ end
 local running = false
 
 -- (where things are: client/Places, shared with the guide)
-local cashPad, wheel, homeSpot = Places.CashPad, Places.Wheel, Places.HomeSpot
+local cashPad, homeSpot = Places.CashPad, Places.HomeSpot
 local freePlate, knifeOver = Places.FreePlate, Places.KnifeOver
 
 -- Go directly to a stocked side knife. The lair approach is only a fallback while it streams in.
@@ -112,7 +112,6 @@ local function run(startAt: number, replay: boolean)
 	end))
 	local chosenPad: BasePart? = nil
 	local lastScan = 0
-	local trainingSince: number? = nil
 	local steps: { Step } = {
 		{
 			Text = `Follow the arrows to the {string.upper(GameConfig.MonsterName(1))}'s coffins!`,
@@ -152,18 +151,6 @@ local function run(startAt: number, replay: boolean)
 			Target = cashPad,
 			Done = function()
 				return collected
-			end,
-		},
-		{
-			Text = "Run in your wheel to get faster! Faster = better knives!",
-			Target = wheel,
-			Done = function()
-				if player:GetAttribute("Training") and Ui.inHub() then
-					trainingSince = trainingSince or os.clock()
-					return os.clock() - (trainingSince :: number) >= 3
-				end
-				trainingSince = nil
-				return false
 			end,
 		},
 	}
@@ -276,7 +263,6 @@ local function run(startAt: number, replay: boolean)
 			"Follow the arrows!",
 			"RUN HOME!",
 			"Collect your cash!",
-			"Run in your wheel!",
 		}
 
 		stepLabel.Text = `{current}/{#steps}  {if Ui.Phone or Ui.Layout.get().Compact

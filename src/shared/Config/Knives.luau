@@ -1,10 +1,7 @@
 --!strict
--- Knife catalog. Knives are won in the arena (kill the guard holding one, carry it home); each
--- earns cash per second while it hangs on the owner's vault wall. Damage is what it does to
--- guards (and to raiders you catch in your vault) when you wield it; Perk is the Murderer's
--- ability when it's their equipped knife.
--- Every rarity is one biome of the runway (GameConfig.Zones), and its knives look the part.
--- Mesh: reuse another knife's Blender mesh (Config/KnifeMeshes) in this knife's colours.
+-- Knife catalog. Stolen monster coffins unlock characters that earn Cash in pens.
+-- Rarity controls the biome, appearance and cosmetic Murderer kill burst.
+-- Mesh may reuse another knife's Blender mesh in this knife's colours.
 
 export type Knife = {
 	Name: string,
@@ -37,7 +34,7 @@ local RarityColors: { [string]: Color3 } = {
 
 local rgb = Color3.fromRGB
 
--- Name, display name, rarity, income/s, damage, perk, blade length/width, colours, extras
+-- Name, display name, rarity, income/s, damage, blade length/width, colours, extras
 local function knife(
 	name: string,
 	display: string,

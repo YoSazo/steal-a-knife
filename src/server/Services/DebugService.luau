@@ -14,7 +14,6 @@ local ServerStorage = game:GetService("ServerStorage")
 
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
-local InventoryService = require(script.Parent.InventoryService)
 local Analytics = require(script.Parent.Analytics)
 local Net = require(script.Parent.Parent.Remotes)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
@@ -29,6 +28,11 @@ local DebugService = {}
 local commands: { [string]: (Player, ...any) -> any } = {
 	-- equip = true also makes the last one given your fighting / Murderer knife
 	Give = function(player: Player, names: { string }, equip: boolean?)
+		for _, item in names do
+			if not Items.Parse(item) then
+				return false
+			end
+		end
 		DataService.Update(player, function(p)
 			for _, item in names do
 				DataService.AddKnife(p, item)
@@ -89,22 +93,6 @@ local commands: { [string]: (Player, ...any) -> any } = {
 			StealService.DropKnife(name, root.Position + root.CFrame.LookVector * 5)
 		end
 		return root ~= nil
-	end,
-	-- Pretend this is an old save with cash-bought powers, then run the migration (tests the refund)
-	OldPowers = function(player: Player)
-		DataService.Update(player, function(p)
-			p.Powers = { Vanish = 2, Radar = 1 }
-			p.Loadout = { "Vanish" }
-			local index = table.find(p.Bought, "PowerRefund")
-			if index then
-				table.remove(p.Bought, index)
-			end
-		end)
-		local profile = DataService.Get(player)
-		if profile then
-			InventoryService.DebugRefund(player, profile)
-		end
-		return true
 	end,
 	-- Offer tests reach the real pending-token/cooldown state, rather than a command-bar module copy.
 	Offer = function(player: Player, key: string)

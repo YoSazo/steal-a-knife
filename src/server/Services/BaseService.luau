@@ -113,16 +113,11 @@ BaseService.OnEquipPrompt = nil :: ((Player, string) -> ())?
 BaseService.OnPlacePrompt = nil :: ((Player, number) -> ())?
 -- Set by UpgradeService: the owner pressed Upgrade Base at the sign by their gate
 BaseService.OnUpgradeBase = nil :: ((Player) -> ())?
--- Set by UpgradeService: the owner clicked the Upgrade Wheel sign in front of their Haunted Wheel
-BaseService.OnUpgradeWheel = nil :: ((Player) -> ())?
 
 -- Rebirths multiply everything a vault earns
 -- Consumable bookkeeping (for offers and boost expiry)
-local trainedFor: { [Player]: number } = {}
-local hadBoost: { [Player]: boolean } = {}
 local hadSpeed: { [Player]: boolean } = {}
 local padWalks: { [Player]: number } = {}
-local trainingSince: { [Player]: number } = {} -- analytics: how long each wheel session lasts
 -- A knife fresh out of its coffin flies into you and waits in your hotbar (Steal an Egg) until you
 -- tap where it goes in your pen. Not saved: leave and it's simply on its spot next time.
 local hatching: { [Player]: { { Plate: number, Item: string } } } = {}
@@ -141,7 +136,7 @@ local function heldOn(player: Player, plate: number): boolean
 	return false
 end
 Players.PlayerRemoving:Connect(function(player)
-	trainedFor[player], hadBoost[player], hadSpeed[player], padWalks[player] = nil, nil, nil, nil
+	hadSpeed[player], padWalks[player] = nil, nil
 	hatching[player], hoppedIn[player] = nil, nil
 end)
 
@@ -259,10 +254,7 @@ function BaseService.RefreshWalls(base: MapService.BaseSite)
 	base.Blocker:SetAttribute("Owner", if owner then owner.UserId else nil)
 	base.Blocker:SetAttribute("OwnerName", if owner then owner.DisplayName else nil)
 	-- (no wall upgrades any more: vaults are open, Tsunami style)
-	-- The Upgrade Base sign by the gate (the next floor) and the Upgrade Wheel sign in front of the
-	-- Haunted Wheel (the next wheel or trail). Same as the sell sign: click the sign itself (its green
-	-- pill is the button), no separate hold-E prompt to explain. The wheel sign's small Robux board
-	-- (RobuxBoard) gets a click detector too; the owner's client turns that click into the purchase.
+	-- The pen room sign is its own click target.
 	local function signClick(signName: string, partName: string, clickName: string, onClick: ((Player) -> ())?)
 		local sign = base.Folder:FindFirstChild(signName)
 		local part = sign and sign:FindFirstChild(partName) :: BasePart?
@@ -291,12 +283,6 @@ function BaseService.RefreshWalls(base: MapService.BaseSite)
 			BaseService.OnUpgradeBase(player)
 		end
 	end)
-	signClick("WheelUpgradeSign", "Board", "UpgradeWheel", function(player)
-		if BaseService.OnUpgradeWheel then
-			BaseService.OnUpgradeWheel(player)
-		end
-	end)
-	signClick("WheelUpgradeSign", "RobuxBoard", "BuyWheel", nil)
 	-- The vault's sign rides on top of its back wall
 	base.SignPart.CFrame = base.Frame * CFrame.new(0, built.BackHeight + 2.4, -22)
 	WorldSignModel.MoveAttached(base.SignPart)
@@ -550,7 +536,7 @@ function BaseService.RefreshRack(player: Player)
 			coffin:SetAttribute("OpensAt", workspace:GetServerTimeNow() + (readyAt - os.time()))
 			-- (round-based: how many murder rounds are left - the label shows that, not a clock)
 			local sealed = DataService.SealedEntry(profile, slot)
-			coffin:SetAttribute("RoundsLeft", if sealed then sealed.Rounds else nil)
+			coffin:SetAttribute("RoundsLeft", if sealed and sealed.Rounds then math.ceil(sealed.Rounds) else nil)
 			coffin:AddTag("Coffin")
 			-- (whole or not at all: client/Coffins swings and shatters every lid piece it finds)
 			coffin.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
@@ -598,7 +584,12 @@ function BaseService.RefreshRack(player: Player)
 		local parsed = if index then Items.Parse(profile.Knives[index]) else nil
 		if parsed then
 			local opensAt = workspace:GetServerTimeNow() + (entry.ReadyAt - os.time())
-			table.insert(coffins, `{entry.Plate},{parsed.Knife.Rarity},{entry.Rounds or -1},{math.floor(opensAt)}`)
+			table.insert(
+				coffins,
+				`{entry.Plate},{parsed.Knife.Rarity},{if entry.Rounds then math.ceil(entry.Rounds) else -1},{math.floor(
+					opensAt
+				)}`
+			)
 		end
 	end
 	player:SetAttribute("CoffinList", table.concat(coffins, ";"))
@@ -610,7 +601,6 @@ function BaseService.RefreshRack(player: Player)
 		end
 	end
 	player:SetAttribute("SealedKnives", table.concat(sealedKnives, ","))
-	MapService.SetWheelTier(base, profile.TreadmillLevel)
 end
 
 local function claimBase(player: Player)
@@ -687,8 +677,6 @@ local function releaseBase(player: Player)
 	baseOf[player] = nil
 	rackModels[player] = nil
 	if base then
-		base.Wheel:SetAttribute("Spinning", nil)
-		MapService.SetWheelTier(base, 1)
 		BaseService.RefreshWalls(base)
 	end
 end
@@ -881,13 +869,8 @@ function BaseService.Init()
 		watchCharacters(player)
 	end
 	Players.PlayerRemoving:Connect(releaseBase)
-	DataService.Changed:Connect(function(player: Player, profile: DataService.Profile)
+	DataService.Changed:Connect(function(player: Player, _profile: DataService.Profile)
 		BaseService.RefreshWalkSpeed(player)
-		-- New walls go up when the tier changes
-		local base = baseOf[player]
-		if base then
-			MapService.SetWheelTier(base, profile.TreadmillLevel)
-		end
 	end)
 	-- The equipped knife's plaque glows white
 	local function watchEquipped(player: Player)
@@ -900,82 +883,6 @@ function BaseService.Init()
 		watchEquipped(player)
 	end
 
-	-- Haunted Wheel: stand inside your vault's wheel to train Speed (AFK is fine)
-	task.spawn(function()
-		local last = os.clock()
-		while true do
-			task.wait(0.25)
-			local now = os.clock()
-			local dt = now - last
-			last = now
-			for player, base in baseOf do
-				local profile = DataService.Get(player)
-				local character = player.Character
-				local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-				local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-				local on = false
-				if profile and root and humanoid and humanoid.Health > 0 and not player:GetAttribute("InRound") then
-					local localPos = base.Treadmill.CFrame:PointToObjectSpace(root.Position)
-					local size = base.Treadmill.Size
-					on = math.abs(localPos.X) < size.X / 2 + 0.5
-						and math.abs(localPos.Z) < size.Z / 2 + 0.5
-						and localPos.Y > 0
-						and localPos.Y < 6
-				end
-				if player:GetAttribute("Training") ~= (on or nil) then
-					if on then
-						trainingSince[player] = os.clock()
-						Analytics.Milestone(player, "wheel_trained")
-					elseif trainingSince[player] then
-						Analytics.Track(player, "wheel.session", {
-							seconds = math.floor(os.clock() - trainingSince[player]),
-							speed_after = profile and math.floor(profile.Speed),
-						})
-						trainingSince[player] = nil
-					end
-					player:SetAttribute("Training", on or nil)
-					base.Wheel:SetAttribute("Spinning", on or nil) -- clients spin it
-					if on and root and profile then
-						-- Face the way the rungs roll, so it looks like running up the steps
-						local hub = (base.Wheel.PrimaryPart :: BasePart).CFrame
-						local forward = hub:VectorToWorldSpace(Vector3.zAxis)
-						root.CFrame = CFrame.lookAt(root.Position, root.Position + forward)
-					end
-				end
-				-- Better wheels spin faster (and the runner's legs keep up, see Moves)
-				if on and profile then
-					base.Wheel:SetAttribute("SpinRate", 1.4 + profile.TreadmillLevel * 0.55)
-				end
-				if on and profile then
-					local rate = GameConfig.TrainRate(
-						profile.TreadmillLevel,
-						profile.Rebirths,
-						profile.TrailLevel,
-						player:GetAttribute("Pass_PhantomTrail") == true,
-						player:GetAttribute("Pass_FastWheel") == true,
-						DataService.BoostActive(profile, "Training")
-					)
-					DataService.Update(player, function(p)
-						p.Speed += rate * dt
-					end)
-					-- A long stint on the wheel: that's the grind a Training Potion cuts
-					trainedFor[player] = (trainedFor[player] or 0) + dt
-					if
-						trainedFor[player] > GameConfig.Consumables.TrainingOfferAfter
-						and not DataService.BoostActive(profile, "Training")
-					then
-						trainedFor[player] = 0
-						Offers.Show(
-							player,
-							"TrainingPotion",
-							"Training takes ages? 3x Speed from the wheel for 15 minutes."
-						)
-					end
-				end
-			end
-		end
-	end)
-
 	-- Every knife earns onto its own cash pad once a second (Tsunami style); the pads show what's
 	-- waiting
 	task.spawn(function()
@@ -987,20 +894,6 @@ function BaseService.Init()
 					continue
 				end
 				local multiplier = BaseService.IncomeMultiplier(player)
-				local boostUntil = player:GetAttribute("BoostUntil")
-				local boosted = type(boostUntil) == "number" and workspace:GetServerTimeNow() < boostUntil
-				if boosted then
-					multiplier *= GameConfig.BoostMultiplier
-				end
-				-- The free 2x (survivor) just ran out: that's when a Cash Potion feels best
-				if hadBoost[player] and not boosted and not DataService.BoostActive(profile, "Cash") then
-					Offers.Show(
-						player,
-						"CashPotion",
-						"Your 2x boost ran out! Keep your vault on 2x for 15 more minutes."
-					)
-				end
-				hadBoost[player] = boosted
 				-- A Speed Potion just ended: back to normal speed
 				local speedOn = DataService.BoostActive(profile, "Speed")
 				if speedOn ~= (hadSpeed[player] or false) then

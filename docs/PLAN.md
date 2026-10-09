@@ -101,8 +101,8 @@ The creature's speed sign is readable up close at 640 x 320.
   dynamic KnifeModel pen-mode call. Selene, StyLua and luau-lsp pass. CLAUDE.md updated.
 - **Item 4 deletion:** all Murderer perks, Spam / Hellfire / stun / traps / power reveal, Decoy,
   Stealth, Shift, perk catalog / icons / cards / button removed (~1,500 lines). Every knife uses
-  tap to stab and hold to throw; higher rarities have larger coloured kill bursts. Legacy four-field
-  items still parse, ignoring their power. Studio desktop hold threw once and tap killed a bot;
+  tap to stab and hold to throw; higher rarities have larger coloured kill bursts. The later zero-player decision removed legacy four-field
+  parsing and refunds. Studio desktop hold threw once and tap killed a bot;
   phone THROW button works repeatedly and tap killed a bot. Old Spam requests were rejected.
   Studio solo debugging bypasses join grace after giving a knife; empty profiles cannot join.
   Selene, StyLua and luau-lsp pass; no game script errors. CLAUDE.md updated.
@@ -132,11 +132,42 @@ The creature's speed sign is readable up close at 640 x 320.
   Round (2x ladder), Luck Storm (boosted opening odds), Speed Rush (2x delivery Speed). One event
   and banner at a time; admin may start an extra event. Friday countdown on the events board.
 
-**Not started (next):** first **item 30** (rounds are the Speed: cut the Haunted Wheel, the
-survival ladder), since it changes the balance everything else sits on; then the hatch layer (items 13-17: see-through "x-ray" coffin - glass in the
-rarity colour with a glowing knife shape inside, Diamond+ a second sparkle glow; human names;
-manual opening; Winner's Luck; the fuse machine), the shop rebuild (item 20), deleting the dormant
-vault / power / Classic code, and the rest of the plan below.
+- **Item 30 complete:** Haunted Wheel geometry, models, signs, training ticks, tutorial step,
+  upgrades and UI deleted (~10,000 lines). Rounds bank Speed through DataService; shoe pickups
+  pay Speed, never Cash; delivered coffins pay 1/10 of a baseline full ladder, reduced for
+  shallower farming. Cosmetic trails remain a cash sink; their obsolete Speed multiplier is gone.
+  2x Round Speed keeps the existing pass ID; the wheel upgrade product is retired. No profile
+  migrations or refunds: the owner confirmed zero players. Payment receipts remain supported.
+- **Hiding and ladder:** reveal 3.6 s, then hide 10 s. One shared server deadline controls the
+  reveal, first bank and both weapons. Everyone, including Murderer, banks hiding step 1.
+  Steps 10 / 20 / 35 / 50 / 60 s; parts 1 / 2 / 4 / 7 / 12. Desktop/phone HIDE line checked;
+  full survival banked at 10.02 / 20.05 / 35.12 / 50.02 / 60.04 s. A death after step 3 kept
+  the bank. Before hide ended no weapons; afterward both knife and revolver were present.
+  Murderer stab banked its next kill reward; a shoe pickup added 21 Speed with Cash unchanged.
+  Valid-knife rerun console clean. Selene, StyLua, sourcemap and luau-lsp pass.
+- **Item 30 pacing:** `python tools/pacing_sim.py 12 --fit` solves the first four zone shares;
+  the model includes the 3.6 s reveal and 8 s results, with estimated 65% survival and failed
+  steals. These are modeled first-delivery times, not measured player telemetry.
+
+  | Next zone | Full ladder share of zone gap | First coffin in sim |
+  | --- | ---: | ---: |
+  | 2 · Rare | 24.4545% | 0.33 h |
+  | 3 · Epic | 5.81162% | 1.19 h |
+  | 4 · Legendary | 1.63412% | 4.02 h |
+  | 5 · Mythic | 1.38447% | 8.03 h |
+  | 6 · Godly | 0.8% | 20.66 h |
+  | 7 · Celestial | 0.6% | beyond 24 h |
+  | 8 · Cosmic | 0.4% | beyond 24 h |
+
+  `GameConfig.RoundPrize.ZoneShares` mirrors the simulator. The first four meet the owner's
+  ~0.34 / 1.2 / 4 / 8 h targets. Coffin round counts ×30/13; OfflineSecondsPerRound 234
+  preserves the old minute deadlines. Repeated minimum-Speed zone 2 / 3 deliveries with four
+  owned knives took 24.85 / 20.87 s at full health; regular creature wake time is now 1.5 s too.
+  Keep intermission 70 s, ladder 60 s, warning 10 s. Pen slots 16 / 17 occur at 5.90 / 7.36 h;
+  later unique slot milestones cross rebirths, which reset the pen.
+
+**Next:** hatch layer (items 13-17: glass coffin / silhouette and real odds, human names,
+manual READY opening, Winner's Luck, fuse machine), then Secret, maps, shop and remaining work.
 
 ---
 

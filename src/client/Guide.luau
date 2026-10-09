@@ -61,10 +61,6 @@ local function state(): NextAction.State
 	for i = 1, #GameConfig.Zones do
 		stocked[i] = Places.Stocked(i)
 	end
-	local nextUpgrade = GameConfig.NextSpeedUpgrade(
-		(player:GetAttribute("TreadmillLevel") or 1) :: number,
-		(player:GetAttribute("TrailLevel") or 0) :: number
-	)
 	local carrying = player:GetAttribute("Carrying")
 	local gift = Places.Gift()
 	local spare, spareItem = Places.SpareSale()
@@ -91,19 +87,16 @@ local function state(): NextAction.State
 		AutoCollect = player:GetAttribute("Pass_AutoCollect") == true
 			or player:GetAttribute("SessionAutoCollect") == true,
 		Speed = speed,
-		Training = player:GetAttribute("Training") == true,
 		BestOwnedRank = bestRank,
 		Stocked = stocked,
 		Gift = gift ~= nil,
 		GiftNearby = root ~= nil and gift ~= nil and (root.Position - gift).Magnitude <= 20,
 		Committed = committed,
 		IndexClaimable = indexClaimable(),
-		WheelCost = nextUpgrade and nextUpgrade.Cost,
 		TutorialDone = player:GetAttribute("TutorialDone") == true,
 		NewTier = unlockedTier,
 		Spare = spare ~= nil,
 		BetterReplacement = Places.BetterReplacement(reach, spareItem),
-		WheelName = nextUpgrade and nextUpgrade.Name,
 		CanRebirth = rebirths < GameConfig.Rebirth.Max
 			and ((player:GetAttribute("Cash") or 0) :: number) >= GameConfig.RebirthCost(rebirths)
 			and bestRank >= Knives.Rank(GameConfig.RebirthNeeds(rebirths)),
@@ -181,6 +174,29 @@ local function roundAction(): NextAction.Action
 	local input = if Ui.Phone
 		then "Touch"
 		else if UserInputService.PreferredInput == Enum.PreferredInput.Gamepad then "Gamepad" else "Keyboard"
+	local reward = player:GetAttribute("RoundStepSpeed")
+	if type(reward) == "number" then
+		local kills = player:GetAttribute("RoundStepKills")
+		local due = player:GetAttribute("RoundStepAt")
+		if
+			player:GetAttribute("RoundHide")
+			or (not murderer and (not gun or toolWith("Revolver", true)))
+			or toolWith("MurderKnife", true)
+		then
+			local step = if type(kills) == "number"
+				then `🔪 {kills}`
+				else `{if player:GetAttribute("RoundHide") then "" else "⏱ "}{math.max(
+					0,
+					math.ceil((if type(due) == "number" then due else now) - now)
+				)}s`
+			return {
+				Id = "round_speed",
+				Text = `{if player:GetAttribute("RoundHide") then "🔪 HIDE! " else ""}{step} → +{Ui.abbreviate(
+					reward
+				)} 👟`,
+			}
+		end
+	end
 	return RoundGuidance.Pick({
 		Murderer = murderer,
 		HasKnife = toolWith("MurderKnife") ~= nil,
@@ -215,14 +231,9 @@ local function place(action: NextAction.Action): (Vector3?, Vector3?, Instance?)
 			return pad.Position + Vector3.new(0, 4, 0), nil, Places.KnifeOver(pad)
 		end
 		return spot, spot, nil
-	elseif kind == "Wheel" then
-		return Places.Wheel(), nil, nil
 	elseif kind == "VaultSign" then
 		local vault = Places.Vault()
 		return Places.Sign("UpgradeSign"), nil, vault and vault:FindFirstChild("UpgradeSign")
-	elseif kind == "WheelSign" then
-		local vault = Places.Vault()
-		return Places.Sign("WheelUpgradeSign"), nil, vault and vault:FindFirstChild("WheelUpgradeSign")
 	elseif kind == "Pad" then
 		return Places.CashPad(), nil, nil
 	elseif kind == "Gift" then
@@ -371,7 +382,6 @@ function Guide.Init()
 	local initialDistance: number? = nil
 	local pathTarget: Vector3? = nil
 	local indexEntered: number? = nil
-	local trainingSince: number? = nil
 	local idleHelp = false
 	local helpMovement: Vector3? = nil
 
@@ -424,7 +434,7 @@ function Guide.Init()
 			learn("collect")
 		elseif kind == "IndexClaim" then
 			learn("index")
-		elseif kind == "Coin" and player:GetAttribute("InRound") then
+		elseif kind == "SpeedPickup" and player:GetAttribute("InRound") then
 			learn("coins")
 			started = true
 		end
@@ -435,18 +445,15 @@ function Guide.Init()
 			completed()
 		end
 	end)
-	for _, name in { "TreadmillLevel", "TrailLevel", "Slots" } do
+	for _, name in { "Slots" } do
 		local previous = player:GetAttribute(name)
 		player:GetAttributeChangedSignal(name):Connect(function()
 			local value = player:GetAttribute(name)
 			if type(previous) == "number" and type(value) == "number" and value > previous then
-				learn(if name == "Slots" then "vault" else "wheel")
+				learn("vault")
 			end
 			previous = value
-			if
-				current
-				and (current.Id == "wheel_upgrade" or current.Id == "vault_bigger" or current.Id == "carry_bigger")
-			then
+			if current and (current.Id == "vault_bigger" or current.Id == "carry_bigger") then
 				completed()
 			end
 		end)
@@ -563,14 +570,6 @@ function Guide.Init()
 				learn("gun_draw")
 			end
 		end
-		if player:GetAttribute("Training") and not inRound then
-			trainingSince = trainingSince or os.clock()
-			if os.clock() - (trainingSince :: number) >= 3 then
-				learn("train")
-			end
-		else
-			trainingSince = nil
-		end
 		-- Evaluate 4 times a second (and the arrows every frame)
 		if os.clock() - lastEval >= 0.25 then
 			lastEval = os.clock()
@@ -620,7 +619,7 @@ function Guide.Init()
 					lastPos, lastMoveAt = root.Position, os.clock()
 				end
 			end
-			if player:GetAttribute("Training") or inRound then
+			if inRound then
 				lastMoveAt = os.clock()
 			end
 			if
@@ -651,17 +650,8 @@ function Guide.Init()
 				started = true
 			end
 		end
-		if current and current.Id == "train" and player:GetAttribute("Training") then
-			started = true
-		end
 		-- Offer familiar help again only after a long idle; moving resumes independent play.
-		if
-			mode == "Auto"
-			and not blocked
-			and not inRound
-			and not player:GetAttribute("Training")
-			and os.clock() - lastMoveAt > 60
-		then
+		if mode == "Auto" and not blocked and not inRound and os.clock() - lastMoveAt > 60 then
 			if not idleHelp then
 				idleHelp, helpMovement = true, root and root.Position
 			end

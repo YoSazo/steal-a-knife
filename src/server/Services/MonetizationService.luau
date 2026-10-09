@@ -21,7 +21,6 @@ local Monetization = require(ReplicatedStorage.Shared.Config.Monetization)
 local Net = require(script.Parent.Parent.Remotes)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
-local Offers = require(script.Parent.Offers)
 local Gamble = require(script.Parent.Gamble)
 local GuardService = require(script.Parent.GuardService)
 local Rewards = require(script.Parent.Rewards)
@@ -221,25 +220,7 @@ grantProduct = function(player: Player, product: Monetization.Product): boolean
 		DataService.AddCharge(player, charge.Name, charge.Count)
 		table.insert(got, product.Name)
 	end
-	if key == "SpeedUpgrade" then
-		local nextUpgrade = GameConfig.NextSpeedUpgrade(profile.TreadmillLevel, profile.TrailLevel)
-		if nextUpgrade then
-			DataService.Update(player, function(p)
-				if nextUpgrade.Kind == "Treadmill" then
-					p.TreadmillLevel += 1
-				else
-					p.TrailLevel += 1
-				end
-			end)
-			BaseService.RefreshRack(player) -- the wheel's look and sign
-			table.insert(got, nextUpgrade.Name)
-		else
-			-- Already maxed: their Robux turn into cash instead
-			local value = GameConfig.Pay({ Min = 50000, Seconds = 1200 }, BaseService.RackIncome(player))
-			DataService.AddCash(player, value, "robux_product")
-			table.insert(got, `{Format.Cash(value)} (your wheel was already maxed)`)
-		end
-	elseif key == "Mount" then
+	if key == "Mount" then
 		if profile.Slots < PenMode.MaxSlots() then
 			local _, step = PenMode.RoomUpgrade(profile.Slots)
 			DataService.Update(player, function(p)
@@ -429,49 +410,6 @@ function MonetizationService.Init()
 	Players.PlayerAdded:Connect(setup)
 	Players.PlayerRemoving:Connect(function(player)
 		lastTest[player] = nil
-	end)
-
-	-- Keep the first-round payoff clear. Starter waits for a quiet training moment; no fixed timer.
-	Net.Remotes.Tutorial.OnServerEvent:Connect(function(player: Player, step: unknown)
-		if (step ~= "Done" and step ~= "Skip") or player:GetAttribute("StarterQueued") then
-			return
-		end
-		player:SetAttribute("StarterQueued", true)
-		task.spawn(function()
-			local afterRound = ((player:GetAttribute("RoundsPlayed") or 0) :: number) > 0
-			local wasInRound = player:GetAttribute("InRound") == true
-			local trainingSince: number? = nil
-			while
-				player.Parent
-				and not Offers.Has(player, "Starter")
-				and not player:GetAttribute("StarterOfferShown")
-			do
-				local inRound = player:GetAttribute("InRound") == true
-				if wasInRound and not inRound then
-					afterRound = true
-				end
-				wasInRound = inRound
-				if
-					afterRound
-					and not inRound
-					and player:GetAttribute("Training")
-					and not player:GetAttribute("Carrying")
-				then
-					trainingSince = trainingSince or os.clock()
-					if os.clock() - (trainingSince :: number) >= 15 then
-						Offers.Show(
-							player,
-							"Starter",
-							"A one-time head start while you train, just for new players.",
-							true
-						)
-					end
-				else
-					trainingSince = nil
-				end
-				task.wait(1)
-			end
-		end)
 	end)
 end
 

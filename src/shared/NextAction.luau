@@ -5,8 +5,7 @@
 -- (client/Places) and draws the arrows (client/Arrows).
 --
 -- First match wins. The next step should always be about a minute away: steal another knife from a
--- boss you can outrun; the wheel is the fallback while walls restock.
-local Format = require(script.Parent.Format)
+-- monster you can outrun; rounds earn Speed while stashes restock.
 local GameConfig = require(script.Parent.Config.GameConfig)
 local PenMode = require(script.Parent.PenMode)
 
@@ -25,27 +24,24 @@ export type State = {
 	PendingCash: number, -- waiting on your pads
 	AutoCollect: boolean,
 	Speed: number,
-	Training: boolean, -- in your wheel
 	BestOwnedRank: number, -- highest knife rarity you own (1 = Common)
 	Stocked: { [number]: number? }, -- knives on each boss's wall (nil = not loaded yet)
 	Gift: boolean, -- a present waiting at your vault
 	GiftNearby: boolean?,
 	Committed: boolean?, -- finish the current short task before choosing a gift
 	IndexClaimable: number, -- Index rewards ready
-	WheelCost: number?, -- next Faster Wheel price (nil = maxed)
 	TutorialDone: boolean,
 	NewTier: number?,
 	Spare: boolean?,
 	BetterReplacement: boolean?,
 	CanRebirth: boolean?,
-	WheelName: string?,
 }
 
 export type Action = {
 	Id: string,
 	Text: string, -- RichText
 	Short: string?,
-	Target: string?, -- "Plate" | "Home" | "Vault" | "Lair" | "Wheel" | "VaultSign" | "WheelSign" | "Pad" | "Gift"
+	Target: string?, -- "Plate" | "Home" | "Vault" | "Lair" | "VaultSign" | "Pad" | "Gift"
 	Zone: number?, -- for "Lair"
 	Ui: string?, -- a button to point at instead ("Index")
 }
@@ -77,10 +73,6 @@ end
 local function worthCollecting(s: State): boolean
 	if s.AutoCollect or s.PendingCash <= 0 then
 		return false
-	end
-	local wheel = s.WheelCost
-	if wheel and s.Cash < wheel and s.Cash + s.PendingCash >= wheel then
-		return true
 	end
 	return s.InVault
 end
@@ -128,7 +120,7 @@ function NextAction.Pick(s: State): Action?
 	end
 
 	-- 2. Something waiting for you
-	if s.Gift and (s.InVault or s.GiftNearby) and not s.Committed and not s.Training then
+	if s.Gift and (s.InVault or s.GiftNearby) and not s.Committed then
 		return { Id = "gift", Text = "Open your <b>gift</b>!", Target = "Gift" }
 	end
 
@@ -185,29 +177,11 @@ function NextAction.Pick(s: State): Action?
 			}
 		end
 	end
-	if s.WheelCost and s.Cash >= s.WheelCost then
-		return {
-			Id = "wheel_upgrade",
-			Text = if s.WheelName and s.WheelName:find("Trail")
-				then "Upgrade your <b>Speed trail</b>!"
-				else "Get a <b>faster wheel</b>!",
-			Target = "WheelSign",
-		}
-	end
 	if s.KnifeCount >= s.Slots * 0.8 and floorAffordable(s) then
 		return { Id = "vault_bigger", Text = "Make your vault <b>bigger</b>!", Target = "VaultSign" }
 	end
 
-	-- 5. Already in the wheel: keep going (it's what you chose), with how far to go
 	local nextZone = (GameConfig.Zones :: any)[reach + 1]
-	if s.Training and nextZone then
-		local left = math.max(0, (nextZone.SpeedNeeded or 0) - s.Speed)
-		return {
-			Id = "train",
-			Text = `Keep running! <b>{Format.Short(left)}</b> Speed to outrun the {monster(reach + 1)}`,
-			Target = "Wheel",
-		}
-	end
 
 	-- 6. Money on your pads that's worth the walk
 	if worthCollecting(s) then
@@ -226,9 +200,9 @@ function NextAction.Pick(s: State): Action?
 		end
 	end
 
-	-- 8. Walls empty for now: get faster in your wheel
+	-- 8. Empty stashes: survive the next round for Speed.
 	if nextZone then
-		return { Id = "train", Text = `Run in your <b>wheel</b> to get faster!`, Target = "Wheel" }
+		return { Id = "round_wait", Text = "SURVIVE for Speed!" }
 	end
 	if s.PendingCash > 0 and not s.AutoCollect then
 		return { Id = "collect_all", Text = "Grab your <b>money</b>!", Target = "Pad" }
@@ -241,7 +215,7 @@ function NextAction.Pick(s: State): Action?
 			Ui = "Rebirth",
 		}
 	end
-	return { Id = "train", Text = `Run in your <b>wheel</b> to get faster!`, Target = "Wheel" }
+	return { Id = "round_wait", Text = "SURVIVE for Speed!" }
 end
 
 return NextAction

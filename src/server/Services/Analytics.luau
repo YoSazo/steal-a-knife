@@ -256,7 +256,6 @@ local function context(player: Player): { [string]: any }
 	props.power = player:GetAttribute("PowerId")
 	props.in_round = player:GetAttribute("InRound") == true
 	props.carrying = player:GetAttribute("Carrying") ~= nil and player:GetAttribute("Carrying") ~= false
-	props.training = player:GetAttribute("Training") == true
 	props.shielded = player:GetAttribute("Shielded") == true
 	for name in EXPERIMENTS do
 		props["ab_" .. name] = experimentVariant(player, name)

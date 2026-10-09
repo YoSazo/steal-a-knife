@@ -312,7 +312,7 @@ function Transitions.Init()
 	-- The death card, in plain words: the Murderer got you, and your knives are always safe
 	-- The Speed prize's payoff: ~30 shoes burst out of the "You won!" card and fly into the Speed
 	-- shoe at the bottom left (Ui.SpeedIcon), which pops with every one that lands
-	local function shoeShower(fromCard: GuiObject, cash: boolean?)
+	local function shoeShower(fromCard: GuiObject, cash: boolean?, amount: number?)
 		local target = (if cash then Ui.CashIcon else Ui.SpeedIcon) :: GuiObject?
 		if not target or not target.Parent or not fromCard.Parent then
 			return
@@ -329,7 +329,7 @@ function Transitions.Init()
 		local bump = target:FindFirstChild("ShoeBump") :: UIScale? or Instance.new("UIScale")
 		bump.Name = "ShoeBump"
 		bump.Parent = target
-		local count = 30
+		local count = amount or 30
 		for i = 1, count do
 			local shoe = Instance.new("ImageLabel")
 			shoe.Name = "PrizeShoe"
@@ -475,6 +475,26 @@ function Transitions.Init()
 	end
 
 	Remotes:WaitForChild("Effect").OnClientEvent:Connect(function(kind: string, text: any, extra: any, ...)
+		if kind == "SpeedBank" and type(text) == "number" then
+			local source = Ui.new(
+				"Frame",
+				{ Size = UDim2.fromOffset(1, 1), Position = UDim2.fromScale(0.5, 0.5), BackgroundTransparency = 1 },
+				Ui.root
+			)
+			shoeShower(source, false, 6)
+			local pop = label(source, {
+				Size = UDim2.fromOffset(240, 40),
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Text = `+{Ui.abbreviate(text)} 👟`,
+				TextSize = 28,
+				TextScaled = false,
+				ZIndex = 61,
+			})
+			TweenService:Create(pop, TweenInfo.new(1.2), { Position = UDim2.fromOffset(0, -40), TextTransparency = 1 })
+				:Play()
+			Debris:AddItem(source, 2)
+			return
+		end
 		if kind == "KillCard" then
 			showKill()
 			return

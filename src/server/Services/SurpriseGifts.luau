@@ -138,10 +138,7 @@ local function drop(player: Player)
 	if base then
 		local gate = base.Gate:GetPivot().Position
 		local outward = base.Frame:VectorToWorldSpace(Vector3.zAxis)
-		local toWheel = base.Treadmill.Position - gate
-		local side = toWheel - outward * toWheel:Dot(outward)
-		side = if side.Magnitude > 0.1 then side.Unit else base.Frame.RightVector
-		spot = gate + outward * 8 - side * 7
+		spot = gate + outward * 8 + base.Frame.RightVector * 7
 	else
 		local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
 		look = if look.Magnitude > 0.1 then look.Unit else Vector3.zAxis

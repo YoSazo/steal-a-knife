@@ -83,7 +83,7 @@ function ShiftLock.Init()
 		local humanoid = humanoidOf()
 		if humanoid then
 			humanoid.CameraOffset = Vector3.zero
-			humanoid.AutoRotate = not player:GetAttribute("Training")
+			humanoid.AutoRotate = true
 		end
 		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 	end
@@ -121,7 +121,6 @@ function ShiftLock.Init()
 			-- (or the knife stick's aim camera: letting go of shift lock there centred you)
 			and (camera.CameraType == Enum.CameraType.Custom or camera:GetAttribute("KnifeAim") == true)
 			and not Ui.menuOpen()
-			and not player:GetAttribute("Training")
 			and not player:GetAttribute("Spectating")
 			and not player:GetAttribute("Tumbling")
 		if not active then

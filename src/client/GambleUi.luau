@@ -247,7 +247,7 @@ local function buildLuckTimer()
 	local BOOSTS = {
 		{ "Boost_Speed", "⚡ Speed", "#FFDC3C" },
 		{ "Boost_Cash", "💵 2x Cash", "#78FF82" },
-		{ "Boost_Training", "🎡 3x Training", "#78C8FF" },
+		{ "Boost_RoundSpeed", "🎡 3x Round Speed", "#78C8FF" },
 	}
 	local last = ""
 	RunService.Heartbeat:Connect(function()
