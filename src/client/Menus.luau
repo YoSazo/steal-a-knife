@@ -16,6 +16,7 @@ local Ui = require(script.Parent.Ui)
 local Theme = require(script.Parent.MenuTheme)
 local IndexView = require(script.Parent.IndexView)
 local RebirthView = require(script.Parent.RebirthView)
+local CodesView = require(script.Parent.CodesView)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
 local new = Ui.new
@@ -126,13 +127,14 @@ function Menus.Init()
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
 		SortOrder = Enum.SortOrder.LayoutOrder,
 	}, moreList)
-	local moreOrder = { Rebirth = 1, Invite = 2, Stats = 3 }
+	local moreOrder = { Rebirth = 1, Invite = 2, Stats = 3, Codes = 4 }
 	local moreColors = {
+		Codes = Theme.Gold,
 		Rebirth = Theme.Purple,
 		Stats = Theme.Green,
 		Invite = Theme.Cyan,
 	}
-	-- (a 2x2 of Knives, Invite, Rebirth, Stats; Guidance and How to play along the bottom)
+	-- (a 2x2 of Rebirth, Invite, Stats, Codes; Guidance and How to play along the bottom)
 	local function moreButton(name: string, icon: string, frame: Frame, refresh: () -> ())
 		local tile = Theme.button(moreList, name, moreColors[name], {
 			Name = name,
@@ -228,6 +230,10 @@ function Menus.Init()
 		tiles.Wins.Value.Text = Ui.abbreviate(player:GetAttribute("Wins") or 0)
 	end
 	moreButton("Stats", "Trophy", statsFrame, refreshDetails)
+	-- Codes from the description / videos (client/CodesView, server/Services/CodesService)
+	local codesFrame = CodesView.Build()
+	table.insert(panels, codesFrame)
+	moreButton("Codes", "Shop", codesFrame, function() end)
 	local guidanceButton: TextButton
 	guidanceButton = Theme.button(moreBody, "Guidance: AUTO", Theme.Cyan, {
 		Name = "GuidanceMode",

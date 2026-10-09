@@ -19,6 +19,7 @@ local CartoonArt = require(ReplicatedStorage.Shared.Config.CartoonArt)
 local Ui = require(script.Parent.Ui)
 local TopLine = require(script.Parent.TopLine)
 local Favorite = require(script.Parent.Favorite)
+local GiftCard = require(script.Parent.GiftCard)
 local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 local VoxelKnives = require(ReplicatedStorage.Shared.Config.VoxelUi).Knives :: { [string]: string }
 local Transitions = {}
@@ -511,6 +512,7 @@ function Transitions.Init()
 				local mine = tonumber(text.MurdererId) == Players.LocalPlayer.UserId
 				if murdererWon == mine then
 					task.delay(4, Favorite.Ask, if mine then "murderer_win" else "round_win")
+					task.delay(12, GiftCard.Offer) -- (after the favourite prompt: one ask at a time)
 				end
 			end
 			return

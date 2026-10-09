@@ -44,6 +44,7 @@ export type Profile = {
 	TrailLevel: number, -- highest knife trail bought (GameConfig.Trails), 0 = none
 	Receipts: { string }, -- recent Robux PurchaseIds already granted (ProcessReceipt is idempotent)
 	Bought: { string }, -- one-time Robux products already bought (Starter Pack)
+	Claimed: { string }, -- one-time free rewards taken: codes ("code:RELEASE"), the group gift ("gift:group")
 	Pending: { number }, -- money waiting on each slot's cash pad (BaseService), collected by walking over it
 	Spins: number, -- Lucky Wheel spins banked (Gamble)
 	FreeSpinDay: number, -- UTC day number the free daily spin was used
@@ -115,6 +116,7 @@ local function defaultProfile(): Profile
 		LastDaily = 0,
 		Receipts = {},
 		Bought = {},
+		Claimed = {},
 		TrailLevel = 0,
 		Pending = {},
 		Spins = 0,
@@ -181,6 +183,13 @@ local function reconcile(data: any): Profile
 		end
 	end
 	profile.Tips = tips
+	local claimed = {}
+	for _, key in profile.Claimed do
+		if type(key) == "string" and #key <= 40 and #claimed < 300 then
+			table.insert(claimed, key)
+		end
+	end
+	profile.Claimed = claimed
 	local firsts = {}
 	for name, at in profile.Firsts do
 		if type(name) == "string" and #name <= 32 and type(at) == "number" and at == at then

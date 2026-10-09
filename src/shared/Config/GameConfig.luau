@@ -20,6 +20,9 @@ local GameConfig = {
 	-- Economy / progression
 	StartingCash = 0,
 	CommunityGroupId = 857947897,
+	-- The free gift for joining that group (once ever, server/Services/GiftService): a share of the
+	-- way to the next monster you can't outrun yet
+	GroupGift = { Speed = 0.25 },
 	-- Pens start with ten individual plates.
 	StartingSlots = 10,
 	-- Speed -> walk speed: walk = BaseWalkSpeed + SpeedCurve * log2(1 + Speed / 500). Lower = every
