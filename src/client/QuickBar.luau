@@ -69,7 +69,7 @@ function QuickBar.Init()
 			local ready = CoffinState.Ready(entry.Rounds, entry.OpensAt, now)
 			timer.Text.Text = if ready
 				then "READY!"
-				elseif entry.Rounds >= 0 then `Unlocks after {entry.Rounds} rounds`
+				elseif entry.Rounds >= 0 then CoffinState.RoundsText(entry.Rounds)
 				else `Unlocks in {Format.Duration(math.max(0, entry.OpensAt - now))}`
 			SimpleUi.set(timer.Button, if ready then "READY!" else "Unlock R$19", if ready then GREEN else BLUE)
 		end

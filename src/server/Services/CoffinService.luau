@@ -421,13 +421,7 @@ function CoffinService.Init()
 				if not profile then
 					continue
 				end
-				local count = 0
-				for _, entry in profile.Sealed do
-					if CoffinState.Ready(entry.Rounds, entry.ReadyAt, os.time()) then
-						count += 1
-					end
-				end
-				if count ~= (player:GetAttribute("CoffinsReady") or 0) then
+				if DataService.ReadyCoffins(profile, os.time()) ~= (player:GetAttribute("CoffinsReady") or 0) then
 					BaseService.RefreshRack(player)
 				end
 			end

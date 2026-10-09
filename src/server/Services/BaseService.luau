@@ -451,12 +451,26 @@ function BaseService.RefreshRack(player: Player)
 	-- Room in the pen again (sold one / bigger pen): knives waiting in the bag move in
 	DataService.Update(player, function(p)
 		for i in p.Knives do
-			if (p.Plates[i] or i) > p.Slots then
+			local old = p.Plates[i] or i
+			if old > p.Slots then
 				local free = DataService.FreePlate(p)
 				if not free then
 					break
 				end
 				p.Plates[i] = free
+				-- (its coffin moves with it: a seal left on the old plate number made the READY
+				-- counts disagree, and the once-a-second check rebuilt the pen every second)
+				for _, entry in p.Sealed do
+					if entry.Plate == old then
+						entry.Plate = free
+					end
+				end
+			end
+		end
+		-- (and a seal with no knife on its plate is dropped)
+		for i = #p.Sealed, 1, -1 do
+			if not DataService.IndexOnPlate(p, p.Sealed[i].Plate) then
+				table.remove(p.Sealed, i)
 			end
 		end
 	end)
@@ -572,14 +586,10 @@ function BaseService.RefreshRack(player: Player)
 	-- Your waiting coffins for the Coffins panel (client/CoffinList): "plate,rarity,roundsLeft,opensAt;..."
 	-- (roundsLeft -1 = a plain timer; opensAt in server time, the offline fallback / timer)
 	local coffins = {}
-	local readyCount = 0
 	for _, entry in profile.Sealed do
 		local index = DataService.IndexOnPlate(profile, entry.Plate)
 		local parsed = if index then Items.Parse(profile.Knives[index]) else nil
 		if parsed then
-			if CoffinState.Ready(entry.Rounds, entry.ReadyAt, os.time()) then
-				readyCount += 1
-			end
 			local opensAt = workspace:GetServerTimeNow() + (entry.ReadyAt - os.time())
 			table.insert(
 				coffins,
@@ -590,7 +600,7 @@ function BaseService.RefreshRack(player: Player)
 		end
 	end
 	player:SetAttribute("CoffinList", table.concat(coffins, ";"))
-	player:SetAttribute("CoffinsReady", readyCount)
+	player:SetAttribute("CoffinsReady", DataService.ReadyCoffins(profile, os.time()))
 	-- (the Knives menu hides these: a coffin's knife stays a secret until it opens)
 	local sealedKnives = {}
 	for i in profile.Knives do

@@ -307,7 +307,7 @@ function Coffins.Init()
 			local close = ready
 			info.Label.Text = if ready
 				then "READY! Tap to unlock"
-				elseif type(rounds) == "number" then `Unlocks after {rounds} rounds`
+				elseif type(rounds) == "number" then CoffinState.RoundsText(rounds)
 				else `Unlocks in {Format.Duration(math.max(0, left))}`
 			info.Label.TextColor3 = if ready then Color3.fromRGB(120, 255, 140) else Color3.new(1, 1, 1)
 			local popping = info.PopAt ~= nil

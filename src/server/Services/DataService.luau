@@ -12,6 +12,7 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Knives = require(ReplicatedStorage.Shared.Config.Knives)
 local GuidePolicy = require(ReplicatedStorage.Shared.GuidePolicy)
+local CoffinState = require(ReplicatedStorage.Shared.CoffinState)
 
 export type Profile = {
 	Cash: number,
@@ -391,6 +392,18 @@ end
 -- Which knife (list index) sits on `plate`, if any
 function DataService.IndexOnPlate(profile: Profile, plate: number): number?
 	return table.find(profile.Plates, plate)
+end
+
+-- Coffins that are READY to tap (a knife on the plate and its clock done). BaseService shows this
+-- as CoffinsReady; CoffinService's check compares against it, so both must count the same way.
+function DataService.ReadyCoffins(profile: Profile, now: number): number
+	local count = 0
+	for _, entry in profile.Sealed do
+		if DataService.IndexOnPlate(profile, entry.Plate) and CoffinState.Ready(entry.Rounds, entry.ReadyAt, now) then
+			count += 1
+		end
+	end
+	return count
 end
 
 local function key(player: Player): string
