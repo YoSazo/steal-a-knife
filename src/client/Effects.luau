@@ -818,6 +818,21 @@ local handlers: { [string]: (...any) -> () } = {
 			end
 		end
 	end,
+	-- More pen room: each new spot bursts green with a "+1" where it is
+	RoomAdded = function(spots: { Vector3 })
+		if type(spots) ~= "table" then
+			return
+		end
+		for i, at in spots do
+			if typeof(at) == "Vector3" then
+				task.delay((i - 1) * 0.15, function()
+					Effects.Burst(at + Vector3.new(0, 1, 0), Color3.fromRGB(120, 255, 140), 60, 26, 1.1)
+					Effects.FloatText(at + Vector3.new(0, 4, 0), "+1 🏠", Color3.fromRGB(120, 255, 140))
+				end)
+			end
+		end
+		Effects.Sound(Sounds.Reveal, nil, 0.6)
+	end,
 	IndexClaim = function(cash: number, speed: number)
 		Effects.Sound(Sounds.Reveal, nil, 0.7)
 		local root = player.Character and player.Character:FindFirstChild("Head") :: BasePart?

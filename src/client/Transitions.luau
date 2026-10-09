@@ -504,6 +504,65 @@ function Transitions.Init()
 		end)
 	end
 
+	-- Fast enough for the next monster (from a round, a delivery, a code, a Robux pack - anything):
+	-- the big card, once you're home and nothing else is on screen. "Steal from the FLOWER TOAD!"
+	local function zoneReached(speed: number): number?
+		local reached: number? = nil
+		for i, zone in GameConfig.Zones :: { any } do
+			if i > 1 and speed >= ((zone.SpeedNeeded or 0) :: number) then
+				reached = i
+			end
+		end
+		return reached
+	end
+	local speedSeen: number? = nil
+	local unlockShown: number? = nil
+	local unlockWaiting = false
+	player:GetAttributeChangedSignal("Speed"):Connect(function()
+		local speed = (player:GetAttribute("Speed") or 0) :: number
+		if speedSeen == nil then
+			speedSeen = speed -- (the saved Speed arriving on join is not an unlock)
+			unlockShown = zoneReached(speed)
+			return
+		end
+		speedSeen = speed
+		local reached = zoneReached(speed)
+		if not reached or (unlockShown and reached <= unlockShown) then
+			unlockShown = reached -- (a rebirth resets Speed: the climb shows again)
+			return
+		end
+		if unlockWaiting then
+			return
+		end
+		unlockWaiting = true
+		task.spawn(function()
+			while player:GetAttribute("InRound") or Ui.gui:GetAttribute("FadeCover") do
+				task.wait(0.3)
+			end
+			task.wait(1.5)
+			unlockWaiting = false
+			local now = zoneReached((player:GetAttribute("Speed") or 0) :: number)
+			if not now or (unlockShown and now <= unlockShown) then
+				return
+			end
+			unlockShown = now
+			queueCard(4.5, function()
+				showPrize(
+					`Steal from the {string.upper(GameConfig.MonsterName(now))}!`,
+					"Unlock",
+					nil,
+					false,
+					"🏃 YOU'RE FAST ENOUGH!"
+				)
+			end)
+		end)
+	end)
+	if player:GetAttribute("Speed") ~= nil then
+		local saved = (player:GetAttribute("Speed") or 0) :: number
+		speedSeen = saved
+		unlockShown = zoneReached(saved)
+	end
+
 	Remotes:WaitForChild("Effect").OnClientEvent:Connect(function(kind: string, text: any, extra: any, ...)
 		if kind == "SpeedBank" and type(text) == "number" then
 			local source = Ui.new(

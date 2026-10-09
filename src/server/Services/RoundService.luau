@@ -1792,15 +1792,18 @@ local function endRound(round: Round)
 
 	local hero = round.Hero
 	-- Coffins: the murder rounds are their clock - one round off everyone's, two for the winners
+	-- One meaning of "you won", used by everything: the round card's YOU WON, the coffin clock,
+	-- Winner's Luck, the win count and the jackpot step. (A Murderer wins with at least one kill:
+	-- a round the innocents only "lost" by leaving isn't a win.)
 	local coffinWinners: { [Player]: boolean } = {}
 	for player in round.Names do
 		local role = roleOf(round, player)
-		coffinWinners[player] = if role == "murderer" then not innocentsWon else innocentsWon
+		coffinWinners[player] = if role == "murderer" then not innocentsWon and round.Kills > 0 else innocentsWon
 	end
 	CoffinService.RoundEnded(coffinWinners)
 	for player in round.Names do
 		local alive = round.Alive[player] == true
-		local won = if player == murderer then not innocentsWon and round.Kills > 0 else innocentsWon
+		local won = coffinWinners[player] == true
 		Progress.Finish(player, (alive and player ~= murderer) or round.Hero == player or (player == murderer and won))
 		if won and player.Parent then
 			CoffinService.Winner(player)

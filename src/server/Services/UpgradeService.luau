@@ -125,7 +125,7 @@ local function purchase(player: Player, kind: unknown): (boolean, string)
 			p.Slots = math.min(PenMode.MaxSlots(), p.Slots + step)
 		end)
 		BaseService.RefreshRack(player)
-		return true, PenMode.Words(`Your vault is bigger: room for {profile.Slots} knives!`)
+		return true, "🏠 +1 spot!" -- (the new spot bursts in your pen: BaseService.RefreshRack)
 	elseif kind == "Ticket" then
 		if profile.Tickets >= GameConfig.MaxTickets then
 			return false, `You can hold {GameConfig.MaxTickets} tickets at most`

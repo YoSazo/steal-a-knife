@@ -18,7 +18,6 @@ type Entry = {
 	Murderer: boolean,
 	Started: number,
 	Finished: boolean,
-	Reached: number?,
 	Coins: number,
 }
 local entries: { [Player]: Entry } = {}
@@ -58,7 +57,6 @@ local function award(player: Player, amount: number, entry: Entry?, boostLadder:
 	if entry and boostLadder ~= false then
 		amount = ladderAmount(amount)
 	end
-	local before = (player:GetAttribute("Speed") or 0) :: number
 	DataService.Update(player, function(p)
 		p.Speed += amount
 	end)
@@ -68,16 +66,7 @@ local function award(player: Player, amount: number, entry: Entry?, boostLadder:
 		player:SetAttribute("RoundSpeedBanked", entry.Banked)
 	end
 	Net.Remotes.Effect:FireClient(player, "SpeedBank", amount)
-	for i, zone in GameConfig.Zones do
-		local need = zone.SpeedNeeded or 0
-		if before < need and before + amount >= need then
-			if entry then
-				entry.Reached = i
-			else
-				Net.Notify(player, `Outrun the {string.upper(GameConfig.MonsterName(i))}!`, "good")
-			end
-		end
-	end
+	-- (passing a monster's Speed is shown by the client, whatever gave the Speed: client/Transitions)
 end
 
 local function nextStep(player: Player, entry: Entry)
@@ -175,14 +164,6 @@ function Progress.Finish(player: Player, jackpot: boolean)
 		award(player, math.max(1, math.floor(entry.Full / TOTAL)), entry)
 	end
 	entry.Finished = true
-	if entry.Reached then
-		local monster = string.upper(GameConfig.MonsterName(entry.Reached))
-		task.delay(2, function()
-			if player.Parent then
-				Net.Notify(player, `Outrun the {monster}!`, "good")
-			end
-		end)
-	end
 	player:SetAttribute("RoundHide", nil)
 	player:SetAttribute("RoundStepAt", nil)
 	player:SetAttribute("RoundStepKills", nil)

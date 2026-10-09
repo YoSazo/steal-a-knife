@@ -334,13 +334,14 @@ local function buildBases()
 	local DEPTH = GameConfig.Pens.Depth
 	-- Pens wrap an open plaza in a "]" (Steal from the Rich): a row across the back wall facing the
 	-- way in, and one on each side wall facing the middle (8 pens: 6 + 1 + 1). The middle stays open
-	-- (the Lucky Wheel stands in it); each pen's Haunted Wheel and signs stand in front of its gate.
-	-- The hub is just big enough for that. Numbered nearest-first, so players get the closest pen.
+	-- (the Lucky Wheel stands in it); each pen's upgrade sign stands in front of its gate.
+	-- The hub is just big enough for that, gaps kept tight: open ground is walking with nothing to
+	-- do. Numbered nearest-first, so players get the closest pen.
 	local penCentres: { Vector3 } = {}
 	local penFrames: { [Vector3]: CFrame } = {}
 	local PEN_GAP = 8 -- (between neighbouring pens)
-	local FRONT = 22 -- (the strip behind the safe line, before the side pens start)
-	local PLAZA = 40 -- (open ground between the side pens and the back row: wheels, signs)
+	local FRONT = 12 -- (the strip behind the safe line, before the side pens start)
+	local PLAZA = 20 -- (between the side pens' ends and the back row: the outer back gates open here)
 	local sideCount = math.min(2, GameConfig.Pens.Count)
 	local backCount = GameConfig.Pens.Count - sideCount
 	local rowWidth = backCount * penWidth + (backCount - 1) * PEN_GAP

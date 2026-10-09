@@ -47,9 +47,9 @@ local GameConfig = {
 	-- Characters grow with rarity; the glass coffins fit individual plates.
 	Pens = {
 		Count = 8, -- one pen per player: 8-player servers (Creator Dashboard -> Places -> Server size)
-		Width = 64,
+		Width = 52, -- (was 64 x 60: the plaza between the pens was a big empty field)
 		-- (10 studs of grass between neighbouring pens: each one its own plot - MapService)
-		Depth = 60, -- every pen's length (all the same size)
+		Depth = 50, -- every pen's length (all the same size)
 		MaxSlots = 20,
 		-- Steal An Egg's pen: room grows one knife at a time, the first upgrade nearly free (an
 		-- instant first purchase), then steeper. Cost of the upgrade from 10, 11, ... 19 slots.

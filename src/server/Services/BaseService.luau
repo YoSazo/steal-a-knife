@@ -442,11 +442,26 @@ end
 -- little, "SELL $11K". Tap / click it to sell (precious knives ask for a second tap).
 local sellSignPressed: { [Instance]: (Player) -> () } = {}
 
+local slotsShown: { [Player]: number } = setmetatable({}, { __mode = "k" }) :: any
 function BaseService.RefreshRack(player: Player)
 	local base = baseOf[player]
 	local profile = DataService.Get(player)
 	if not base or not profile then
 		return
+	end
+	-- More room (bought with cash or Robux, a pass): each new spot bursts in the pen, so you SEE
+	-- the room you got (client Effects RoomAdded)
+	local before = slotsShown[player]
+	slotsShown[player] = profile.Slots
+	if before and profile.Slots > before then
+		local spots = {}
+		for slot = before + 1, profile.Slots do
+			local spot = base.SlotCFrames[slot]
+			if spot then
+				table.insert(spots, spot.Position)
+			end
+		end
+		Net.Remotes.Effect:FireClient(player, "RoomAdded", spots)
 	end
 	-- Room in the pen again (sold one / bigger pen): knives waiting in the bag move in
 	DataService.Update(player, function(p)

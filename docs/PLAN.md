@@ -376,6 +376,23 @@ Bundle `update8.bundle` merged at 5626bd3 and pushed; both PLAN progress section
 - **Title (item 24, in-game part):** loading screen "STEAL A KNIFE", console tags. The Roblox
   title "[MURDER] Steal a Knife" is set on the Creator Dashboard by the owner.
 
+### Claude cloud, 2026-10-09 (3): show, don't tell + a tighter hub (CODEX: CHECK IN STUDIO)
+
+- **Hub:** pens 64x60 -> 52x50, FRONT 22 -> 12, PLAZA 40 -> 20 (MapService.buildBases, same 6+1+1
+  "]"). The empty middle is about half what it was. Check: every pen's spots, characters hopping,
+  upgrade signs, the outer back gates (they open into the 20-stud gap behind the side pens), the
+  Lucky Wheel, the events board, the spawn, nothing overlapping. (4+2+2 was rejected: the outer
+  back pens' gates would face the side pens' ends.)
+- **Every gain flies in:** `Ui.FlyIn` (shoes / bills into the readout), Speed/Cash count up and
+  punch, the SURVIVE line flashes green when a step banks, a coffin turning READY bursts, new pen
+  spots burst "+1 🏠" (Effect RoomAdded from RefreshRack), "YOU'RE FAST ENOUGH! Steal from the X!"
+  card for ANY Speed source (client/Transitions; the server's Outrun toasts are gone).
+- **One message per moment:** cut toasts the screen already shows (boss-steal RUN HOME, Caught,
+  coffin delivered, unlocked, Sheriff line, Tap = stab).
+- **One meaning of "won":** the card's YOU WON, coffin clock, Winner's Luck, the win count and
+  the jackpot all use it (a Murderer needs at least one kill).
+- Art + sizing brief: `docs/CODEX_UI_ART_PROMPT.md`.
+
 **Next:** featured shop tile and paid receipt validation, UI, board and cleanup.
 
 ---
