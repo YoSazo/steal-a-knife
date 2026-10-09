@@ -207,7 +207,11 @@ The creature's speed sign is readable up close at 640 x 320.
   Winner's Luck is a large 32/36 px line, checked at phone/desktop sizes; the hub objective yields
   while the notice is up. The redundant Murderer-chance line is deleted. Static checks pass.
 
-**Next:** the fuse machine (item 17), then Secret, maps, shop and remaining work.
+- **Item 17 cut at the owner's request:** fusing removed completely, including its machine,
+  UI, remotes, charge rewards, profile field and shared rules. This item is deferred and is no
+  longer required for this launch. The completed round/hatch/luck work remains.
+
+**Next:** Secret (item 18), maps, shop and remaining work.
 
 ---
 
@@ -332,7 +336,7 @@ The creature's speed sign is readable up close at 640 x 320.
     Knives button) instead of popping in the ceremony (`CoffinService.RoundEnded` / `Open`).
 16. **Winner's Luck.** A round win gives boosted mutation odds on coffins you open before the next
     round starts. A surprise banner ("🍀 WINNER'S LUCK x2!"), not part of the pre-round promise.
-17. **Fuse Machine** (in your pen). 3 identical unlocked knives -> the same knife one mutation up
+17. **DEFERRED — Fuse Machine** (owner cut it on 2026-10-08; no launch implementation). Original idea: 3 identical unlocked knives -> the same knife one mutation up
     (None -> Gold -> Diamond -> Rainbow -> Void). Each fuse costs one ⚡ charge, earned per round win
     (capped). Only `DataService.RemoveKnife` / `AddKnife`.
 18. **Secret rarity** above Cosmic: a tiny roll from the Cosmic boss only, "???" + silhouette in the
