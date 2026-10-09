@@ -125,6 +125,29 @@ function CoffinService.Give(player: Player, item: string, source: string, quiet:
 	return item
 end
 
+-- A coffin bought with Robux (the featured coffin): READY the moment it lands, and it opens to
+-- exactly `item` (no luck re-roll), so the odds the shop showed are the real ones. Returns false
+-- when there's no free plate (the caller pays its worth instead).
+function CoffinService.GivePaid(player: Player, item: string, source: string): boolean
+	local profile = DataService.Get(player)
+	local parsed = Items.Parse(item)
+	if not profile or not parsed or not DataService.FreePlate(profile) then
+		return false
+	end
+	DataService.Update(player, function(p)
+		local plate = DataService.AddKnife(p, item)
+		DataService.Seal(p, plate, os.time(), 0, true)
+	end)
+	BaseService.RefreshRack(player)
+	Net.Remotes.Effect:FireAllClients("Deposit", player, parsed.Knife.Rarity)
+	Analytics.Track(
+		player,
+		"coffin.given",
+		{ rarity = parsed.Knife.Rarity, source = source, sealed = true, paid = true }
+	)
+	return true
+end
+
 -- A mystery knife of this rarity (a 4% chance of one rarity up), rolled with the player's luck
 function CoffinService.GiveRarity(player: Player, rarity: string, source: string, quiet: boolean?): string?
 	local profile = DataService.Get(player)

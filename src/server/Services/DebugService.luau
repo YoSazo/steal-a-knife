@@ -144,9 +144,10 @@ local commands: { [string]: (Player, ...any) -> any } = {
 	end,
 	AutoEvent = function(_player: Player, at: number)
 		require(script.Parent.EventService).DebugTick(at)
-		return { Kind = ReplicatedStorage:GetAttribute("EventKind"), EndsAt = ReplicatedStorage:GetAttribute(
-			"EventEndsAt"
-		) }
+		return {
+			Kind = ReplicatedStorage:GetAttribute("EventKind"),
+			EndsAt = ReplicatedStorage:GetAttribute("EventEndsAt"),
+		}
 	end,
 	CoffinLuck = function(player: Player)
 		local profile = DataService.Get(player)

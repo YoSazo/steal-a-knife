@@ -28,6 +28,7 @@ export type Product = {
 	Cash: { Min: number, Seconds: number }?, -- seconds of the buyer's income, at least Min
 	Speed: { Share: number, Min: number }?, -- Speed: this share of the buyer's Speed, at least Min
 	Coffin: string?, -- a coffin of this rarity (CoffinService.GiveRarity)
+	Featured: number?, -- this many of the week's featured coffin (Config/Featured, odds shown)
 	Spins: number?, -- Lucky Wheel spins
 	Hidden: boolean?, -- not listed in the Store grid
 	Tickets: number?,
@@ -271,6 +272,41 @@ Monetization.Products = {
 		Color = rgb(90, 160, 255),
 		Boost = { Name = "RoundSpeed", Seconds = 900 },
 	},
+	-- The featured coffin (Config/Featured): this week's Mythic character with its odds shown.
+	-- Hidden from the plain grid: the shop's Featured tile sells them (with the odds + countdown).
+	{
+		Key = "FeaturedCoffin1",
+		Id = 0,
+		Price = 99,
+		Name = "Featured Coffin",
+		Description = "This week's Mythic character, READY right away.",
+		Icon = "⚰️",
+		Color = rgb(255, 110, 30),
+		Featured = 1,
+		Hidden = true,
+	},
+	{
+		Key = "FeaturedCoffin3",
+		Id = 0,
+		Price = 249,
+		Name = "3 Featured Coffins",
+		Description = "Three of this week's Mythic character, READY right away.",
+		Icon = "⚰️",
+		Color = rgb(255, 90, 30),
+		Featured = 3,
+		Hidden = true,
+	},
+	{
+		Key = "FeaturedCoffin10",
+		Id = 0,
+		Price = 699,
+		Name = "10 Featured Coffins",
+		Description = "Ten of this week's Mythic character, READY right away.",
+		Icon = "⚰️",
+		Color = rgb(255, 70, 30),
+		Featured = 10,
+		Hidden = true,
+	},
 	{
 		-- (Id 0 until created: Studio fakes it; analytics/ npm run setup creates it on Roblox)
 		Key = "CoffinOpen",
@@ -373,7 +409,7 @@ function Monetization.SpeedFor(product: Product, speed: number): number
 end
 
 function Monetization.IsPaidRandom(product: Product): boolean
-	return product.Coffin ~= nil
+	return product.Coffin ~= nil or product.Featured ~= nil
 end
 
 -- Products that are no longer sold (their systems were cut), by product id -> Robux price. A receipt
