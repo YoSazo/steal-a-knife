@@ -665,6 +665,44 @@ local function clearDisplay(slot: Slot)
 end
 
 -- Puts `item` on the wall in `slot`: floating, turning, labelled, glowing in its colour
+-- How rare THIS coffin is, honestly, from the real roll (rollItem / Items.RollKnife): its rarity at
+-- this monster, one of that rarity's characters, and - for a ✨ SPECIAL one - a Diamond+ mutation.
+-- An everyday coffin reads "1 in 3", a lucky one "1 in 75" or "1 in 1,000". (The mutation itself
+-- stays hidden.)
+local function comma(n: number): string
+	local text = tostring(math.floor(n))
+	while true do
+		local swapped, count = text:gsub("^(%d+)(%d%d%d)", "%1,%2")
+		text = swapped
+		if count == 0 then
+			return text
+		end
+	end
+end
+local function oddsText(boss: Boss, parsed: Items.Item): string
+	local rarity = parsed.Knife.Rarity
+	local chance: number
+	if parsed.Name == GameConfig.Secret.Knife then
+		chance = GameConfig.Secret.Chance
+	else
+		local home = boss.Config.Rarity
+		local up = if Knives.Rank(home) < Knives.Rank("Cosmic") then Items.UpgradeChance else 0
+		local pool = Knives.ByRarity[rarity]
+		chance = (if rarity == home then 1 - up else up) / (if pool then #pool else 1)
+	end
+	if parsed.Mutation.Rank >= 2 then
+		local total, special = 0, 0
+		for _, mutation in Items.Mutations do
+			total += mutation.Weight
+			if mutation.Rank >= 2 then
+				special += mutation.Weight
+			end
+		end
+		chance *= special / total
+	end
+	return `1 in {comma(math.max(1, math.round(1 / math.max(chance, 1e-9))))}`
+end
+
 local function setSlot(boss: Boss, slot: Slot, item: string)
 	clearDisplay(slot)
 	slot.Item = item
@@ -693,10 +731,11 @@ local function setSlot(boss: Boss, slot: Slot, item: string)
 			`{if special then "✨ SPECIAL " else ""}{parsed.Knife.DisplayName}`,
 			rarity,
 			Knives.RarityColors[rarity],
-			-- what it earns once home (the plain character's: the mutation stays a secret)
-			`{Format.Cash(Items.Income(parsed.Name))}/s`,
+			-- how rare this one is, right under its rarity (gold)
+			oddsText(boss, parsed),
 			nil,
-			70
+			70,
+			Color3.fromRGB(255, 215, 70)
 		)
 		slot.Prompt.ObjectText = `{rarity} Coffin`
 		slot.Prompt.Enabled = true

@@ -80,7 +80,8 @@ function SignTheme.knifeLabel(
 	rarityColor: Color3,
 	perSecond: string,
 	top: string?,
-	maxDistance: number?
+	maxDistance: number?,
+	thirdColor: Color3? -- (the third line is money green unless told otherwise)
 ): BillboardGui
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "KnifeLabel"
@@ -92,7 +93,12 @@ function SignTheme.knifeLabel(
 	local lines = {
 		{ Text = name, Color = Color3.new(1, 1, 1), Weight = 1.15, Font = Enum.Font.GothamBlack },
 		{ Text = rarity, Color = rarityColor, Weight = 0.7, Font = Enum.Font.GothamBlack },
-		{ Text = perSecond, Color = Color3.fromRGB(70, 255, 70), Weight = 1.15, Font = Enum.Font.GothamBlack },
+		{
+			Text = perSecond,
+			Color = thirdColor or Color3.fromRGB(70, 255, 70),
+			Weight = 1.15,
+			Font = Enum.Font.GothamBlack,
+		},
 	}
 	if top then
 		table.insert(
