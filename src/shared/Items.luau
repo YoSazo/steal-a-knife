@@ -275,7 +275,7 @@ end
 -- jumped a rarity.
 function Items.RollKnife(rng: Random, rarity: string, luck: number?): (string, boolean)
 	local rarityIndex = table.find(Knives.Rarities, rarity) or 1
-	local upgraded = rarityIndex < #Knives.Rarities and rng:NextNumber() < 0.04
+	local upgraded = rarityIndex < Knives.Rank("Cosmic") and rng:NextNumber() < 0.04
 	if upgraded then
 		rarityIndex += 1
 	end

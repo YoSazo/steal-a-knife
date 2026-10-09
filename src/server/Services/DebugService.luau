@@ -104,6 +104,12 @@ local commands: { [string]: (Player, ...any) -> any } = {
 		return true
 	end,
 	-- Steal from a boss's wall for real (the boss chases you): tests guard hits and thrown knives
+	BossStock = function(_player: Player, zone: number, item: string)
+		return GuardService.DebugStock(zone, item)
+	end,
+	BossRolls = function(_player: Player, zone: number, count: number)
+		return GuardService.DebugRolls(zone, count)
+	end,
 	BossSteal = function(player: Player, zone: number?)
 		return GuardService.DebugSteal(player, zone or 1)
 	end,

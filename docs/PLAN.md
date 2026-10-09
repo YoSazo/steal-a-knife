@@ -292,6 +292,23 @@ Bundle `update8.bundle` merged at 5626bd3 and pushed; both PLAN progress section
 - Selene (0 errors/warnings), StyLua, sourcemap and luau-lsp pass. Temporary multi-client Studio
   sessions ended cleanly. No game script errors; tool input occasionally reported CoreGUI hits.
 
+### Codex continuation, 2026-10-09
+
+- **Item 18:** Secret sits above Cosmic. Otto (NightWhisper) rolls only from the Cosmic boss,
+  at 1 in 2,000 restocks. A 100,000-roll Studio sample produced 52 Secret; 10,000 shallower
+  boss rolls and 10,000 normal Cosmic coffin rolls produced none. Generic rarity rewards
+  cannot grant Secret. The native character/knife uses charcoal and pale green.
+  Unknown Index tile shows ??? and a black silhouette; after the owner taps READY it shows
+  Otto and records discovery. Actual boss steal, sealed mutation masking and manual hatch
+  checked. Desktop and 640x320 phone Index checked; added bottom scroll padding for Secret.
+  Phone menu scaling still needs the item-7 pass; the Studio input tool also needs a 20px
+  coordinate correction for the 58px simulated phone inset.
+- **Pacing rerun:** `python tools/pacing_sim.py 168`: Rare 0.33h, Epic 1.19h, Legendary 4.02h,
+  Mythic 8.03h, Cosmic 78.52h. This seed did not deliver a Secret within 168h; a rare roll is
+  not a guaranteed milestone. The model does not scan restocks once the pen has equal-income
+  Cosmic knives, so it is not a Secret waiting-time forecast. Selene, StyLua, sourcemap and
+  luau-lsp pass.
+
 ### Claude cloud, 2026-10-09 (2): item 21 server side + in-game title (CODEX: BUILD THE TILE, TEST)
 
 - **Item 21, featured paid coffin, server done; the shop tile is Codex's (item 20).**
@@ -314,7 +331,7 @@ Bundle `update8.bundle` merged at 5626bd3 and pushed; both PLAN progress section
 - **Title (item 24, in-game part):** loading screen "STEAL A KNIFE", console tags. The Roblox
   title "[MURDER] Steal a Knife" is set on the Creator Dashboard by the owner.
 
-**Next:** Secret (item 18), maps, shop and remaining work.
+**Next:** biome murder maps (19), shop/weekly drop, UI and remaining cleanup.
 
 ---
 

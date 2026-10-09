@@ -56,9 +56,18 @@ local function build(source: ModuleScript, name: string, parent: Instance?, fram
 end
 function Assets.BuildCharacter(name: string, parent: Instance?, frame: CFrame?, options: Options?): Model
 	assert(Names[name], `Knife character not authored: {name}`)
-	local source = Geometry.KnifeCharacters:FindFirstChild(name)
+	local source = Geometry.KnifeCharacters:FindFirstChild(Names[name].Geometry or name)
 	assert(source and source:IsA("ModuleScript"), `Missing character art {name}`)
 	local model = build(source, name, parent, frame, options)
+	if name == "NightWhisper" then
+		for _, piece in model:GetDescendants() do
+			if piece:IsA("BasePart") and piece.Transparency < 1 then
+				piece.Color = if piece.Material == Enum.Material.Neon
+					then Color3.fromRGB(220, 255, 235)
+					else Color3.fromRGB(20, 30, 30)
+			end
+		end
+	end
 	model:SetAttribute("KnifeName", name)
 	model:SetAttribute("DisplayName", Names[name].Display)
 	model:SetAttribute("Personality", Names[name].Personality)

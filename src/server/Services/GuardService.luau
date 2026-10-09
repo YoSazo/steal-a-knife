@@ -751,6 +751,10 @@ local function setSlot(boss: Boss, slot: Slot, item: string)
 end
 
 local function rollItem(boss: Boss): string
+	if boss.Config.Rarity == "Cosmic" and rng:NextNumber() < GameConfig.Secret.Chance then
+		local mutation, size = Items.Roll(rng, 1)
+		return Items.Make(GameConfig.Secret.Knife, mutation.Id, size.Id)
+	end
 	return Items.RollKnife(rng, boss.Config.Rarity, 1)
 end
 
@@ -2036,6 +2040,29 @@ end
 
 -- Studio tests (DebugService "BossSteal"): stand the player by a stocked slot of this boss's wall
 -- and steal it, exactly as the prompt would
+function GuardService.DebugStock(zone: number, item: string): boolean
+	if not RunService:IsStudio() or not Items.Parse(item) then
+		return false
+	end
+	local boss = bosses[zone]
+	if not boss then
+		return false
+	end
+	setSlot(boss, boss.Slots[1], item)
+	return true
+end
+function GuardService.DebugRolls(zone: number, count: number): { [string]: number }
+	local out: { [string]: number } = {}
+	if not RunService:IsStudio() or not bosses[zone] then
+		return out
+	end
+	for _ = 1, math.clamp(count, 1, 100000) do
+		local item = Items.Parse(rollItem(bosses[zone])) :: Items.Item
+		out[item.Knife.Rarity] = (out[item.Knife.Rarity] or 0) + 1
+	end
+	return out
+end
+
 function GuardService.DebugSteal(player: Player, zone: number): boolean
 	local boss = bosses[zone]
 	local root = rootOf(player)

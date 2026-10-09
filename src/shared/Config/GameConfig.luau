@@ -23,6 +23,7 @@ local GameConfig = {
 	-- The free gift for joining that group (once ever, server/Services/GiftService): a share of the
 	-- way to the next monster you can't outrun yet
 	GroupGift = { Speed = 0.25 },
+	Secret = { Chance = 0.0005, Knife = "NightWhisper" }, -- 1 in 2,000 Cosmic-boss restocks only
 	-- Pens start with ten individual plates.
 	StartingSlots = 10,
 	-- Speed -> walk speed: walk = BaseWalkSpeed + SpeedCurve * log2(1 + Speed / 500). Lower = every
@@ -66,6 +67,7 @@ local GameConfig = {
 			Godly = 13.5,
 			Celestial = 16.5,
 			Cosmic = 20,
+			Secret = 24,
 		},
 	},
 	-- Round progress and offline elapsed time make coffins READY; the owner taps to unlock.
@@ -86,6 +88,7 @@ local GameConfig = {
 			Godly = 720 / 13,
 			Celestial = 1200 / 13,
 			Cosmic = 1800 / 13,
+			Secret = 2400 / 13,
 		},
 		CommonSeconds = 20,
 		TutorialSeconds = 6, -- a new player's first coffins: a short countdown, then it opens
@@ -223,6 +226,7 @@ local GameConfig = {
 		Godly = 14e9,
 		Celestial = 220e9,
 		Cosmic = 3.5e12,
+		Secret = 12e12,
 	} :: { [string]: number },
 	-- The full bankable survival budget is a fixed share of the next zone's Speed gap.
 	RoundPrize = {
@@ -290,6 +294,7 @@ local GameConfig = {
 		Godly = { Cash = 5.6e9, Speed = 150e6 },
 		Celestial = { Cash = 100e9, Speed = 1e9 },
 		Cosmic = { Cash = 1.7e12, Speed = 8e9 },
+		Secret = { Cash = 5e12, Speed = 20e9 },
 	},
 
 	PlayerHealth = 100, -- everyone's health in the hub (health levels were cut: caught means caught)

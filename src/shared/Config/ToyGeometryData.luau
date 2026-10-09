@@ -22,6 +22,7 @@ return {
 	SeraphSword = require(script.Parent.ToyGeometry.SeraphSword),
 	AngelFeather = require(script.Parent.ToyGeometry.AngelFeather),
 	VoidEdge = require(script.Parent.ToyGeometry.VoidEdge),
+	NightWhisper = require(script.Parent.ToyGeometry.VoidEdge),
 	StarCleaver = require(script.Parent.ToyGeometry.StarCleaver),
 	GalaxyKatana = require(script.Parent.ToyGeometry.GalaxyKatana),
 	LairFrank = require(script.Parent.ToyGeometry.LairFrank),

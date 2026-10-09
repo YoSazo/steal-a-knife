@@ -33,6 +33,9 @@ function ToyBlockModel.Build(name: string, anchored: boolean?, rootName: string?
 		p:SetAttribute("ToyBlock", true)
 		if spec.Role then
 			p:SetAttribute("KnifeRole", spec.Role)
+			if name == "NightWhisper" then
+				p.Color = if spec.Neon then Color3.fromRGB(220, 255, 235) else Color3.fromRGB(20, 30, 30)
+			end
 		end
 		p.Parent = model
 		if not anchored then

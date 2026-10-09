@@ -14,7 +14,7 @@ import sys
 RARITIES = ["Common", "Rare", "Epic", "Legendary", "Mythic", "Godly", "Celestial", "Cosmic"]
 INCOME = {  # average of each rarity's three knives (Config/Knives)
     "Common": 115, "Rare": 1367, "Epic": 18000, "Legendary": 260000, "Mythic": 3.73e6,
-    "Godly": 59.7e6, "Celestial": 1.05e9, "Cosmic": 18.7e9,
+    "Godly": 59.7e6, "Celestial": 1.05e9, "Cosmic": 18.7e9, "Secret": 50e9,
 }
 GUARD_SPEED = [12.5, 26, 47, 70, 82, 94, 104, 114]  # GameConfig.Zones[i].GuardSpeed
 CARRY = 0.9  # GameConfig.CarrySpeedMultiplier
@@ -31,13 +31,14 @@ INTERMISSION, REVEAL, ROUND, RESULTS = 70, 3.6, 60, 8
 # A stolen knife's income doesn't count until its coffin's murder-round wait is over
 # (GameConfig.Coffins.Rounds; was 0/1/1/2/2/3/4/5).
 COFFIN_ROUNDS = {"Common": 0, "Rare": 30/13, "Epic": 60/13, "Legendary": 210/13, "Mythic": 390/13,
-                 "Godly": 720/13, "Celestial": 1200/13, "Cosmic": 1800/13}
+                 "Godly": 720/13, "Celestial": 1200/13, "Cosmic": 1800/13, "Secret": 2400/13}
 SHARES = [0, 0.244545, 0.0581162, 0.0163412, 0.0138447, 0.008, 0.006, 0.004]
 MIN_SPEED_PRIZE = 300  # GameConfig.RoundPrize.MinSpeed
 WIN_CHANCE = 0.65  # rough share of rounds a player ends up on the winning side
 ZONE_DEPTHS = [90, 130, 170, 210, 250, 290, 330, 370]
 FIRST_BOSS_Z = 50
 EXTRA_INCOME = 1.4  # estimated mutations, sizes and friends
+SECRET_CHANCE = .0005  # Cosmic-boss restocks only, GameConfig.Secret
 CATCH_CHANCE = 0.25  # a run where the boss gets you (the knife goes back)
 
 
@@ -111,8 +112,9 @@ def simulate(hours, seed=1):
             if runs==1 or rng.random()>=CATCH_CHANCE:
                 speed+=budget()*.1
                 if full: wall.remove(worst)
-                wall.append((INCOME[rarity],zone,t+dt+COFFIN_ROUNDS[rarity]*cycle))
-                note(f"first {rarity} knife",t+dt)
+                stolen = "Secret" if zone == 7 and rng.random() < SECRET_CHANCE else rarity
+                wall.append((INCOME[stolen],zone,t+dt+COFFIN_ROUNDS[stolen]*cycle))
+                note(f"first {stolen} knife",t+dt)
         else:
             dt=min(10,max(0,boundary-t))
         cash+=income()*dt
