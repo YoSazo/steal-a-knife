@@ -983,12 +983,12 @@ function Hud.Init()
 	Ui.new("UIStroke", { Thickness = 2, Color = Color3.fromRGB(20, 60, 30) }, cashPlus)
 	local function opensShop(art: GuiObject, tab: string): TextButton
 		local tap = Ui.new("TextButton", {
-			Name = "OpenShop",
+			Name = tab .. "ShopTap",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			Text = "",
 			ZIndex = art.ZIndex + 2,
-		}, art) :: TextButton
+		}, stats) :: TextButton
 		tap.Activated:Connect(function()
 			if Ui.OpenShop then
 				Ui.OpenShop(tab)
@@ -999,6 +999,10 @@ function Hud.Init()
 	local cashTap = opensShop(cashArt, "Money")
 	local speedTap = opensShop(speedArt, "Speed")
 	for _, text in { speedLabel, cashLabel } do
+		local cap = text:FindFirstChildOfClass("UITextSizeConstraint")
+		if cap then
+			cap:Destroy()
+		end
 		text.TextScaled = false
 		text.Font = Enum.Font.LuckiestGuy
 		text.TextTruncate = Enum.TextTruncate.None
@@ -1012,7 +1016,7 @@ function Hud.Init()
 	local function placeStats()
 		-- rows: icon size, text size, row height
 		-- (bigger than before - 46 / 42 / 54 - so a young kid reads them at a glance)
-		local icon, size, row = 60, 54, 68
+		local icon, size, row = 60, 48, 68
 		local textWidth = size * 6
 		local x = 12
 		if Ui.Phone then
@@ -1037,7 +1041,7 @@ function Hud.Init()
 		speedLabel.Position, speedLabel.Size = UDim2.fromOffset(icon + 8, small), UDim2.fromOffset(textWidth, row)
 		cashLabel.Position, cashLabel.Size = UDim2.fromOffset(icon + 8, small + row), UDim2.fromOffset(textWidth, row)
 		for _, tap in { speedTap, cashTap } do
-			tap.Position = UDim2.fromOffset(0, -(row - icon) / 2)
+			tap.Position = UDim2.fromOffset(0, if tap == speedTap then 0 else row)
 			tap.Size = UDim2.fromOffset(icon + 8 + textWidth, row)
 		end
 		speedLabel.TextSize, cashLabel.TextSize = math.floor(size * 0.9), size

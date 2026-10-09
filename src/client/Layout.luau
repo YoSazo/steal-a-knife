@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Layout = {}
+Layout.Scale = 1
 Layout.KnifeSize = require(script.Parent.KnifeAim).ButtonSize
 local changed = Instance.new("BindableEvent")
 Layout.Changed = changed.Event
@@ -45,16 +46,16 @@ end
 function Layout.viewport(): Vector2
 	local sim = Layout.debugSafe()
 	if sim and root then
-		return root.AbsolutePosition + sim + Vector2.new(47, 21)
+		return (root.AbsolutePosition + sim + Vector2.new(47, 21)) / Layout.Scale
 	end
-	return workspace.CurrentCamera.ViewportSize
+	return workspace.CurrentCamera.ViewportSize / Layout.Scale
 end
 
 function Layout.bounds(): (Vector2, Vector2)
 	if root then
-		return root.AbsolutePosition, root.AbsoluteSize
+		return root.AbsolutePosition, root.AbsoluteSize / Layout.Scale
 	end
-	return Vector2.zero, workspace.CurrentCamera.ViewportSize
+	return Vector2.zero, workspace.CurrentCamera.ViewportSize / Layout.Scale
 end
 function Layout.get()
 	local _, size = Layout.bounds()
@@ -64,7 +65,7 @@ function Layout.touchBounds(): (Vector2, Vector2)
 	local origin, size = Layout.bounds()
 	local jump = Players.LocalPlayer.PlayerGui:FindFirstChild("JumpButton", true)
 	if jump and jump:IsA("GuiObject") and jump.Visible and jump.AbsoluteSize.X > 0 then
-		return jump.AbsolutePosition - origin, jump.AbsoluteSize
+		return (jump.AbsolutePosition - origin) / Layout.Scale, jump.AbsoluteSize / Layout.Scale
 	end
 	local diameter = if size.Y < 500 then 70 else 120
 	return Vector2.new(size.X - diameter * 1.5 + 10, size.Y - diameter - 20), Vector2.one * diameter

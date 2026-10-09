@@ -378,7 +378,7 @@ Ui.gui = Ui.new("ScreenGui", {
 -- The root uses safe-area pixels; individual components reflow instead of shrinking text.
 Ui.root =
 	Ui.new("Frame", { Name = "SafeRoot", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, Ui.gui) :: Frame
-Ui.Scale = Ui.new("UIScale", { Scale = 1 }, Ui.gui)
+Ui.Scale = Ui.new("UIScale", { Name = "HeightScale", Scale = 1 }, Ui.root)
 -- Studio phone emulator (Layout.debugSafe): the safe area becomes the phone's, top-left, with a
 -- magenta outline where its screen ends
 do
@@ -386,7 +386,7 @@ do
 	local function emulate()
 		local sim = Layout.debugSafe()
 		if sim then
-			Ui.root.Size = UDim2.fromOffset(sim.X, sim.Y)
+			Ui.root.Size = UDim2.fromOffset(sim.X / Ui.Scale.Scale, sim.Y / Ui.Scale.Scale)
 			if not outline then
 				outline = Ui.new("Frame", { Name = "PhoneEdge", BackgroundTransparency = 1, ZIndex = 1000 }, Ui.gui)
 				Ui.new("UIStroke", { Color = Color3.fromRGB(255, 0, 255), Thickness = 3 }, outline)
@@ -394,19 +394,20 @@ do
 			(outline :: Frame).Size = UDim2.fromOffset(sim.X + 47, sim.Y + 21);
 			(outline :: Frame).Visible = true
 		else
-			Ui.root.Size = UDim2.fromScale(1, 1)
+			Ui.root.Size = UDim2.fromScale(1 / Ui.Scale.Scale, 1 / Ui.Scale.Scale)
 			if outline then
 				outline.Visible = false
 			end
 		end
 	end
 	ReplicatedStorage:GetAttributeChangedSignal("DebugSafe"):Connect(emulate)
+	Ui.Scale:GetPropertyChangedSignal("Scale"):Connect(emulate)
 	emulate()
 end
 -- Feedback (toasts, announcements, offer cards) lives on its own layer ABOVE every menu and screen:
 -- a message must never be hidden behind the window you clicked in (Steal An Egg does the same).
 -- Same safe area and scale as the HUD, so positions mean the same thing.
-Ui.feedback = Ui.new("ScreenGui", {
+local feedbackGui = Ui.new("ScreenGui", {
 	Name = "Feedback",
 	ResetOnSpawn = false,
 	IgnoreGuiInset = false,
@@ -414,9 +415,11 @@ Ui.feedback = Ui.new("ScreenGui", {
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 	DisplayOrder = 100,
 }, player:WaitForChild("PlayerGui")) :: ScreenGui
-local feedbackScale = Ui.new("UIScale", { Scale = 1 }, Ui.feedback) :: UIScale
+Ui.feedback = Ui.new("Frame", { Name = "FeedbackRoot", Size = Ui.root.Size, BackgroundTransparency = 1 }, feedbackGui)
+local feedbackScale = Ui.new("UIScale", { Name = "HeightScale", Scale = 1 }, Ui.feedback) :: UIScale
 Ui.Scale:GetPropertyChangedSignal("Scale"):Connect(function()
 	feedbackScale.Scale = Ui.Scale.Scale
+	Ui.feedback.Size = Ui.root.Size
 end)
 Ui.Layout = Layout
 Ui.Menu = MenuController
@@ -433,6 +436,28 @@ Ui.OpenShop = nil :: ((tab: string) -> ())?
 Ui.FlyIn = nil :: ((cash: boolean, at: Vector2?, count: number?) -> ())?
 Ui.LastFlyIn = { Speed = 0, Cash = 0 }
 Layout.bind(Ui.root)
+-- One height rule. Phone design pixels remain physical pixels; 1080p grows to 1.5x.
+local cameraConnection: RBXScriptConnection? = nil
+local function resizeHeight()
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return
+	end
+	local scale = math.clamp(camera.ViewportSize.Y / 720, 1, 1.5)
+	Layout.Scale = scale
+	Ui.Scale.Scale = scale
+	Layout.notify()
+end
+local function watchHeight()
+	if cameraConnection then
+		cameraConnection:Disconnect()
+	end
+	local camera = workspace.CurrentCamera
+	cameraConnection = if camera then camera:GetPropertyChangedSignal("ViewportSize"):Connect(resizeHeight) else nil
+	resizeHeight()
+end
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(watchHeight)
+watchHeight()
 player:WaitForChild("PlayerGui").ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor
 -- Phones: the free strip of Roblox's top bar, between its buttons on the left and our shift-lock
 -- button on the right (Steal An Egg / Tsunami put their top text there). In Ui.gui coordinates:

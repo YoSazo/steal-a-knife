@@ -376,6 +376,17 @@ Bundle `update8.bundle` merged at 5626bd3 and pushed; both PLAN progress section
 - **Title (item 24, in-game part):** loading screen "STEAL A KNIFE", console tags. The Roblox
   title "[MURDER] Steal a Knife" is set on the Creator Dashboard by the owner.
 
+### Codex UI/art brief, 2026-10-09
+
+- **Step 1:** one height scale on the HUD root and feedback root, `clamp(viewport.Y/720, 1, 1.5)`.
+  Layout calculations use design pixels while rendered bounds stay inside the safe area. Desktop
+  navigation uses a 120x46 design button (180x69 at 1080p); phone targets stay at least 44px.
+  The complete Speed/Cash row is a sibling tap target, independent of the animated icon. Removed
+  an old number text-size cap. Desktop 1920x1080 preset and fresh 640x320 phone checked for UI
+  sizing; phone viewport 640x300, rows 176x44, both far-right number taps opened their correct
+  shop tabs. Model/world verification is pending: Studio MCP currently captures a black 3D view
+  behind the working GUI. New hub/pen/win changes from bcfc200 still need their full Studio pass.
+
 ### Claude cloud, 2026-10-09 (3): show, don't tell + a tighter hub (CODEX: CHECK IN STUDIO)
 
 - **Hub:** pens 64x60 -> 52x50, FRONT 22 -> 12, PLAZA 40 -> 20 (MapService.buildBases, same 6+1+1

@@ -7,7 +7,7 @@ local Ui = require(script.Parent.Ui)
 local PhoneHud = {}
 
 -- Steal An Egg sizes: about half of what we had (easy to tap, but the world stays the star)
-local NAV_W, NAV_H, NAV_GAP = 112, 40, 6
+local NAV_GAP = 8
 local SQUARE, SQUARE_GAP = 46, 6
 -- Phones: a small outlined word under each square ("how do I upgrade?" - icons alone weren't enough)
 local CAPTION = 14
@@ -74,11 +74,13 @@ function PhoneHud.Init()
 		local origin, bounds = Ui.bounds()
 		-- The HUD lives inside the safe area; reach past it to sit right against the screen edges
 		local viewport = Ui.Layout.viewport()
-		local leftEdge = -origin.X + 8
-		local rightEdge = (viewport.X - (origin.X + bounds.X)) - 8
+		local leftEdge = -origin.X / Ui.Scale.Scale + 8
+		local rightEdge = (viewport.X - (origin.X / Ui.Scale.Scale + bounds.X)) - 8
 		-- Left: one slim column against the left edge, a third of the way down
 		local nav = Ui.Navigation :: GuiObject?
-		if nav and phone then
+		local compact = Ui.Layout.get().Short
+		local navWidth, navHeight = if compact then 112 else 120, if compact then 44 else 46
+		if nav then
 			-- (Slow mode is the little switch under the column: Menus SlowToggle)
 			local shown = 0
 			for _, child in nav:GetChildren() do
@@ -88,25 +90,28 @@ function PhoneHud.Init()
 			end
 			local grid = nav:FindFirstChildOfClass("UIGridLayout")
 			if grid then
-				grid.CellSize = UDim2.fromOffset(NAV_W, NAV_H)
+				grid.CellSize = UDim2.fromOffset(navWidth, navHeight)
 				grid.CellPadding = UDim2.fromOffset(NAV_GAP, NAV_GAP)
 				grid.FillDirectionMaxCells = 1
 			end
 			nav.AnchorPoint = Vector2.zero
 			-- a fifth of the way down, but always ending above the thumb controls (on a short screen
 			-- - a Galaxy S22 Ultra's 280 - More ran into the move stick)
-			local navH = shown * (NAV_H + NAV_GAP)
-			local lowest = Ui.Layout.touchBounds().Y - navH - 10
-			nav.Position = UDim2.fromOffset(leftEdge, math.max(34, math.min(math.floor(bounds.Y * 0.22), lowest)))
-			nav.Size = UDim2.fromOffset(NAV_W, shown * (NAV_H + NAV_GAP))
+			local navH = shown * (navHeight + NAV_GAP)
+			local lowest = if phone then Ui.Layout.touchBounds().Y - navH - 10 else bounds.Y - navH - 24
+			nav.Position = UDim2.fromOffset(
+				leftEdge,
+				math.max(if phone then 8 else 34, math.min(math.floor(bounds.Y * 0.22), lowest))
+			)
+			nav.Size = UDim2.fromOffset(navWidth, shown * (navHeight + NAV_GAP))
 		end
 		-- Right: a column centred on the right edge (phones: squares, kept above the jump button;
 		-- desktop: the labelled buttons, same height each)
 		local count = #right
 		local bottomLimit = if phone then Ui.Layout.touchBounds().Y - 12 else bounds.Y - 12
 		local gap = if phone then SQUARE_GAP + CAPTION else SQUARE_GAP
-		local square = if phone then math.clamp(math.floor((bottomLimit - 10) / count - gap), 32, SQUARE) else 52
-		local width = if phone then square else 150
+		local square = if phone then math.clamp(math.floor((bottomLimit - 10) / count - gap), 44, SQUARE) else 70
+		local width = if phone then square else 180
 		local total = count * square + (count - 1) * gap
 		local y = math.floor((bounds.Y - total) / 2)
 		y = math.max(10, math.min(y, bottomLimit - total))
