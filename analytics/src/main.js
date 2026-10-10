@@ -4,10 +4,13 @@ import { env } from "./env.js";
 import { connect } from "./db.js";
 import { client } from "./roblox.js";
 import { createApp } from "./server.js";
+import { loadAnalyticsConfig } from "./queries.js";
 import { syncAll } from "./sync.js";
 import { sendDue } from "./notify.js";
 
 await connect();
+const analyticsConfig = await loadAnalyticsConfig();
+console.log("analytics config", analyticsConfig);
 
 let roblox = null;
 if (env("ROBLOX_API_KEY")) {

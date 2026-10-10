@@ -127,7 +127,7 @@ async function overviewPage(days) {
       <td class="muted">${secs(s.medianSeconds)}</td></tr>`;
   });
   const funnelTable = `<div class="scroll"><table class="funnel"><thead><tr><th>Step</th><th>Players</th><th></th><th>Of joined</th><th>Lost here</th><th>Median time to reach</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
-  const reset = `<p class="muted">Counting from ${esc(Q.RESET.replace("T", " ").slice(0, 16))} UTC (version 531: the 4-step guide, first round as the Murderer, the Speed prize). Roblox's own numbers start the next full day.</p>`;
+  const reset = `<p class="muted">Funnel ${esc(Q.FUNNEL_VERSION)} · counting from ${esc(Q.RESET.replace("T", " ").slice(0, 16))} UTC. Raw activity before this time is kept but excluded. Roblox's daily totals start on the next full UTC day.</p>`;
   return `<h1>Overview</h1>${reset}${kpis}${leak}${await robloxCard(days)}${card(
     "First-session funnel",
     funnelTable,
@@ -151,7 +151,7 @@ async function stallPage(days, step) {
 }
 
 async function loopsPage(days) {
-  const [steals, snatches, holds, rounds, store, economy, guidance] = await Promise.all([
+  const [steals, snatches, holds, rounds, store, economy, guidance, engagement] = await Promise.all([
     Q.steals(days),
     Q.snatches(days),
     Q.holds(days),
@@ -159,6 +159,7 @@ async function loopsPage(days) {
     Q.store(days),
     Q.economy(days),
     Q.guidance(days),
+    Q.engagement(days),
   ]);
   // Steal loop: one row per zone
   const zones = new Map();
@@ -166,7 +167,7 @@ async function loopsPage(days) {
   for (const r of steals) get(r.zone).outcomes[r.event] = { n: r.n, avg: r.avg_s };
   for (const r of holds) get(r.zone).holds = r.holds;
   for (const r of snatches) Object.assign(get(r.zone), { snatches: r.snatches, tooSlow: r.too_slow });
-  const outcomeNames = ["steal.home", "steal.caught", "steal.knocked", "steal.died", "steal.slipped", "steal.vault_full", "steal.moon", "steal.left"];
+  const outcomeNames = ["steal.home", "steal.caught", "steal.knocked", "steal.died", "steal.slipped", "steal.left"];
   const stealRows = [...zones.values()]
     .sort((a, b) => a.zone - b.zone)
     .map((z) => {
@@ -183,7 +184,7 @@ async function loopsPage(days) {
       ];
     });
   const stealTable = table(
-    ["Zone", "Held E", "Grabbed", "Got home", "Caught", "Knocked", "Died", "Slipped", "Vault full", "Moon", "Left", "Caught while too slow", "Avg run"],
+    ["Zone", "Held E", "Grabbed", "Got home", "Caught", "Knocked", "Died", "Slipped", "Left", "Caught while too slow", "Avg run"],
     stealRows,
   );
   const roundTable = table(
@@ -201,14 +202,20 @@ async function loopsPage(days) {
     return table(["Reason", "Amount", "Share"], rows.map((r) => [esc(r.key.slice(r.key.indexOf("_") + 1)), `$${n(r.total)}`, `${pct(r.total, total)} ${bar(total ? r.total / total : 0)}`]));
   };
   return `<h1>Game loops</h1>
-  ${card("Next-action guide", table(["Action", "Shown", "Completed", "Players stalled", "Median completion"],
+  ${card("Context tips", table(["Tip", "Shown", "Completed", "Players stalled", "Median completion"],
     guidance.actions.map((r) => [esc(r.action), n(r.shown), n(r.completed), n(r.stalled), secs(r.median_s)])),
     "Completed means confirmed gameplay success. Stalled means no observed progress; it is a signal to investigate, not proof of confusion.")}
-  ${card("Guidance handoffs", table(["Transition", "Opportunities", "Followed through", "Rate", "Median time"],
+  ${card("After-round follow-through", table(["Action after round", "Opportunities", "Followed through", "Rate", "Median time"],
     guidance.transitions.map((r) => [esc(r.label), n(r.started), n(r.followed), pct(r.followed, r.started), secs(r.median_s)])),
     "Each transition is measured independently within the same visit and the following 10 minutes.")}
-  ${card("Successful Innocent powers", table(["Power", "Successful uses", "Players"],
-    guidance.powers.map((r) => [esc(r.power), n(r.uses), n(r.players)])), "Server-approved uses; rejected button presses are excluded.")}
+  ${card("Current loop engagement", table(["Signal", "Result"], [
+    ["Players who picked up a Speed coin", n(engagement.coin_players)],
+    ["Speed coins collected", n(engagement.coin_pickups)],
+    ["Coffins opened", n(engagement.coffin_opens)],
+    ["Players shown a 2X round", n(engagement.players_shown_2x)],
+    ["Players who started a 2X round", n(engagement.players_started_2x)],
+    ["Completed 2X rounds", n(engagement.completed_2x_rounds)],
+  ]), "Only counts from the current reporting reset. Coin pickups are batched per visit.")}
   ${card("Steal loop (boss knives)", stealTable, "Every boss steal and how it ended, by zone. “Caught while too slow” = their Speed was below the zone's SpeedNeeded.")}
   <div class="grid2">
   ${card("Murder rounds", `${roundTable}<p class="muted">${n(rounds.started)} round starts · ${n(rounds.quits?.quit_mid_round)} visits ended mid-round (${pct(rounds.quits?.quit_mid_round, rounds.quits?.sessions)} of visits)</p>`)}

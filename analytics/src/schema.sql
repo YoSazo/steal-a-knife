@@ -1,5 +1,13 @@
 -- Steal and Murder analytics. Idempotent: runs on every server start.
 
+-- Reporting boundary and funnel version are stored with the database so a Render restart cannot
+-- silently restore an old DATA_SINCE value. Raw events remain intact for audit/debugging.
+create table if not exists analytics_config (
+  key text primary key,
+  value text not null,
+  updated_at timestamptz not null default now()
+);
+
 -- Every event the game sends (src/server/Services/Analytics.luau, src/client/Telemetry.luau)
 create table if not exists events (
   id bigserial primary key,
@@ -16,6 +24,10 @@ create index if not exists events_event_ts on events (event, ts);
 create index if not exists events_session on events (session);
 create index if not exists events_player_ts on events (player, ts);
 create index if not exists events_milestone on events ((props->>'milestone')) where event = 'milestone';
+
+insert into analytics_config (key, value)
+values ('reporting_reset_at', '2026-10-10T05:00:00.000Z'), ('funnel_version', 'coffin_loop_v2')
+on conflict (key) do nothing;
 
 -- One row per visit: device and source live here (events only carry a compact core)
 create table if not exists sessions (
