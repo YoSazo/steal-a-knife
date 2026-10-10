@@ -1,39 +1,36 @@
 // Every number the dashboard shows. `days` = the window; Studio test data is always left out.
 import { query } from "./db.js";
 
-// The dashboard's reset: nothing before this counts (the game changed too much for older players to
-// mean anything - the 4-step guide, the first round as the Murderer, the Speed prize). It's the
-// first event from place version 531. Override with the DATA_SINCE env var (an ISO time).
-const RESET_RAW = process.env.DATA_SINCE || "2026-10-06T21:45:07Z";
+// DATA_SINCE remains a test override. Production reads the persistent reset from analytics_config.
+const RESET_RAW = process.env.DATA_SINCE || "2026-10-10T05:00:00Z";
 if (Number.isNaN(Date.parse(RESET_RAW))) throw new Error(`DATA_SINCE is not a time: ${RESET_RAW}`);
-export const RESET = new Date(RESET_RAW).toISOString();
-const RESET_TS = `'${RESET}'::timestamptz`;
-// Roblox's numbers come by whole day: only full days after the reset
-const RESET_DAY = `((${RESET_TS} at time zone 'utc')::date + 1)`;
+export let RESET = new Date(RESET_RAW).toISOString();
+export let FUNNEL_VERSION = "coffin_loop_v2";
+let RESET_TS = `'${RESET}'::timestamptz`;
+let RESET_DAY = `((${RESET_TS} at time zone 'utc')::date + 1)`;
+let SINCE = `greatest(now() - ($1::int * interval '1 day'), ${RESET_TS})`;
 
-const SINCE = `greatest(now() - ($1::int * interval '1 day'), ${RESET_TS})`;
+export async function loadAnalyticsConfig() {
+  const rows = await query("select key, value from analytics_config where key in ('reporting_reset_at', 'funnel_version')");
+  const config = Object.fromEntries(rows.map((row) => [row.key, row.value]));
+  const raw = process.env.DATA_SINCE || config.reporting_reset_at || RESET_RAW;
+  if (Number.isNaN(Date.parse(raw))) throw new Error(`Invalid reporting_reset_at: ${raw}`);
+  RESET = new Date(raw).toISOString();
+  FUNNEL_VERSION = config.funnel_version || FUNNEL_VERSION;
+  RESET_TS = `'${RESET}'::timestamptz`;
+  RESET_DAY = `((${RESET_TS} at time zone 'utc')::date + 1)`;
+  SINCE = `greatest(now() - ($1::int * interval '1 day'), ${RESET_TS})`;
+  return { reset: RESET, funnelVersion: FUNNEL_VERSION };
+}
 
-// The first-session funnel: milestones (Analytics.Milestone), in the order a new player meets them.
-// Keep in step with ONBOARDING in src/server/Services/Analytics.luau. Rebuilt 2026-10-06 for the
-// 4-step guide + the first round as the Murderer (counted from RESET, like everything else).
+// The six steps are the current first-payoff path; optional engagement is measured separately.
 export const FIRST_SESSION = [
-  ["joined", "Joined"],
-  ["spawned", "Spawned (loading done)"],
-  ["tutorial_1", "Guide 1: go to Frank"],
-  ["steal_started", "Grabbed a knife"],
-  ["tutorial_2", "Guide 2: run home"],
-  ["knife_home", "Got a knife home"],
-  ["tutorial_3", "Guide 3: cash pad"],
-  ["cash_collected", "Collected cash"],
-  ["tutorial_4", "Guide 4: the wheel"],
-  ["wheel_trained", "Trained on the wheel"],
-  ["tutorial_done", "Guide exited (completed or skipped)"],
-  ["round_played", "Played a murder round"],
-  ["second_round", "Stayed for a 2nd round"],
-  ["second_knife_home", "Second knife home"],
-  ["first_upgrade", "Bought an upgrade"],
-  ["zone_2", "Reached zone 2"],
-  ["session_2", "Came back (2nd visit)"],
+  ["joined", "Joined the game"],
+  ["spawned", "Loaded into the world"],
+  ["steal_started", "Picked up a coffin"],
+  ["knife_home", "Brought the coffin home"],
+  ["coffin_opened", "Tapped READY and opened it"],
+  ["cash_collected", "Collected Cash"],
 ];
 
 
@@ -47,15 +44,9 @@ export async function guidance(days) {
          filter (where event = 'guide.done'))::numeric) as median_s
      from events where ts >= ${SINCE} and not studio and event in ('guide.shown', 'guide.done', 'guide.stuck')
      group by 1 order by stalled desc, shown desc`, [days]);
-  const powers = await query(
-    `select props->>'id' as power, count(*)::int as uses, count(distinct player)::int as players
-     from events where ts >= ${SINCE} and not studio and event = 'power.used'
-     group by 1 order by players desc`, [days]);
   const definitions = [
-    ["Guide exit → another knife", "e.event = 'milestone' and e.props->>'milestone' in ('tutorial_done', 'tutorial_skipped')", "n.event = 'knife.mounted'"],
-    ["Round return → next action", "e.event = 'round.end'", "n.event = 'knife.mounted' or (n.event in ('upgrade', 'action.ClaimIndex') and n.props->>'ok' = 'true') or n.event = 'guide.done'"],
-    ["Power ready → successful use", "e.event = 'guide.shown' and e.props->>'id' = 'power_ready'", "n.event = 'power.used'"],
-    ["Speed prize → next-tier knife home", "e.event = 'round.prize' and e.props->>'kind' = 'Speed'", "n.event = 'prize.followup' and n.props->>'stage' = 'home'"],
+    ["Round return → next coffin action", "e.event = 'round.end'", "n.event in ('steal.start', 'coffin.ready', 'coffin.open')"],
+    ["2X round announced → player joins round", "e.event = 'round.bonus_shown' and e.props->>'multiplier' = '2'", "n.event = 'round.start' and n.props->>'bonus_multiplier' = '2'"],
   ];
   const transitions = [];
   for (const [label, start, finish] of definitions) {
@@ -69,7 +60,7 @@ export async function guidance(days) {
        where e.ts >= ${SINCE} and not e.studio and (${start})`, [days]);
     transitions.push({ label, ...row });
   }
-  return { actions, powers, transitions };
+  return { actions, transitions };
 }
 
 export async function overview(days) {
@@ -88,16 +79,16 @@ export async function overview(days) {
   );
   const retention = await query(
     `select
-       count(*) filter (where d <= current_date - 1)::int as d1_cohort,
-       count(*) filter (where d <= current_date - 1 and back1)::int as d1,
-       count(*) filter (where d <= current_date - 7)::int as d7_cohort,
-       count(*) filter (where d <= current_date - 7 and back7)::int as d7
+       count(*) filter (where d < (now() at time zone 'America/Chicago')::date)::int as d1_cohort,
+       count(*) filter (where d < (now() at time zone 'America/Chicago')::date and back1)::int as d1,
+       count(*) filter (where d <= (now() at time zone 'America/Chicago')::date - 7)::int as d7_cohort,
+       count(*) filter (where d <= (now() at time zone 'America/Chicago')::date - 7 and back7)::int as d7
      from (
-       select (p.first_seen at time zone 'utc')::date as d,
+       select (p.first_seen at time zone 'America/Chicago')::date as d,
          exists (select 1 from sessions s where s.player = p.id
-                 and (s.started_at at time zone 'utc')::date = (p.first_seen at time zone 'utc')::date + 1) as back1,
+                 and (s.started_at at time zone 'America/Chicago')::date = (p.first_seen at time zone 'America/Chicago')::date + 1) as back1,
          exists (select 1 from sessions s where s.player = p.id
-                 and (s.started_at at time zone 'utc')::date = (p.first_seen at time zone 'utc')::date + 7) as back7
+                 and (s.started_at at time zone 'America/Chicago')::date = (p.first_seen at time zone 'America/Chicago')::date + 7) as back7
        from players p
        where not p.studio and p.first_seen >= now() - (($1::int + 7) * interval '1 day')
          and p.first_seen >= ${RESET_TS}
@@ -112,12 +103,13 @@ export async function firstSession(days) {
   const rows = await query(
     `with cohort as (select id from players
        where first_seen >= ${SINCE} and not studio)
-     select case when e.props->>'milestone' = 'tutorial_skipped' then 'tutorial_done' else e.props->>'milestone' end as step, count(distinct e.player)::int as players,
+     select e.props->>'milestone' as step, count(distinct e.player)::int as players,
        round(percentile_cont(0.5) within group (order by (e.props->>'playtime_s')::float)::numeric) as median_s
      from events e join cohort c on c.id = e.player
-     where e.event = 'milestone' and e.props->>'milestone' = any($2::text[])
+     where e.ts >= ${SINCE} and not e.studio and e.event = 'milestone' and e.props->>'funnel_version' = $3
+       and e.props->>'milestone' = any($2::text[])
      group by 1`,
-    [days, [...FIRST_SESSION.map(([id]) => id), "tutorial_skipped"]],
+    [days, FIRST_SESSION.map(([id]) => id), FUNNEL_VERSION],
   );
   const byStep = Object.fromEntries(rows.map((r) => [r.step, r]));
   const steps = FIRST_SESSION.map(([id, label], i) => {
@@ -147,18 +139,17 @@ export async function stalledAt(days, stepId) {
     with cohort as (select id from players where first_seen >= ${SINCE} and not studio),
     missed as (
       select c.id from cohort c
-       where exists (select 1 from events e where e.player = c.id and e.event = 'milestone' and e.props->>'milestone' = any($2::text[]))
-         and not exists (select 1 from events e where e.player = c.id and e.event = 'milestone' and e.props->>'milestone' = any($3::text[]))
+       where exists (select 1 from events e where e.player = c.id and e.ts >= ${SINCE} and not e.studio and e.event = 'milestone' and e.props->>'funnel_version' = $4 and e.props->>'milestone' = any($2::text[]))
+         and not exists (select 1 from events e where e.player = c.id and e.ts >= ${SINCE} and not e.studio and e.event = 'milestone' and e.props->>'funnel_version' = $4 and e.props->>'milestone' = any($3::text[]))
     )`;
-  const aliases = (id) => id === "tutorial_done" ? ["tutorial_done", "tutorial_skipped"] : [id];
-  const params = [days, aliases(prevId), aliases(stepId)];
+  const params = [days, [prevId], [stepId], FUNNEL_VERSION];
   const [count] = await query(`${missed} select count(*)::int as n from missed`, params);
   const lastThing = await query(
     `${missed}
      select coalesce(s.last_event, '(still playing / no end)') as last_event, count(*)::int as players,
        round(avg(s.seconds) / 60.0, 1) as avg_min
      from missed m
-     join lateral (select last_event, seconds from sessions where player = m.id order by started_at desc limit 1) s on true
+     join lateral (select last_event, seconds from sessions where player = m.id and started_at >= ${SINCE} and not studio order by started_at desc limit 1) s on true
      group by 1 order by 2 desc limit 15`,
     params,
   );
@@ -166,7 +157,7 @@ export async function stalledAt(days, stepId) {
     `${missed}
      select e.props->>'message' as message, count(*)::int as times, count(distinct e.player)::int as players
      from events e join missed m on m.id = e.player
-     where e.event = 'notify.bad' group by 1 order by 3 desc limit 15`,
+     where e.ts >= ${SINCE} and not e.studio and e.event = 'notify.bad' group by 1 order by 3 desc limit 15`,
     params,
   );
   const failed = await query(
@@ -174,7 +165,7 @@ export async function stalledAt(days, stepId) {
      select e.event, coalesce(e.props->>'kind', e.props->>'arg1', '') as what, coalesce(e.props->>'reply', '') as reply,
        count(*)::int as times, count(distinct e.player)::int as players
      from events e join missed m on m.id = e.player
-     where (e.event like 'action.%' or e.event = 'upgrade') and e.props->>'ok' = 'false'
+     where e.ts >= ${SINCE} and not e.studio and (e.event like 'action.%' or e.event = 'upgrade') and e.props->>'ok' = 'false'
      group by 1, 2, 3 order by 5 desc limit 15`,
     params,
   );
@@ -188,7 +179,7 @@ export async function stalledAt(days, stepId) {
     `${missed}
      select e.event, count(*)::int as times, count(distinct m.id)::int as players
      from missed m
-     join lateral (select event from events where player = m.id and event not in ('session.heartbeat', 'economy.flow', 'session.end', 'perf')
+     join lateral (select event from events where player = m.id and ts >= ${SINCE} and not studio and event not in ('session.heartbeat', 'economy.flow', 'session.end', 'perf')
                    order by ts desc limit 5) e on true
      group by 1 order by 3 desc limit 15`,
     params,
@@ -256,6 +247,21 @@ export async function rounds(days) {
     [days],
   );
   return { byRole, quits, started: started.n };
+}
+
+export async function engagement(days) {
+  const [row] = await query(
+    `select
+       (select count(distinct player) from events where ts >= ${SINCE} and not studio and event = 'milestone' and props->>'funnel_version' = $2 and props->>'milestone' = 'coin_collected')::int as coin_players,
+       (select coalesce(sum((props->>'n_coin_pickup')::int), 0) from events where ts >= ${SINCE} and not studio and event = 'session.heartbeat')::int as coin_pickups,
+       (select count(*) from events where ts >= ${SINCE} and not studio and event = 'coffin.open')::int as coffin_opens,
+       (select count(distinct player) from events where ts >= ${SINCE} and not studio and event = 'round.bonus_shown' and props->>'multiplier' = '2')::int as players_shown_2x,
+       (select count(distinct s.player) from events s where s.ts >= ${SINCE} and not s.studio and s.event = 'round.start' and s.props->>'bonus_multiplier' = '2'
+          and exists (select 1 from events b where b.player = s.player and not b.studio and b.event = 'round.bonus_shown' and b.props->>'multiplier' = '2' and b.props->>'round_id' = s.props->>'round_id'))::int as players_started_2x,
+       (select count(distinct props->>'round_id') from events where ts >= ${SINCE} and not studio and event = 'round.end' and props->>'bonus_multiplier' = '2')::int as completed_2x_rounds`,
+    [days, FUNNEL_VERSION],
+  );
+  return row;
 }
 
 export async function store(days) {
@@ -341,11 +347,11 @@ export async function cohorts() {
        count(*) filter (where b1)::int as d1, count(*) filter (where b3)::int as d3, count(*) filter (where b7)::int as d7,
        (current_date - d) as age
      from (
-       select (p.first_seen at time zone 'utc')::date as d,
-         exists (select 1 from sessions s where s.player = p.id and (s.started_at at time zone 'utc')::date = (p.first_seen at time zone 'utc')::date + 1) as b1,
-         exists (select 1 from sessions s where s.player = p.id and (s.started_at at time zone 'utc')::date = (p.first_seen at time zone 'utc')::date + 3) as b3,
-         exists (select 1 from sessions s where s.player = p.id and (s.started_at at time zone 'utc')::date = (p.first_seen at time zone 'utc')::date + 7) as b7
-       from players p where not p.studio and p.first_seen >= current_date - 14
+       select (p.first_seen at time zone 'America/Chicago')::date as d,
+         exists (select 1 from sessions s where s.player = p.id and (s.started_at at time zone 'America/Chicago')::date = (p.first_seen at time zone 'America/Chicago')::date + 1) as b1,
+         exists (select 1 from sessions s where s.player = p.id and (s.started_at at time zone 'America/Chicago')::date = (p.first_seen at time zone 'America/Chicago')::date + 3) as b3,
+         exists (select 1 from sessions s where s.player = p.id and (s.started_at at time zone 'America/Chicago')::date = (p.first_seen at time zone 'America/Chicago')::date + 7) as b7
+       from players p where not p.studio and p.first_seen >= greatest((((${RESET_TS} at time zone 'America/Chicago')::date)::timestamp at time zone 'America/Chicago'), now() - interval '14 days', ${RESET_TS})
      ) x group by d order by d desc`,
   );
 }
@@ -357,8 +363,8 @@ export async function campaigns(days) {
        coalesce(p.first_source->>'utm_source', '') as source,
        count(*)::int as players,
        count(*) filter (where exists (select 1 from sessions s where s.player = p.id
-         and (s.started_at at time zone 'utc')::date = (p.first_seen at time zone 'utc')::date + 1))::int as d1,
-       count(*) filter (where (p.first_seen at time zone 'utc')::date <= current_date - 1)::int as d1_cohort,
+         and (s.started_at at time zone 'America/Chicago')::date = (p.first_seen at time zone 'America/Chicago')::date + 1))::int as d1,
+       count(*) filter (where (p.first_seen at time zone 'America/Chicago')::date < (now() at time zone 'America/Chicago')::date)::int as d1_cohort,
        coalesce(sum(p.robux_total), 0)::int as robux,
        round(avg((select sum(seconds) from sessions s where s.player = p.id)) / 60.0, 1) as avg_total_min
      from players p where not p.studio and p.first_seen >= ${SINCE}
@@ -450,13 +456,13 @@ export async function spendList() {
 // This is how ads without a per-player link (Roblox Ads Manager) get judged.
 export async function daily(days) {
   return query(
-    `with d as (select generate_series(current_date - ($1::int - 1), current_date, interval '1 day')::date as day)
-     select to_char(d.day, 'Mon DD') as day, (current_date - d.day) as age,
-       (select count(*) from players p where not p.studio and (p.first_seen at time zone 'utc')::date = d.day)::int as new_players,
-       (select count(*) from players p where not p.studio and (p.first_seen at time zone 'utc')::date = d.day
-          and exists (select 1 from sessions s where s.player = p.id and (s.started_at at time zone 'utc')::date = d.day + 1))::int as d1,
-       (select count(*) from sessions s where not s.studio and (s.started_at at time zone 'utc')::date = d.day)::int as visits,
-       (select coalesce(sum(robux), 0) from sessions s where not s.studio and (s.started_at at time zone 'utc')::date = d.day)::int as robux,
+    `with d as (select generate_series(greatest(((${RESET_TS} at time zone 'America/Chicago')::date), (now() at time zone 'America/Chicago')::date - ($1::int - 1)), (now() at time zone 'America/Chicago')::date, interval '1 day')::date as day)
+     select to_char(d.day, 'Mon DD') as day, ((now() at time zone 'America/Chicago')::date - d.day) as age,
+       (select count(*) from players p where not p.studio and p.first_seen >= ${RESET_TS} and (p.first_seen at time zone 'America/Chicago')::date = d.day)::int as new_players,
+       (select count(*) from players p where not p.studio and p.first_seen >= ${RESET_TS} and (p.first_seen at time zone 'America/Chicago')::date = d.day
+          and exists (select 1 from sessions s where s.player = p.id and (s.started_at at time zone 'America/Chicago')::date = d.day + 1))::int as d1,
+       (select count(*) from sessions s where not s.studio and s.started_at >= ${RESET_TS} and (s.started_at at time zone 'America/Chicago')::date = d.day)::int as visits,
+       (select coalesce(sum(robux), 0) from sessions s where not s.studio and s.started_at >= ${RESET_TS} and (s.started_at at time zone 'America/Chicago')::date = d.day)::int as robux,
        (select coalesce(sum(spend), 0) from ad_spend a where a.day = d.day)::float as spend,
        (select coalesce(sum(spend), 0) from ad_spend a where a.day = d.day and a.channel = 'roblox')::float as roblox_spend
      from d order by d.day desc`,

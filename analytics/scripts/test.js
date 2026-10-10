@@ -21,7 +21,7 @@ const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const pick = (list) => list[Math.floor(rand() * list.length)];
 
 // Simulated players: each first visit walks the funnel and drops out somewhere; some come back
-const FUNNEL = ["joined", "spawned", "tutorial_1", "steal_started", "tutorial_2", "knife_home", "tutorial_3", "cash_collected", "tutorial_4", "wheel_trained", "tutorial_done", "round_played", "second_round"];
+const FUNNEL = ["joined", "spawned", "steal_started", "knife_home", "coffin_opened", "cash_collected"];
 const events = [];
 const DAY = 864e5;
 for (let i = 0; i < 300; i++) {
@@ -46,7 +46,7 @@ for (let i = 0; i < 300; i++) {
     if (v === 0) {
       const reach = Math.floor(rand() * FUNNEL.length * 1.3);
       for (let s = 0; s < Math.min(reach, FUNNEL.length); s++) {
-        ev("milestone", { milestone: FUNNEL[s], playtime_s: s * 30 });
+        ev("milestone", { milestone: FUNNEL[s], funnel_version: "coffin_loop_v2", analytics_version: "coffin_loop_v2", playtime_s: s * 30 });
         if (FUNNEL[s] === "steal_started") {
           ev("boss.hold", { zone: 1 });
           ev("steal.start", { source: "boss", zone: 1, knife: "Rusty", rarity: "Common", seconds: 0 });
@@ -58,7 +58,8 @@ for (let i = 0; i < 300; i++) {
           }
         }
         if (FUNNEL[s] === "knife_home") ev("steal.home", { source: "boss", zone: 1, seconds: 11 });
-        if (FUNNEL[s] === "tutorial_5") {
+        if (FUNNEL[s] === "coffin_opened") {
+          ev("coffin.open", { rarity: "Common", how: "tap" });
           ev("upgrade", { kind: "Treadmill", ok: rand() < 0.6, reply: "Not enough cash" });
           ev("offer.shown", { key: "CashPotion", reason: "Short on cash" });
           if (rand() < 0.3) {
@@ -69,12 +70,14 @@ for (let i = 0; i < 300; i++) {
             if (bought) ev("purchase.product", { key: "CashPotion", robux: 49 });
           }
         }
-        if (FUNNEL[s] === "round_played") {
-          const role = pick(["innocent", "innocent", "murderer", "sheriff"]);
-          ev("round.start", { round_id: "r1", role });
-          ev("round.end", { round_id: "r1", role, won: rand() < 0.5, survived: rand() < 0.5, kills: role === "murderer" ? 3 : undefined, knife_out_s: 30 });
-        }
-        last = FUNNEL[s] === "round_played" ? "round.end" : last;
+      }
+      if (rand() < 0.7) {
+        const role = pick(["innocent", "innocent", "murderer", "sheriff"]);
+        ev("round.bonus_shown", { round_id: `${session}-r1`, multiplier: 2 });
+        ev("round.start", { round_id: `${session}-r1`, role, bonus_multiplier: 2 });
+        ev("round.end", { round_id: `${session}-r1`, role, bonus_multiplier: 2, won: rand() < 0.5, survived: rand() < 0.5, kills: role === "murderer" ? 3 : undefined, knife_out_s: 30 });
+        ev("coffin.open", { how: "tap" });
+        last = "round.end";
       }
     } else {
       ev("milestone", { milestone: "session_2", playtime_s: 600 });
@@ -106,13 +109,12 @@ for (let i = 0; i < events.length; i += 250) {
 const [{ count }] = await query("select count(*)::int as count from events");
 check(count === events.length, `stored ${count} of ${events.length}`);
 
-// Real query regression: skipped guides count as exits, successes differ from button attempts,
-// and each handoff is independent of the order of the onboarding funnel.
+// Current funnel and round engagement regressions.
 const Q = await import("../src/queries.js");
-const beforeGuide = (await Q.firstSession(7)).steps.find((s) => s.id === "tutorial_done").players;
+const beforeGuide = (await Q.firstSession(7)).steps.find((s) => s.id === "cash_collected").players;
 const guideEvents = [
   ["session.start", { new_user: true, session_n: 1 }],
-  ["milestone", { milestone: "tutorial_skipped", playtime_s: 60 }],
+  ["milestone", { milestone: "cash_collected", funnel_version: "coffin_loop_v2", playtime_s: 60 }],
   ["guide.shown", { id: "index", source: "hub" }],
   ["guide.done", { id: "index", seconds: 3 }],
   ["round.end", { role: "innocent", won: true }],
@@ -125,12 +127,13 @@ const guideEvents = [
 ].map(([event, props], i) => ({ event, props, player: "guide-fixture", session: "guide-fixture-1", server: "test",
   ts: new Date(Date.now() - 60000 + i * 1000).toISOString() }));
 check((await post({ batch: guideEvents })).status === 200, "guide fixture ingest failed");
-check((await Q.firstSession(7)).steps.find((s) => s.id === "tutorial_done").players === beforeGuide + 1,
-  "tutorial_skipped was excluded from guide exits");
+check((await Q.firstSession(7)).steps.find((s) => s.id === "cash_collected").players === beforeGuide + 1,
+  "current funnel milestone was excluded");
 const guidance = await Q.guidance(7);
-check(guidance.actions.find((r) => r.action === "index")?.completed === 1, "guide completion query failed");
-check(guidance.powers.find((r) => r.power === "Vanish")?.uses === 1, "power attempts counted as successes");
-check(guidance.transitions.every((r) => r.followed >= 1), "an independent guidance handoff failed");
+check(guidance.actions.find((r) => r.action === "index")?.completed === 1, "context tip query failed");
+check(guidance.transitions.every((r) => r.followed >= 1), "current round follow-through query failed");
+const engagement = await Q.engagement(7);
+check(engagement.players_started_2x > 0 && engagement.completed_2x_rounds > 0, "2X round engagement query failed");
 await fetch(`${base}/spend`, {
   method: "POST",
   headers: { Authorization: `Basic ${Buffer.from("x:test-pass").toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
@@ -204,9 +207,27 @@ for (const path of pages) {
     check(html.includes("Biggest leak"), "no leak card");
     const match = html.match(/Biggest leak[\s\S]*?<\/section>/);
     console.log((match ? match[0] : "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
-    check(html.includes("Saw the game") && html.includes("Clicked it"), "no Roblox funnel on the overview");
+    check(html.includes("Saw the game") && html.includes("Clicked it") && html.includes("coffin_loop_v2"), "no current funnel on overview");
   }
 }
+
+// Reset regression: preserve the old row, but exclude it from every current report query.
+const cutoff = new Date(Date.now() - 30000).toISOString();
+const oldTs = new Date(Date.now() - 60000).toISOString();
+const newTs = new Date(Date.now() - 10000).toISOString();
+await query(
+  `insert into events (ts, event, player, studio, props) values
+   ($1, 'reset.fixture', 'cutoff-test', false, '{}'), ($2, 'reset.fixture', 'cutoff-test', false, '{}')`,
+  [oldTs, newTs],
+);
+await query("update analytics_config set value = $1 where key = 'reporting_reset_at'", [cutoff]);
+delete process.env.DATA_SINCE;
+await Q.loadAnalyticsConfig();
+const visibleAfterReset = (await Q.eventList(1)).find((r) => r.event === "reset.fixture");
+const [{ retained }] = await query("select count(*)::int as retained from events where event = 'reset.fixture'");
+check(visibleAfterReset?.n === 1 && retained === 2, "reset hid old reports without deleting raw history");
+process.env.DATA_SINCE = "2000-01-01T00:00:00Z";
+await Q.loadAnalyticsConfig();
 
 app.close();
 if (failures.length) {
