@@ -7,6 +7,7 @@ local Coin = require(ReplicatedStorage.Shared.SpeedCoinModel)
 local MapService = require(script.Parent.MapService)
 local DataService = require(script.Parent.DataService)
 local BaseService = require(script.Parent.BaseService)
+local Analytics = require(script.Parent.Analytics)
 local Net = require(script.Parent.Parent.Remotes)
 local SpeedCoins = {}
 local folder: Folder
@@ -42,6 +43,8 @@ local function spawn(at: Vector3, zone: number)
 		DataService.Update(player, function(profile)
 			profile.Speed += amount
 		end)
+		Analytics.Milestone(player, "coin_collected", { amount = amount, zone = zone })
+		Analytics.Count(player, "coin_pickup")
 		BaseService.RefreshWalkSpeed(player)
 		Net.Remotes.Effect:FireClient(player, "SpeedPickup", hitbox.Position, amount)
 		model:Destroy()

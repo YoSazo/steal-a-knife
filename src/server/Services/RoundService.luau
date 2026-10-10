@@ -90,6 +90,7 @@ type Round = {
 	Newcomer: boolean, -- a brand-new player's first round as the Murderer: the bots let them win
 	HeroBot: Bot?, -- that bot (its face goes on the VS card)
 	Id: string, -- analytics: round_id on every round event
+	BonusMultiplier: number,
 	RevealEndsAt: number, -- server time shared by the reveal, hiding ladder and weapons
 	StartedAt: number, -- os.clock()
 	Map: string,
@@ -118,6 +119,7 @@ local function holdWhileStreaming(player: Player, character: Model, at: CFrame)
 	end)
 end
 local rng = Random.new()
+local roundSequence = 0
 
 -- player attribute the client reads too)
 -- Is this player one of the round's Murderers?
@@ -291,6 +293,7 @@ end
 local function roundProps(round: Round, player: Player, extra: { [string]: any }?): { [string]: any }
 	local props: { [string]: any } = {
 		round_id = round.Id,
+		bonus_multiplier = round.BonusMultiplier,
 		role = roleOf(round, player),
 		map = round.Map,
 		round_s = math.floor(os.clock() - round.StartedAt),
@@ -1408,6 +1411,7 @@ local function startRound(participants: { Player })
 		"RoundBonusMultiplier",
 		ReplicatedStorage:GetAttribute("NextRoundSpeedMultiplier") or 1
 	)
+	ReplicatedStorage:SetAttribute("CurrentRoundId", ReplicatedStorage:GetAttribute("NextRoundId"))
 	-- Save runs before disguises/streaming can change the body or delay the teleport.
 	local pausedRun = false
 	for _, player in participants do
@@ -1490,7 +1494,11 @@ local function startRound(participants: { Player })
 		HeroBot = nil,
 		HumanKills = 0,
 		Connections = {},
-		Id = `{string.sub(game.JobId, 1, 6)}-{string.format("%x", os.time())}`,
+		Id = (ReplicatedStorage:GetAttribute("NextRoundId") or `{string.sub(game.JobId, 1, 6)}-{string.format(
+			"%x",
+			os.time()
+		)}`) :: string,
+		BonusMultiplier = (ReplicatedStorage:GetAttribute("NextRoundSpeedMultiplier") or 1) :: number,
 		RevealEndsAt = 0,
 		StartedAt = os.clock(),
 		Map = built.Name,
@@ -1883,6 +1891,15 @@ local function loop()
 		ReplicatedStorage:SetAttribute(
 			"NextRoundSpeedMultiplier",
 			if rng:NextNumber() < GameConfig.DoubleSpeedRoundChance then 2 else 1
+		)
+		roundSequence += 1
+		ReplicatedStorage:SetAttribute(
+			"NextRoundId",
+			`{string.sub(game.JobId, 1, 6)}-{string.format("%x", os.time())}-{roundSequence}`
+		)
+		ReplicatedStorage:SetAttribute(
+			"NextRoundToken",
+			`{ReplicatedStorage:GetAttribute("NextRoundId")}|{ReplicatedStorage:GetAttribute("NextRoundSpeedMultiplier")}`
 		)
 		ReplicatedStorage:SetAttribute("RoundBonusMultiplier", nil)
 		local prizeKind, jackpot, seed = RoundPrize.Roll(rng)

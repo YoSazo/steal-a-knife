@@ -7,6 +7,7 @@ local RoundPrize = require(ReplicatedStorage.Shared.RoundPrize)
 local DataService = require(script.Parent.DataService)
 local BaseService = require(script.Parent.BaseService)
 local Net = require(script.Parent.Parent.Remotes)
+local Analytics = require(script.Parent.Analytics)
 
 local Progress = {}
 type Entry = {
@@ -69,6 +70,14 @@ local function award(player: Player, amount: number, entry: Entry?, boostLadder:
 	if entry then
 		entry.Banked += amount
 		player:SetAttribute("RoundSpeedBanked", entry.Banked)
+		Analytics.Track(player, "round.speed_step", {
+			amount = amount,
+			banked = entry.Banked,
+			round_id = ReplicatedStorage:GetAttribute("CurrentRoundId"),
+			step = entry.Step,
+			bonus_multiplier = entry.RandomMultiplier,
+		})
+		Analytics.Milestone(player, "round_speed_earned", { amount = amount })
 	end
 	Net.Remotes.Effect:FireClient(player, "SpeedBank", amount)
 	-- (passing a monster's Speed is shown by the client, whatever gave the Speed: client/Transitions)
@@ -164,6 +173,8 @@ function Progress.Coin(player: Player)
 	local entry = entries[player]
 	if entry and not entry.Finished then
 		entry.Coins += 1
+		Analytics.Milestone(player, "coin_collected", { amount = entry.RandomMultiplier, source = "round" })
+		Analytics.Count(player, "coin_pickup")
 		award(player, entry.RandomMultiplier, entry, false)
 	end
 end

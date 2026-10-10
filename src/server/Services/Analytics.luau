@@ -44,31 +44,15 @@ local EXPERIMENTS: { [string]: { string } } = {
 	-- (none running: pens and the Speed-only round prize are the one version of the game)
 }
 
--- The first-session funnel, in order. Each step is a milestone (Analytics.Milestone); the same
--- steps go to Roblox's onboarding funnel (Creator Dashboard > Analytics > Funnels).
--- The onboarding funnel (here, Roblox's Creator Dashboard funnel and our dashboard: analytics/src/
--- queries.js FIRST_SESSION - keep the two lists the same). The order a new player meets them TODAY:
--- the 4-step guide (Frank, run home, cash pad, wheel), then their first murder round (where they're
--- the Murderer), staying for a second one, and going deeper. (Rebuilt 2026-10-06: the Upgrades and
--- equip steps are gone from the guide.)
+-- Current first-payoff funnel. Keep this list aligned with analytics/src/queries.js FIRST_SESSION.
+local FUNNEL_VERSION = "coffin_loop_v2"
 local ONBOARDING = {
 	"joined",
 	"spawned",
-	"tutorial_1", -- go to Frank's stash
-	"steal_started",
-	"tutorial_2", -- run home
+	"steal_started", -- picked up a coffin
 	"knife_home",
-	"tutorial_3", -- collect the cash pad
+	"coffin_opened",
 	"cash_collected",
-	"tutorial_4", -- train speed on the wheel
-	"wheel_trained",
-	"tutorial_done",
-	"round_played", -- the first murder round (a new player is the Murderer)
-	"second_round", -- stayed for another round
-	"second_knife_home",
-	"first_upgrade", -- wheel upgrade, next vault floor...
-	"zone_2",
-	"session_2",
 }
 local ONBOARDING_INDEX: { [string]: number } = {}
 for i, name in ONBOARDING do
@@ -297,6 +281,7 @@ function Analytics.Track(player: Player?, name: string, props: { [string]: any }
 			properties[key] = value
 		end
 	end
+	properties.analytics_version = FUNNEL_VERSION
 	local session = player and sessions[player]
 	if session and name ~= "session.heartbeat" and name ~= "economy.flow" then
 		session.Last, session.LastAt = name, os.clock()
@@ -320,11 +305,14 @@ function Analytics.Milestone(player: Player, name: string, props: { [string]: an
 		return
 	end
 	local firsts = profile.Firsts
-	if firsts[name] then
+	-- Firsts keys are capped at 32 characters when profiles load; keep the version prefix short.
+	local versionedName = "v2:" .. name
+	if firsts[versionedName] then
 		return
 	end
-	firsts[name] = profile.PlayTime
-	local fields: { [string]: any } = { milestone = name, playtime_s = profile.PlayTime }
+	firsts[versionedName] = profile.PlayTime
+	local fields: { [string]: any } =
+		{ milestone = name, funnel_version = FUNNEL_VERSION, playtime_s = profile.PlayTime }
 	if props then
 		for key, value in props do
 			fields[key] = value
@@ -334,7 +322,10 @@ function Analytics.Milestone(player: Player, name: string, props: { [string]: an
 	local step = ONBOARDING_INDEX[name]
 	if step then
 		pcall(function()
-			AnalyticsService:LogOnboardingFunnelStepEvent(player, step, name)
+			local funnelSessionId = Analytics.IdOf(player.UserId) .. ":coffin_loop_v2"
+			AnalyticsService:LogFunnelStepEvent(player, FUNNEL_VERSION, funnelSessionId, step, name, {
+				funnel_version = FUNNEL_VERSION,
+			})
 		end)
 	end
 end
@@ -450,6 +441,7 @@ local CLIENT_EVENTS: { [string]: { string } } = {
 	["guide.shown"] = { "id", "zone", "source" },
 	["guide.done"] = { "id", "seconds" },
 	["guide.stuck"] = { "id" },
+	["round.bonus_shown"] = { "round_id", "multiplier" },
 }
 local DEVICE_KEYS = { "touch", "keyboard", "mouse", "gamepad", "vr", "phone", "screen_w", "screen_h", "quality" }
 

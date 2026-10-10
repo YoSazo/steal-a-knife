@@ -270,6 +270,7 @@ function CoffinService.Reveal(player: Player, plate: number, how: string, openin
 		how = how, -- timer / round / offline / robux
 		rounds_left = roundsLeft, -- (> 0 = opened with Robux before its time)
 	})
+	Analytics.Milestone(player, "coffin_opened", { rarity = rarity, how = how })
 end
 
 -- Robux "Open now" (MonetizationService grants product CoffinOpen): the coffin they picked, else

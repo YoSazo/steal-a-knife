@@ -22,6 +22,7 @@ local KnifeIcons = require(ReplicatedStorage.Shared.Config.KnifeIcons)
 local TopLine = require(script.Parent.TopLine)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Effects = require(script.Parent.Effects)
+local Telemetry = require(script.Parent.Telemetry)
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("GameConfig"))
 local Sounds = require(ReplicatedStorage.Shared.Config:WaitForChild("Sounds"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -533,6 +534,7 @@ function Hud.Init()
 	end)
 
 	-- Timers, banners, every frame ------------------------------------------------------------
+	local bonusReportedFor: string? = nil
 	RunService.RenderStepped:Connect(function()
 		local phase = ReplicatedStorage:GetAttribute("Phase")
 		local endsAt = ReplicatedStorage:GetAttribute("PhaseEndsAt") or 0
@@ -546,6 +548,21 @@ function Hud.Init()
 			) or 1
 		) :: number
 		local bonusText = if bonus == 2 then ' · <font color="#9CFF70">2X SPEED!</font>' else ""
+		local upcomingRoundToken = ReplicatedStorage:GetAttribute("NextRoundToken")
+		local upcomingRoundId: string? = nil
+		local upcomingMultiplier: string? = nil
+		if type(upcomingRoundToken) == "string" then
+			upcomingRoundId, upcomingMultiplier = string.match(upcomingRoundToken, "^(.-)|(%d+)$")
+		end
+		if
+			phase == "Intermission"
+			and upcomingMultiplier == "2"
+			and upcomingRoundId
+			and bonusReportedFor ~= upcomingRoundId
+		then
+			bonusReportedFor = upcomingRoundId
+			Telemetry.Track("round.bonus_shown", { round_id = upcomingRoundId, multiplier = 2 })
+		end
 		timerFrame.Visible = phase ~= "Results" and not Ui.menuOpen() and Ui.gui:GetAttribute("FadeCover") ~= true
 		if phase == "Round" then
 			local map = ReplicatedStorage:GetAttribute("MapName") or ""
